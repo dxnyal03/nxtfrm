@@ -11,6 +11,8 @@
     settings: 'apm_settings'
   };
 
+  const SEED_VERSION = 1;
+
   function uid() {
     return Math.random().toString(36).slice(2, 10);
   }
@@ -29,6 +31,8 @@
   }
 
   function isVacant(key) {
+    const seededSettings = parseJSON(localStorage.getItem(KEYS.settings), null);
+    if (seededSettings && seededSettings.cutSupport && seededSettings.cutSupport.seedVersion != null) return false;
     const raw = localStorage.getItem(key);
     if (raw == null) return true;
     const value = parseJSON(raw, null);
@@ -270,6 +274,7 @@
       settings.cutSupport.recovery = Object.assign({}, settings.cutSupport.recovery, written.settings.cutSupport.recovery);
       settings.cutSupport.adherence = Object.assign({}, settings.cutSupport.adherence, written.settings.cutSupport.adherence);
       if (written.settings.cutSupport.calories != null) settings.cutSupport.calories = written.settings.cutSupport.calories;
+      settings.cutSupport.seedVersion = written.settings.cutSupport.seedVersion;
       if (written.settings.startWeight != null) settings.startWeight = written.settings.startWeight;
     }
     if (typeof persist === 'function') persist();
@@ -305,7 +310,8 @@
       cutSupport: Object.assign({}, existingSettings.cutSupport, {
         recovery: Object.assign({}, existingCut.recovery || {}, recovery),
         adherence: Object.assign({}, existingCut.adherence || {}, adherence),
-        calories: existingCut.calories != null && existingCut.calories !== '' ? existingCut.calories : 2100
+        calories: existingCut.calories != null && existingCut.calories !== '' ? existingCut.calories : 2100,
+        seedVersion: SEED_VERSION
       })
     });
 
@@ -316,7 +322,10 @@
     if (writeIfAllowed(KEYS.floorball, floorball)) written.floorball = floorball;
     if (writeIfAllowed(KEYS.read, read)) written.read = read;
     if (writeIfAllowed(KEYS.settings, settingsPayload)) written.settings = settingsPayload;
-    if (Object.keys(written).length) applyRuntime(written);
+    if (Object.keys(written).length) {
+      applyRuntime(written);
+      if (reseedRequested()) history.replaceState({}, '', location.pathname);
+    }
   }
 
   window.clearSeedData = function () {
