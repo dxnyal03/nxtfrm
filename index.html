@@ -6261,7 +6261,10 @@ function useSubstituteTemp(index){
 
 
 
-if("serviceWorker" in navigator && location.protocol!=="file:" && !window.NXTFRM_STANDALONE){
+if("serviceWorker" in navigator && location.hostname==="localhost"){
+  // Local dev serves files uncached, and any worker from an earlier visit is removed.
+  navigator.serviceWorker.getRegistrations().then(regs=>regs.forEach(reg=>reg.unregister())).catch(()=>{});
+}else if("serviceWorker" in navigator && location.protocol!=="file:" && !window.NXTFRM_STANDALONE){
   let apexSwRefreshing=false;
   navigator.serviceWorker.addEventListener("controllerchange",()=>{
     if(apexSwRefreshing)return;
