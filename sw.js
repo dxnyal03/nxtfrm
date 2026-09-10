@@ -1,3 +1,5 @@
+if (location.hostname === 'localhost') return;
+
 const CACHE_NAME = 'nxtfrm-v100-premium-cache';
 const ASSETS = [
   './',
