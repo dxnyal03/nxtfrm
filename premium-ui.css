@@ -22,6 +22,9 @@
 .nxp-calories em { font-style:normal;font-size:.875rem;font-weight:400;color:#c3b5d9; }
 .nxp-calories > span:last-child { color:#cebae9;font-size:.875rem;white-space:nowrap; }
 .nxp-calories i { font-style:normal;margin-left:8px; }
+.nxp-calories + .n99-quick { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 16px; }
+.nxp-calories + .n99-quick .n99-button { width:100%;min-width:0;min-height:44px;margin:0;padding:10px 8px;font-size:.8125rem!important;white-space:normal;overflow-wrap:anywhere;line-height:1.25; }
+.nxp-calories + .n99-small { margin:8px 0 16px;color:var(--n99-muted); }
 .nxp-trend .n99-stats { margin:8px 0 10px; }
 .nxp .n99-metric { border:0;padding:5px 0; }
 .nxp .n99-metric strong { font-size:1.7rem; }

@@ -18,8 +18,9 @@ const NXT = (() => {
   function cfg() {
     if(!settings.cutSupport || typeof settings.cutSupport!=="object" || Array.isArray(settings.cutSupport))settings.cutSupport={};
     const c=settings.cutSupport;
-    for(const key of ["profile","templates","sessions","sessionTargets","recovery"])if(!c[key]||typeof c[key]!=="object"||Array.isArray(c[key]))c[key]={};
+    for(const key of ["profile","templates","sessions","sessionTargets","recovery","adherence"])if(!c[key]||typeof c[key]!=="object"||Array.isArray(c[key]))c[key]={};
     if(!Array.isArray(c.waist))c.waist=[];
+    if(!Array.isArray(c.suggestions))c.suggestions=[];
     return c;
   }
   function finite(v) { return v!==""&&v!==null&&v!==undefined&&Number.isFinite(Number(v))?Number(v):null; }
@@ -123,16 +124,57 @@ const NXT = (() => {
   function targetFor(ex) { return cfg().sessionTargets[sessionKey()]?.find?.(x=>x.name===ex)||templateFor().find(x=>x.name===ex)||old.getT(ex)||exercise(ex,3,8,12); }
   function done(ex) { return workRows().filter(r=>r.date===state.date&&(r.gym||"Gym A")===state.gym&&(r.exercise||r.name)===ex).length; }
   function planDone() { return !!cfg().sessions[sessionKey()]?.finished; }
+  function suggestionAction(label) {
+    if(/increase/i.test(label||""))return "increase";
+    if(/baseline/i.test(label||""))return "baseline";
+    return "hold";
+  }
+  function logSuggestion(entry) {
+    const c=cfg();
+    const row={
+      id:typeof uid==="function"?uid():Math.random().toString(36).slice(2,10),
+      date:state.date,
+      kind:entry.kind,
+      subject:entry.subject==null?null:entry.subject,
+      payload:entry.payload||{},
+      followed:null,
+      ts:Date.now()
+    };
+    const last=c.suggestions.at(-1);
+    if(last&&last.date===row.date&&last.kind===row.kind&&last.subject===row.subject&&JSON.stringify(last.payload)===JSON.stringify(row.payload))return;
+    c.suggestions.push(row);
+    if(c.suggestions.length>1000)c.suggestions.splice(0,c.suggestions.length-1000);
+    try{persist();}catch(e){}
+  }
+  function logAdherence(status) {
+    if(!["yes","close","no","over"].includes(status))return;
+    cfg().adherence[state.date]={status,ts:Date.now()};
+    try{persist();}catch(e){toast("Could not save on this device.");return;}
+    repaint();
+  }
+  function adherenceHTML() {
+    const row=cfg().adherence[state.date];
+    const labels={yes:"Hit target",close:"Close (~10%)",no:"Missed",over:"Way over"};
+    if(row&&row.status)return `<p class="n99-small">Today’s calories: ${labels[row.status]||row.status}</p>`;
+    return `<div class="n99-quick" role="group" aria-label="Calorie adherence">${button("Hit target",'NXT.logAdherence("yes")',true)}${button("Close",'NXT.logAdherence("close")',true)}${button("Missed",'NXT.logAdherence("no")',true)}${button("Way over",'NXT.logAdherence("over")',true)}</div>`;
+  }
   function cue(ex) {
     const t=targetFor(ex),all=sessionRows(ex,state.gym,state.date,100),last=all.at(-1),prev=all.at(-2);
-    if(!last)return {label:"Set your baseline",weight:0,text:"Choose a manageable load and leave around two reps in reserve. Your first session establishes the baseline."};
-    const weight=Number(last.sets[0].weight),recent=last.date>=dateAdd(state.date,-28);
-    if(!recent)return {label:"Re-establish your baseline",weight:0,text:"This exercise history is over four weeks old. Choose a manageable starting load for today."};
-    const top=s=>s&&s.sets.length>=t.sets&&s.sets.slice(0,t.sets).every(r=>Number(r.reps)>=t.reps[1]&&Number(r.weight)===weight);
-    const effortOkay=last.sets.every(r=>r.rir===null||r.rir===undefined||r.rir===""||Number(r.rir)>=2);
-    const r=cfg().recovery[state.date],tired=r&&(Number(r.energy)<=2&&r.energy!==""||Number(r.soreness)>=4);
-    if(!tired&&top(last)&&top(prev)&&effortOkay&&Number(t.inc)>0)return {label:"Ready to consider an increase",weight:weight+Number(t.inc),text:"You reached the top of the rep range in two sessions. Use the next increment only if today’s warm-up feels controlled."};
-    return {label:tired?"Keep today manageable":"Hold load · build clean reps",weight,text:tired?"Your check-in suggests fatigue. Keep the session manageable; use the shorter option if needed.":"Match your recent load within the rep range. Maintaining performance while cutting counts; an increase is optional."};
+    let out;
+    if(!last)out={label:"Set your baseline",weight:0,text:"Choose a manageable load and leave around two reps in reserve. Your first session establishes the baseline."};
+    else {
+      const weight=Number(last.sets[0].weight),recent=last.date>=dateAdd(state.date,-28);
+      if(!recent)out={label:"Re-establish your baseline",weight:0,text:"This exercise history is over four weeks old. Choose a manageable starting load for today."};
+      else {
+        const top=s=>s&&s.sets.length>=t.sets&&s.sets.slice(0,t.sets).every(r=>Number(r.reps)>=t.reps[1]&&Number(r.weight)===weight);
+        const effortOkay=last.sets.every(r=>r.rir===null||r.rir===undefined||r.rir===""||Number(r.rir)>=2);
+        const r=cfg().recovery[state.date],tired=r&&(Number(r.energy)<=2&&r.energy!==""||Number(r.soreness)>=4);
+        if(!tired&&top(last)&&top(prev)&&effortOkay&&Number(t.inc)>0)out={label:"Ready to consider an increase",weight:weight+Number(t.inc),text:"You reached the top of the rep range in two sessions. Use the next increment only if today’s warm-up feels controlled."};
+        else out={label:tired?"Keep today manageable":"Hold load · build clean reps",weight,text:tired?"Your check-in suggests fatigue. Keep the session manageable; use the shorter option if needed.":"Match your recent load within the rep range. Maintaining performance while cutting counts; an increase is optional."};
+      }
+    }
+    logSuggestion({kind:"progression",subject:ex||null,payload:{weight:out.weight,label:out.label,action:suggestionAction(out.label)}});
+    return out;
   }
   function snapshot(reason) {
     try {
@@ -155,6 +197,7 @@ const NXT = (() => {
   function metric(label,value,detail="") { return `<div class="n99-metric"><span>${label}</span><strong>${value}</strong>${detail?`<small>${detail}</small>`:""}</div>`; }
   function reviewCard() {
     const r=review();
+    logSuggestion({kind:"review",subject:null,payload:{title:r.title,action:r.action,tone:r.tone,reason:r.reason}});
     return `<section class="n99-card n99-review ${r.tone}"><div class="n99-eyebrow">Weekly cut review</div><h2>${r.title}</h2><p>${r.message}</p><div class="n99-review-foot"><span>${r.reason}</span><button class="n99-text" onclick="NXT.openReview()">Why this advice? ›</button></div></section>`;
   }
   function calorieCard() {
@@ -178,6 +221,7 @@ const NXT = (() => {
       ${isLift&&!finished?`<div class="n99-next"><span>Next up</span><b>${esc(next?.name||'All planned sets logged')}</b></div>`:''}
       ${button(finished?'Review session':isLift?'Start / resume workout':state.dayType==='Zone2'?'Log cardio':'Open today',finished?"switchTab('train')":"startWorkoutNow()")}</section>
       ${calorieCard()}
+      ${adherenceHTML()}
       <div class="n99-stats">${metric('Latest weight',last?last.weight.toFixed(1)+'<small> kg</small>':'—',last?shortDate(last.date):'Log your baseline')}${metric('Weekly change',s.change===null?'—':(s.change>0?'+':'')+s.change.toFixed(2)+'<small> kg</small>',s.change===null?'Building data':'Weekly averages')}</div>
       <section class="n99-card"><div class="n99-row"><h2>Your weekly rhythm</h2><button class="n99-text" onclick="NXT.more('training')">Edit ›</button></div>${weekHTML()}<div class="n99-week-footer"><span>${completedWeek()} lifting days logged</span><span>${minutes} / ${target} cardio min</span></div></section>
       <div class="n99-quick">${button('＋ Weight','apx95OpenQuickWeight()',true)}${button('⌁ Cardio','showCardioSheet()',true)}${button('◉ Check-in','apx96OpenReadiness()',true)}</div>
@@ -207,11 +251,12 @@ const NXT = (() => {
     if(target===null||target<(p.sex==='male'?1500:1200)||target>5000)return toast('Choose a suitable target within the calculator range, or seek personalised guidance.');
     if(target<e.maintenance*.75)return toast('This is over 25% below estimated maintenance. The app will not set that automatically; get personalised guidance.');
     const c=cfg();c.profile=p;c.calories=target;c.calorieUpdated=state.date;c.maintenanceEstimate=e.maintenance;
+    logSuggestion({kind:"calorie",subject:null,payload:{calories:target,maintenanceEstimate:e.maintenance}});
     commit('Daily calorie target saved');
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any target change stays your choice.</p><div class="n99-stack">${button('Review calorie guide','NXT.openCalories()',true)}${button('Update recovery check-in','apx96OpenReadiness()',true)}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,cleanRows,windowStats,trend,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,cleanRows,windowStats,trend,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,logSuggestion,logAdherence,adherenceHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
