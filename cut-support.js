@@ -96,13 +96,13 @@ const NXT = (() => {
   }
   const FORECAST_WINDOW_DAYS=21,FORECAST_MIN_POINTS=3,FORECAST_TRUST_POINTS=10,FORECAST_MAX_WEEKS=104,FORECAST_SLOPE_FLOOR=-.02,FORECAST_SIGMA_FALLBACK=.5;
   function forecastGoal(rows=weights()) {
-    const base={ok:false,weeks:null,lowWeeks:null,highWeeks:null,confidence:"none",reason:"",slope:null,lastDate:null,lastAvg:null};
+    const base={ok:false,weeks:null,lowWeeks:null,highWeeks:null,confidence:"none",reason:"",slope:null,lastDate:null,lastAvg:null,fittedLevel:null};
     const series=ewmaTrend(rows).filter(r=>r.trendReady);
     if(!series.length)return {...base,reason:"Log a few more weigh-ins before a forecast can be made."};
     const last=series.at(-1),lastDate=last.date,lastAvg=last.avg;
     const target=typeof goalHigh==="function"?finite(goalHigh()):null;
     if(target===null)return {...base,lastDate,lastAvg,reason:"Set your goal range to see a forecast."};
-    if(lastAvg<=target)return {ok:true,weeks:0,lowWeeks:0,highWeeks:0,confidence:"high",reason:"Already at goal range",slope:0,lastDate,lastAvg};
+    if(lastAvg<=target)return {ok:true,weeks:0,lowWeeks:0,highWeeks:0,confidence:"high",reason:"Already at goal range",slope:0,lastDate,lastAvg,fittedLevel:null};
     const start=dateAdd(lastDate,1-FORECAST_WINDOW_DAYS),window=series.filter(r=>r.date>=start&&r.date<=lastDate);
     const thin={...base,lastDate,lastAvg,reason:"Not enough weigh-ins in the last three weeks to read a direction."};
     if(window.length<FORECAST_MIN_POINTS)return thin;
@@ -116,7 +116,14 @@ const NXT = (() => {
     // Two independent unknowns feed the estimate: where the trend sits today, and how fast it is moving.
     const band=trendConfidence(rows),here=band?band.find(b=>b.date===lastDate)||band.at(-1):null;
     // Too few readings for a band leaves the level unmeasured, not certain, so a nominal spread stands in.
-    const sigmaLevel=here&&finite(here.sigma)!==null?here.sigma:FORECAST_SIGMA_FALLBACK,gap=lastAvg-target,days=gap/-slope;
+    const sigmaLevel=here&&finite(here.sigma)!==null?here.sigma:FORECAST_SIGMA_FALLBACK;
+    // Level and slope are read off the same raw fit. An EWMA trails a moving trend by roughly its
+    // mean observation age, about ten days at a seven-day half-life, which would pad the horizon.
+    const fittedLevel=fit.intercept+fit.slope*((dateMs(lastDate)-dateMs(start))/DAY);
+    const gap=fittedLevel-target,days=gap/-slope;
+    // The fitted level leads the EWMA, so arrival can register here before lastAvg has caught up.
+    // Without this the negative gap would round back up into a bogus one-week horizon.
+    if(!(gap>0))return {ok:true,weeks:0,lowWeeks:0,highWeeks:0,confidence:"high",reason:"Already at goal range",slope,lastDate,lastAvg,fittedLevel};
     const sigmaDays=Math.sqrt(Math.max(0,(sigmaLevel/slope)**2+gap**2*se**2/slope**4));
     const rawWeeks=days/7,rawLow=Math.max(1,(days-sigmaDays)/7),rawHigh=(days+sigmaDays)/7;
     // A near-flat slope can push the horizon past any useful date, so every bound is capped.
@@ -126,7 +133,7 @@ const NXT = (() => {
     // Whole-week rounding quantizes the span, so the ratio is taken before it.
     const spanRatio=rawWeeks>0?(rawHigh-rawLow)/rawWeeks:Infinity;
     const confidence=n<FORECAST_TRUST_POINTS||spanRatio>2?"low":spanRatio>.5?"medium":"high";
-    return {ok:true,weeks,lowWeeks,highWeeks,confidence,reason:"",slope,lastDate,lastAvg};
+    return {ok:true,weeks,lowWeeks,highWeeks,confidence,reason:"",slope,lastDate,lastAvg,fittedLevel};
   }
   const PLATEAU_WINDOW_DAYS=28,PLATEAU_MIN_READINGS=10,PLATEAU_MIN_SPAN_DAYS=14,PLATEAU_FLAT_KG_WEEK=.15,PLATEAU_T=2;
   const PLATEAU_LADDER=[35,42,49,56,63,70,77,84,90],PLATEAU_LADDER_SLACK=7;
