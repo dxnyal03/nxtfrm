@@ -83,6 +83,17 @@ const NXT = (() => {
     }
     return out.length?out:null;
   }
+  // Ordinary least squares over {x,y} points. Deliberately dumb: callers own their own guards,
+  // including the sxx>0 check that keeps slope finite.
+  function lsFit(points) {
+    const n=points.length;
+    const xbar=points.reduce((s,p)=>s+p.x,0)/n,ybar=points.reduce((s,p)=>s+p.y,0)/n;
+    const sxx=points.reduce((s,p)=>s+(p.x-xbar)**2,0);
+    const slope=points.reduce((s,p)=>s+(p.x-xbar)*(p.y-ybar),0)/sxx;
+    const intercept=ybar-slope*xbar;
+    const sse=points.reduce((s,p)=>s+(p.y-(intercept+slope*p.x))**2,0);
+    return {slope,intercept,sse,se_slope:Math.sqrt(Math.max(0,sse/(n-2)/sxx)),n,sxx,xbar};
+  }
   const FORECAST_WINDOW_DAYS=21,FORECAST_MIN_POINTS=3,FORECAST_TRUST_POINTS=10,FORECAST_MAX_WEEKS=104,FORECAST_SLOPE_FLOOR=-.02,FORECAST_SIGMA_FALLBACK=.5;
   function forecastGoal(rows=weights()) {
     const base={ok:false,weeks:null,lowWeeks:null,highWeeks:null,confidence:"none",reason:"",slope:null,lastDate:null,lastAvg:null};
@@ -95,13 +106,11 @@ const NXT = (() => {
     const start=dateAdd(lastDate,1-FORECAST_WINDOW_DAYS),window=series.filter(r=>r.date>=start&&r.date<=lastDate);
     const thin={...base,lastDate,lastAvg,reason:"Not enough weigh-ins in the last three weeks to read a direction."};
     if(window.length<FORECAST_MIN_POINTS)return thin;
-    const xs=window.map(r=>(dateMs(r.date)-dateMs(start))/DAY),ys=window.map(r=>r.avg),n=xs.length;
-    const mx=xs.reduce((s,v)=>s+v,0)/n,my=ys.reduce((s,v)=>s+v,0)/n,sxx=xs.reduce((s,v)=>s+(v-mx)**2,0);
-    if(!(sxx>0))return thin;
-    const slope=xs.reduce((s,v,i)=>s+(v-mx)*(ys[i]-my),0)/sxx;
+    const fit=lsFit(window.map(r=>({x:(dateMs(r.date)-dateMs(start))/DAY,y:r.avg}))),n=fit.n;
+    if(!(fit.sxx>0))return thin;
+    const slope=fit.slope;
     if(!(slope<FORECAST_SLOPE_FLOOR))return {...base,slope,lastDate,lastAvg,reason:"Trend isn't moving toward goal yet."};
-    const intercept=my-slope*mx,sse=ys.reduce((s,y,i)=>s+(y-(intercept+slope*xs[i]))**2,0);
-    const se=Math.sqrt(Math.max(0,sse/(n-2)/sxx));
+    const se=fit.se_slope;
     // Two independent unknowns feed the estimate: where the trend sits today, and how fast it is moving.
     const band=trendConfidence(rows),here=band?band.find(b=>b.date===lastDate)||band.at(-1):null;
     // Too few readings for a band leaves the level unmeasured, not certain, so a nominal spread stands in.
