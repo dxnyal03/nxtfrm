@@ -127,10 +127,11 @@ const NXT = (() => {
     return rows.sort((a,b)=>a.date.localeCompare(b.date));
   }
   function formulaTDEE() {
+    // A saved TDEE is the user's own figure, so it outranks the profile calculation.
+    const saved=finite(settings.tdee);
+    if(saved!==null&&saved>0)return saved;
     const estimated=finite(cfg().maintenanceEstimate);
     if(estimated!==null)return estimated;
-    const saved=finite(settings.tdee);
-    if(saved!==null)return saved;
     return finite(typeof USER_TDEE==="undefined"?null:USER_TDEE);
   }
   function adaptiveTDEE(windowDays=14) {
