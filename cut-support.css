@@ -180,4 +180,24 @@ html,body { background:var(--n99-bg)!important; }
 .tabs .tab span:last-child { font-size:12px; }
 @media (min-width:650px) { .n99-chart { padding:25px; } .n99-chart-selected strong { font-size:47px; } }
 @media (max-width:370px) { .n99-card,.n99-mission { padding:17px; } .n99 h1 { font-size:29px; } .n99-chart { padding:17px 12px; } .n99-chart-selected strong { font-size:35px; } .n99-chart-controls { gap:5px; } .n99-segments button { padding:8px;min-width:34px; } .n99-chart-controls label { font-size:12px; } .n99-spark { width:70px;flex-basis:70px; } }
+.cloud-sync-status { margin-top:4px;font-size:11px;font-weight:650;letter-spacing:.02em;line-height:1.3; }
+.cloud-sync-status.is-ok,.cloud-sync-status.is-busy { color:#8a8496; }
+.cloud-sync-status.is-warn { color:#e8bf7c; }
+.cloud-local-banner {
+  display:none;align-items:flex-start;justify-content:space-between;gap:12px;
+  margin:0;padding:10px 16px 11px;width:100%;box-sizing:border-box;
+  background:rgba(232,191,124,.12);border-bottom:1px solid rgba(232,191,124,.28);
+  color:#e8d4a8;font-size:13px;line-height:1.45;font-weight:500;
+}
+.cloud-local-banner:not([hidden]) { display:flex; }
+.cloud-local-banner p { margin:0;flex:1;min-width:0; }
+.cloud-local-banner-actions { display:flex;align-items:center;gap:8px;flex:0 0 auto; }
+.cloud-local-banner-login {
+  min-height:36px;padding:7px 12px;border:0;border-radius:9px;cursor:pointer;
+  background:#e8bf7c;color:#2a1d08;font:inherit;font-size:13px;font-weight:700;
+}
+.cloud-local-banner-dismiss {
+  min-height:36px;padding:7px 8px;border:0;background:none;cursor:pointer;
+  color:#c4b08a;font:inherit;font-size:13px;font-weight:600;
+}
 @media (prefers-reduced-motion:reduce) { .n99 *, .n99 *::before, .n99 *::after { animation:none!important;transition:none!important;scroll-behavior:auto!important; } }

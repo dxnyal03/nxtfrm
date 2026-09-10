@@ -1023,3 +1023,280 @@ document.addEventListener('keydown',function(event){
 NXT.install();
 document.title='NXTFRM — Your Cut Companion';
 if(document.readyState!=='loading')NXT.repaint();
+
+let lastCloudMergeOk=false;
+let lastCloudError=null;
+let lastCloudSyncAt=null;
+(function(){
+  function isPlain(v){return !!v&&typeof v==='object'&&!Array.isArray(v);}
+  function hasId(r){return r&&r.id!=null&&r.id!=='';}
+  function recTs(r){const n=Number(r&&r.ts);return Number.isFinite(n)?n:0;}
+  function nonEmpty(v){
+    if(Array.isArray(v))return v.length>0;
+    if(isPlain(v))return Object.keys(v).length>0;
+    return v!=null&&v!=='';
+  }
+  function mergeObjectsLocalWins(cloud,local){
+    const C=isPlain(cloud)?cloud:{};const L=isPlain(local)?local:{};
+    const out={};
+    for(const key of new Set([...Object.keys(C),...Object.keys(L)])){
+      const lv=L[key],cv=C[key];
+      if(isPlain(lv)&&isPlain(cv))out[key]=mergeObjectsLocalWins(cv,lv);
+      else if(lv!==undefined)out[key]=lv;
+      else out[key]=cv;
+    }
+    return out;
+  }
+  function unionById(local,cloud){
+    const localArr=Array.isArray(local)?local:[];
+    const cloudArr=Array.isArray(cloud)?cloud:[];
+    const map=new Map();
+    const extras=[];
+    for(const r of cloudArr){
+      if(hasId(r))map.set(r.id,r);
+      else if(r)extras.push(r);
+    }
+    for(const r of localArr){
+      if(hasId(r)){
+        const other=map.get(r.id);
+        if(!other||recTs(r)>recTs(other))map.set(r.id,r);
+      }else if(r)extras.push(r);
+    }
+    const localIds=new Set(localArr.filter(hasId).map(r=>r.id));
+    const added=cloudArr.filter(r=>hasId(r)?!localIds.has(r.id):!!r).length;
+    return {rows:[...map.values(),...extras],added};
+  }
+  function mergeCutSupport(local,cloud){
+    const L=isPlain(local)?local:{};const C=isPlain(cloud)?cloud:{};
+    const out={};
+    for(const key of new Set([...Object.keys(C),...Object.keys(L)])){
+      const lv=L[key],cv=C[key];
+      if(key==='adherence'||key==='suggestions'||key==='tdeeHistory'){
+        out[key]=nonEmpty(lv)?lv:cv;
+        continue;
+      }
+      if(isPlain(lv)&&isPlain(cv))out[key]=mergeObjectsLocalWins(cv,lv);
+      else if(lv!==undefined)out[key]=lv;
+      else out[key]=cv;
+    }
+    return out;
+  }
+  NXT.old.applyCloudPayload=function(d){
+    lastCloudMergeOk=false;
+    if(!d)return;
+    const added={};
+    for(const field of ['logs','bws','cardio','floorball','scans','rest']){
+      if(d[field]===undefined){added[field]=0;continue;}
+      const merged=unionById(state[field],d[field]);
+      state[field]=merged.rows;
+      added[field]=merged.added;
+    }
+    if(d.gyms)state.gyms=d.gyms;
+    if(d.gym)state.gym=d.gym;
+    if(d.settings&&isPlain(d.settings)){
+      const localSettings=settings&&isPlain(settings)?settings:{};
+      const merged={...d.settings,...localSettings};
+      merged.cutSupport=mergeCutSupport(localSettings.cutSupport,d.settings.cutSupport);
+      settings=merged;
+      START_WEIGHT=Number(settings.startWeight)||START_WEIGHT;
+      TARGET_HIGH=Number(settings.targetHigh)||TARGET_HIGH;
+      TARGET_LOW=Number(settings.targetLow)||TARGET_LOW;
+      USER_TDEE=Number(settings.tdee)||USER_TDEE;
+      ZONE2_WEEKLY_TARGET=Number(settings.zone2WeeklyTarget)||ZONE2_WEEKLY_TARGET;
+    }
+    console.log(`Merged cloud: +${added.logs} logs, +${added.bws} bws, +${added.cardio} cardio, +${added.floorball} floorball, +${added.scans} scans, +${added.rest} rest`);
+    persist();
+    lastCloudMergeOk=true;
+  };
+})();
+
+let cloudSessionChecked=false;
+function hasStoredSbAuthToken(){
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i)||'';
+      if(k.startsWith('sb-')&&k.indexOf('auth-token')!==-1){
+        const raw=localStorage.getItem(k);
+        if(raw&&raw!=='null')return true;
+      }
+    }
+  }catch(e){}
+  return false;
+}
+function clearStoredSbAuthTokens(){
+  try{
+    const keys=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i)||'';
+      if(k.startsWith('sb-')&&k.indexOf('auth-token')!==-1)keys.push(k);
+    }
+    for(const k of keys)localStorage.removeItem(k);
+  }catch(e){}
+}
+function sessionIsExpired(session){
+  if(!session)return false;
+  const exp=Number(session.expires_at);
+  return Number.isFinite(exp)&&exp*1000<Date.now();
+}
+async function cloudSignOutSilent(){
+  const prevToast=toast;
+  toast=function(){};
+  try{await cloudSignOut();}finally{toast=prevToast;clearStoredSbAuthTokens();}
+}
+initCloudFromStorage=async function(){
+  try{
+    const client=initSupabaseClient();
+    const stored=hasStoredSbAuthToken();
+    if(!client){
+      cloudSessionChecked=true;
+      if(stored)await cloudSignOutSilent();
+      return;
+    }
+    let data=null,error=null;
+    try{
+      const res=await client.auth.getSession();
+      data=res.data;error=res.error;
+    }catch(e){error=e;}
+    const session=data&&data.session;
+    const expired=sessionIsExpired(session);
+    if(error||expired||(stored&&!(session&&session.user))){
+      cloudSessionChecked=true;
+      if(stored||session||cloudUser)await cloudSignOutSilent();
+      else {cloudUser=null;cloudStatusText='Not logged in';}
+      return;
+    }
+    if(session&&session.user){
+      cloudUser=session.user;
+      cloudStatusText='Connected';
+      cloudSessionChecked=true;
+      const prevToast=toast;
+      toast=function(){};
+      try{await loadCloudNow();}finally{toast=prevToast;}
+      render();
+      return;
+    }
+    cloudSessionChecked=true;
+    cloudUser=null;
+    cloudStatusText='Not logged in';
+  }catch(e){
+    cloudSessionChecked=true;
+    if(hasStoredSbAuthToken()||cloudUser)try{await cloudSignOutSilent();}catch(x){}
+  }finally{
+    updateCloudSyncStatus();
+  }
+};
+function cloudSyncAgo(ts){
+  const diff=Date.now()-ts;
+  if(diff<60000)return 'just now';
+  if(diff<3600000)return Math.max(1,Math.floor(diff/60000))+'m ago';
+  if(diff<86400000)return Math.max(1,Math.floor(diff/3600000))+'h ago';
+  const day=d=>new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
+  if(day(new Date())-day(new Date(ts))===86400000)return 'yesterday';
+  return new Date(ts).toLocaleDateString('en-SG',{day:'numeric',month:'short'});
+}
+function updateCloudSyncStatus(){
+  const el=document.getElementById('cloudSyncStatus');
+  if(!el)return;
+  let text='Checking…',tone='busy';
+  if(!cloudSessionChecked){text='Checking…';tone='busy';}
+  else if(lastCloudError&&cloudStatusText!=='Syncing...'){text='Sync error';tone='warn';}
+  else if(cloudStatusText==='Syncing...'){text='Syncing...';tone='busy';}
+  else if(!cloudUser){text='Not logged in';tone='warn';}
+  else if(lastCloudSyncAt){text='Synced · '+cloudSyncAgo(lastCloudSyncAt);tone='ok';}
+  else {text='Syncing...';tone='busy';}
+  el.textContent=text;
+  el.className='cloud-sync-status is-'+tone;
+  updateCloudLocalBanner();
+}
+let cloudBannerDismissed=false;
+function updateCloudLocalBanner(){
+  const el=document.getElementById('cloudLocalBanner');
+  if(!el)return;
+  const show=cloudSessionChecked&&!cloudUser&&!hasStoredSbAuthToken()&&!cloudBannerDismissed;
+  if(show)el.removeAttribute('hidden');else el.setAttribute('hidden','');
+}
+function dismissCloudLocalBanner(){cloudBannerDismissed=true;updateCloudLocalBanner();}
+function openCloudLoginFromBanner(){switchTab('more');NXT.more('data');}
+window.dismissCloudLocalBanner=dismissCloudLocalBanner;
+window.openCloudLoginFromBanner=openCloudLoginFromBanner;
+const _render=render;
+render=function(){_render.apply(this,arguments);updateCloudSyncStatus();};
+
+let cloudSaveQuiet=false;
+saveCloudNow=async function(show=true){
+  try{
+    const client=initSupabaseClient();
+    if(!client||!cloudUser){
+      if(show)toast('Cloud not connected');
+      return;
+    }
+    cloudStatusText='Syncing...';
+    updateCloudSyncStatus();
+    const payload=getCloudPayload();
+    let row={user_id:cloudUser.id,data:payload,updated_at:new Date().toISOString()};
+    let {error}=await client.from('apexcut_profiles').upsert(row,{onConflict:'user_id'});
+    if(error&&String(error.message||'').toLowerCase().includes('updated_at')){
+      row={user_id:cloudUser.id,data:payload};
+      error=(await client.from('apexcut_profiles').upsert(row,{onConflict:'user_id'})).error;
+    }
+    if(error)throw error;
+    lastCloudError=null;
+    lastCloudSyncAt=Date.now();
+    cloudStatusText='Saved online';
+    if(show)toast('Saved to Supabase');
+    render();
+  }catch(e){
+    lastCloudError=e;
+    cloudStatusText='Sync error';
+    updateCloudSyncStatus();
+    if(cloudSaveQuiet){console.error(e);return;}
+    if(show)toast(e.message||'Cloud save failed');
+    else toast(e.message||'Cloud autosave failed');
+  }
+};
+
+loadCloudNow=async function(){
+  try{
+    const client=initSupabaseClient();
+    if(!client||!cloudUser){
+      toast('Cloud not connected');
+      return;
+    }
+    cloudStatusText='Syncing...';
+    updateCloudSyncStatus();
+    const {data,error}=await client.from('apexcut_profiles').select('data').eq('user_id',cloudUser.id).maybeSingle();
+    if(error)throw error;
+    if(!(data&&data.data)){
+      cloudStatusText='Loaded online';
+      toast('No cloud data yet');
+      updateCloudSyncStatus();
+      return;
+    }
+    lastCloudMergeOk=false;
+    applyCloudPayload(data.data);
+    if(!lastCloudMergeOk)return;
+    cloudStatusText='Loaded online';
+    toast('Loaded from Supabase');
+    const prevToast=toast;
+    toast=function(){};
+    cloudSaveQuiet=true;
+    try{
+      await saveCloudNow(false);
+    }catch(e){
+      lastCloudError=e;
+      console.error(e);
+    }finally{
+      cloudSaveQuiet=false;
+      toast=prevToast;
+    }
+    render();
+  }catch(e){
+    lastCloudError=e;
+    cloudStatusText='Sync error';
+    updateCloudSyncStatus();
+    toast(e.message||'Cloud load failed');
+  }
+};
+
+initCloudFromStorage();
+

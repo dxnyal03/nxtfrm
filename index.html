@@ -4550,11 +4550,19 @@ body.apex-keyboard-open .tabs{transform:translate(-50%,145%);pointer-events:none
         <div>
           <div class="logo" aria-label="NXTFRM">NXT<span>FRM</span></div>
           <div class="subtitle">Build your next form</div>
+          <div id="cloudSyncStatus" class="cloud-sync-status is-busy">Checking…</div>
         </div>
       </div>
       <div class="score-wrap"><span class="score-label">Readiness</span><div class="score" id="headScore">78</div></div>
     </div>
   </header>
+  <div id="cloudLocalBanner" class="cloud-local-banner" hidden>
+    <p>Your data is local-only on this device. iOS may wipe it. Log in to sync.</p>
+    <div class="cloud-local-banner-actions">
+      <button type="button" class="cloud-local-banner-login" onclick="openCloudLoginFromBanner()">Log in</button>
+      <button type="button" class="cloud-local-banner-dismiss" onclick="dismissCloudLocalBanner()">Dismiss</button>
+    </div>
+  </div>
 
   <main>
     <section id="homePage" class="content"></section>
