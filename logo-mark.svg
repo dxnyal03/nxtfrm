@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">NXTFRM performance mark</title>
+  <desc id="desc">An angular N crossed by a rising forward motion blade.</desc>
+  <defs>
+    <radialGradient id="bg" cx="76%" cy="18%" r="92%">
+      <stop offset="0" stop-color="#2b223b"/>
+      <stop offset="0.5" stop-color="#19181f"/>
+      <stop offset="1" stop-color="#121216"/>
+    </radialGradient>
+    <linearGradient id="purple" x1="0" y1="1" x2="0.9" y2="0.05">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="0.58" stop-color="#b18aff"/>
+      <stop offset="1" stop-color="#e7d8ff"/>
+    </linearGradient>
+    <linearGradient id="blade" x1="0" y1="0.85" x2="1" y2="0.2">
+      <stop offset="0" stop-color="#faf5ff"/>
+      <stop offset="0.7" stop-color="#b18aff"/>
+      <stop offset="1" stop-color="#aa7afa"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.56 0 0 0 0 0.32 0 0 0 0 1 0 0 0 .16 0"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="124" fill="#121216"/>
+  <rect x="15" y="15" width="482" height="482" rx="112" fill="url(#bg)" stroke="#3a3345" stroke-width="4"/>
+  <path d="M91 397V115h82l166 164V115h82v282h-78L173 230v167Z" fill="url(#purple)" filter="url(#glow)"/>
+  <path d="m72 351 354-207-48 103L89 416l-48-42Z" fill="#121216"/>
+  <path d="m103 348 300-175-37 61L91 394l-26-19Z" fill="url(#blade)"/>
+  <path d="m366 234 37-61-8 55-29 28Z" fill="#f4ebff"/>
+</svg>

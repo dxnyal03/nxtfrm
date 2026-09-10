@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="bg" cx="14%" cy="15%" r="105%"><stop stop-color="#1c2a13"/><stop offset=".42" stop-color="#0b100c"/><stop offset="1" stop-color="#050706"/></radialGradient>
+    <linearGradient id="lime" x1="0" y1="1" x2=".9" y2=".05"><stop stop-color="#9ce91f"/><stop offset=".58" stop-color="#cfff3f"/><stop offset="1" stop-color="#efffb0"/></linearGradient>
+    <linearGradient id="blade" x1="0" y1=".85" x2="1" y2=".2"><stop stop-color="#f7fff0"/><stop offset=".7" stop-color="#d8ff43"/><stop offset="1" stop-color="#72e4ba"/></linearGradient>
+    <pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse"><path d="M42 0H0v42" fill="none" stroke="#d8ff43" stroke-opacity=".035"/></pattern>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18" result="b"/><feColorMatrix in="b" type="matrix" values="0 0 0 0 .65 0 0 0 0 .94 0 0 0 0 .12 0 0 0 .3 0"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <circle cx="995" cy="-15" r="330" fill="#72e4ba" opacity=".035"/>
+  <g transform="translate(78 126) scale(.72)">
+    <rect width="512" height="512" rx="124" fill="#050706"/>
+    <rect x="15" y="15" width="482" height="482" rx="112" fill="#0b100c" stroke="#344329" stroke-width="4"/>
+    <path d="M91 397V115h82l166 164V115h82v282h-78L173 230v167Z" fill="url(#lime)" filter="url(#glow)"/>
+    <path d="m72 351 354-207-48 103L89 416l-48-42Z" fill="#050706"/>
+    <path d="m103 348 300-175-37 61L91 394l-26-19Z" fill="url(#blade)"/>
+  </g>
+  <g font-family="Arial,Helvetica,sans-serif">
+    <text x="515" y="245" fill="#f8fbf5" font-size="110" font-weight="900" letter-spacing="-8">NXT<tspan fill="#d8ff43">FRM</tspan></text>
+    <text x="520" y="300" fill="#7f897b" font-size="19" font-weight="700" letter-spacing="5">BUILD YOUR NEXT FORM</text>
+    <text x="520" y="370" fill="#f4f7f1" font-size="29" font-weight="700">Lean transformation. Gym progression.</text>
+    <text x="520" y="410" fill="#f4f7f1" font-size="29" font-weight="700">Athletic performance.</text>
+    <g transform="translate(520 468)" font-size="15" font-weight="700" letter-spacing="1">
+      <rect width="110" height="39" rx="19.5" fill="#d8ff43" fill-opacity=".1" stroke="#d8ff43" stroke-opacity=".24"/><text x="24" y="25" fill="#d8ff43">LEAN</text>
+      <rect x="124" width="130" height="39" rx="19.5" fill="#d8ff43" fill-opacity=".1" stroke="#d8ff43" stroke-opacity=".24"/><text x="150" y="25" fill="#d8ff43">STRONG</text>
+      <rect x="268" width="148" height="39" rx="19.5" fill="#72e4ba" fill-opacity=".09" stroke="#72e4ba" stroke-opacity=".22"/><text x="292" y="25" fill="#9cebd1">ATHLETIC</text>
+    </g>
+  </g>
+</svg>
