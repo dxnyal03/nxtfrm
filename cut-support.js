@@ -106,7 +106,9 @@ const NXT = (() => {
     const start=dateAdd(lastDate,1-FORECAST_WINDOW_DAYS),window=series.filter(r=>r.date>=start&&r.date<=lastDate);
     const thin={...base,lastDate,lastAvg,reason:"Not enough weigh-ins in the last three weeks to read a direction."};
     if(window.length<FORECAST_MIN_POINTS)return thin;
-    const fit=lsFit(window.map(r=>({x:(dateMs(r.date)-dateMs(start))/DAY,y:r.avg}))),n=fit.n;
+    // Fitted to raw readings, not the EWMA: smoothed points are autocorrelated, which would
+    // shrink se_slope well below the real uncertainty and fake a precise horizon.
+    const fit=lsFit(window.map(r=>({x:(dateMs(r.date)-dateMs(start))/DAY,y:r.weight}))),n=fit.n;
     if(!(fit.sxx>0))return thin;
     const slope=fit.slope;
     if(!(slope<FORECAST_SLOPE_FLOOR))return {...base,slope,lastDate,lastAvg,reason:"Trend isn't moving toward goal yet."};
