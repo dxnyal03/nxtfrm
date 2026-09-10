@@ -128,6 +128,54 @@ const NXT = (() => {
     const confidence=n<FORECAST_TRUST_POINTS||spanRatio>2?"low":spanRatio>.5?"medium":"high";
     return {ok:true,weeks,lowWeeks,highWeeks,confidence,reason:"",slope,lastDate,lastAvg};
   }
+  const PLATEAU_WINDOW_DAYS=28,PLATEAU_MIN_READINGS=10,PLATEAU_MIN_SPAN_DAYS=14,PLATEAU_FLAT_KG_WEEK=.15,PLATEAU_T=2;
+  const PLATEAU_LADDER=[35,42,49,56,63,70,77,84,90],PLATEAU_LADDER_SLACK=7;
+  // One equivalence test over the trailing `days` of raw readings, or null when the window is too thin.
+  // Raw rather than EWMA: smoothed points are autocorrelated, so their se_slope would fake precision.
+  function plateauWindow(rows,end,days) {
+    const items=windowStats(rows,end,days).items;
+    if(items.length<PLATEAU_MIN_READINGS)return null;
+    const ms=items.map(r=>dateMs(r.date)),first=Math.min(...ms),span=(Math.max(...ms)-first)/DAY;
+    if(!(span>=PLATEAU_MIN_SPAN_DAYS))return null;
+    const fit=lsFit(items.map(r=>({x:(dateMs(r.date)-first)/DAY,y:r.weight})));
+    if(!(fit.sxx>0)||!Number.isFinite(fit.se_slope))return null;
+    const weeklyRate=fit.slope*7,half=PLATEAU_T*fit.se_slope*7,lower=weeklyRate-half,upper=weeklyRate+half;
+    // An equivalence test, not a test against zero: the whole interval has to sit inside the flat
+    // band to call a plateau, so noisy data lands on "undetermined" instead of a false positive.
+    const status=upper < -PLATEAU_FLAT_KG_WEEK?"losing":lower > PLATEAU_FLAT_KG_WEEK?"gaining":
+      lower > -PLATEAU_FLAT_KG_WEEK&&upper < PLATEAU_FLAT_KG_WEEK?"flat":"undetermined";
+    return {n:items.length,span:Math.round(span),weeklyRate,half,lower,upper,status};
+  }
+  function detectPlateau(rows=weights()) {
+    const base={ok:false,plateau:false,status:"undetermined",weeklyRate:null,lower:null,upper:null,
+      n:0,windowDays:PLATEAU_WINDOW_DAYS,spanDays:0,plateauDays:null,lastDate:null,lastAvg:null,confidence:"none",reason:""};
+    const last=ewmaTrend(rows).filter(r=>r.trendReady).at(-1);
+    const head={...base,lastDate:last?last.date:null,lastAvg:last?last.avg:null};
+    const w=plateauWindow(rows,state.date,PLATEAU_WINDOW_DAYS);
+    if(!w)return {...head,n:windowStats(rows,state.date,PLATEAU_WINDOW_DAYS).n,
+      reason:`Four weeks with at least ${PLATEAU_MIN_READINGS} weigh-ins are needed before a plateau can be identified.`};
+    let plateauDays=null;
+    if(w.status==="flat") {
+      // Walk the ladder upward and stop at the first window that is no longer flat. Seven-day
+      // resolution on purpose: "about six weeks" is honest where "43 days" is false precision.
+      plateauDays=PLATEAU_WINDOW_DAYS;
+      for(const days of PLATEAU_LADDER) {
+        const step=plateauWindow(rows,state.date,days);
+        // The readings must actually reach back into the longer window. Without this the same four
+        // weeks of data keep passing every rung and claim a plateau older than the record itself.
+        if(!step||step.status!=="flat"||step.span<days-PLATEAU_LADDER_SLACK)break;
+        plateauDays=days;
+      }
+    }
+    const confidence=w.half<PLATEAU_FLAT_KG_WEEK/2?"high":w.half<PLATEAU_FLAT_KG_WEEK?"medium":"low";
+    const weeks=plateauDays===null?0:Math.round(plateauDays/7);
+    const reason=w.status==="flat"?`Your weight trend has been level for about ${weeks} week${weeks===1?"":"s"}. Food intake is not logged, so the app cannot identify the cause.`:
+      w.status==="losing"?"Your weight is still trending down, so this is not a plateau.":
+      w.status==="gaining"?"Your weight trend is moving up rather than levelling off.":
+      "Your readings vary too much over four weeks to separate a plateau from normal fluctuation. Keep logging.";
+    return {...head,ok:true,plateau:w.status==="flat",status:w.status,weeklyRate:w.weeklyRate,
+      lower:w.lower,upper:w.upper,n:w.n,windowDays:PLATEAU_WINDOW_DAYS,spanDays:w.span,plateauDays,confidence,reason};
+  }
   function trendStats(rows=weights()) {
     const current=windowStats(rows),previous=windowStats(rows,dateAdd(state.date,-7)),earlier=windowStats(rows,dateAdd(state.date,-14));
     const change=current.n>=3&&previous.n>=3?current.avg-previous.avg:null;
@@ -403,7 +451,7 @@ const NXT = (() => {
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any target change stays your choice.</p><div class="n99-stack">${button('Review calorie guide','NXT.openCalories()',true)}${button('Update recovery check-in','apx96OpenReadiness()',true)}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
