@@ -83,7 +83,7 @@ const NXT = (() => {
     }
     return out.length?out:null;
   }
-  const FORECAST_WINDOW_DAYS=21,FORECAST_MIN_POINTS=3,FORECAST_TRUST_POINTS=10,FORECAST_MAX_WEEKS=104,FORECAST_SLOPE_FLOOR=-.02;
+  const FORECAST_WINDOW_DAYS=21,FORECAST_MIN_POINTS=3,FORECAST_TRUST_POINTS=10,FORECAST_MAX_WEEKS=104,FORECAST_SLOPE_FLOOR=-.02,FORECAST_SIGMA_FALLBACK=.5;
   function forecastGoal(rows=weights()) {
     const base={ok:false,weeks:null,lowWeeks:null,highWeeks:null,confidence:"none",reason:"",slope:null,lastDate:null,lastAvg:null};
     const series=ewmaTrend(rows).filter(r=>r.trendReady);
@@ -104,13 +104,16 @@ const NXT = (() => {
     const se=Math.sqrt(Math.max(0,sse/(n-2)/sxx));
     // Two independent unknowns feed the estimate: where the trend sits today, and how fast it is moving.
     const band=trendConfidence(rows),here=band?band.find(b=>b.date===lastDate)||band.at(-1):null;
-    const sigmaLevel=here&&finite(here.sigma)!==null?here.sigma:0,gap=lastAvg-target,days=gap/-slope;
+    // Too few readings for a band leaves the level unmeasured, not certain, so a nominal spread stands in.
+    const sigmaLevel=here&&finite(here.sigma)!==null?here.sigma:FORECAST_SIGMA_FALLBACK,gap=lastAvg-target,days=gap/-slope;
     const sigmaDays=Math.sqrt(Math.max(0,(sigmaLevel/slope)**2+gap**2*se**2/slope**4));
+    const rawWeeks=days/7,rawLow=Math.max(1,(days-sigmaDays)/7),rawHigh=(days+sigmaDays)/7;
     // A near-flat slope can push the horizon past any useful date, so every bound is capped.
     const cap=v=>Math.min(FORECAST_MAX_WEEKS,Math.max(0,Math.round(v)));
-    const lowWeeks=Math.max(1,cap((days-sigmaDays)/7)),weeks=Math.max(lowWeeks,cap(days/7));
-    const highWeeks=Math.max(weeks,cap((days+sigmaDays)/7));
-    const spanRatio=weeks>0?(highWeeks-lowWeeks)/weeks:Infinity;
+    const lowWeeks=Math.max(1,cap(rawLow)),weeks=Math.max(lowWeeks,cap(rawWeeks));
+    const highWeeks=Math.max(weeks,cap(rawHigh));
+    // Whole-week rounding quantizes the span, so the ratio is taken before it.
+    const spanRatio=rawWeeks>0?(rawHigh-rawLow)/rawWeeks:Infinity;
     const confidence=n<FORECAST_TRUST_POINTS||spanRatio>2?"low":spanRatio>.5?"medium":"high";
     return {ok:true,weeks,lowWeeks,highWeeks,confidence,reason:"",slope,lastDate,lastAvg};
   }
