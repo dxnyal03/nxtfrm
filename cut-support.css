@@ -122,6 +122,7 @@ html,body { background:var(--n99-bg)!important; }
 .n99-legend > span:last-child { margin-left:auto;color:#807a8a; }
 .n99-legend i { width:15px;height:3px;border-radius:3px;background:#b18aff; }
 .n99-legend i.raw { width:6px;height:6px;border-radius:50%;background:#d0c8de; }
+.n99-legend i.dash { width:15px;height:0;border-radius:0;background:none;border-top:2px dashed #b18aff; }
 .n99-chart-empty { padding:36px 12px;text-align:center; }
 .n99-chart-empty p { max-width:330px;margin:12px auto 22px; }
 .n99-chart-empty h3 { font-size:21px; }
