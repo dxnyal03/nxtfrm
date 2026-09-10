@@ -50,8 +50,69 @@ const NXT = (() => {
     const start=dateAdd(end,1-days),items=rows.filter(r=>r.date>=start&&r.date<=end);
     return {items,n:items.length,avg:items.length?items.reduce((s,r)=>s+r[key],0)/items.length:null};
   }
+  const EWMA_HALF_LIFE=7,EWMA_ALPHA=1-Math.exp(-Math.log(2)/EWMA_HALF_LIFE),EWMA_GAP_DAYS=3;
+  function ewmaTrend(rows=weights()) {
+    const ordered=(Array.isArray(rows)?rows:[]).filter(r=>r&&finite(r.weight)!==null&&Number.isFinite(dateMs(r.date))).sort((a,b)=>a.date.localeCompare(b.date));
+    const out=[];let avg=null,prev=null,contributing=0;
+    for(const r of ordered) {
+      const weight=finite(r.weight);
+      // A long gap makes the carried average stale, so restart from the new reading.
+      if(avg===null||(dateMs(r.date)-dateMs(prev))/DAY>EWMA_GAP_DAYS){avg=weight;contributing=1;}
+      else {avg=avg+EWMA_ALPHA*(weight-avg);contributing++;}
+      prev=r.date;
+      out.push({...r,weight,avg,trendReady:contributing>=3});
+    }
+    return out;
+  }
   function trend(rows=weights()) {
-    return rows.map(r=>{const w=windowStats(rows,r.date);return {...r,avg:w.n>=3?w.avg:null,coverage:w.n};});
+    return ewmaTrend(rows).map(r=>({...r,avg:r.trendReady?r.avg:null,coverage:windowStats(rows,r.date).n}));
+  }
+  const BAND_K=1,BAND_WINDOW_DAYS=14,BAND_MIN_READINGS=7;
+  function trendConfidence(rows=weights()) {
+    const series=ewmaTrend(rows);
+    if(series.length<BAND_MIN_READINGS)return null;
+    const out=[];
+    for(const point of series) {
+      const start=dateAdd(point.date,1-BAND_WINDOW_DAYS);
+      const window=series.filter(r=>r.date>=start&&r.date<=point.date);
+      if(window.length<BAND_MIN_READINGS)continue;
+      const residuals=window.map(r=>r.weight-r.avg),mean=residuals.reduce((s,v)=>s+v,0)/residuals.length;
+      // Clamped at zero so floating-point error can never reach Math.sqrt as a negative.
+      const sigma=Math.sqrt(Math.max(0,residuals.reduce((s,v)=>s+(v-mean)**2,0)/(residuals.length-1)));
+      out.push({date:point.date,avg:point.avg,sigma,n:window.length,lower:point.avg-BAND_K*sigma,upper:point.avg+BAND_K*sigma});
+    }
+    return out.length?out:null;
+  }
+  const FORECAST_WINDOW_DAYS=21,FORECAST_MIN_POINTS=3,FORECAST_TRUST_POINTS=10,FORECAST_MAX_WEEKS=104,FORECAST_SLOPE_FLOOR=-.02;
+  function forecastGoal(rows=weights()) {
+    const base={ok:false,weeks:null,lowWeeks:null,highWeeks:null,confidence:"none",reason:"",slope:null,lastDate:null,lastAvg:null};
+    const series=ewmaTrend(rows).filter(r=>r.trendReady);
+    if(!series.length)return {...base,reason:"Log a few more weigh-ins before a forecast can be made."};
+    const last=series.at(-1),lastDate=last.date,lastAvg=last.avg;
+    const target=typeof goalHigh==="function"?finite(goalHigh()):null;
+    if(target===null)return {...base,lastDate,lastAvg,reason:"Set your goal range to see a forecast."};
+    if(lastAvg<=target)return {ok:true,weeks:0,lowWeeks:0,highWeeks:0,confidence:"high",reason:"Already at goal range",slope:0,lastDate,lastAvg};
+    const start=dateAdd(lastDate,1-FORECAST_WINDOW_DAYS),window=series.filter(r=>r.date>=start&&r.date<=lastDate);
+    const thin={...base,lastDate,lastAvg,reason:"Not enough weigh-ins in the last three weeks to read a direction."};
+    if(window.length<FORECAST_MIN_POINTS)return thin;
+    const xs=window.map(r=>(dateMs(r.date)-dateMs(start))/DAY),ys=window.map(r=>r.avg),n=xs.length;
+    const mx=xs.reduce((s,v)=>s+v,0)/n,my=ys.reduce((s,v)=>s+v,0)/n,sxx=xs.reduce((s,v)=>s+(v-mx)**2,0);
+    if(!(sxx>0))return thin;
+    const slope=xs.reduce((s,v,i)=>s+(v-mx)*(ys[i]-my),0)/sxx;
+    if(!(slope<FORECAST_SLOPE_FLOOR))return {...base,slope,lastDate,lastAvg,reason:"Trend isn't moving toward goal yet."};
+    const intercept=my-slope*mx,sse=ys.reduce((s,y,i)=>s+(y-(intercept+slope*xs[i]))**2,0);
+    const se=Math.sqrt(Math.max(0,sse/(n-2)/sxx));
+    // Two independent unknowns feed the estimate: where the trend sits today, and how fast it is moving.
+    const band=trendConfidence(rows),here=band?band.find(b=>b.date===lastDate)||band.at(-1):null;
+    const sigmaLevel=here&&finite(here.sigma)!==null?here.sigma:0,gap=lastAvg-target,days=gap/-slope;
+    const sigmaDays=Math.sqrt(Math.max(0,(sigmaLevel/slope)**2+gap**2*se**2/slope**4));
+    // A near-flat slope can push the horizon past any useful date, so every bound is capped.
+    const cap=v=>Math.min(FORECAST_MAX_WEEKS,Math.max(0,Math.round(v)));
+    const lowWeeks=Math.max(1,cap((days-sigmaDays)/7)),weeks=Math.max(lowWeeks,cap(days/7));
+    const highWeeks=Math.max(weeks,cap((days+sigmaDays)/7));
+    const spanRatio=weeks>0?(highWeeks-lowWeeks)/weeks:Infinity;
+    const confidence=n<FORECAST_TRUST_POINTS||spanRatio>2?"low":spanRatio>.5?"medium":"high";
+    return {ok:true,weeks,lowWeeks,highWeeks,confidence,reason:"",slope,lastDate,lastAvg};
   }
   function trendStats(rows=weights()) {
     const current=windowStats(rows),previous=windowStats(rows,dateAdd(state.date,-7)),earlier=windowStats(rows,dateAdd(state.date,-14));
@@ -147,7 +208,7 @@ const NXT = (() => {
     if(target===null||target<=0)return {...base,reason:"Save your daily calorie target first. Your real TDEE is measured against it."};
     if(logged.length<10)return {...base,reason:`Log adherence for ${10-logged.length} more day${10-logged.length===1?"":"s"} to see your real TDEE.`};
     if(rows.length<5)return {...base,reason:`Add ${5-rows.length} more weigh-in${5-rows.length===1?"":"s"} to see your real TDEE.`};
-    // Endpoints are rolling 7-day averages, so daily water swings do not move the result.
+    // Endpoints are EWMA trend values with a 7-day half-life, so daily water swings do not move the result.
     const series=trend(weights()).filter(r=>r.date>=start&&r.date<=state.date&&r.avg!==null);
     const first=series[0],last=series.at(-1);
     const span=first&&last?Math.round((dateMs(last.date)-dateMs(first.date))/DAY):0;
@@ -328,7 +389,7 @@ const NXT = (() => {
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any target change stays your choice.</p><div class="n99-stack">${button('Review calorie guide','NXT.openCalories()',true)}${button('Update recovery check-in','apx96OpenReadiness()',true)}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,cleanRows,windowStats,trend,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
