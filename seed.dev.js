@@ -37,8 +37,10 @@
       return !value || (value.sleep === '' && value.energy === '' && value.soreness === '');
     }
     if (key === KEYS.settings) {
-      const recovery = value && value.cutSupport && value.cutSupport.recovery;
-      return !recovery || !Object.keys(recovery).length;
+      const cut = value && value.cutSupport;
+      const recovery = cut && cut.recovery;
+      const adherence = cut && cut.adherence;
+      return !recovery || !Object.keys(recovery).length || !adherence || !Object.keys(adherence).length;
     }
     return false;
   }
@@ -230,6 +232,26 @@
     return recovery;
   }
 
+  // Dedicated stream: adherence stays identical no matter what the other builders draw.
+  const rndAdherence = mulberry32(1010);
+  const ADHERENCE_MIX = [['yes', .55], ['close', .25], ['no', .15], ['over', .05]];
+
+  function pickStatus(r) {
+    let acc = 0;
+    for (const [status, share] of ADHERENCE_MIX) { acc += share; if (r < acc) return status; }
+    return 'yes';
+  }
+
+  function buildAdherence() {
+    const out = {};
+    for (let day = -90; day <= -1; day++) {
+      if (rndAdherence() >= 0.85) continue;
+      const date = dateFromToday(day);
+      out[date] = { status: pickStatus(rndAdherence()), ts: Date.parse(date + 'T21:00:00'), _seed: true };
+    }
+    return out;
+  }
+
   function writeIfAllowed(key, value) {
     if (!reseedRequested() && !isVacant(key)) return false;
     localStorage.setItem(key, JSON.stringify(value));
@@ -246,6 +268,8 @@
     if (written.settings && typeof settings === 'object') {
       if (!settings.cutSupport || typeof settings.cutSupport !== 'object') settings.cutSupport = {};
       settings.cutSupport.recovery = Object.assign({}, settings.cutSupport.recovery, written.settings.cutSupport.recovery);
+      settings.cutSupport.adherence = Object.assign({}, settings.cutSupport.adherence, written.settings.cutSupport.adherence);
+      if (written.settings.cutSupport.calories != null) settings.cutSupport.calories = written.settings.cutSupport.calories;
       if (written.settings.startWeight != null) settings.startWeight = written.settings.startWeight;
     }
     if (typeof persist === 'function') persist();
@@ -259,6 +283,7 @@
     const cardio = buildCardio();
     const floorball = buildFloorball();
     const recovery = buildRecovery();
+    const adherence = buildAdherence();
     const todayKey = todayDate();
     const todayCheck = recovery[todayKey] || Object.values(recovery)[0];
     const read = {
@@ -270,6 +295,7 @@
     };
 
     const existingSettings = parseJSON(localStorage.getItem(KEYS.settings), {});
+    const existingCut = existingSettings.cutSupport || {};
     const settingsPayload = Object.assign({}, existingSettings, {
       startWeight: existingSettings.startWeight != null ? existingSettings.startWeight : 87.1,
       targetHigh: existingSettings.targetHigh != null ? existingSettings.targetHigh : 80,
@@ -277,7 +303,9 @@
       tdee: existingSettings.tdee != null ? existingSettings.tdee : 2644,
       zone2WeeklyTarget: existingSettings.zone2WeeklyTarget != null ? existingSettings.zone2WeeklyTarget : 180,
       cutSupport: Object.assign({}, existingSettings.cutSupport, {
-        recovery: Object.assign({}, (existingSettings.cutSupport && existingSettings.cutSupport.recovery) || {}, recovery)
+        recovery: Object.assign({}, existingCut.recovery || {}, recovery),
+        adherence: Object.assign({}, existingCut.adherence || {}, adherence),
+        calories: existingCut.calories != null && existingCut.calories !== '' ? existingCut.calories : 2100
       })
     });
 
@@ -311,18 +339,22 @@
     }
 
     const currentSettings = parseJSON(localStorage.getItem(KEYS.settings), null);
-    if (currentSettings && currentSettings.cutSupport && currentSettings.cutSupport.recovery) {
-      const next = {};
-      Object.keys(currentSettings.cutSupport.recovery).forEach(date => {
-        const row = currentSettings.cutSupport.recovery[date];
-        if (!row || row._seed !== true) next[date] = row;
+    if (currentSettings && currentSettings.cutSupport) {
+      ['recovery', 'adherence'].forEach(field => {
+        const map = currentSettings.cutSupport[field];
+        if (!map) return;
+        const next = {};
+        Object.keys(map).forEach(date => {
+          const row = map[date];
+          if (!row || row._seed !== true) next[date] = row;
+        });
+        currentSettings.cutSupport[field] = next;
+        if (typeof settings === 'object' && settings) {
+          if (!settings.cutSupport) settings.cutSupport = {};
+          settings.cutSupport[field] = next;
+        }
       });
-      currentSettings.cutSupport.recovery = next;
       localStorage.setItem(KEYS.settings, JSON.stringify(currentSettings));
-      if (typeof settings === 'object' && settings) {
-        if (!settings.cutSupport) settings.cutSupport = {};
-        settings.cutSupport.recovery = next;
-      }
     }
     if (typeof persist === 'function') persist();
     location.reload();
