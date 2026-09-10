@@ -21,6 +21,7 @@ const NXT = (() => {
     for(const key of ["profile","templates","sessions","sessionTargets","recovery","adherence"])if(!c[key]||typeof c[key]!=="object"||Array.isArray(c[key]))c[key]={};
     if(!Array.isArray(c.waist))c.waist=[];
     if(!Array.isArray(c.suggestions))c.suggestions=[];
+    if(!Array.isArray(c.tdeeHistory))c.tdeeHistory=[];
     return c;
   }
   function finite(v) { return v!==""&&v!==null&&v!==undefined&&Number.isFinite(Number(v))?Number(v):null; }
@@ -113,6 +114,75 @@ const NXT = (() => {
     const target=Math.round(maintenance*.85/50)*50;
     if(target<(p.sex==="male"?1500:1200))return {error:"This calculation produces a low-energy target. Get personalised guidance instead of using an automatic cut target."};
     return {resting,maintenance,target};
+  }
+  const ADHERENCE_FACTORS = {yes:1, close:.95, no:.85, over:1.1};
+  function adherenceIn(start,end) {
+    const rows=[],map=cfg().adherence;
+    for(const date of Object.keys(map)) {
+      const row=map[date];
+      if(!row||ADHERENCE_FACTORS[row.status]===undefined||!Number.isFinite(dateMs(date)))continue;
+      if(date<start||date>end)continue;
+      rows.push({date,status:row.status});
+    }
+    return rows.sort((a,b)=>a.date.localeCompare(b.date));
+  }
+  function formulaTDEE() {
+    const estimated=finite(cfg().maintenanceEstimate);
+    if(estimated!==null)return estimated;
+    const saved=finite(settings.tdee);
+    if(saved!==null)return saved;
+    return finite(typeof USER_TDEE==="undefined"?null:USER_TDEE);
+  }
+  function adaptiveTDEE(windowDays=14) {
+    const requested=finite(windowDays);
+    const base={ok:false,reason:"",tdee:null,intake:null,daysLogged:0,weightChange:null,windowDays:14,confidence:"none",coverage:0,weighIns:0,spanDays:0};
+    let days=requested!==null&&requested>=7?Math.round(requested):14;
+    let start=dateAdd(state.date,1-days),logged=adherenceIn(start,state.date);
+    // Sparse logging widens the window once rather than reporting nothing.
+    if(logged.length<10&&days<21) {days=21;start=dateAdd(state.date,1-days);logged=adherenceIn(start,state.date);}
+    const rows=weights().filter(r=>r.date>=start&&r.date<=state.date);
+    Object.assign(base,{windowDays:days,daysLogged:logged.length,weighIns:rows.length,coverage:Math.min(1,logged.length/days)});
+    const target=finite(cfg().calories);
+    if(target===null||target<=0)return {...base,reason:"Save your daily calorie target first. Your real TDEE is measured against it."};
+    if(logged.length<10)return {...base,reason:`Log adherence for ${10-logged.length} more day${10-logged.length===1?"":"s"} to see your real TDEE.`};
+    if(rows.length<5)return {...base,reason:`Add ${5-rows.length} more weigh-in${5-rows.length===1?"":"s"} to see your real TDEE.`};
+    // Endpoints are rolling 7-day averages, so daily water swings do not move the result.
+    const series=trend(weights()).filter(r=>r.date>=start&&r.date<=state.date&&r.avg!==null);
+    const first=series[0],last=series.at(-1);
+    const span=first&&last?Math.round((dateMs(last.date)-dateMs(first.date))/DAY):0;
+    if(!Number.isFinite(span)||span<7)return {...base,reason:"Your weigh-ins need to span at least a week before a trend can be measured."};
+    const weightChange=last.avg-first.avg;
+    const intake=logged.reduce((sum,r)=>sum+target*ADHERENCE_FACTORS[r.status],0)/logged.length;
+    const tdee=Math.round((intake-weightChange*7700/span)/10)*10;
+    if(!Number.isFinite(tdee)||tdee<1000||tdee>5000)return {...base,reason:"Your intake and weight trend disagree too much to trust an estimate yet. Keep logging."};
+    const confidence=logged.length>=12&&rows.length>=8&&base.coverage>=.9?"high":logged.length>=10&&rows.length>=6?"medium":"low";
+    return {...base,ok:true,tdee,intake:Math.round(intake),weightChange:Math.round(weightChange*100)/100,confidence,spanDays:span};
+  }
+  function maybeSnapshotTDEE(replaceToday=false) {
+    const c=cfg(),at=c.tdeeHistory.findIndex(r=>r&&r.date===state.date);
+    if(at>-1&&!replaceToday)return false;
+    const r=adaptiveTDEE();
+    if(!r.ok)return false;
+    const row={date:state.date,tdee:r.tdee,intake:r.intake,weightChange:r.weightChange,windowDays:r.windowDays,confidence:r.confidence};
+    if(at>-1)c.tdeeHistory[at]=row;else c.tdeeHistory.push(row);
+    if(c.tdeeHistory.length>180)c.tdeeHistory.splice(0,c.tdeeHistory.length-180);
+    try{persist();}catch(e){}
+    return true;
+  }
+  function tdeeCardHTML() {
+    const r=adaptiveTDEE(),formula=formulaTDEE(),kcal=n=>Number(n).toLocaleString("en-SG");
+    if(!r.ok)return card("Your real TDEE",`<p>${r.reason}</p><div class="n99-stats">${metric("Adherence logged",r.daysLogged+`<small> / ${r.windowDays} days</small>`)}${metric("Formula estimate",formula===null?"—":kcal(formula)+"<small> kcal</small>","From your profile")}</div>`);
+    const diff=formula===null?null:r.tdee-formula,weekly=r.weightChange/r.spanDays*7;
+    const names={high:"High",medium:"Medium",low:"Low"};
+    const signedKcal=n=>(n>0?"+":n<0?"-":"")+kcal(Math.abs(Math.round(n)));
+    return card("Your real TDEE",`<div class="n99-big">${kcal(r.tdee)}<small> kcal / day</small></div>
+      <p class="n99-small">${names[r.confidence]} confidence · ${r.daysLogged} of ${r.windowDays} days logged</p>
+      <div class="n99-measurements">
+        <div class="n99-list-row"><span>Estimated</span><small>${formula===null?"—":kcal(formula)+" kcal · formula"}</small></div>
+        <div class="n99-list-row"><span>Adaptive</span><small>${kcal(r.tdee)} kcal · your data</small></div>
+        <div class="n99-list-row"><span>Difference</span><small>${diff===null?"—":signedKcal(diff)+" kcal / day"}</small></div>
+      </div>
+      <p>Weight trending ${(weekly>0?"+":"")+weekly.toFixed(1)} kg / week, eating about ${kcal(r.intake)} kcal a day.</p>`);
   }
   function cardioWeek() { return (state.cardio||[]).filter(r=>r&&r.date>=weekStart()&&r.date<=state.date&&finite(r.duration)>0).reduce((s,r)=>s+Number(r.duration),0); }
   function completedWeek() { return new Set(workRows().filter(r=>r.date>=weekStart()).map(r=>r.date)).size; }
@@ -252,11 +322,12 @@ const NXT = (() => {
     if(target<e.maintenance*.75)return toast('This is over 25% below estimated maintenance. The app will not set that automatically; get personalised guidance.');
     const c=cfg();c.profile=p;c.calories=target;c.calorieUpdated=state.date;c.maintenanceEstimate=e.maintenance;
     logSuggestion({kind:"calorie",subject:null,payload:{calories:target,maintenanceEstimate:e.maintenance}});
+    maybeSnapshotTDEE(true);
     commit('Daily calorie target saved');
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any target change stays your choice.</p><div class="n99-stack">${button('Review calorie guide','NXT.openCalories()',true)}${button('Update recovery check-in','apx96OpenReadiness()',true)}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,cleanRows,windowStats,trend,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,logSuggestion,logAdherence,adherenceHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,cleanRows,windowStats,trend,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
@@ -639,6 +710,8 @@ Object.assign(NXT, (()=>{
     settings.weeklyPlan={...N.split,...settings.weeklyPlan};
     state.dayType=N.typeFor(state.date);state.exercise=N.templateFor()[0]?.name||'';
     persist();
+    // Once per app load; the function itself skips a day already recorded.
+    N.maybeSnapshotTDEE();
   }
   return {more,moreView,goalsHTML,saveGoal,programmeHTML,saveWeek,restoreWeek,editTemplate,captureDraft,drawTemplate,draftMove,draftRemove,draftAdd,validTemplate,saveTemplate,defaultTemplate,saveQueueAsTemplate,coachHTML,saveCardioGoal,history,exportSafety,restoreSafety,validateBackup,restoreData,resetData,install};
 })());
