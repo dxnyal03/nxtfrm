@@ -288,28 +288,40 @@ body:has(#nxp-set-form:focus-within) .tabs { visibility:hidden;pointer-events:no
 .nxp-advanced .title,.nxp-settings-page .title { font-size:1.125rem!important;line-height:1.35!important; }
 .nxp-advanced .btn,.nxp-settings-page .btn { font-size:.9375rem!important;min-height:48px!important;letter-spacing:0!important; }
 .nxp-advanced .input,.nxp-settings-page .input { font-size:1rem!important;min-height:48px!important; }
-.nxp-history-total { display:flex;gap:16px;align-items:center;margin-bottom:24px; }
-.nxp-history-total > strong { font-size:3rem;line-height:1.1;font-weight:650;letter-spacing:-.06em; }
-.nxp-history-total > span { font-size:.9375rem;color:#c6bccf;line-height:1.5; }
-.nxp-history-total small { font-size:.8125rem; }
-.nxp-history-filters { overflow-x:auto; }
-.nxp .apx96-kicker { font-size:.8125rem!important;letter-spacing:0!important;text-transform:none!important; }
-.nxp .apx96-month { font-size:1.125rem!important; }
-.nxp .apx96-weekdays span { font-size:.75rem!important;padding:10px 0!important; }
-.nxp .apx96-cal-day b { font-size:.875rem!important; }
-.nxp .apx96-cal-nav button { min-width:44px;min-height:44px;font-size:1rem; }
-.nxp .apx96-cal-day { min-height:52px; }
-.nxp-history-card { display:flex;flex-direction:column;gap:7px;text-align:left;width:100%;background:#1f1e27;border:1px solid #38323f;border-radius:17px;padding:18px 20px;margin:12px 0;color:var(--n99-text); }
-.nxp-history-card > b { font-size:1.125rem;font-weight:580; }
-.nxp-history-card > span:not(.nxp-caption) { color:var(--n99-muted);font-size:.875rem; }
-.nxp-history-card small { width:100%;border-top:1px solid #39313f;padding-top:12px;margin-top:4px;font-size:.875rem;color:#c9bddb; }
-.nxp-history-card i { float:right;font-style:normal; }
-.nxp-history-set { display:flex;align-items:center;gap:12px;padding:15px 0;width:100%;background:none;color:var(--n99-text);text-align:left;border-bottom:1px solid #42364f; }
-.nxp-history-set > span:first-child { flex:1;min-width:0; }
-.nxp-history-set b { font-size:.9375rem;font-weight:550; }
-.nxp-history-set small { display:block;margin-top:5px;font-size:.8125rem; }
-.nxp-history-set > span:last-child { font-size:.8125rem;color:#c3acdc; }
 html[data-nxp-size=large] { font-size:18px; }
 html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[data-nxp-motion=reduced] *::after { animation:none!important;transition:none!important;scroll-behavior:auto!important; }
 @media(max-width:370px) { .nxp-heading { gap:8px; }.nxp-heading .n99-button { max-width:110px; }.nxp-rest { padding:0 8px;gap:6px; }.nxp-rest > span { gap:6px; }.nxp-ex h2 { font-size:1.5rem; }.nxp-setting-value { max-width:38%; }.nxp .n99-progress-tabs button { padding:10px 12px; } }
 @media(prefers-reduced-motion:reduce) { .nxp *, .nxp *::before,.nxp *::after { animation:none!important;transition:none!important; } }
+
+/* V101.5 History — chronological audit. Scoped; does not alter Home, Train, Progress, or shell algebra. */
+.nxp-history { min-width:0; }
+.nxp-history > .nxp-heading { margin:var(--nxt-space-2) 0 var(--nxt-space-3); }
+.nxp-history > .nxp-heading h1 { font-size:1.25rem;letter-spacing:-.03em;font-weight:650; }
+.nxp.nxp-history .n99-progress-tabs.nxp-history-filters { display:flex;flex-wrap:wrap;gap:var(--nxt-space-1);overflow:visible;margin:0 0 var(--nxt-space-3);padding:0 0 var(--nxt-space-3);border-bottom:1px solid var(--nxt-border); }
+.nxp.nxp-history .n99-progress-tabs.nxp-history-filters button { flex:1 1 0;min-width:44px;min-height:var(--nxt-control-compact);padding:10px 8px; }
+.nxp-history .apx96-calendar { margin-top:0;padding:10px 12px;border-radius:16px; }
+.nxp-history .apx96-kicker { font-size:.75rem!important;letter-spacing:0!important;text-transform:none!important;color:var(--nxt-muted)!important; }
+.nxp-history .apx96-month { font-size:1rem!important;line-height:1.25;overflow-wrap:anywhere; }
+.nxp-history .apx96-calendar-head { align-items:flex-start;gap:8px; }
+.nxp-history .apx96-weekdays span { font-size:.75rem!important;padding:8px 0!important; }
+.nxp-history .apx96-cal-day b { font-size:.875rem!important; }
+.nxp-history .apx96-cal-nav button { min-width:44px;min-height:44px;width:44px;height:44px;font-size:1rem; }
+.nxp-history .apx96-cal-day { min-height:52px; }
+.nxp-history .nxp-group-title { margin:16px 4px 8px; }
+.nxp-history > p { margin:8px 4px 0;font-size:.875rem;color:var(--nxt-muted); }
+.nxp-history-card { display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;width:100%;min-width:0;min-height:var(--nxt-control-compact);margin:0 0 var(--nxt-space-2);padding:10px 12px;background:var(--nxt-surface);border:1px solid var(--nxt-border);border-radius:var(--nxt-radius-control);color:var(--nxt-text); }
+.nxp-history-card > b { font-size:1rem;font-weight:580;line-height:1.3;overflow-wrap:anywhere; }
+.nxp-history-card .nxp-caption { font-size:.75rem; }
+.nxp-history-card small { width:100%;margin:0;padding:0;border:0;font-size:.8125rem;color:var(--nxt-muted);overflow-wrap:anywhere; }
+.nxp-history-set { display:flex;align-items:center;gap:8px;min-height:var(--nxt-control-compact);padding:8px 0;width:100%;background:none;color:var(--n99-text);text-align:left;border-bottom:1px solid #42364f; }
+.nxp-history-set > span:first-child { flex:1;min-width:0; }
+.nxp-history-set b { font-size:.9375rem;font-weight:550;overflow-wrap:anywhere; }
+.nxp-history-set small { display:block;margin-top:2px;font-size:.8125rem;overflow-wrap:anywhere; }
+.nxp-history-set > span:last-child { flex-shrink:0;font-size:.8125rem;color:#c3acdc; }
+.nxp-history-day .n99-stats { margin:0 0 var(--nxt-space-2); }
+.nxp-history-day .n99-small { margin:0 0 var(--nxt-space-2); }
+.nxp-history-day .n99-button { margin-top:var(--nxt-space-3); }
+@media(max-width:360px) {
+  .nxp.nxp-history .n99-progress-tabs.nxp-history-filters button { flex:1 1 calc(50% - var(--nxt-space-1)); }
+  .nxp-history .apx96-calendar { padding:8px; }
+}
