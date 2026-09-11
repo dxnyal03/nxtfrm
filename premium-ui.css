@@ -325,3 +325,25 @@ html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[dat
   .nxp.nxp-history .n99-progress-tabs.nxp-history-filters button { flex:1 1 calc(50% - var(--nxt-space-1)); }
   .nxp-history .apx96-calendar { padding:8px; }
 }
+
+/* V101.6 More — configuration hub. Scoped; does not alter Home, Train, Progress, History, or shell algebra. */
+.nxp-more { min-width:0; }
+.nxp .nxp-more-chrome { margin:var(--nxt-space-2) 0 var(--nxt-space-3); }
+.nxp .nxp-more-chrome h1 { font-size:1.25rem;letter-spacing:-.03em;font-weight:650; }
+.nxp-more .nxp-group-title { margin:16px 4px 8px;color:var(--nxt-muted); }
+.nxp-more .nxp-more-chrome + .nxp-group-title { margin-top:0; }
+.nxp-more .nxp-settings-group { padding:0 14px;border-radius:16px;background:var(--nxt-surface);border-color:var(--nxt-border); }
+.nxp-more .nxp-setting { align-items:flex-start;gap:8px 12px;padding:12px 0;min-height:var(--nxt-control-compact); }
+.nxp-more .nxp-setting > span:first-child { flex:1 1 0;min-width:0; }
+.nxp-more .nxp-setting small { margin-top:2px; }
+.nxp-more .nxp-setting-value { max-width:none;flex:0 0 auto;overflow-wrap:normal;white-space:nowrap; }
+.nxp-more .nxp-footer { margin:20px 0 4px;color:var(--nxt-muted); }
+#morePage.nxp-settings-page .n99-heading { margin:var(--nxt-space-2) 0 var(--nxt-space-3); }
+#morePage.nxp-settings-page .n99-heading h1 { font-size:1.25rem;letter-spacing:-.03em;font-weight:650; }
+#morePage.nxp-settings-page .n99-calorie { padding:14px 16px;border-radius:16px;background:var(--nxt-raised); }
+#morePage.nxp-settings-page .n99-calorie strong { font-size:1.25rem;font-weight:650;letter-spacing:-.03em; }
+#morePage.nxp-settings-page .n99-calorie strong small { font-size:.75rem; }
+#morePage.nxp-settings-page .n99-review { padding:14px 16px;box-shadow:none; }
+#morePage.nxp-settings-page .n99-review h2 { font-size:1.125rem;font-weight:600;letter-spacing:-.02em; }
+#morePage.nxp-settings-page .apx96-more-subhead h1 { font-size:1.25rem;letter-spacing:-.03em;font-weight:650; }
+#morePage.nxp-settings-page .apx96-back { width:44px;height:44px;min-width:44px;min-height:44px; }

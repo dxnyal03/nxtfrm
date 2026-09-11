@@ -6,8 +6,8 @@ const NXP = (() => {
   const ui={drafts:new Map(),historyRows:[],connection:{busy:false,lines:[],summary:'Not tested on this device'}};
   const button=N.button;
   const formatNumber=n=>Number(n).toLocaleString('en-SG');
-  function header(title,sub='',action='') {return `<header class="nxp-heading"><div><h1>${esc(title)}</h1>${sub?`<p>${esc(sub)}</p>`:''}</div>${action}</header>`;}
-  function shell(html) {return `<div class="n99 nxp">${html}</div>`;}
+  function header(title,sub='',action='') {return `<header class="nxp-heading nxp-more-chrome"><div><h1>${esc(title)}</h1>${sub?`<p>${esc(sub)}</p>`:''}</div>${action}</header>`;}
+  function shell(html, extra='') {return `<div class="n99 nxp${extra?' '+extra:''}">${html}</div>`;}
   function row(title,value,action,sub='') {return `<button type="button" class="nxp-setting" onclick="${esc(action)}"><span><b>${esc(title)}</b>${sub?`<small>${esc(sub)}</small>`:''}</span><span class="nxp-setting-value">${esc(value||'')}<i aria-hidden="true">›</i></span></button>`;}
   function pref() {return N.cfg().appearance||{};}
   function applyAppearance() {
@@ -100,14 +100,21 @@ const NXP = (() => {
     document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress"><header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(period)}</p></div>${button('＋ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${v==='strength'?N.strengthHTML():v==='body'?N.bodyHTML():overview}</div>`;
   }
   function more() {
-    applyAppearance();const view=state.moreView||'hub',c=N.cfg();
-    if(view==='appearance'){document.getElementById('morePage').innerHTML=shell(header('Appearance','Purple & charcoal',button('‹ Back',"NXT.more('hub')",true))+N.card('Make it comfortable',`<form onsubmit="event.preventDefault();NXP.saveAppearance()"><label>Text size<select id="nxp-text"><option value="normal">Standard</option><option value="large" ${pref().text==='large'?'selected':''}>Larger</option></select></label><label>Motion<select id="nxp-motion"><option value="system">Follow device setting</option><option value="reduced" ${pref().motion==='reduced'?'selected':''}>Reduce motion</option></select></label><button type="submit" class="n99-button">Save appearance</button></form>`));return;}
+    applyAppearance();
+    const view=state.moreView||'hub',c=N.cfg(),page=document.getElementById('morePage');
+    page.classList.toggle('nxp-settings-page',view!=='hub'&&view!=='appearance'&&view!=='data');
+    if(view==='appearance'){page.innerHTML=shell(header('Appearance','Purple & charcoal',button('‹ Back',"NXT.more('hub')",true))+N.card('Make it comfortable',`<form onsubmit="event.preventDefault();NXP.saveAppearance()"><label>Text size<select id="nxp-text"><option value="normal">Standard</option><option value="large" ${pref().text==='large'?'selected':''}>Larger</option></select></label><label>Motion<select id="nxp-motion"><option value="system">Follow device setting</option><option value="reduced" ${pref().motion==='reduced'?'selected':''}>Reduce motion</option></select></label><button type="submit" class="n99-button">Save appearance</button></form>`));return;}
     if(view==='data'){dataView();return;}
-    if(view!=='hub'){base.more();document.getElementById('morePage').classList.add('nxp-settings-page');return;}
-    document.getElementById('morePage').innerHTML=shell(`${header('More','Everything set up your way.')}<div class="nxp-identity"><img src="logo-mark.svg" alt="" width="48" height="48"><div><b>Your NXTFRM</b><span>${esc(state.gym)} · ${c.calories?formatNumber(c.calories)+' kcal guide':'Calorie guide not set'}</span></div></div>
-      <h2 class="nxp-group-title">Your plan</h2><section class="nxp-settings-group">${row('Profile & goals',c.calories?formatNumber(c.calories)+' kcal':'Set up',"NXT.more('goals')",c.targetConfirmed?goalLow()+'–'+goalHigh()+' kg range':'Calorie guide & optional goal range')}${row('Training programme',Object.values(settings.weeklyPlan||{}).filter(t=>!['Rest','Zone2','Floorball'].includes(t)).length+' days',"NXT.more('training')",'Saved workouts & gym equipment')}${row('Cardio & recovery',(Number(settings.zone2WeeklyTarget)||90)+' min / week',"NXT.more('coach')")}</section>
-      <h2 class="nxp-group-title">Preferences</h2><section class="nxp-settings-group">${row('Appearance','Purple · charcoal',"NXT.more('appearance')")}${row('Reminders',state.notifs?.enabled?'Enabled':'Off',"NXT.more('notifications')")}${row('Body & scans',N.cleanRows(c.waist,'cm').length+' waist entries',"NXT.more('body')")}</section>
-      <h2 class="nxp-group-title">Your data</h2><section class="nxp-settings-group">${row('Data & sync',cloudUser?'Signed in':'Local-first',"NXT.more('data')",'Backup export: '+backupLabel())}${row('App & installation','V100',"NXT.more('app')")}</section><p class="nxp-footer">NXTFRM · your next form</p>`);
+    if(view!=='hub'){base.more();return;}
+    const lifts=Object.values(settings.weeklyPlan||{}).filter(t=>!['Rest','Zone2','Floorball'].includes(t)).length;
+    page.innerHTML=shell(`${header('More','Secondary settings and tools')}
+      <h2 class="nxp-group-title">Profile & cut</h2><section class="nxp-settings-group">${row('Profile & cut',c.calories?formatNumber(c.calories)+' kcal':'Set up',"NXT.more('goals')",c.targetConfirmed?goalLow()+'–'+goalHigh()+' kg range':'Calorie guide and optional goal range')}</section>
+      <h2 class="nxp-group-title">Training</h2><section class="nxp-settings-group">${row('Training',lifts+' lifting days',"NXT.more('training')",'Plan, workouts and gyms')}</section>
+      <h2 class="nxp-group-title">Cardio & recovery</h2><section class="nxp-settings-group">${row('Cardio & recovery',(Number(settings.zone2WeeklyTarget)||90)+' min / week',"NXT.more('coach')",'Weekly minutes and check-ins')}</section>
+      <h2 class="nxp-group-title">Body & scans</h2><section class="nxp-settings-group">${row('Body & scans',N.cleanRows(c.waist,'cm').length+' waist entries',"NXT.more('body')",'Evo scans and measurements')}</section>
+      <h2 class="nxp-group-title">Preferences</h2><section class="nxp-settings-group">${row('Appearance','Purple · charcoal',"NXT.more('appearance')")}${row('Reminders',state.notifs?.enabled?'Enabled':'Off',"NXT.more('notifications')")}</section>
+      <h2 class="nxp-group-title">Data & app</h2><section class="nxp-settings-group">${row('Data & sync',cloudUser?'Signed in':'Local-first',"NXT.more('data')",'Backup export: '+backupLabel())}${row('App','Install & reset',"NXT.more('app')")}</section>
+      <p class="nxp-footer">NXTFRM · your next form</p>`,'nxp-more');
   }
   function saveAppearance() {N.cfg().appearance={text:val('nxp-text')==='large'?'large':'normal',motion:val('nxp-motion')==='reduced'?'reduced':'system'};applyAppearance();N.commit('Appearance saved');}
   function dataView() {
