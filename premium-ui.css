@@ -230,6 +230,36 @@ body:has(#nxp-set-form:focus-within) .tabs { visibility:hidden;pointer-events:no
 .nxp .n99-chart-selected strong { font-size:2.5rem; }
 .nxp .n99-legend { font-size:.8125rem;gap:10px; }
 .nxp .n99-legend > span:last-child { margin-left:0; }
+
+/* V101.4 Progress — evidence workspace. Scoped; does not alter Home, Train, or shell algebra. */
+.nxp-progress { min-width:0; }
+.nxp-progress > .nxp-heading { margin:var(--nxt-space-2) 0 var(--nxt-space-3); }
+.nxp-progress > .nxp-heading h1 { font-size:1.25rem;letter-spacing:-.03em;font-weight:650; }
+.nxp-progress-tabs { display:flex;gap:var(--nxt-space-1); }
+.nxp-progress-tabs button { flex:1 1 0;min-width:44px;min-height:var(--nxt-control-compact);padding:10px 8px; }
+.nxp-progress .n99-chart { margin-top:0; }
+.nxp-progress .n99-chart h2 { font-size:1.25rem; }
+.nxp-progress .n99-chart-selected { gap:var(--nxt-space-3); }
+.nxp-progress .n99-chart-selected strong { font-size:clamp(1.75rem,8vw,2.5rem); }
+.nxp-progress .n99-chart-controls { display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--nxt-space-2); }
+.nxp-progress .n99-segments { display:flex;flex:1 1 220px;min-width:0; }
+.nxp-progress .n99-segments button { flex:1 1 44px;min-width:44px;min-height:var(--nxt-control-compact);padding:8px 6px; }
+.nxp-progress .n99-chart-controls > label { flex:0 0 auto;min-height:var(--nxt-control-compact);margin:0;align-items:center; }
+.nxp-progress .n99-chart + .n99-review { margin-top:var(--nxt-space-2);padding:var(--nxt-space-3) var(--nxt-space-4);background:var(--nxt-surface);box-shadow:none; }
+.nxp-progress .n99-chart + .n99-review h2 { font-size:1rem;font-weight:550;letter-spacing:-.02em; }
+.nxp-progress .n99-chart + .n99-review .n99-eyebrow { font-size:.75rem; }
+.nxp-progress .n99-chart + .n99-review .n99-list-row { min-height:44px;padding:10px 0; }
+.nxp-progress-pace { display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--nxt-space-1) var(--nxt-space-3);padding:var(--nxt-space-3) 0;border-bottom:1px solid var(--nxt-border); }
+.nxp-progress-pace strong { font-size:1.125rem;font-weight:600;font-variant-numeric:tabular-nums; }
+.nxp-progress-pace small { font-size:.75rem;color:var(--nxt-muted); }
+.nxp-progress-tdee { margin:0;padding:var(--nxt-space-2) 0 0;border-top:1px solid var(--nxt-border); }
+.nxp-progress-tdee .n99-card { margin:var(--nxt-space-2) 0 0;padding:var(--nxt-space-3); }
+.nxp-progress .n99-strength-row { gap:var(--nxt-space-3);min-width:0; }
+.nxp-progress .n99-spark { flex:0 0 88px;width:88px;min-width:0; }
+@media(max-width:360px) {
+  .nxp-progress .n99-chart { padding:16px 12px 14px; }
+  .nxp-progress .n99-chart-selected { flex-wrap:wrap;align-items:flex-end; }
+}
 .nxp-setting { display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:19px 0;border:0;border-bottom:1px solid #35323e;background:none;color:var(--n99-text);text-align:left;min-height:64px; }
 .nxp-setting > span:first-child { min-width:0;flex:1; }
 .nxp-setting b { display:block;font-size:1rem;font-weight:550;line-height:1.4; }
