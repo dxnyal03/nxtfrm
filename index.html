@@ -4524,6 +4524,85 @@ body.apex-keyboard-open .tabs{transform:translate(-50%,145%);pointer-events:none
 @media(max-width:370px){.apx96-day{font-size:32px}.apx96-home-grid{grid-template-columns:1fr}.apx96-more-tile{min-height:125px}.apx96-history-stats{grid-template-columns:1fr 1fr}.apx96-focus-stats{grid-template-columns:1fr 1fr}.apx96-focus-stat:last-child{grid-column:1/-1}}
 
 /* V94: APEX performance design system */
+/* === QUICK WIN 1: Focus Visible Styles === */
+button:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+}
+
+/* === QUICK WIN 2: Reduced Motion Support === */
+@media (prefers-reduced-motion: reduce) {
+  /* Remove all transitions and animations for users who prefer reduced motion */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Modal fade-in instead of slide */
+  .modal {
+    animation: none !important;
+  }
+
+  .sheet {
+    animation: fadeIn 200ms ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+/* === QUICK WIN 3: Enhanced Button Focus for Keyboard Nav === */
+button:focus-visible {
+  box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.2);
+}
+
+/* === QUICK WIN 4: Form Error State === */
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: var(--red);
+  background: rgba(251, 113, 133, 0.08);
+}
+
+input[aria-invalid="true"]:focus,
+select[aria-invalid="true"]:focus,
+textarea[aria-invalid="true"]:focus {
+  border-color: var(--red);
+  box-shadow: 0 0 0 4px rgba(251, 113, 133, 0.12);
+}
+
+/* === QUICK WIN 5: Improve Touch Target Padding === */
+button {
+  padding: 4px 8px;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* === QUICK WIN 6: Better Contrast for Disabled State === */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 </style>
 
 <link rel="manifest" href="manifest.webmanifest">
@@ -10256,4 +10335,50 @@ document.addEventListener("focusout",function(e){
 <script src="seed.dev.js"></script>
 <script src="seed.scenarios.js"></script>
 </body>
+<script>
+/* Quick Win: Form Validation with aria-invalid */
+function validateField(input) {
+  if (!input) return;
+  
+  let isValid = true;
+  const value = input.value?.trim() ?? '';
+  
+  // Check required
+  if (input.required && !value) {
+    isValid = false;
+  }
+  
+  // Check type-specific validation
+  if (input.type === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    isValid = false;
+  }
+  
+  if (input.type === 'number' && value) {
+    const num = Number(value);
+    const min = input.min ? Number(input.min) : -Infinity;
+    const max = input.max ? Number(input.max) : Infinity;
+    if (isNaN(num) || num < min || num > max) {
+      isValid = false;
+    }
+  }
+  
+  // Apply aria-invalid
+  input.setAttribute('aria-invalid', !isValid);
+  return isValid;
+}
+
+// Add validation to all form inputs on blur
+document.addEventListener('blur', (e) => {
+  if (e.target.matches('input, select, textarea')) {
+    validateField(e.target);
+  }
+}, true);
+
+// Clear aria-invalid on focus for better UX
+document.addEventListener('focus', (e) => {
+  if (e.target.matches('input, select, textarea')) {
+    e.target.removeAttribute('aria-invalid');
+  }
+}, true);
+</script>
 </html>
