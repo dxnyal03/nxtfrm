@@ -48,10 +48,35 @@ const NXP = (() => {
   }
   function draftKey() {return sessionKey()+'__'+state.exercise;}
   function rememberInput(el) {const key=draftKey(),d=ui.drafts.get(key)||{};d[el.id]=el.value;ui.drafts.set(key,d);if(el.id==='n99-set-type'){const b=document.getElementById('nxp-log-button');if(b)b.textContent='＋ Log '+(el.value==='warmup'?'warm-up':'set '+(N.done(state.exercise)+1));}}
+  function trainChrome() {return `<header class="nxp-train-chrome"><div><p class="nxp-caption">${esc(N.label(state.dayType))}</p><p>${N.shortDate(state.date)}</p></div>${button('Change','showSessionSheet()',true)}</header>`;}
+  function trainIdle(kind,body) {document.getElementById('trainPage').innerHTML=`<div class="n99 nxp nxp-train ${kind}">${trainChrome()}${body}</div>`;}
+  function cardioWeekLine() {
+    const mins=N.cardioWeek(),target=Number(settings.zone2WeeklyTarget)||90;
+    return {mins,target,pct:target?Math.min(100,mins/target*100):0};
+  }
+  function trainRest() {
+    const w=cardioWeekLine();
+    trainIdle('nxp-train-rest',`<section class="nxp-train-state"><h2>No lifting session due</h2><p>Recovery is part of the plan. Nothing needs to be made up today.</p><p class="nxp-caption">${w.mins} / ${w.target} cardio min this week</p><div class="nxp-train-state-actions">${button('Quick recovery check-in','apx96OpenReadiness()')}${button('Log cardio','showCardioSheet()',true)}</div></section>`);
+  }
+  function trainZone2() {
+    const w=cardioWeekLine();
+    trainIdle('nxp-train-zone2',`<section class="nxp-train-state"><h2>Easy cardio</h2><p>Zone 2 — a conversational effort. No lifting session is due.</p><div class="nxp-train-pace"><span class="nxp-caption">This week</span><strong>${w.mins} <em>/ ${w.target} min</em></strong><div class="n99-session-rail" aria-hidden="true"><span style="width:${w.pct}%"></span></div></div><div class="nxp-train-state-actions">${button('Log cardio','showCardioSheet()')}${button('Check-in','apx96OpenReadiness()',true)}</div></section>`);
+  }
+  function trainFloorball() {
+    const recent=(state.floorball||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,3);
+    trainIdle('nxp-train-floorball',`<section class="nxp-train-state"><h2>Floorball</h2><p>Hard conditioning. Count it toward recovery; no extra intervals needed.</p><div class="nxp-train-floorball-grid"><label>Duration <small>min</small><input id="apx96FbDuration" type="number" min="1" max="600" inputmode="numeric" placeholder="120"></label><label>Intensity <small>1–10</small><input id="apx96FbIntensity" type="number" min="1" max="10" inputmode="numeric" placeholder="8"></label></div><label>Notes<textarea id="apx96FbNotes" rows="3" placeholder="Energy, match load, soreness…"></textarea></label><div class="nxp-train-state-actions">${button('Save session','apx96SaveFloorball()')}</div>${recent.length?`<h3 class="nxp-group-title">Recent</h3>${recent.map(x=>`<div class="nxp-train-recent"><span>${esc(N.shortDate(x.date))}</span><b>${esc(x.duration||'—')} min · RPE ${esc(x.intensity||'—')}</b>${x.notes?`<small>${esc(x.notes)}</small>`:''}</div>`).join('')}`:`<p class="nxp-caption">No Floorball sessions logged yet.</p>`}</section>`);
+  }
+  function trainEmpty() {
+    trainIdle('nxp-train-empty',`<section class="nxp-train-state"><h2>No exercises in this session</h2><p>This session currently has no exercises.</p><div class="nxp-train-state-actions">${button('Add exercise','v88OpenAddModal()')}${button('Restore programme','NXT.fullSession()',true)}</div></section>`);
+  }
   function training() {
     applyAppearance();
-    if(['Rest','Zone2','Floorball'].includes(state.dayType)||!template().length)return base.training();
-    const list=template();if(!list.some(e=>e.name===state.exercise))state.exercise=list[0].name;
+    if(state.dayType==='Floorball')return trainFloorball();
+    if(state.dayType==='Rest')return trainRest();
+    if(state.dayType==='Zone2')return trainZone2();
+    const list=template();
+    if(!list.length)return trainEmpty();
+    if(!list.some(e=>e.name===state.exercise))state.exercise=list[0].name;
     const ex=state.exercise,t=N.targetFor(ex),done=N.done(ex),cue=N.cue(ex),draft=ui.drafts.get(draftKey())||{};
     const previous=N.sessionRows(ex,state.gym,state.date,100).at(-1),prev=previous?.sets[Math.min(done,previous.sets.length-1)];
     const current=N.sessionLogs().filter(r=>r.exercise===ex),last=current.filter(r=>r.setType!=='warmup').at(-1);
