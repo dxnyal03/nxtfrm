@@ -1,5 +1,73 @@
+/* V101.1: shared presentation contract. Shell geometry only — not a visual redesign. */
+:root {
+  --nxt-bg: #121216;
+  --nxt-surface: #1b1b22;
+  --nxt-raised: #23232d;
+  --nxt-text: #f0edf6;
+  --nxt-muted: #b3adbf;
+  --nxt-accent: #b49aff;
+  --nxt-border: rgba(228,223,239,.12);
+
+  --nxt-space-1: 4px;
+  --nxt-space-2: 8px;
+  --nxt-space-3: 12px;
+  --nxt-space-4: 16px;
+  --nxt-space-5: 24px;
+  --nxt-space-6: 32px;
+
+  --nxt-radius-control: 12px;
+  --nxt-radius-card: 20px;
+  --nxt-radius-pill: 999px;
+
+  --nxt-control: 48px;
+  --nxt-control-compact: 44px;
+
+  --nxt-z-cta: 20;
+  --nxt-z-rest: 24;
+  --nxt-z-header: 30;
+  --nxt-z-tabs: 80;
+  --nxt-z-modal: 10000;
+
+  --nxt-safe-top: env(safe-area-inset-top, 0px);
+  --nxt-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  --nxt-tabs-gap: 8px;
+  --nxt-tabs-pad-top: 14px;
+  --nxt-tabs-pad-bottom: 9px;
+  --nxt-tab-min-height: 56px;
+  --nxt-tabs-border-y: 2px;
+  --nxt-tabs-chrome: calc(var(--nxt-tabs-pad-top) + var(--nxt-tab-min-height) + var(--nxt-tabs-pad-bottom) + var(--nxt-tabs-border-y));
+  --nxt-tabs-stack: calc(var(--nxt-tabs-gap) + var(--nxt-tabs-chrome) + var(--nxt-safe-bottom));
+
+  --nxt-cta-clearance: 6px;
+  --nxt-cta-keyboard: 12px;
+
+  --nxt-header-pad-top: 8px;
+  --nxt-header-pad-bottom: 9px;
+  --nxt-header-row: 40px;
+  --nxt-header-stack: calc(var(--nxt-header-pad-top) + var(--nxt-header-row) + var(--nxt-header-pad-bottom) + var(--nxt-safe-top));
+  --nxt-rest-clearance: 20px;
+
+  --nxt-bottom-slack: 39px;
+  --nxt-bottom-reserve: calc(var(--nxt-tabs-stack) + var(--nxt-bottom-slack));
+}
+
+body {
+  padding-bottom: var(--nxt-bottom-reserve) !important;
+}
+
+.top {
+  z-index: var(--nxt-z-header);
+}
+
+.tabs {
+  bottom: calc(var(--nxt-tabs-gap) + var(--nxt-safe-bottom));
+  padding: var(--nxt-tabs-pad-top) 8px var(--nxt-tabs-pad-bottom) !important;
+  z-index: var(--nxt-z-tabs) !important;
+}
+
 /* V100: quiet purple-and-charcoal surfaces, readable settings and a focused logger. */
-.nxp { --n99-accent:#b49aff; padding-bottom:20px; }
+.nxp { --n99-accent: var(--nxt-accent); padding-bottom: 20px; }
 .nxp h1 { font-size:2rem;line-height:1.2;letter-spacing:-.055em; }
 .nxp h2 { font-size:1.35rem;letter-spacing:-.025em; }
 .nxp p { font-size:1rem; }
@@ -40,7 +108,7 @@
 .nxp-session-progress { display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:.875rem;color:var(--n99-muted); }
 .nxp-session-progress .n99-text { padding:0; }
 .nxp .n99-session-rail { margin:4px 0 16px;height:3px; }
-.nxp-rest { position:sticky;top:calc(77px + env(safe-area-inset-top));z-index:24;display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(36,35,45,.97);backdrop-filter:blur(14px);border:1px solid #403a4e;border-radius:15px;padding:12px 15px;margin:16px 0; }
+.nxp-rest { position:sticky;top:calc(var(--nxt-header-stack) + var(--nxt-rest-clearance));z-index:var(--nxt-z-rest);display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(36,35,45,.97);backdrop-filter:blur(14px);border:1px solid #403a4e;border-radius:15px;padding:12px 15px;margin:16px 0; }
 .nxp-rest > span { display:flex;align-items:center;gap:15px; }
 .nxp-rest small { font-size:.875rem; }
 .nxp-rest b { font-size:1.3rem;font-variant-numeric:tabular-nums;color:var(--n99-accent);font-weight:650; }
@@ -62,11 +130,12 @@
 .nxp .nxp-load-inputs input { display:block;background:#24232d;border:1px solid #4b435a;min-height:88px;font-size:2rem;font-weight:600;letter-spacing:-.04em;text-align:center;border-radius:16px;margin-top:9px;padding:14px 8px;font-variant-numeric:tabular-nums; }
 .nxp-load-inputs input::placeholder { color:#7d738e;font-weight:400; }
 .nxp .nxp-effort label { font-size:.875rem;gap:7px; }
-.nxp-effort label > small { display:inline;font-size:.8125rem; }
-.nxp-log-action { position:sticky;bottom:calc(95px + env(safe-area-inset-bottom));z-index:20;padding:10px 0;background:linear-gradient(180deg,rgba(18,18,22,0),#121216 40%); }
+.nxp .nxp-effort-caption { display:inline-flex;align-items:baseline;gap:4px;white-space:nowrap; }
+.nxp .nxp-effort-caption small { font-size:.8125rem;font-weight:400;color:var(--n99-muted); }
+.nxp-log-action { position:sticky;bottom:calc(var(--nxt-tabs-stack) + var(--nxt-cta-clearance));z-index:var(--nxt-z-cta);padding:10px 0;background:linear-gradient(180deg,rgba(18,18,22,0),#121216 40%); }
 .nxp-log-action .n99-button { min-height:57px;font-size:1.0625rem!important;box-shadow:0 5px 20px rgba(0,0,0,.18); }
 body:has(#nxp-set-form:focus-within) .tabs { visibility:hidden;pointer-events:none; }
-#nxp-set-form:focus-within .nxp-log-action { bottom:12px; }
+#nxp-set-form:focus-within .nxp-log-action { bottom: var(--nxt-cta-keyboard); }
 .nxp-coach { border-bottom:1px solid #33303a;padding:4px 0 12px;margin:8px 0; }
 .nxp-coach summary { font-size:.9375rem!important;font-weight:500!important;color:#c5b4e2!important; }
 .nxp-coach p { font-size:.875rem; }

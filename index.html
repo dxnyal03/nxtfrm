@@ -481,7 +481,7 @@ body {
 }
 .tabs{
   max-width:430px !important;
-  padding:8px 8px calc(9px + env(safe-area-inset-bottom)) !important;
+  padding:8px 8px 9px !important;
 }
 .tabs-inner{
   grid-template-columns:repeat(5,minmax(0,1fr)) !important;
@@ -4582,13 +4582,6 @@ select[aria-invalid="true"]:focus,
 textarea[aria-invalid="true"]:focus {
   border-color: var(--red);
   box-shadow: 0 0 0 4px rgba(251, 113, 133, 0.12);
-}
-
-/* === QUICK WIN 5: Improve Touch Target Padding === */
-button {
-  padding: 4px 8px;
-  min-width: 44px;
-  min-height: 44px;
 }
 
 /* === QUICK WIN 6: Better Contrast for Disabled State === */
