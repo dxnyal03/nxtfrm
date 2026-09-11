@@ -9516,23 +9516,6 @@ function apx95DeleteWeight(id){
   render();
   toast("Weight deleted");
 }
-function renderWeight(){
-  const cfg=apx95ProgressState();
-  const rows=apx95DailyRows();
-  const strengthItems=apx95StrengthItems();
-  const verdict=apx95Verdict(rows,strengthItems);
-  let content="";
-  if(cfg.view==="strength")content=apx95StrengthViewHTML(strengthItems);
-  else if(cfg.view==="body")content=apx95BodyViewHTML();
-  else content=apx95ProgressHeroHTML(rows,verdict)+apx95ChartHTML(rows)+apx95VerdictHTML(verdict,rows,strengthItems);
-  document.getElementById("weightPage").innerHTML=`<div class="apx95-progress">
-    <div class="apx95-progress-head"><div><div class="apx95-eyebrow">Transformation</div><h1>Progress</h1></div><button class="apx95-log-btn" onclick="apx95OpenQuickWeight()">＋ LOG WEIGHT</button></div>
-    <div class="apx95-tabs">
-      ${[["overview","OVERVIEW"],["strength","STRENGTH"],["body","BODY"]].map(([view,label])=>`<button class="${cfg.view===view?"active":""}" onclick="apx95SetView('${view}')">${label}</button>`).join("")}
-    </div>
-    ${content}
-  </div>`;
-}
 </script>
 
 
@@ -9608,45 +9591,6 @@ function apx96HomeCoachHTML(){
     message=coachInsightObservation(insight)+" "+String(insight.text||"");
   }
   return `<div class="apx96-card"><div class="apx96-coach-line"><div class="apx96-coach-mark"><img src="logo-mark.svg" alt=""></div><div><div class="apx96-kicker">NXTFRM coach</div><b>${esc(title)}</b><p>${esc(message)}</p></div></div></div>`;
-}
-function renderHome(){
-  const p=plan(),r=readiness(),today=apx96TodaySummary(),complete=isTodayWorkoutCompleted();
-  const progress=typeof dayProgress==="function"?dayProgress():{done:today.sets,total:Math.max(today.sets,1),pct:complete?100:0};
-  const weights=typeof apx95DailyRows==="function"?apx95DailyRows():[];
-  const moving=typeof apx95MovingRows==="function"?apx95MovingRows(weights):[];
-  const latest=moving.at(-1);
-  const weekChange=typeof apx95WeekChange==="function"?apx95WeekChange(weights):null;
-  const zone=zone2MinutesThisWeekSafe();
-  const zoneTarget=Number(settings.zone2WeeklyTarget||ZONE2_WEEKLY_TARGET||90);
-  const mission=complete?"Session complete":today.sets?`${progress.done} of ${progress.total} sets logged`:(template()[0]?.name||p.label);
-  const cta=complete?"VIEW TODAY":today.sets?"CONTINUE WORKOUT":"START WORKOUT";
-  document.getElementById("homePage").innerHTML=`${dateWarningHTML()}<div class="apx96-page">
-    <div class="apx96-home-hero">
-      <div class="apx96-home-top">
-        <div><div class="apx96-kicker">${fmt(state.date)} · today</div><div class="apx96-day"><button onclick="cycleDayType()">${esc(p.label)}</button></div></div>
-        <button class="apx96-readiness" style="--score:${r.score}" onclick="apx96OpenReadiness()"><div><b>${r.score}</b><span>Ready</span></div></button>
-      </div>
-      <div class="apx96-hero-meta">${gymToggleChipHTML()}<span class="apx96-chip ${complete?"lime":""}">${complete?"Completed":r.msg}</span><span class="apx96-chip">${esc(dayTypeLabel(state.dayType))}</span></div>
-      <div class="apx96-mission"><div><b>${esc(mission)}</b><span>${complete?"Recovery is the next objective.":today.sets?"Pick up exactly where you stopped.":"Today’s first priority"}</span></div><strong>${complete?"✓":progress.pct+"%"}</strong></div>
-      <button class="apx96-primary" onclick="${complete?"switchTab('history')":"startWorkoutNow()"}">${cta}</button>
-    </div>
-    <div class="apx96-home-grid">
-      <div class="apx96-metric"><span>Bodyweight</span><b>${latest?latest.weight.toFixed(1)+"kg":"—"}</b><small>${weekChange===null?"Building trend":apx95SignedKg(weekChange)+" this week"}</small></div>
-      <div class="apx96-metric"><span>Zone 2</span><b>${zone}/${zoneTarget}m</b><small>${Math.max(0,zoneTarget-zone)} min remaining</small></div>
-      <div class="apx96-metric"><span>Today’s work</span><b>${today.sets} sets</b><small>${today.volume?(today.volume/1000).toFixed(1)+"k volume":"Not started"}</small></div>
-      <div class="apx96-metric"><span>Weekly load</span><b>${hardTrainingDaysThisWeek()} days</b><small>${hardTrainingDaysThisWeek()>=4?"Protect recovery":"Load manageable"}</small></div>
-    </div>
-    ${enhancedRecoveryWarningHTML()}
-    ${apx96HomeCoachHTML()}
-    ${apx96WeekHTML()}
-    <div class="apx96-card">
-      <div class="apx96-kicker">Quick actions</div><div class="apx96-quick-grid">
-        <button class="apx96-quick" onclick="apx95OpenQuickWeight()"><i>＋</i><b>Weight</b><span>Quick log</span></button>
-        <button class="apx96-quick" onclick="showCardioSheet()"><i>⌁</i><b>Zone 2</b><span>Log cardio</span></button>
-        <button class="apx96-quick" onclick="apx96OpenReadiness()"><i>◉</i><b>Readiness</b><span>Daily check</span></button>
-      </div>
-    </div>
-  </div>`;
 }
 let apx96RestEnd=0;
 let apx96RestInterval=null;
@@ -9748,26 +9692,6 @@ function apx96OpenQueueManager(){
     <button class="btn secondary" style="margin-top:12px" onclick="resetSessionOrder();closeModal()">RESET QUEUE</button><button class="btn secondary" style="margin-top:8px" onclick="closeModal()">DONE</button>
   </div></div>`;
 }
-function renderTrain(){
-  if(state.dayType==="Floorball")return renderFloorball();
-  if(state.dayType==="Rest"||state.dayType==="Zone2")return renderRest();
-  const list=template();
-  if(!state.exercise&&list[0])state.exercise=list[0].name;
-  const insight=latestCoachInsight(state.dayType,state.gym);
-  const complete=completeDay();
-  document.getElementById("trainPage").innerHTML=`<div class="apx96-page">
-    ${apx96TrainHeaderHTML()}
-    ${enhancedRecoveryWarningHTML()}
-    ${apx96RestTimerHTML()}
-    ${apx96FocusHTML()}
-    ${apx96QueueHTML()}
-    ${recentSetsHTML(6)}
-    <details class="apx96-details"><summary>Coach, progression and notes</summary><div class="apx96-details-body">${insight?professionalCoachInsightHTML(insight,{compact:true,title:"Coach insight"}):""}${progressiveOverloadCardHTML(state.exercise)}${v88CurrentNoteHTML()}</div></details>
-    <details class="apx96-details"><summary>Recovery and session options</summary><div class="apx96-details-body">${minimumWorkoutCardHTML()}${zone2CardHTML()}<button class="btn secondary" style="margin-top:10px" onclick="apx96OpenReadiness()">UPDATE READINESS</button></div></details>
-    ${complete?completionSummaryHTML():""}
-  </div>`;
-  setTimeout(apx96TickTimer,0);
-}
 const apx96BaseLogSet=logSet;
 logSet=function(){
   const before=(state.logs||[]).length;
@@ -9860,15 +9784,6 @@ function showHistoryDay(date){
     <button class="btn secondary" style="margin-top:13px" onclick="closeModal()">CLOSE</button>
   </div></div>`;
 }
-function renderHistory(){
-  const stats=apx96MonthStats();
-  document.getElementById("historyPage").innerHTML=`<div class="apx96-page">
-    <div class="apx96-page-head"><div><div class="apx96-kicker">Performance archive</div><h1>History</h1></div><span class="apx96-chip sky">${calendarMonthState()}</span></div>
-    <div class="apx96-card apx96-history-hero"><div class="apx96-card-title">Your month in motion</div><div class="apx96-soft" style="margin-top:6px">Only meaningful activity appears in the feed. Use the calendar for any specific date.</div><div class="apx96-history-stats"><div class="apx96-history-stat"><span>Sessions</span><b>${stats.sessions}</b></div><div class="apx96-history-stat"><span>Sets</span><b>${stats.sets}</b></div><div class="apx96-history-stat"><span>Volume</span><b>${stats.volume?(stats.volume/1000).toFixed(1)+"k":"—"}</b></div><div class="apx96-history-stat"><span>Cardio</span><b>${stats.cardioMinutes}m</b></div></div></div>
-    ${apx96CalendarHTML()}
-    ${apx96HistoryFeedHTML()}
-  </div>`;
-}
 function apx96SetMoreView(view){
   state.moreView=view;
   render();
@@ -9922,10 +9837,6 @@ function apx96MoreSectionHTML(view){
     content=`${installInstructionsHTML()}<div class="apx96-card"><div class="apx96-kicker">Build</div><div class="apx96-card-title">NXTFRM V98</div><div class="apx96-soft" style="margin-top:6px">Premium interface · offline-first · compatible with APEXCUT V93–V97 data.</div></div><div class="apx96-card apx96-danger"><div class="apx96-kicker">Danger zone</div><div class="apx96-card-title">Reset local app data</div><div class="apx96-soft" style="margin-top:6px">Export a full backup first. Reset cannot be undone on this device.</div><button class="btn danger" style="margin-top:12px" onclick="if(confirm('Clear all local NXTFRM data?')){localStorage.clear();location.reload()}">RESET APP DATA</button></div>`;
   }
   return `<div class="apx96-page">${apx96MoreHeader(title,subtitle)}<div class="apx96-more-section">${content}</div></div>`;
-}
-function renderMore(){
-  if(!["hub","training","goals","body","coach","notifications","data","app"].includes(state.moreView))state.moreView="hub";
-  document.getElementById("morePage").innerHTML=state.moreView==="hub"?apx96MoreHubHTML():apx96MoreSectionHTML(state.moreView);
 }
 </script>
 
@@ -10108,43 +10019,6 @@ function nxt98CoachSignal(){
   if(r.score>=65)return {title:"Train the plan",message:"Use the full session and keep one or two clean reps in reserve.",tone:"ON PLAN"};
   return {title:"Protect recovery",message:"Use Minimum mode or easy Zone 2. Today is not a PR day.",tone:"RECOVERY FIRST"};
 }
-function renderHome(){
-  const p=plan(),r=readiness(),today=apx96TodaySummary(),complete=isTodayWorkoutCompleted();
-  const progress=typeof dayProgress==="function"?dayProgress():{done:today.sets,total:Math.max(today.sets,1),pct:complete?100:0};
-  const rows=template(),next=rows.find(item=>safeSetsDone(item.name)<Number(item.sets||3))||rows[0];
-  const weights=typeof apx95DailyRows==="function"?apx95DailyRows():[];
-  const moving=typeof apx95MovingRows==="function"?apx95MovingRows(weights):[];
-  const latest=moving.at(-1),weekChange=typeof apx95WeekChange==="function"?apx95WeekChange(weights):null;
-  const zone=zone2MinutesThisWeekSafe(),zoneTarget=Number(settings.zone2WeeklyTarget||ZONE2_WEEKLY_TARGET||90);
-  const weekly=nxt98WeeklyTotals(),coach=nxt98CoachSignal(),minutes=nxt98EstimatedMinutes();
-  const nextReps=next?.reps?.length?next.reps[0]+"–"+next.reps[1]+" reps":"Planned movement";
-  const mission=complete?"Session complete":today.sets?progress.done+" of "+progress.total+" sets logged":next?.name||p.label;
-  const cta=complete?"VIEW TODAY":today.sets?"CONTINUE SESSION":"START WORKOUT";
-  document.getElementById("homePage").innerHTML=`${dateWarningHTML()}<div class="nxt98-page">
-    <section class="nxt98-home-hero">
-      <div class="nxt98-hero-head">
-        <div><div class="apx96-kicker">Today · ${fmt(state.date)}</div><h1><button onclick="cycleDayType()">${esc(p.label)}</button></h1></div>
-        <button class="nxt98-orbit" style="--score:${r.score}" onclick="apx96OpenReadiness()" aria-label="Update readiness"><div><b>${r.score}</b><span>Ready</span></div></button>
-      </div>
-      <div class="nxt98-meta">${gymToggleChipHTML()}<span class="nxt98-pill ${complete?"lime":""}">${complete?"Completed":r.msg}</span><span class="nxt98-pill">${rows.length} moves · ≈${minutes||"—"} min</span></div>
-      <div class="nxt98-plan-row"><div><span>${complete?"Today’s result":today.sets?"Continue from":"Next up"}</span><b>${esc(mission)}</b><small>${complete?"Recovery is now the objective.":today.sets?"Your session is saved on this device.":next?next.sets+" sets · "+nextReps:"Use today as active recovery."}</small></div><strong>${complete?"✓":progress.pct+"%"}</strong></div>
-      <button class="nxt98-primary" onclick="${complete?"switchTab('history')":"startWorkoutNow()"}">${cta}</button>
-    </section>
-    <section class="nxt98-signal-strip">
-      <div class="nxt98-signal"><span>Bodyweight</span><b>${latest?latest.weight.toFixed(1)+"kg":"—"}</b><small>${weekChange===null?"Build the signal":apx95SignedKg(weekChange)+" this week"}</small></div>
-      <div class="nxt98-signal"><span>Training</span><b>${weekly.sets} sets</b><small>${weekly.sessions} active days</small></div>
-      <div class="nxt98-signal"><span>Zone 2</span><b>${zone}/${zoneTarget}m</b><small>${Math.max(0,zoneTarget-zone)} min remaining</small></div>
-    </section>
-    ${enhancedRecoveryWarningHTML()}
-    <section class="nxt98-coach"><img src="logo-mark.svg" alt=""><div><div class="apx96-kicker">${coach.tone}</div><b>${esc(coach.title)}</b><p>${esc(coach.message)}</p></div><strong>↗</strong></section>
-    ${apx96WeekHTML()}
-    <section class="nxt98-quick-bar">
-      <button class="nxt98-quick-action" onclick="apx95OpenQuickWeight()"><i>＋</i><div><b>WEIGHT</b><span>Quick log</span></div></button>
-      <button class="nxt98-quick-action" onclick="showCardioSheet()"><i>⌁</i><div><b>ZONE 2</b><span>Add cardio</span></div></button>
-      <button class="nxt98-quick-action" onclick="apx96OpenReadiness()"><i>◉</i><div><b>READINESS</b><span>Daily check</span></div></button>
-    </section>
-  </div>`;
-}
 function apx96TrainHeaderHTML(){
   const p=plan(),progress=dayProgress();
   return `<div class="apx96-train-head nxt98-train-head">
@@ -10214,18 +10088,6 @@ apx95ChartHTML=function(rows){
       </div><button class="btn" style="margin-top:13px" onclick="apx95OpenQuickWeight()">LOG FIRST WEIGHT</button>
     </div></div>`;
 };
-function renderWeight(){
-  const cfg=apx95ProgressState(),rows=apx95DailyRows(),strengthItems=apx95StrengthItems(),verdict=apx95Verdict(rows,strengthItems);
-  let content="";
-  if(cfg.view==="strength")content=apx95StrengthViewHTML(strengthItems);
-  else if(cfg.view==="body")content=apx95BodyViewHTML();
-  else content=apx95ProgressHeroHTML(rows,verdict)+apx95ChartHTML(rows)+apx95VerdictHTML(verdict,rows,strengthItems);
-  document.getElementById("weightPage").innerHTML=`<div class="apx95-progress">
-    <div class="apx95-progress-head"><div><div class="apx95-eyebrow">Transformation signal</div><h1>Progress</h1><div class="nxt98-progress-copy">Scale, strength and composition—read together.</div></div><button class="apx95-log-btn" onclick="apx95OpenQuickWeight()">＋ LOG</button></div>
-    <div class="apx95-tabs">${[["overview","BODYWEIGHT"],["strength","STRENGTH"],["body","COMPOSITION"]].map(([view,label])=>`<button class="${cfg.view===view?"active":""}" onclick="apx95SetView('${view}')">${label}</button>`).join("")}</div>
-    ${content}
-  </div>`;
-}
 function nxt98HistoryMatches(date,filter){
   const summary=summaryForDate(date),floor=(state.floorball||[]).some(x=>x.date===date);
   if(filter==="strength")return Number(summary.sets||0)>0;
