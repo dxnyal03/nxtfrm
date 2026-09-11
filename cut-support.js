@@ -1092,11 +1092,11 @@ safeLastSet=function(ex){return NXT.sessionRows(ex,state.gym,state.date,100).at(
 logSet=NXT.logSet;
 apx96UndoLastSet=NXT.undo;
 completeDay=NXT.planDone;
-showSessionSheet=NXT.sessionPicker;
+window.showSessionSheet=NXT.sessionPicker;
 cycleDayType=NXT.sessionPicker;
-showCardioSheet=NXT.cardioModal;
+window.showCardioSheet=NXT.cardioModal;
 renderRest=NXT.recoveryDay;
-apx96OpenReadiness=NXT.recoveryModal;
+window.apx96OpenReadiness=NXT.recoveryModal;
 apx96SaveReadiness=NXT.saveRecovery;
 readiness=function(){const r=NXT.cfg().recovery[state.date];if(r&&[r.sleep,r.energy,r.soreness].some(x=>x!==''&&x!==undefined&&x!==null)){state.read=r;return {...NXT.old.readiness(),known:true};}const head=document.getElementById('headScore');if(head){head.textContent='—';head.style.setProperty('--score',0);head.setAttribute('aria-label','No recovery check-in for today');}return {score:78,msg:'Check-in not logged',known:false};};
 suggestedRestSeconds=function(ex){return /press|row|pulldown|deadlift|squat/i.test(ex)&&!/tricep|pushdown/i.test(ex)?150:90;};
