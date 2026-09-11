@@ -49,24 +49,31 @@ const NXP = (() => {
     const current=N.sessionLogs().filter(r=>r.exercise===ex),last=current.filter(r=>r.setType!=='warmup').at(-1);
     const total=list.reduce((a,e)=>a+Number(e.sets),0),count=list.reduce((a,e)=>a+Math.min(N.done(e.name),e.sets),0),finished=N.planDone();
     const weight=draft.weightInput??last?.weight??(cue.weight||'');
-    const index=list.findIndex(e=>e.name===ex);
-    document.getElementById('trainPage').innerHTML=shell(`${header(N.label(state.dayType),state.gym+' · '+N.shortDate(state.date),button('Session','NXP.sessionMenu()',true))}
-      <div class="nxp-session-progress"><span>${count} of ${total} working sets</span><button class="n99-text" onclick="NXP.queue()">Exercise ${index+1} of ${list.length} ›</button></div><div class="n99-session-rail"><span style="width:${total?Math.min(100,count/total*100):0}%"></span></div>
+    const index=list.findIndex(e=>e.name===ex),nextEx=list[index+1],lastMove=index===list.length-1;
+    const restLeft=apx96RestRemaining();
+    document.getElementById('trainPage').innerHTML=`<div class="n99 nxp nxp-train">
+      <header class="nxp-train-chrome"><div><p class="nxp-caption">${esc(N.label(state.dayType))}</p><p>${esc(state.gym)} · ${N.shortDate(state.date)}</p></div>${button('Session','NXP.sessionMenu()',true)}</header>
+      <div class="nxp-session-progress"><span>${count} of ${total} working sets</span><button type="button" class="n99-text" onclick="NXP.queue()">Exercise ${index+1} of ${list.length}</button></div>
+      <div class="n99-session-rail"><span style="width:${total?Math.min(100,count/total*100):0}%"></span></div>
       ${finished?N.card('Workout saved',`<p>${N.sessionLogs().filter(r=>r.setType!=='warmup').length} working sets recorded. Everything you logged is in History.</p><div class="n99-stack">${button('View session','NXP.sessionSummary()')}${button('Resume workout','NXT.resume()',true)}</div>`):`
-      <aside class="nxp-rest" aria-label="Rest timer"><span><small>Rest timer</small><b id="apx96TimerValue">${apx96RestRemaining()?apx96FormatTimer(apx96RestRemaining()):'READY'}</b></span><div>${button('+30s','apx96AdjustRest(30)',true)}${button('Skip','apx96SkipRest()',true)}</div></aside>
-      <section class="nxp-workspace"><div class="n99-row"><span class="nxp-caption">Current exercise</span><button class="n99-text" onclick="showSubstituteSheet()">Swap</button></div><h2>${esc(ex)}</h2><div class="nxp-set-dots" aria-label="${done} working sets logged, ${t.sets} planned">${Array.from({length:t.sets},(_,i)=>`<span class="${i<done?'done':i===done?'next':''}">${i<done?'✓':i+1}</span>`).join('')}<small>${t.reps[0]}–${t.reps[1]} reps</small></div>
-      <div class="nxp-previous"><span>Last time${previous?' · '+N.shortDate(previous.date):''}</span><b>${prev?esc(prev.weight)+' kg × '+esc(prev.reps):'First session at this gym'}</b></div>
-      <form id="nxp-set-form" onsubmit="event.preventDefault();NXP.logSet()"><div class="nxp-load-inputs"><label>Weight <small>kg</small><input id="weightInput" type="number" min="0" max="1000" step="0.1" inputmode="decimal" required placeholder="0" value="${esc(weight)}" oninput="NXP.rememberInput(this)"></label><label>Reps<input id="repsInput" type="number" min="1" max="100" step="1" inputmode="numeric" required placeholder="${prev?prev.reps:t.reps[0]+'–'+t.reps[1]}" value="${esc(draft.repsInput??'')}" oninput="NXP.rememberInput(this)"></label></div>
-      <div class="n99-form-grid nxp-effort"><label><span class="nxp-effort-caption">Set type</span><select id="n99-set-type" onchange="NXP.rememberInput(this)"><option value="working" ${draft['n99-set-type']!=='warmup'?'selected':''}>Working</option><option value="warmup" ${draft['n99-set-type']==='warmup'?'selected':''}>Warm-up</option></select></label><label><span class="nxp-effort-caption">Reps left · <small>Optional</small></span><select id="n99-rir" onchange="NXP.rememberInput(this)"><option value="">Not recorded</option>${[0,1,2,3,4].map(n=>`<option value="${n}" ${String(draft['n99-rir'])===String(n)?'selected':''}>${n===4?'4+':n}</option>`).join('')}</select></label></div>
-      <div class="nxp-log-action"><button id="nxp-log-button" type="submit" class="n99-button">＋ Log ${draft['n99-set-type']==='warmup'?'warm-up':'set '+(done+1)}</button></div></form>
-      <details class="nxp-coach"><summary>${esc(cue.label)}</summary><p>${esc(cue.text)}</p></details>
-      ${current.length?`<div class="nxp-set-history"><h3>Today’s sets</h3>${current.map((r,i)=>`<button class="nxp-set-row" onclick="NXP.editCurrentSet(${i})"><span>${r.setType==='warmup'?'W':r.setNum}</span><b>${esc(r.weight)} <small>kg</small> × ${esc(r.reps)}</b><span>Edit ›</span></button>`).join('')}</div>`:''}
-      <div class="nxp-quick">${button('Undo last set','apx96UndoLastSet()',true)}${button(index===list.length-1?'Finish workout':'Next exercise','NXT.nextExercise()',true)}</div></section>`}
-      <details class="n99-card nxp-disclosure"><summary><span>Workout queue</span><small>${list.length} exercises</small></summary>${queueRows()}${button('Manage exercises','apx96OpenQueueManager()',true)}</details>
-      ${!finished?button('Finish workout','NXT.finish()',true):''}`);
+      <aside class="nxp-rest${restLeft?' is-active':''}" aria-label="Rest timer"><span><small>Rest</small><b id="apx96TimerValue">${restLeft?apx96FormatTimer(restLeft):'READY'}</b></span><div>${button('+30s','apx96AdjustRest(30)',true)}${button('Skip','apx96SkipRest()',true)}</div></aside>
+      <section class="nxp-workspace">
+        <div class="nxp-ex"><div class="n99-row"><h2>${esc(ex)}</h2><button type="button" class="n99-text" onclick="showSubstituteSheet()">Swap</button></div>
+        <div class="nxp-set-dots" aria-label="${done} working sets logged, ${t.sets} planned">${Array.from({length:t.sets},(_,i)=>`<span class="${i<done?'done':i===done?'next':''}">${i<done?'✓':i+1}</span>`).join('')}<small>Set ${Math.min(done+1,t.sets)} / ${t.sets}</small></div></div>
+        <div class="nxp-aim"><div class="nxp-aim-row"><span>Target <b>${t.reps[0]}–${t.reps[1]}</b></span><span>Last${previous?' · '+N.shortDate(previous.date):''} <b>${prev?esc(prev.weight)+' kg × '+esc(prev.reps):'First session'}</b></span></div><p class="nxp-cue-label">${esc(cue.label)}</p><details class="nxp-coach"><summary>How to apply</summary><p>${esc(cue.text)}</p></details></div>
+        <form id="nxp-set-form" onsubmit="event.preventDefault();NXP.logSet()"><div class="nxp-load-inputs"><label>Weight <small>kg</small><input id="weightInput" type="number" min="0" max="1000" step="0.1" inputmode="decimal" required placeholder="0" value="${esc(weight)}" oninput="NXP.rememberInput(this)"></label><label>Reps<input id="repsInput" type="number" min="1" max="100" step="1" inputmode="numeric" required placeholder="${prev?prev.reps:t.reps[0]+'–'+t.reps[1]}" value="${esc(draft.repsInput??'')}" oninput="NXP.rememberInput(this)"></label></div>
+        <div class="n99-form-grid nxp-effort"><label><span class="nxp-effort-caption">Set type</span><select id="n99-set-type" onchange="NXP.rememberInput(this)"><option value="working" ${draft['n99-set-type']!=='warmup'?'selected':''}>Working</option><option value="warmup" ${draft['n99-set-type']==='warmup'?'selected':''}>Warm-up</option></select></label><label><span class="nxp-effort-caption">Reps left · <small>Optional</small></span><select id="n99-rir" onchange="NXP.rememberInput(this)"><option value="">Not recorded</option>${[0,1,2,3,4].map(n=>`<option value="${n}" ${String(draft['n99-rir'])===String(n)?'selected':''}>${n===4?'4+':n}</option>`).join('')}</select></label></div>
+        <div class="nxp-log-action"><button id="nxp-log-button" type="submit" class="n99-button">＋ Log ${draft['n99-set-type']==='warmup'?'warm-up':'set '+(done+1)}</button></div></form>
+        ${current.length?`<div class="nxp-set-history"><h3>Today’s sets</h3>${current.map((r,i)=>{const latest=i===current.length-1;const rir=r.rir===null||r.rir===undefined||r.rir===''?'':Number(r.rir)===4?'4+ left':r.rir+' left';const meta=r.setType==='warmup'?'Warm-up':rir;return `<button type="button" class="nxp-set-row${latest?' is-latest':''}" onclick="NXP.editCurrentSet(${i})"><span>${r.setType==='warmup'?'W':r.setNum}</span><b>${esc(r.weight)} <small>kg</small> × ${esc(r.reps)}</b>${meta?`<small>${esc(meta)}</small>`:''}<span>Edit</span></button>`;}).join('')}</div>`:''}
+        <p class="nxp-next">${nextEx?`Next · ${esc(nextEx.name)}`:'Last exercise in this session'}</p>
+        <div class="nxp-session-tools">${button('Undo last set','apx96UndoLastSet()',true)}${button(lastMove?'Finish workout':'Next exercise','NXT.nextExercise()',true)}</div>
+        ${lastMove?'':`<button type="button" class="n99-text nxp-finish-quiet" onclick="NXT.finish()">Finish workout</button>`}
+      </section>`}
+      <details class="nxp-queue nxp-disclosure"><summary><span>Workout queue</span><small>${list.length} exercises</small></summary>${queueRows()}${button('Manage exercises','apx96OpenQueueManager()',true)}</details>
+    </div>`;
     setTimeout(apx96TickTimer,0);
   }
-  function queueRows() {return template().map((e,i)=>row(e.name,N.done(e.name)+' / '+e.sets,`NXP.chooseExercise(${i})`,e.reps[0]+'–'+e.reps[1]+' reps')).join('');}
+  function queueRows() {return template().map((e,i)=>{const current=e.name===state.exercise,complete=N.done(e.name)>=e.sets;return `<button type="button" class="nxp-queue-row${current?' is-current':''}${complete?' is-done':''}" onclick="NXP.chooseExercise(${i})"><span>${complete?'✓':i+1}</span><span><b>${esc(e.name)}</b><small>${e.reps[0]}–${e.reps[1]} reps</small></span><span>${N.done(e.name)} / ${e.sets}</span></button>`;}).join('');}
   function queue() {N.modal('Workout queue',queueRows()+button('Manage exercises','apx96OpenQueueManager()',true));}
   function chooseExercise(i) {closeModal();N.selectExercise(i);}
   function editCurrentSet(i) {const r=N.sessionLogs().filter(r=>r.exercise===state.exercise)[i];if(r)openEditSet(r.id);}
@@ -175,4 +182,13 @@ renderHome=NXP.home;renderTrain=NXP.training;renderWeight=NXP.progress;renderMor
 showHistoryDay=NXP.historyDay;exportJSON=NXP.exportBackup;
 NXP.applyAppearance();
 document.title='NXTFRM — Training & Progress';
+if(typeof apx96TickTimer==='function'){
+  const apx96TickTimerSource=apx96TickTimer;
+  apx96TickTimer=function(){
+    const result=apx96TickTimerSource.apply(this,arguments);
+    const rest=document.querySelector('.nxp-rest');
+    if(rest)rest.classList.toggle('is-active',apx96RestRemaining()>0);
+    return result;
+  };
+}
 if(document.readyState!=='loading')NXT.repaint();
