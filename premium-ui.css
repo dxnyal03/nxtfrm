@@ -105,6 +105,55 @@ body {
 .nxp-insight b { font-size:1.125rem;font-weight:600; }
 .nxp-insight > span:last-child { font-size:.875rem;color:var(--n99-accent); }
 .nxp-insight.watch { border-left:2px solid #edc481;padding-left:16px; }
+
+/* V101.3 Home — daily coaching surface. Scoped; does not alter Train or shell algebra. */
+.nxp-home { min-width:0; }
+.nxp-home > .nxp-heading { margin:var(--nxt-space-2) 0 var(--nxt-space-3); }
+.nxp-home > .nxp-heading h1 { font-size:1.25rem;letter-spacing:-.03em;font-weight:650; }
+.nxp-home-status { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--nxt-space-2);margin:0 0 var(--nxt-space-3); }
+.nxp-home-kcal { display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-width:0;min-height:var(--nxt-control-compact);padding:var(--nxt-space-3);border:1px solid var(--nxt-border);border-radius:var(--nxt-radius-control);background:var(--nxt-raised);color:var(--nxt-text);text-align:left; }
+.nxp-home-kcal small,.nxp-home-change small { font-size:.75rem;color:var(--nxt-muted); }
+.nxp-home-kcal strong,.nxp-home-change strong { display:block;font-size:1.25rem;font-weight:650;letter-spacing:-.03em;overflow-wrap:anywhere; }
+.nxp-home-kcal em { font-style:normal;font-size:.75rem;font-weight:400;color:var(--nxt-muted); }
+.nxp-home-kcal > span { font-size:.75rem;color:var(--nxt-accent); }
+.nxp-home-change { min-width:0;padding:var(--nxt-space-3);border-radius:var(--nxt-radius-control);background:var(--nxt-surface); }
+.nxp-home-change span { display:block;margin-top:2px;font-size:.75rem;color:var(--nxt-muted);overflow-wrap:anywhere; }
+.nxp-home-decision { display:block;width:100%;margin:0 0 var(--nxt-space-4);padding:var(--nxt-space-3) 0 var(--nxt-space-3) var(--nxt-space-3);border:0;border-left:2px solid var(--nxt-border);background:none;color:var(--nxt-text);text-align:left;font:inherit; }
+.nxp-home-decision b { display:block;margin-top:2px;font-size:1.125rem;font-weight:600;line-height:1.3;overflow-wrap:anywhere; }
+.nxp-home-decision p { margin:6px 0 0;font-size:.8125rem;color:var(--nxt-muted); }
+.nxp-home-review { display:block;margin-top:var(--nxt-space-2);font-size:.875rem;font-weight:500;color:var(--nxt-accent); }
+.nxp-home-decision.watch { border-left-color:#edc481; }
+.nxp-home-decision.good { border-left-color:rgba(180,154,255,.45); }
+.nxp-home-today { padding:var(--nxt-space-3) 0 var(--nxt-space-4);border-top:1px solid var(--nxt-border); }
+.nxp-home-today h2 { margin:4px 0 0;font-size:1.35rem;overflow-wrap:anywhere; }
+.nxp-home-today p { margin:6px 0 var(--nxt-space-3);font-size:.875rem; }
+.nxp-home-today > .n99-button { min-height:var(--nxt-control); }
+.nxp-home .n99-quick { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--nxt-space-2);margin:0 0 var(--nxt-space-3); }
+.nxp-home .n99-quick .n99-button { width:100%;min-width:0;min-height:var(--nxt-control-compact);margin:0;padding:10px 8px;font-size:.8125rem!important;white-space:normal;overflow-wrap:anywhere;line-height:1.25; }
+.nxp-home > .n99-small { margin:0 0 var(--nxt-space-3);color:var(--nxt-muted); }
+.nxp-home-secondary { display:flex;flex-wrap:wrap;align-items:center;gap:var(--nxt-space-1) var(--nxt-space-4);margin:0 0 var(--nxt-space-4); }
+.nxp-home-secondary .n99-text { min-height:var(--nxt-control-compact);min-width:44px; }
+.nxp-home-week,.nxp-home-trend { margin:0;padding:var(--nxt-space-2) 0 0;border-top:1px solid var(--nxt-border); }
+.nxp-home .n99-week { margin-top:var(--nxt-space-2); }
+.nxp-home .n99-day { min-height:44px;padding:8px 1px; }
+.nxp-home .n99-day b { font-size:.75rem;overflow-wrap:anywhere; }
+.nxp-home-trend .n99-metric strong { font-size:1.125rem; }
+@media(max-width:360px) {
+  .nxp-home-status { grid-template-columns:1fr; }
+  .nxp-home-trend .n99-stats { grid-template-columns:1fr; }
+  .nxp-home .n99-week {
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:var(--nxt-space-2);
+  }
+  .nxp-home .n99-day {
+    flex:0 0 calc((100% - (3 * var(--nxt-space-2))) / 4);
+    min-width:44px;
+    min-height:44px;
+    padding:8px 4px;
+  }
+}
 .nxp-session-progress { display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:.875rem;color:var(--n99-muted); }
 .nxp-session-progress .n99-text { padding:0;min-height:44px;min-width:44px; }
 .nxp .n99-session-rail { margin:4px 0 16px;height:3px; }
