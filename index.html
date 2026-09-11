@@ -8732,12 +8732,6 @@ function renderRest(){
   document.getElementById("trainPage").innerHTML=`<div class="card hero"><div class="kicker">Rest</div><div class="title" style="margin-top:8px">Full recovery</div><div class="sub" style="margin-top:7px">Walk, stretch, sleep. No guilt.</div></div>
   ${recentSetsHTML()}`;
 }
-function showSessionSheet(){
-  document.getElementById("modalRoot").innerHTML=`<div class="modal" onclick="if(event.target.className==='modal')closeModal()"><div class="sheet"><div class="title">Change session</div><div style="display:grid;gap:9px;margin-top:14px">${["Push","Pull","Pump","Legs","Floorball","Rest"].map(x=>`<button class="btn secondary" onclick="state.dayType='${x}';state.exercise=(TEMPLATES['${x}']&&TEMPLATES['${x}'][0]&&TEMPLATES['${x}'][0].name)||'';state.setNum=1;if(state.sessionPlans)delete state.sessionPlans[sessionKey('${x}',state.date,state.gym)];closeModal();render()">${x}</button>`).join("")}</div></div></div>`
-}
-function showCardioSheet(){
-  document.getElementById("modalRoot").innerHTML=`<div class="modal" onclick="if(event.target.className==='modal')closeModal()"><div class="sheet"><div class="title">Log cardio</div><div style="display:grid;gap:10px;margin-top:14px"><div><label class="label">Type</label><select id="cardType" class="select">${CARDIO_TYPES.map(x=>`<option>${x}</option>`).join("")}</select></div><div class="grid2"><div><label class="label">Duration</label><input id="cardDur" class="input" type="number" placeholder="min" inputmode="decimal" step="0.1"></div><div><label class="label">Intensity</label><input id="cardInt" class="input" type="number" placeholder="1-10" inputmode="decimal" step="0.1"></div></div><div class="grid2"><div><label class="label">Avg HR</label><input id="cardHR" class="input" type="number" placeholder="optional" inputmode="decimal" step="0.1"></div><div><label class="label">Incline</label><input id="cardInc" class="input" type="number" placeholder="optional" inputmode="decimal" step="0.1"></div></div><button class="btn" onclick="state.cardio.push({id:uid(),date:state.date,gym:state.gym,type:val('cardType'),duration:val('cardDur'),intensity:val('cardInt'),hr:val('cardHR'),incline:val('cardInc'),quality:zone2Quality(val('cardDur'),val('cardInt')).text});closeModal();persist();render();toast('Cardio saved')">SAVE</button></div></div></div>`
-}
 function showWeightPrompt(){
   document.getElementById("modalRoot").innerHTML=`<div class="modal"><div class="sheet"><div class="title">Add bodyweight?</div><div class="sub" style="margin-top:6px">Keep your trend updated after session.</div><div style="margin-top:14px"><label class="label">Weight</label><input id="quickWeight" class="input" type="number" inputmode="decimal" placeholder="kg" step="0.1"></div><button class="btn" style="margin-top:12px" onclick="const w=Number(val('quickWeight'));if(!w)return toast('Enter weight');state.bws.push({id:uid(),date:state.date,weight:w,timeOfDay:'Post-workout',sessionType:state.dayType});closeModal();persist();render();toast('Weight saved')">SAVE</button><button class="btn secondary" style="margin-top:9px" onclick="closeModal()">NOT NOW</button></div></div>`
 }
@@ -8827,36 +8821,6 @@ function summaryForDate(date){
   const types=[...new Set(logs.map(l=>dayTypeLabel(l.dayType||state.dayType)).filter(Boolean))];
   const z2=cardio.reduce((s,c)=>s+Number(c.duration||c.minutes||0),0);
   return {logs,cardio,sets,volume,ex,types,z2,bw:bwForDate(date)};
-}
-function showHistoryDay(date){
-  const s=summaryForDate(date);
-  const groups={};
-  s.logs.forEach(l=>{
-    const ex=l.exercise||l.name||"Exercise";
-    if(!groups[ex])groups[ex]=[];
-    groups[ex].push(l);
-  });
-  document.getElementById("modalRoot").innerHTML=`<div class="modal" onclick="if(event.target.className==='modal')closeModal()">
-    <div class="sheet">
-      <div class="kicker">History detail</div>
-      <div class="title" style="margin-top:6px">${fmt(date)}</div>
-      <div class="metric-mini">
-        <div><span>Sets</span><b>${s.sets}</b></div>
-        <div><span>Volume</span><b>${s.volume?(s.volume/1000).toFixed(1)+"k":"—"}</b></div>
-        <div><span>Zone 2</span><b>${s.z2||0}m</b></div>
-      </div>
-      <div style="margin-top:14px;display:grid;gap:9px">
-        ${Object.keys(groups).length?Object.entries(groups).map(([ex,rows])=>`
-          <div class="history-day-card">
-            <b>${esc(ex)}</b>
-            <div class="sub">${rows.map(r=>`${r.weight||"?"}×${r.reps||"?"}`).join(" · ")}</div>
-          </div>`).join(""):`<div class="sub">No lifting logged.</div>`}
-        ${s.cardio.length?s.cardio.map(c=>`<div class="history-day-card"><b>${esc(c.type||"Cardio")}</b><div class="sub">${c.duration||c.minutes||0} min · Intensity ${c.intensity||"—"}</div></div>`).join(""):""}
-        ${s.bw?`<div class="history-day-card"><b>Bodyweight</b><div class="sub">${s.bw.weight}kg</div></div>`:""}
-      </div>
-      <button class="btn secondary" style="margin-top:12px" onclick="closeModal()">CLOSE</button>
-    </div>
-  </div>`;
 }
 function strengthRetentionDetails(){
   const keyExercises=["Incline","Press","Pulldown","Row","Leg Press","Romanian"];
@@ -9559,19 +9523,6 @@ function apx96WeekHTML(){
     }).join("")}</div>
   </div>`;
 }
-function apx96OpenReadiness(){
-  document.getElementById("modalRoot").innerHTML=`<div class="modal" onclick="if(event.target.className==='modal')closeModal()"><div class="sheet">
-    <div class="apx96-kicker">Daily check-in</div><div class="title" style="margin-top:6px">Readiness</div>
-    <div class="sub" style="margin-top:6px">A quick signal for today’s training recommendation.</div>
-    <div class="grid3" style="margin-top:14px">
-      <div><label class="label">Sleep</label><input id="apx96Sleep" class="input" type="number" inputmode="decimal" step="0.1" value="${esc(state.read.sleep||"")}" placeholder="hrs"></div>
-      <div><label class="label">Energy</label><select id="apx96Energy" class="select"><option value="">—</option>${[1,2,3,4,5].map(n=>`<option ${Number(state.read.energy)===n?"selected":""}>${n}</option>`).join("")}</select></div>
-      <div><label class="label">Soreness</label><select id="apx96Sore" class="select"><option value="">—</option>${[1,2,3,4,5].map(n=>`<option ${Number(state.read.soreness)===n?"selected":""}>${n}</option>`).join("")}</select></div>
-    </div>
-    <button class="btn" style="margin-top:13px" onclick="apx96SaveReadiness()">SAVE CHECK-IN</button>
-    <button class="btn secondary" style="margin-top:8px" onclick="closeModal()">CANCEL</button>
-  </div></div>`;
-}
 function apx96SaveReadiness(){
   state.read={sleep:val("apx96Sleep"),energy:val("apx96Energy"),soreness:val("apx96Sore")};
   window.__apexTyping=false;
@@ -9718,15 +9669,6 @@ function renderFloorball(){
     ${enhancedRecoveryWarningHTML()}
   </div>`;
 }
-function renderRest(){
-  const r=readiness();
-  document.getElementById("trainPage").innerHTML=`<div class="apx96-page">
-    <div class="apx96-home-hero apx96-rest"><div class="apx96-kicker">Recovery objective</div><div class="apx96-day">${state.dayType==="Zone2"?"Zone 2 / Rest":"Full recovery"}</div><div class="apx96-soft" style="margin-top:8px">${r.score<65?"Recovery is low. Keep movement easy and prioritise sleep.":"You can walk, mobilise or complete easy Zone 2 without adding fatigue."}</div><div class="apx96-hero-meta"><button class="apx96-chip" onclick="apx96OpenReadiness()">Readiness ${r.score}</button><span class="apx96-chip">${fmt(state.date)}</span></div></div>
-    ${zone2CardHTML()}
-    <div class="apx96-card"><div class="apx96-coach-line"><div class="apx96-coach-mark">R</div><div><div class="apx96-kicker">Recovery cue</div><b>No guilt, no junk volume.</b><p>Walk, stretch, eat protein and sleep. Recovery is part of the program—not a missed session.</p></div></div></div>
-    ${recentSetsHTML(4)}
-  </div>`;
-}
 function apx96MonthStats(){
   const month=calendarMonthState();
   const logs=(state.logs||[]).filter(x=>String(x.date||"").startsWith(month));
@@ -9790,24 +9732,6 @@ function apx96SetMoreView(view){
 }
 function apx96MoreTile(view,icon,title,description,status,tone=""){
   return `<button class="apx96-more-tile ${tone}" onclick="apx96SetMoreView('${view}')"><div class="apx96-more-icon">${icon}</div><b>${esc(title)}</b><span>${esc(description)}</span><strong>${esc(status)} · OPEN ›</strong></button>`;
-}
-function apx96MoreHubHTML(){
-  const target=typeof goalRangeText==="function"?goalRangeText():"78–80kg";
-  const connected=typeof cloudUser!=="undefined"&&!!cloudUser;
-  const notificationState=state.notifs?.enabled?"Enabled":"Off";
-  return `<div class="apx96-page">
-    <div class="apx96-more-hero"><div class="apx96-kicker" style="color:#b18aff">NXTFRM control centre</div><h1>More, organised.</h1><div class="apx96-soft" style="margin-top:8px">Your program, goals, scans, coaching and data—split into focused spaces.</div><div class="apx96-more-status"><span class="apx96-chip lime">${esc(state.gym)}</span><span class="apx96-chip">${esc(target)} target</span><span class="apx96-chip ${connected?"sky":""}">${connected?"Cloud connected":"Local-first"}</span></div></div>
-    <div class="apx96-more-grid">
-      ${apx96MoreTile("training","T","Training","Split, gyms and workout templates",`${(state.gyms||[]).length} gyms`)}
-      ${apx96MoreTile("goals","◎","Cut & goals","Targets, TDEE and lean-cut controls",target,"purple")}
-      ${apx96MoreTile("body","◌","Body & scans","Evo scans and body composition",`${(state.scans||[]).length} scans`,"sky")}
-      ${apx96MoreTile("coach","N","Coach & recovery","Readiness, memory and recovery logic",`Ready ${readiness().score}`)}
-      ${apx96MoreTile("notifications","◇","Reminders","Weigh-in, Zone 2 and backup prompts",notificationState,"purple")}
-      ${apx96MoreTile("data","↕","Data & sync","Cloud, backup, restore and exports",connected?"Connected":"Local backup","sky")}
-      ${apx96MoreTile("app","⋯","App & install","PWA setup, version and safety","V98")}
-    </div>
-    <div class="apx96-build"><span>NXTFRM · lean / strong / athletic</span><b>V98</b></div>
-  </div>`;
 }
 function apx96MoreHeader(title,subtitle){
   return `<div class="apx96-more-subhead"><button class="apx96-back" onclick="apx96SetMoreView('hub')">‹</button><div><div class="apx96-kicker">Control centre</div><h1>${esc(title)}</h1><div class="apx96-soft">${esc(subtitle)}</div></div></div>`;
