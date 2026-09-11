@@ -221,6 +221,14 @@ const NXT = (() => {
   function review() {
     const rows=weights(),s=trendStats(rows),lifts=strengthItems(),waist=cleanRows(cfg().waist,"cm"),check=cfg().recovery[state.date];
     const base={tone:"neutral",title:"Building your baseline",message:"Log morning weights across two weeks. Each weekly average needs at least three readings.",action:"Keep logging",reason:`${s.current.n} readings this week · ${s.previous.n} last week`,change:s.change};
+    if(detectPlateau().plateau===true) {
+      const d=NXT.diagnose();
+      if(d.ok&&d.verdict!=="insufficient_context") {
+        const waistDown=waist.length>=2&&waist.at(-1).date>=dateAdd(state.date,-14)&&waist.at(-1).cm<waist.at(-2).cm-.5;
+        const stall=waistDown?"Scale averages are fairly flat, while your recent waist measurement is lower. Keep measuring consistently before changing the plan.":"Recent weekly averages are fairly flat. Check consistency, measurement conditions and recovery. Food intake is not logged, so the app cannot identify the cause or calculate your deficit.";
+        return {...base,title:d.headline,message:stall,tone:base.tone};
+      }
+    }
     if(check&&(Number(check.energy)<=2&&check.energy!==""||Number(check.soreness)>=4))return {...base,title:"Give recovery some attention",message:"Your check-in suggests low energy or high soreness. Consider a shorter session or rest, and review how you feel before adding work.",action:"Review recovery",reason:"Based on today’s check-in",tone:"watch"};
     if(lifts.filter(x=>x.status==="Review").length>=2)return {...base,title:"Review your training load",message:"Several comparable lifts are down across repeated sessions. Check recovery and technique before changing calories or adding cardio.",action:"Review recovery",reason:"Repeated declines in two or more lifts",tone:"watch"};
     if(s.change===null)return base;
@@ -288,6 +296,108 @@ const NXT = (() => {
     if(!Number.isFinite(tdee)||tdee<1000||tdee>5000)return {...base,reason:"Your intake and weight trend disagree too much to trust an estimate yet. Keep logging."};
     const confidence=logged.length>=12&&rows.length>=8&&base.coverage>=.9?"high":logged.length>=10&&rows.length>=6?"medium":"low";
     return {...base,ok:true,tdee,intake:Math.round(intake),weightChange:Math.round(weightChange*100)/100,confidence,spanDays:span};
+  }
+  function diagnose() {
+    const p=detectPlateau(),f=forecastGoal(),at=adaptiveTDEE();
+    const days=p.plateauDays||p.windowDays||PLATEAU_WINDOW_DAYS;
+    const end=state.date,start=dateAdd(end,1-days);
+    const map=cfg().adherence;let adhSum=0,adhLogged=0,adhDays=0;
+    for(let d=start;d<=end;d=dateAdd(d,1)) {
+      adhDays++;
+      const factor=map[d]?ADHERENCE_FACTORS[map[d].status]:undefined;
+      if(factor!==undefined){adhSum+=factor;adhLogged++;}
+    }
+    const adhMean=adhDays?adhSum/adhDays:0;
+    const waistRows=cleanRows(cfg().waist,"cm").filter(r=>r.date>=start&&r.date<=end);
+    const waistDrop=waistRows.length>=2?waistRows[0].cm-waistRows.at(-1).cm:null;
+    const lifts=strengthItems().filter(x=>x.delta!==null&&x.delta<=-8);
+    const recScore=r=>{
+      const s=Number(r.sleep),e=Number(r.energy||3),sore=Number(r.soreness||2);
+      let score=78;
+      if(s)score+=Math.min(10,Math.max(-18,(s-6.5)*7));
+      score+=(e-3)*6;score-=Math.max(0,sore-2)*8;
+      return Math.max(35,Math.min(96,Math.round(score)));
+    };
+    const rec=cfg().recovery;let lowReady=0;
+    for(let d=start;d<=end;d=dateAdd(d,1)) {
+      const r=rec[d];
+      if(!r||[r.sleep,r.energy,r.soreness].every(v=>v===""||v===undefined||v===null))continue;
+      if(recScore(r)<60)lowReady++;
+    }
+    const hist=(cfg().tdeeHistory||[]).filter(r=>r&&Number.isFinite(dateMs(r.date))&&r.date>=start&&r.date<=end&&finite(r.tdee)!==null)
+      .slice().sort((a,b)=>a.date.localeCompare(b.date));
+    const tdeeNow=at.ok?at.tdee:(hist.at(-1)?hist.at(-1).tdee:null);
+    const tdeeThen=hist[0]?hist[0].tdee:null;
+    const tdeeDrop=tdeeThen!==null&&tdeeNow!==null?tdeeThen-tdeeNow:null;
+    const pct=v=>Math.round(v*100),kcal=n=>Number(n).toLocaleString("en-SG");
+    const rate=p.weeklyRate===null?"—":`${p.weeklyRate>0?"+":p.weeklyRate<0?"-":""}${Math.abs(p.weeklyRate).toFixed(2)} kg / week · ${p.spanDays||days} days`;
+    const rateTone=!p.ok||p.status==="undetermined"?"neutral":p.status==="losing"?"good":"watch";
+    const adhValue=`Logged: ${adhLogged} of ${adhDays} days · ${pct(adhMean)}% weighted`;
+    const adhTone=adhLogged===0?"neutral":adhMean>=.85?"good":"watch";
+    const plateauValue=p.plateau?`${p.plateauDays} days`:!p.ok||p.status==="undetermined"?"Undetermined":"No plateau detected";
+    const plateauTone=p.plateau?"watch":p.status==="losing"?"good":"neutral";
+    const base=[
+      {label:"Weight trend",value:rate,tone:rateTone},
+      {label:"Adherence",value:adhValue,tone:adhTone},
+      {label:"Plateau",value:plateauValue,tone:plateauTone}
+    ];
+    const rank=complete=>{
+      if(!p.ok||p.confidence==="low"||p.confidence==="none")return complete?"medium":"low";
+      if(p.confidence==="high"&&complete)return "high";
+      return "medium";
+    };
+    const pack=(verdict,headline,extra,actions,confidence,reason)=>({
+      ok:true,verdict,headline,evidence:base.concat(extra).slice(0,4),actions,confidence,reason
+    });
+    const gap=()=>{
+      if(!p.ok)return {what:"weigh-ins",need:Math.max(1,PLATEAU_MIN_READINGS-p.n)};
+      if(adhLogged<10)return {what:"adherence",need:10-adhLogged};
+      if(waistRows.length<2)return {what:"waist",need:Math.max(1,2-waistRows.length)};
+      if((hist.length<2&&!(hist.length>=1&&at.ok&&hist[0].date!==state.date)))return {what:"TDEE snapshots",need:Math.max(1,2-hist.length)};
+      if(lifts.length<2&&lowReady<5)return {what:"recovery check-ins",need:Math.max(1,5-lowReady)};
+      return {what:"weigh-ins",need:7};
+    };
+    if(!p.plateau&&f.ok&&finite(f.slope)!==null&&f.slope<0) {
+      const extra=[{label:"Forecast",value:f.weeks===0?"At goal range":`~${f.weeks} week${f.weeks===1?"":"s"} to goal`,tone:"good"}];
+      const conf=f.confidence==="high"&&p.ok&&p.confidence==="high"?"high":f.confidence==="low"||!p.ok?"low":"medium";
+      return pack("no_issue","Cut is progressing.",extra,[{text:"Keep the current plan.",kind:"hold"}],conf,"Weight is still trending down.");
+    }
+    if(p.plateau&&adhMean<.85) {
+      return pack("dietary_drift",`No weight change, but adherence is ${pct(adhMean)}%. This looks like compliance, not metabolism.`,
+        [],[{text:"Tighten adherence before changing calories.",kind:"adjust"}],
+        rank(adhDays>=14),"Adherence is below 85% over the plateau window.");
+    }
+    if(p.plateau&&waistDrop!==null&&waistDrop>.5&&adhMean>=.85) {
+      return pack("water_masking","Scale is flat, but waist is shrinking. This may not be a real plateau.",
+        [{label:"Waist",value:`−${waistDrop.toFixed(1)} cm over ${days} days`,tone:"good"}],
+        [{text:"Keep measuring waist; don’t cut calories yet.",kind:"hold"}],
+        rank(waistRows.length>=2),"Waist dropped while adherence held.");
+    }
+    if(p.plateau&&(lifts.length>=2||lowReady>=5)) {
+      const extra=[];
+      if(lifts.length)extra.push({label:"Strength",value:lifts.slice(0,2).map(x=>`${x.name} ${x.delta.toFixed(1)}%`).join(" · "),tone:"watch"});
+      if(lowReady)extra.push({label:"Readiness",value:`Below 60 on ${lowReady} day${lowReady===1?"":"s"}`,tone:"watch"});
+      return pack("recovery_deficit","Strength or recovery is slipping. This looks like load, not metabolism.",extra,
+        [{text:"Deload or sleep more before cutting further.",kind:"hold"}],
+        rank(lifts.length>=2||lowReady>=5),
+        lifts.length>=2?"Two or more lifts dropped at least 8%.":"Readiness stayed below 60 for at least five days.");
+    }
+    if(p.plateau&&adhMean>=.85&&tdeeDrop!==null&&tdeeDrop>=150) {
+      return pack("metabolic_adaptation","Likely metabolic adaptation, not a real plateau.",
+        [{label:"TDEE",value:`${kcal(tdeeThen)} → ${kcal(tdeeNow)} kcal`,tone:"watch"}],
+        [{text:"A small calorie adjustment may be warranted.",kind:"adjust"}],
+        rank(hist.length>=2||(hist.length>=1&&at.ok&&hist[0].date!==state.date)),
+        `Adaptive TDEE fell ${Math.round(tdeeDrop)} kcal over the plateau window.`);
+    }
+    const need=gap();
+    const headline=p.plateau
+      ?`Plateau confirmed. Not enough context to name the cause — keep logging ${need.what} for ${need.need} more day${need.need===1?"":"s"}.`
+      :`Not enough context to name the cause — keep logging ${need.what} for ${need.need} more day${need.need===1?"":"s"}.`;
+    return pack("insufficient_context",headline,
+      [{label:"Needed",value:`${need.what} · ${need.need} more day${need.need===1?"":"s"}`,tone:"neutral"}],
+      [{text:`Keep logging ${need.what} for ${need.need} more day${need.need===1?"":"s"}.`,kind:"diagnose_more"}],
+      p.plateau&&p.confidence==="high"?"medium":"low",
+      p.plateau?"Plateau confirmed, but no cause matched strictly.":p.reason||"Not enough data to diagnose.");
   }
   function maybeSnapshotTDEE(replaceToday=false) {
     const c=cfg(),at=c.tdeeHistory.findIndex(r=>r&&r.date===state.date);
@@ -401,6 +511,17 @@ const NXT = (() => {
     logSuggestion({kind:"review",subject:null,payload:{title:r.title,action:r.action,tone:r.tone,reason:r.reason}});
     return `<section class="n99-card n99-review ${r.tone}"><div class="n99-eyebrow">Weekly cut review</div><h2>${r.title}</h2><p>${r.message}</p><div class="n99-review-foot"><span>${r.reason}</span><button class="n99-text" onclick="NXT.openReview()">Why this advice? ›</button></div></section>`;
   }
+  function diagnosisCard() {
+    const d=diagnose();
+    const tone={dietary_drift:"watch",water_masking:"good",recovery_deficit:"watch",metabolic_adaptation:"watch"}[d.verdict]||"";
+    return `<section class="n99-card n99-review ${tone}">
+    <div class="n99-eyebrow">DIAGNOSIS</div>
+    <h2>${esc(d.headline)}</h2>
+    <ul>${(d.evidence||[]).map(e=>`<li class="n99-list-row"><span>${esc(e.label)}</span><span class="n99-status ${esc(e.tone)}">${esc(e.value)}</span></li>`).join('')}</ul>
+    <div class="n99-row">${(d.actions||[]).map(a=>`<span class="n99-small n99-status ${esc(a.kind)}">${esc(a.text)}</span>`).join('')}</div>
+    <small class="n99-small">Confidence: ${esc(d.confidence)}</small>
+  </section>`;
+  }
   function calorieCard() {
     const c=cfg(),target=finite(c.calories);
     return `<button class="n99-calorie" onclick="NXT.openCalories()"><div><span class="n99-eyebrow">Daily calorie guide</span><strong>${target?target.toLocaleString("en-SG"):'Set your target'}${target?'<small> kcal</small>':''}</strong><p>${target?'Your saved target · no meal logging':'A starting estimate, personalised to you'}</p></div><span class="n99-calorie-edit">${target?'Edit':'Set up'} ›</span></button>`;
@@ -458,7 +579,7 @@ const NXT = (() => {
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any target change stays your choice.</p><div class="n99-stack">${button('Review calorie guide','NXT.openCalories()',true)}${button('Update recovery check-in','apx96OpenReadiness()',true)}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
@@ -599,7 +720,7 @@ Object.assign(NXT, (()=>{
     const {visible,W,H,left,right,top,bottom}=model;
     const ranges=[[14,'2W'],[30,'1M'],[90,'3M'],[0,'All']];
     const controls=`<div class="n99-chart-controls"><div class="n99-segments" role="group" aria-label="Chart date range">${ranges.map(([r,l])=>`<button aria-pressed="${N.ui.range===r}" class="${N.ui.range===r?'active':''}" onclick="NXT.setRange(${r})">${l}</button>`).join('')}</div><label class="n99-check"><input type="checkbox" ${N.ui.showGoal?'checked':''} ${N.cfg().targetConfirmed?'':'disabled'} onchange="NXT.setGoalVisible(this.checked)">Goal band</label></div>`;
-    if(!visible.length)return `<section class="n99-card n99-chart"><div class="n99-row"><h2>Weight trend</h2><span class="n99-unit">kg</span></div>${controls}<div class="n99-chart-empty"><div class="n99-empty-number">—<small> kg</small></div><h3>${N.weights().length?'No weigh-ins in this period':'Your first weigh-in starts here'}</h3><p>${N.weights().length?'Choose All to see older entries, or log a current weight.':'Your actual readings will appear as dots. A trend line starts when a seven-day window has three readings.'}</p>${N.button('＋ Log weight','apx95OpenQuickWeight()')}</div></section>`;
+    if(!visible.length)return `<section class="n99-card n99-chart"><div class="n99-row"><h2>Weight trend</h2><span class="n99-unit">kg</span></div>${controls}<div class="n99-chart-empty"><div class="n99-empty-number">—<small> kg</small></div><h3>${N.weights().length?'No weigh-ins in this period':'Your first weigh-in starts here'}</h3><p>${N.weights().length?'Choose All to see older entries, or log a current weight.':'Your actual readings will appear as dots. A trend line starts when a seven-day window has three readings.'}</p>${N.button('＋ Log weight','apx95OpenQuickWeight()')}</div></section>${N.diagnosisCard()}`;
     const {points,segments,ticks,y,bands,forecast,anchor,plateau,forecastRead,goalRef,futureDays,todayX}=model,selected=Math.max(0,points.findIndex(p=>p.date===N.ui.selected)),idx=N.ui.selected&&selected>=0?selected:points.length-1;
     const p=points[idx],baseline=H-bottom;
     const band=N.ui.showGoal&&N.cfg().targetConfirmed?`<rect x="${left}" y="${y(goalHigh())}" width="${W-left-right}" height="${y(goalLow())-y(goalHigh())}" fill="#b18aff" fill-opacity=".065"/><line x1="${left}" x2="${W-right}" y1="${y(goalHigh())}" y2="${y(goalHigh())}" stroke="#b18aff" stroke-opacity=".4" stroke-dasharray="5 5"/>`:'';
@@ -627,7 +748,7 @@ Object.assign(NXT, (()=>{
       <div class="n99-legend"><span><i class="raw"></i>Weigh-in</span><span><i></i>7-day trend</span>${forecast?'<span><i class="dash"></i>Forecast</span>':''}<span>Drag to inspect</span></div>
       <p class="n99-small">${trendReadText(forecastRead,plateau)}</p>
       ${N.ui.showGoal&&N.cfg().targetConfirmed?`<p class="n99-small">Your chosen range: ${goalLow()}–${goalHigh()} kg. A weight range alone does not measure leanness.</p>`:''}
-    </section>`;
+    </section>${N.diagnosisCard()}`;
   }
   function selectPoint(index) {
     const m=N.ui.chart,p=m?.points?.[index];if(!p)return;

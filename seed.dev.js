@@ -7,11 +7,14 @@
     bws: 'apm_bws',
     cardio: 'apm_cardio',
     floorball: 'apm_floorball',
+    scans: 'apm_evo_scans',
+    rest: 'apm_rest',
     read: 'apm_current_read',
     settings: 'apm_settings'
   };
 
   const SEED_VERSION = 1;
+  let forceSeed = false;
 
   function uid() {
     return Math.random().toString(36).slice(2, 10);
@@ -30,7 +33,13 @@
     return /(?:^|[?&])reseed=1(?:&|$)/.test(location.search);
   }
 
+  function forcedReseed() {
+    return forceSeed || reseedRequested();
+  }
+
   function isVacant(key) {
+    // ?reseed=1 (or an internal force) must rebuild even when seedVersion is already set.
+    if (forcedReseed()) return true;
     const seededSettings = parseJSON(localStorage.getItem(KEYS.settings), null);
     if (seededSettings && seededSettings.cutSupport && seededSettings.cutSupport.seedVersion != null) return false;
     const raw = localStorage.getItem(key);
@@ -108,14 +117,13 @@
     ]
   };
 
-  const seenByExercise = {};
-
   function buildLogs() {
+    const seenByExercise = {};
     const logs = [];
     const rotation = ['Push', 'Pull', 'Pump', 'Legs'];
     let sessionIndex = 0;
     let liftOpportunity = 0;
-    for (let day = -89; day <= -1 && sessionIndex < 40; day++) {
+    for (let day = -89; day <= -1 && sessionIndex < 10; day++) {
       const date = dateFromToday(day);
       const d = new Date(date + 'T12:00:00');
       const dow = d.getDay();
@@ -257,24 +265,45 @@
   }
 
   function writeIfAllowed(key, value) {
-    if (!reseedRequested() && !isVacant(key)) return false;
+    if (!forcedReseed() && !isVacant(key)) return false;
     localStorage.setItem(key, JSON.stringify(value));
     return true;
   }
 
   function applyRuntime(written) {
     if (typeof state !== 'object' || !state) return;
-    if (written.logs) state.logs = written.logs;
-    if (written.bws) state.bws = written.bws;
-    if (written.cardio) state.cardio = written.cardio;
-    if (written.floorball) state.floorball = written.floorball;
+    const forced = forcedReseed();
+    if (forced) {
+      state.logs = written.logs || [];
+      state.bws = written.bws || [];
+      state.cardio = written.cardio || [];
+      state.floorball = written.floorball || [];
+      state.scans = written.scans || [];
+      state.rest = written.rest || [];
+    } else {
+      if (written.logs) state.logs = written.logs;
+      if (written.bws) state.bws = written.bws;
+      if (written.cardio) state.cardio = written.cardio;
+      if (written.floorball) state.floorball = written.floorball;
+      if (written.scans) state.scans = written.scans;
+      if (written.rest) state.rest = written.rest;
+    }
     if (written.read) state.read = written.read;
     if (written.settings && typeof settings === 'object') {
       if (!settings.cutSupport || typeof settings.cutSupport !== 'object') settings.cutSupport = {};
-      settings.cutSupport.recovery = Object.assign({}, settings.cutSupport.recovery, written.settings.cutSupport.recovery);
-      settings.cutSupport.adherence = Object.assign({}, settings.cutSupport.adherence, written.settings.cutSupport.adherence);
-      if (written.settings.cutSupport.calories != null) settings.cutSupport.calories = written.settings.cutSupport.calories;
-      settings.cutSupport.seedVersion = written.settings.cutSupport.seedVersion;
+      const cut = written.settings.cutSupport || {};
+      if (forcedReseed()) {
+        settings.cutSupport.recovery = cut.recovery || {};
+        settings.cutSupport.adherence = cut.adherence || {};
+        settings.cutSupport.waist = Array.isArray(cut.waist) ? cut.waist : [];
+        settings.cutSupport.tdeeHistory = Array.isArray(cut.tdeeHistory) ? cut.tdeeHistory : [];
+        settings.cutSupport.activeScenario = null;
+      } else {
+        settings.cutSupport.recovery = Object.assign({}, settings.cutSupport.recovery, cut.recovery);
+        settings.cutSupport.adherence = Object.assign({}, settings.cutSupport.adherence, cut.adherence);
+      }
+      if (cut.calories != null) settings.cutSupport.calories = cut.calories;
+      settings.cutSupport.seedVersion = cut.seedVersion;
       if (written.settings.startWeight != null) settings.startWeight = written.settings.startWeight;
     }
     if (typeof persist === 'function') persist();
@@ -301,6 +330,8 @@
 
     const existingSettings = parseJSON(localStorage.getItem(KEYS.settings), {});
     const existingCut = existingSettings.cutSupport || {};
+    const forced = forcedReseed();
+    const dropSeeded = rows => (Array.isArray(rows) ? rows : []).filter(r => !r || r._seed !== true);
     const settingsPayload = Object.assign({}, existingSettings, {
       startWeight: existingSettings.startWeight != null ? existingSettings.startWeight : 87.1,
       targetHigh: existingSettings.targetHigh != null ? existingSettings.targetHigh : 80,
@@ -308,25 +339,49 @@
       tdee: existingSettings.tdee != null ? existingSettings.tdee : 2644,
       zone2WeeklyTarget: existingSettings.zone2WeeklyTarget != null ? existingSettings.zone2WeeklyTarget : 180,
       cutSupport: Object.assign({}, existingSettings.cutSupport, {
-        recovery: Object.assign({}, existingCut.recovery || {}, recovery),
-        adherence: Object.assign({}, existingCut.adherence || {}, adherence),
+        recovery: forced ? recovery : Object.assign({}, existingCut.recovery || {}, recovery),
+        adherence: forced ? adherence : Object.assign({}, existingCut.adherence || {}, adherence),
         calories: existingCut.calories != null && existingCut.calories !== '' ? existingCut.calories : 2100,
-        seedVersion: SEED_VERSION
+        seedVersion: SEED_VERSION,
+        waist: forced ? dropSeeded(existingCut.waist) : existingCut.waist,
+        tdeeHistory: forced ? dropSeeded(existingCut.tdeeHistory) : existingCut.tdeeHistory,
+        activeScenario: forced ? null : existingCut.activeScenario
       })
     });
 
     const written = {};
-    if (writeIfAllowed(KEYS.logs, logs)) written.logs = logs;
-    if (writeIfAllowed(KEYS.bws, bws)) written.bws = bws;
-    if (writeIfAllowed(KEYS.cardio, cardio)) written.cardio = cardio;
-    if (writeIfAllowed(KEYS.floorball, floorball)) written.floorball = floorball;
+    if (forced) {
+      localStorage.setItem(KEYS.logs, JSON.stringify(logs));
+      localStorage.setItem(KEYS.bws, JSON.stringify(bws));
+      localStorage.setItem(KEYS.cardio, JSON.stringify(cardio));
+      localStorage.setItem(KEYS.floorball, JSON.stringify(floorball));
+      localStorage.setItem(KEYS.scans, JSON.stringify([]));
+      localStorage.setItem(KEYS.rest, JSON.stringify([]));
+      Object.assign(written, { logs, bws, cardio, floorball, scans: [], rest: [] });
+    } else {
+      if (writeIfAllowed(KEYS.logs, logs)) written.logs = logs;
+      if (writeIfAllowed(KEYS.bws, bws)) written.bws = bws;
+      if (writeIfAllowed(KEYS.cardio, cardio)) written.cardio = cardio;
+      if (writeIfAllowed(KEYS.floorball, floorball)) written.floorball = floorball;
+    }
     if (writeIfAllowed(KEYS.read, read)) written.read = read;
     if (writeIfAllowed(KEYS.settings, settingsPayload)) written.settings = settingsPayload;
     if (Object.keys(written).length) {
       applyRuntime(written);
-      if (reseedRequested()) history.replaceState({}, '', location.pathname);
+      if (reseedRequested()) {
+        const params = new URLSearchParams(location.search);
+        params.delete('reseed');
+        const q = params.toString();
+        history.replaceState({}, '', location.pathname + (q ? '?' + q : '') + location.hash);
+      }
     }
   }
+
+  window.__nxtForceSeed = function () {
+    forceSeed = true;
+    try { seed(); }
+    finally { forceSeed = false; }
+  };
 
   window.clearSeedData = function () {
     function stripArray(key, stateField) {
