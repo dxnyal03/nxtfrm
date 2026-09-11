@@ -9730,9 +9730,6 @@ function apx96SetMoreView(view){
   state.moreView=view;
   render();
 }
-function apx96MoreTile(view,icon,title,description,status,tone=""){
-  return `<button class="apx96-more-tile ${tone}" onclick="apx96SetMoreView('${view}')"><div class="apx96-more-icon">${icon}</div><b>${esc(title)}</b><span>${esc(description)}</span><strong>${esc(status)} · OPEN ›</strong></button>`;
-}
 function apx96MoreHeader(title,subtitle){
   return `<div class="apx96-more-subhead"><button class="apx96-back" onclick="apx96SetMoreView('hub')">‹</button><div><div class="apx96-kicker">Control centre</div><h1>${esc(title)}</h1><div class="apx96-soft">${esc(subtitle)}</div></div></div>`;
 }
@@ -10053,35 +10050,6 @@ function renderHistory(){
     <div class="nxt98-history-filters">${[["all","ALL"],["strength","STRENGTH"],["conditioning","CONDITIONING"],["body","BODYWEIGHT"]].map(([key,label])=>`<button class="nxt98-history-filter ${filter===key?"active":""}" onclick="nxt98SetHistoryFilter('${key}')">${label}</button>`).join("")}</div>
     ${apx96CalendarHTML()}
     ${nxt98HistoryFeedHTML(filter)}
-  </div>`;
-}
-function nxt98MoreCard(view,icon,title,description,status){
-  return `<button class="nxt98-more-card" onclick="apx96SetMoreView('${view}')"><div class="nxt98-more-icon">${icon}</div><b>${esc(title)}</b><span>${esc(description)}</span><em>${esc(status)} · OPEN ›</em></button>`;
-}
-function nxt98SystemRow(view,icon,title,description,status){
-  return `<button class="nxt98-system-row" onclick="apx96SetMoreView('${view}')"><div class="nxt98-more-icon">${icon}</div><div><b>${esc(title)}</b><span>${esc(description)}</span></div><strong>${esc(status)}</strong></button>`;
-}
-function apx96MoreHubHTML(){
-  const target=typeof goalRangeText==="function"?goalRangeText():"78–80kg";
-  const connected=typeof cloudUser!=="undefined"&&!!cloudUser;
-  const notificationState=state.notifs?.enabled?"ON":"OFF";
-  const p=plan();
-  return `<div class="nxt98-page">
-    <section class="nxt98-more-intro"><div class="nxt98-more-identity"><img src="logo-mark.svg" alt=""><div><div class="apx96-kicker">NXTFRM control centre</div><h1>Your system.</h1><p>Training, transformation and app controls—properly separated.</p></div></div><div class="nxt98-system-status"><span class="nxt98-pill lime">${esc(state.gym)}</span><span class="nxt98-pill">${esc(target)} target</span><span class="nxt98-pill">${connected?"Cloud connected":"Private · local-first"}</span></div></section>
-    <div class="nxt98-more-label"><span>Performance setup</span><b>WHAT SHAPES YOUR PLAN</b></div>
-    <button class="nxt98-more-primary" onclick="apx96SetMoreView('training')"><div class="nxt98-more-icon">T</div><div><b>Training system</b><span>${esc(p.label)} · ${(state.gyms||[]).length} gyms · split, templates and machine setup</span></div><strong>›</strong></button>
-    <div class="nxt98-more-grid">
-      ${nxt98MoreCard("goals","◎","Cut & goals","Lean zone, TDEE and cut controls",target)}
-      ${nxt98MoreCard("body","◌","Body & scans","Evo scans and composition",(state.scans||[]).length+" scans")}
-    </div>
-    <button class="nxt98-more-primary" style="margin-top:8px" onclick="apx96SetMoreView('coach')"><div class="nxt98-more-icon">N</div><div><b>Coach & recovery</b><span>Readiness ${readiness().score} · coaching memory and fatigue decisions</span></div><strong>›</strong></button>
-    <div class="nxt98-more-label"><span>App system</span><b>DEVICE, DATA & SAFETY</b></div>
-    <div class="nxt98-system-list">
-      ${nxt98SystemRow("notifications","◇","Reminders","Weigh-in, Zone 2 and backup prompts",notificationState)}
-      ${nxt98SystemRow("data","↕","Data & sync","Cloud, backup, restore and exports",connected?"SYNC":"LOCAL")}
-      ${nxt98SystemRow("app","⋯","App & install","PWA setup, version and reset safety","V98")}
-    </div>
-    <div class="nxt98-build"><span>NXTFRM · lean / strong / athletic</span><b>V98 PREMIUM</b></div>
   </div>`;
 }
 const nxt98BaseMoreSectionHTML=apx96MoreSectionHTML;
