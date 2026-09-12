@@ -1,12 +1,40 @@
-/* V101.1: shared presentation contract. Shell geometry only — not a visual redesign. */
+/* V102.1: shared visual foundation. Screen layouts remain V101; later slices opt into primitives. */
 :root {
-  --nxt-bg: #121216;
-  --nxt-surface: #1b1b22;
-  --nxt-raised: #23232d;
-  --nxt-text: #f0edf6;
-  --nxt-muted: #b3adbf;
-  --nxt-accent: #b49aff;
-  --nxt-border: rgba(228,223,239,.12);
+  --nxt-bg: #101014;
+  --nxt-surface: #17171e;
+  --nxt-raised: #1f1f28;
+  --nxt-interactive: #22222c;
+  --nxt-border: rgba(228,223,239,.10);
+  --nxt-hairline: rgba(228,223,239,.08);
+  --nxt-atmosphere: rgba(140,118,196,.11);
+
+  --nxt-text: #f1eef6;
+  --nxt-text-secondary: #b7b1c4;
+  --nxt-text-tertiary: #8e879c;
+  --nxt-muted: var(--nxt-text-secondary);
+
+  --nxt-purple: #b49aff;
+  --nxt-purple-bright: #c8b8ff;
+  --nxt-violet: #6f5f96;
+  --nxt-purple-tint: rgba(180,154,255,.14);
+  --nxt-purple-edge: rgba(180,154,255,.22);
+  --nxt-accent: var(--nxt-purple);
+
+  --n99-bg: var(--nxt-bg);
+  --n99-surface: var(--nxt-surface);
+  --n99-raised: var(--nxt-raised);
+  --n99-text: var(--nxt-text);
+  --n99-muted: var(--nxt-text-secondary);
+  --n99-border: var(--nxt-border);
+  --n99-accent: var(--nxt-purple);
+
+  --nxt-weight-hero: 700;
+  --nxt-weight-metric: 650;
+  --nxt-weight-title: 600;
+  --nxt-weight-cta: 600;
+  --nxt-weight-body: 400;
+  --nxt-weight-meta: 500;
+  --nxt-weight-nav: 500;
 
   --nxt-space-1: 4px;
   --nxt-space-2: 8px;
@@ -15,12 +43,15 @@
   --nxt-space-5: 24px;
   --nxt-space-6: 32px;
 
-  --nxt-radius-control: 12px;
+  --nxt-radius-control: 14px;
+  --nxt-radius-surface: 16px;
   --nxt-radius-card: 20px;
   --nxt-radius-pill: 999px;
 
   --nxt-control: 48px;
   --nxt-control-compact: 44px;
+
+  --nxt-motion: .15s ease;
 
   --nxt-z-cta: 20;
   --nxt-z-rest: 24;
@@ -31,11 +62,11 @@
   --nxt-safe-top: env(safe-area-inset-top, 0px);
   --nxt-safe-bottom: env(safe-area-inset-bottom, 0px);
 
-  --nxt-tabs-gap: 8px;
-  --nxt-tabs-pad-top: 14px;
-  --nxt-tabs-pad-bottom: 9px;
+  --nxt-tabs-gap: 0px;
+  --nxt-tabs-pad-top: 12px;
+  --nxt-tabs-pad-bottom: 8px;
   --nxt-tab-min-height: 56px;
-  --nxt-tabs-border-y: 2px;
+  --nxt-tabs-border-y: 1px;
   --nxt-tabs-chrome: calc(var(--nxt-tabs-pad-top) + var(--nxt-tab-min-height) + var(--nxt-tabs-pad-bottom) + var(--nxt-tabs-border-y));
   --nxt-tabs-stack: calc(var(--nxt-tabs-gap) + var(--nxt-tabs-chrome) + var(--nxt-safe-bottom));
 
@@ -48,12 +79,20 @@
   --nxt-header-stack: calc(var(--nxt-header-pad-top) + var(--nxt-header-row) + var(--nxt-header-pad-bottom) + var(--nxt-safe-top));
   --nxt-rest-clearance: 20px;
 
-  --nxt-bottom-slack: 39px;
+  --nxt-bottom-slack: 152px;
   --nxt-bottom-reserve: calc(var(--nxt-tabs-stack) + var(--nxt-bottom-slack));
+}
+
+html, body {
+  background:
+    radial-gradient(72% 42% at 8% -8%, var(--nxt-atmosphere), transparent 70%),
+    radial-gradient(48% 28% at 100% 0%, rgba(111,95,150,.08), transparent 62%),
+    var(--nxt-bg) !important; /* beats cut-support.css html,body solid fill */
 }
 
 body {
   padding-bottom: var(--nxt-bottom-reserve) !important;
+  color: var(--nxt-text);
 }
 
 .top {
@@ -61,22 +100,163 @@ body {
 }
 
 .tabs {
-  bottom: calc(var(--nxt-tabs-gap) + var(--nxt-safe-bottom));
-  padding: var(--nxt-tabs-pad-top) 8px var(--nxt-tabs-pad-bottom) !important;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 580px;
+  border: 0;
+  border-radius: 0;
+  border-top: 1px solid var(--nxt-hairline);
+  background: rgba(16,16,20,.97) !important; /* beats cut-support.css + #nxtfrm-v98-premium dock fill */
+  border-color: var(--nxt-hairline) !important;
+  box-shadow: none !important; /* beats floating-dock shadows in earlier layers */
+  padding: var(--nxt-tabs-pad-top) 6px calc(var(--nxt-tabs-pad-bottom) + var(--nxt-safe-bottom)) !important;
   z-index: var(--nxt-z-tabs) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.tabs .tab {
+  height: auto;
+  min-height: var(--nxt-tab-min-height);
+  border: 0;
+  border-radius: var(--nxt-radius-control);
+  background: transparent;
+  font-size: 10px;
+  font-weight: var(--nxt-weight-nav);
+  letter-spacing: 0;
+  gap: 3px;
+  box-shadow: none;
+  transition: color var(--nxt-motion), background-color var(--nxt-motion), box-shadow var(--nxt-motion);
+}
+
+.tabs .tab:not(.active) {
+  color: var(--nxt-text-tertiary) !important; /* beats cut-support.css + #nxtfrm-v98-premium */
+}
+
+.tabs .tab.active {
+  color: var(--nxt-text) !important;
+  background: var(--nxt-purple-tint) !important;
+  border: 0 !important;
+  box-shadow: inset 0 -2px 0 var(--nxt-purple) !important;
+}
+
+.tabs .tab.active span:first-child {
+  color: var(--nxt-purple-bright) !important;
+  transform: none;
+}
+
+.tabs .tab span:first-child {
+  transition: color var(--nxt-motion);
+}
+
+.tabs .tab span:last-child {
+  font-weight: var(--nxt-weight-nav);
 }
 
 /* V100: quiet purple-and-charcoal surfaces, readable settings and a focused logger. */
 .nxp { --n99-accent: var(--nxt-accent); padding-bottom: 20px; }
-.nxp h1 { font-size:2rem;line-height:1.2;letter-spacing:-.055em; }
-.nxp h2 { font-size:1.35rem;letter-spacing:-.025em; }
+.n99.nxp {
+  color: var(--nxt-text);
+  font-weight: var(--nxt-weight-body);
+}
+.n99.nxp h1 {
+  font-size: 2rem;
+  line-height: 1.2;
+  letter-spacing: -.03em;
+  font-weight: var(--nxt-weight-hero);
+}
+.n99.nxp h2 {
+  font-size: 1.35rem;
+  letter-spacing: -.02em;
+  font-weight: var(--nxt-weight-title);
+}
+.n99.nxp h3 {
+  font-weight: var(--nxt-weight-title);
+}
+.n99.nxp p {
+  font-size: 1rem;
+  font-weight: var(--nxt-weight-body);
+  color: var(--nxt-text-secondary);
+}
+.n99.nxp .nxp-caption,
+.n99.nxp .n99-eyebrow {
+  font-weight: var(--nxt-weight-meta);
+  color: var(--nxt-text-tertiary);
+}
+.n99.nxp .n99-metric strong {
+  font-weight: var(--nxt-weight-metric);
+}
+
+.nxp-action,
+.nxp-link,
+.nxp-chip {
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color var(--nxt-motion), background-color var(--nxt-motion), border-color var(--nxt-motion), opacity var(--nxt-motion), transform .12s ease;
+}
+.nxp-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--nxt-space-2);
+  min-height: var(--nxt-control);
+  padding: 12px 16px;
+  border: 1px solid var(--nxt-hairline);
+  border-radius: var(--nxt-radius-control);
+  background: var(--nxt-interactive);
+  color: var(--nxt-text);
+  font-weight: var(--nxt-weight-cta);
+  box-shadow: inset 1px 0 0 var(--nxt-purple-edge);
+}
+.nxp-action:active {
+  transform: scale(.985);
+  opacity: .92;
+}
+.nxp-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--nxt-control-compact);
+  min-width: 44px;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--nxt-purple);
+  font-weight: var(--nxt-weight-cta);
+  text-align: left;
+}
+.nxp-link:active { opacity: .82; }
+.nxp-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--nxt-control-compact);
+  min-width: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--nxt-radius-control);
+  background: var(--nxt-interactive);
+  color: var(--nxt-text-secondary);
+  font-weight: var(--nxt-weight-meta);
+}
+.nxp-chip.is-on,
+.nxp-chip[aria-pressed="true"] {
+  background: var(--nxt-purple-tint);
+  color: var(--nxt-text);
+}
+
+.nxp h1 { font-size:2rem;line-height:1.2;letter-spacing:-.03em; }
+.nxp h2 { font-size:1.35rem;letter-spacing:-.02em; }
 .nxp p { font-size:1rem; }
 .nxp-heading { display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0 24px; }
 .nxp-heading p { font-size:.875rem;color:var(--n99-muted);margin:5px 0 0; }
 .nxp-heading .n99-button { width:auto;padding:10px 13px;min-height:44px;flex-shrink:0;font-size:.875rem!important; }
 .nxp-caption { color:var(--n99-muted);font-size:.875rem;font-weight:500;letter-spacing:0;text-transform:none; }
 .nxp .n99-card { border-radius:20px;padding:20px;box-shadow:0 2px 7px rgba(0,0,0,.035); }
-.nxp .n99-button { border-radius:12px;font-size:1rem!important; }
+.nxp .n99-button { border-radius:var(--nxt-radius-control);font-size:1rem!important; }
 .nxp .n99-button.secondary { background:#22222c;border-color:#36343f; }
 .nxp .n99-small,.nxp .n99-list-row small { font-size:.875rem; }
 .nxp .n99-eyebrow { font-size:.8125rem;letter-spacing:.035em;text-transform:none; }
@@ -291,7 +471,11 @@ body:has(#nxp-set-form:focus-within) .tabs { visibility:hidden;pointer-events:no
 html[data-nxp-size=large] { font-size:18px; }
 html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[data-nxp-motion=reduced] *::after { animation:none!important;transition:none!important;scroll-behavior:auto!important; }
 @media(max-width:370px) { .nxp-heading { gap:8px; }.nxp-heading .n99-button { max-width:110px; }.nxp-rest { padding:0 8px;gap:6px; }.nxp-rest > span { gap:6px; }.nxp-ex h2 { font-size:1.5rem; }.nxp-setting-value { max-width:38%; }.nxp .n99-progress-tabs button { padding:10px 12px; } }
-@media(prefers-reduced-motion:reduce) { .nxp *, .nxp *::before,.nxp *::after { animation:none!important;transition:none!important; } }
+@media(prefers-reduced-motion:reduce) {
+  .nxp *, .nxp *::before,.nxp *::after { animation:none!important;transition:none!important; }
+  .tabs .tab,
+  .tabs .tab span:first-child { transition: none; transform: none; }
+}
 
 /* V101.5 History — chronological audit. Scoped; does not alter Home, Train, Progress, or shell algebra. */
 .nxp-history { min-width:0; }
