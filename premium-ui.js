@@ -31,21 +31,40 @@ const NXP = (() => {
     const context=lift?`${list.length} exercises · ${list.reduce((a,e)=>a+Number(e.sets),0)} working sets`:state.dayType==='Rest'?'A planned day to recharge.':state.dayType==='Zone2'?'An easy, conversational effort.':'Your activity and recovery, together.';
     const weekly=s.change===null?'Building':N.signed(s.change,2)+' kg';
     const link=(label,fn)=>`<button type="button" class="n99-text" onclick="${esc(fn)}">${label}</button>`;
+    const dayMs=N.dateMs(state.date);
+    const dayLabel=Number.isFinite(dayMs)?new Date(dayMs).toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'short',timeZone:'UTC'}):N.shortDate(state.date);
+    const rec=N.cfg().recovery[state.date];
+    const recLogged=!!(rec&&[rec.sleep,rec.energy,rec.soreness].some(v=>v!==''&&v!==undefined&&v!==null));
+    const recEnergy=rec?N.finite(rec.energy):null,recSore=rec?N.finite(rec.soreness):null;
+    const recLabel=!recLogged?'Not logged':(recEnergy!==null&&recEnergy<=2)||(recSore!==null&&recSore>=4)?'Review':recEnergy!==null&&recEnergy>=4?'Good':'Okay';
+    const cardioMins=N.cardioWeek(),cardioTarget=Number(settings.zone2WeeklyTarget)||90;
+    const lifts=N.strengthItems();
+    const liftReview=lifts.filter(x=>x.status==='Review').length;
+    const perfLabel=!lifts.length?'Building':liftReview>=2?'Review':lifts.some(x=>x.status==='Improving')?'Improving':lifts.some(x=>x.status==='Holding steady')?'Holding':lifts.some(x=>x.status==='Watch')?'Watch':'Building';
+    let weightNote=s.change===null?'Needs two weeks of readings':'Compared with prior 7 days';
+    if(s.change!==null&&N.cfg().targetConfirmed&&s.current.avg!==null){
+      const lo=goalLow(),hi=goalHigh();
+      if(s.current.avg>=lo&&s.current.avg<=hi)weightNote='In goal range';
+    }
+    const work=N.workRows();
+    const lastLift=[...new Set(work.map(row=>row.date))].sort().at(-1);
+    const lastLiftRow=lastLift?work.find(row=>row.date===lastLift):null;
+    const lastLiftLine=lastLiftRow?(lastLift===state.date?(finished?'Logged today':'In progress today'):`${N.label(lastLiftRow.dayType||'Workout')} · ${N.shortDate(lastLift)}`):'';
     N.logSuggestion({kind:"review",subject:null,payload:{title:r.title,action:r.action,tone:r.tone,reason:r.reason}});
     document.getElementById('homePage').innerHTML=`<div class="n99 nxp nxp-home">
-      <header class="nxp-heading nxp-home-chrome"><div><h1>Today</h1><p>${N.shortDate(state.date)}</p></div>${button(esc(state.gym),'cycleGym()',true)}</header>
-      <section class="nxp-home-status">
-        <button type="button" class="nxp-home-kcal" onclick="NXT.openCalories()"><small>Daily guide</small><strong>${cal?formatNumber(cal)+' <em>kcal</em>':'Set target'}</strong><span>${cal?'Edit':'Set up'}</span></button>
-        <div class="nxp-home-change"><small>Weekly change</small><strong>${weekly}</strong>${last?`<span>Latest ${last.weight.toFixed(1)} kg</span>`:`<span>${s.change===null?'Needs two weeks':'vs prior 7 days'}</span>`}</div>
-      </section>
-      <button type="button" class="nxp-home-decision ${esc(r.tone)}" onclick="NXT.openReview()"><span class="nxp-caption">NXTFRM Decision</span><b>${esc(r.title)}</b>${r.reason?`<p>${esc(r.reason)}</p>`:''}<span class="nxp-home-review">Review →</span></button>
-      <section class="nxp-home-today"><div class="n99-row"><span class="nxp-caption">${finished?'Workout saved':'Today'}</span>${link('Change','showSessionSheet()')}</div><h2>${esc(N.label(state.dayType))}</h2><p>${context}</p>${button(title,finished?"switchTab('train')":action)}</section>
+      <header class="nxp-heading nxp-home-chrome"><div><h1>Today</h1><p>${esc(dayLabel)}</p></div>${button(esc(state.gym),'cycleGym()',true)}</header>
+      <button type="button" class="nxp-home-decision ${esc(r.tone)}" onclick="NXT.openReview()"><span class="nxp-caption">NXTFRM Decision</span><b>${esc(r.title)}</b>${r.message?`<p>${esc(r.message)}</p>`:r.reason?`<p>${esc(r.reason)}</p>`:''}<span class="nxp-home-review">View evidence →</span></button>
+      <section class="nxp-home-card nxp-home-today"><div class="n99-row"><span class="nxp-caption">${finished?'Workout saved':'Today’s training'}</span>${link('Change','showSessionSheet()')}</div><h2>${esc(N.label(state.dayType))}</h2><p>${esc(context)}</p><button type="button" class="n99-button nxp-home-cta" onclick="${esc(finished?"switchTab('train')":action)}">${esc(title)}</button>${lastLiftLine?`<p class="nxp-home-last">${esc(lastLiftLine)}</p>`:''}</section>
+      <section class="nxp-home-card nxp-home-weight"><span class="nxp-caption">Bodyweight</span><strong>${last?esc(last.weight.toFixed(1))+' <em>kg</em>':'—'}</strong><p>${esc(weekly)}${s.change===null?'':' / week'}</p><small>${esc(weightNote)}</small>${link('View progress ›',"switchTab('weight')")}</section>
+      <div class="nxp-home-signals" role="group" aria-label="Recovery, cardio and performance">${linkSignal('Recovery',recLabel,'apx96OpenReadiness()')}${linkSignal('Cardio',cardioMins+' / '+cardioTarget+' min','showCardioSheet()')}${linkSignal('Performance',perfLabel,"NXT.ui.view='strength';switchTab('weight')")}</div>
+      <button type="button" class="nxp-home-kcal" onclick="NXT.openCalories()"><span><small>Calorie guide</small><strong>${cal?formatNumber(cal)+' <em>kcal</em>':'Set target'}</strong></span><span>${cal?'Edit':'Set up'}</span></button>
       ${N.adherenceHTML()}
       <nav class="nxp-home-secondary" aria-label="Quick actions">${link('＋ Weight','apx95OpenQuickWeight()')}${state.dayType==='Zone2'?'':link('Log cardio','showCardioSheet()')}${state.dayType==='Rest'?'':link('Check-in','apx96OpenReadiness()')}</nav>
-      <details class="nxp-home-week nxp-disclosure"><summary><span>Your week</span><small>${N.completedWeek()} lifting days logged</small></summary>${N.weekHTML()}<div class="nxp-card-foot"><span>${N.cardioWeek()} / ${Number(settings.zone2WeeklyTarget)||90} cardio min</span>${link('Edit plan ›',"NXT.more('training')")}</div></details>
+      <details class="nxp-home-week nxp-disclosure"><summary><span>Your week</span><small>${N.completedWeek()} lifting days logged</small></summary>${N.weekHTML()}<div class="nxp-card-foot"><span>${cardioMins} / ${cardioTarget} cardio min</span>${link('Edit plan ›',"NXT.more('training')")}</div></details>
       <details class="nxp-home-trend nxp-disclosure"><summary><span>Weight detail</span><small>${last?last.weight.toFixed(1)+' kg':'No weigh-in yet'}</small></summary><div class="n99-stats">${N.metric('7-day average',s.current.n>=3?s.current.avg.toFixed(1)+'<small> kg</small>':'—',s.current.n>=3?'From '+s.current.n+' weigh-ins':'Needs 3 readings in 7 days')}${N.metric('Weekly change',s.change===null?'—':N.signed(s.change,2)+'<small> kg</small>',s.change===null?'Building a comparison':'Compared with prior 7 days')}</div><div class="nxp-card-foot"><span>${last?'Latest: '+last.weight.toFixed(1)+' kg · '+N.shortDate(last.date):'Your first weigh-in sets the baseline.'}</span>${link('View progress ›',"switchTab('weight')")}</div></details>
     </div>`;
   }
+  function linkSignal(label,value,action) {return `<button type="button" class="nxp-home-signal" onclick="${esc(action)}"><small>${esc(label)}</small><strong>${esc(value)}</strong></button>`;}
   function draftKey() {return sessionKey()+'__'+state.exercise;}
   function rememberInput(el) {const key=draftKey(),d=ui.drafts.get(key)||{};d[el.id]=el.value;ui.drafts.set(key,d);if(el.id==='n99-set-type'){const b=document.getElementById('nxp-log-button');if(b)b.textContent='＋ Log '+(el.value==='warmup'?'warm-up':'set '+(N.done(state.exercise)+1));}}
   function trainChrome() {return `<header class="nxp-train-chrome"><div><p class="nxp-caption">${esc(N.label(state.dayType))}</p><p>${N.shortDate(state.date)}</p></div>${button('Change','showSessionSheet()',true)}</header>`;}
