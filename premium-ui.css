@@ -79,8 +79,8 @@
   --nxt-header-stack: calc(var(--nxt-header-pad-top) + var(--nxt-header-row) + var(--nxt-header-pad-bottom) + var(--nxt-safe-top));
   --nxt-rest-clearance: 20px;
 
-  --nxt-bottom-slack: 152px;
-  --nxt-bottom-reserve: calc(var(--nxt-tabs-stack) + var(--nxt-bottom-slack));
+  --nxt-bottom-gap: 16px;
+  --nxt-bottom-reserve: calc(var(--nxt-tabs-chrome) + var(--nxt-safe-bottom) + var(--nxt-bottom-gap));
 }
 
 html, body {
@@ -93,6 +93,14 @@ html, body {
 body {
   padding-bottom: var(--nxt-bottom-reserve) !important;
   color: var(--nxt-text);
+}
+
+.content {
+  padding-bottom: 0 !important; /* stop stacking index.html V28 132px pad on top of the measured reserve */
+}
+
+.n99.nxp details:not([open]) > *:not(summary) {
+  display: none !important; /* closed disclosures were staying in flow and inflating the scroll tail */
 }
 
 .top {
