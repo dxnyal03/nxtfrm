@@ -143,7 +143,8 @@ const NXP = (() => {
     const tabs=`<div class="n99-progress-tabs nxp-progress-tabs" role="group" aria-label="Progress view">${[['overview','Weight'],['strength','Performance'],['body','Body']].map(([key,title])=>`<button type="button" class="${v===key?'active':''}" aria-pressed="${v===key}" onclick="NXT.setView('${key}')">${title}</button>`).join('')}</div>`;
     const chrome=`<header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(period)}</p></div>${button('＋ Weight','apx95OpenQuickWeight()',true)}</header>`;
     if(v==='body'){
-      document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress">${chrome}${tabs}${N.bodyHTML()}</div>`;
+      const waist=N.cleanRows(N.cfg().waist,'cm'),scans=bodyScans();
+      document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-body"><header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(bodyTitle(waist,scans))}</p></div>${button('＋ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${bodySummary(waist,scans)}${bodyView(waist,scans)}</div>`;
       return;
     }
     if(v==='strength'){
@@ -274,6 +275,46 @@ const NXP = (() => {
       const status=row.querySelector('.n99-status');
       if(status&&item.status==='Older history')status.classList.add('nxp-progress-status-quiet');
     });
+  }
+  function bodyScans() {
+    return [...(state.scans||[])].filter(s=>s&&Number.isFinite(N.dateMs(s.date))&&s.date<=state.date)
+      .sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  }
+  function bodyTitle(waist,scans) {
+    if(waist.length&&scans.length)return 'Waist and scans';
+    if(waist.length)return waist.length===1?'One waist measurement':waist.length+' waist measurements';
+    if(scans.length)return scans.length===1?'One Evo scan':scans.length+' Evo scans';
+    return 'No measurements yet';
+  }
+  function scanBits(scan) {
+    const bits=[],w=N.finite(scan.weight),bf=N.finite(scan.bodyFat),mm=N.finite(scan.muscleMass),fm=N.finite(scan.fatMass);
+    if(w!==null)bits.push(w.toFixed(1)+' kg');
+    if(bf!==null)bits.push(bf.toFixed(1)+'% body fat');
+    if(mm!==null)bits.push(mm.toFixed(1)+' kg muscle');
+    if(fm!==null)bits.push(fm.toFixed(1)+' kg fat mass');
+    return bits;
+  }
+  function bodySummary(waist,scans) {
+    const lastW=waist.at(-1),priorW=waist.at(-2),lastS=scans.at(-1);
+    let detail='Waist and Evo scans are optional. Scale weight stays on the Weight tab. Nothing is estimated here.';
+    if(lastW&&lastS){
+      detail=`Latest waist ${lastW.cm.toFixed(1)} cm · ${N.shortDate(lastW.date)}. Latest scan ${N.shortDate(lastS.date)}.`;
+    }else if(lastW){
+      if(waist.length<2)detail=`Latest ${lastW.cm.toFixed(1)} cm · ${N.shortDate(lastW.date)}. A second reading is needed before a comparison.`;
+      else detail=`Latest ${lastW.cm.toFixed(1)} cm · ${N.shortDate(lastW.date)}. Previous ${priorW.cm.toFixed(1)} cm · ${N.shortDate(priorW.date)}. No Evo scans yet.`;
+    }else if(lastS){
+      const bits=scanBits(lastS);
+      detail=`Latest scan ${N.shortDate(lastS.date)}${bits.length?' · '+bits.join(' · '):''}. No waist measurements yet.`;
+    }
+    return `<section class="nxp-progress-body-summary"><span class="nxp-caption">Body</span><strong>${esc(bodyTitle(waist,scans))}</strong><p>${esc(detail)}</p></section>`;
+  }
+  function bodyView(waist,scans) {
+    const waistRows=waist.slice().reverse().map(r=>`<button type="button" class="n99-list-row nxp-progress-body-row" onclick="NXT.openWaist('${r.date}')"><span>${esc(N.shortDate(r.date))}</span><b>${r.cm.toFixed(1)} cm</b><span>Edit ›</span></button>`).join('');
+    const scanRows=scans.slice().reverse().map(s=>{
+      const bits=scanBits(s);
+      return `<div class="nxp-progress-body-scan"><span>${esc(N.shortDate(s.date))}</span><b>${esc(bits[0]||'Evo scan')}</b><small>${esc(bits.slice(1).join(' · ')||'Saved scan')}</small></div>`;
+    }).join('');
+    return `<section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Waist</h2>${waist.length?waistRows:`<p class="nxp-progress-body-empty">No waist measurements yet. Optional, about once a week, with the same tape position.</p>`}${row('Log waist','＋',"NXT.openWaist()",'Same position and similar conditions')}</section><section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Evo scans</h2>${scans.length?scanRows:`<p class="nxp-progress-body-empty">No scans saved. Compare readings under similar conditions; treat changes as estimates, not proof of fat or muscle loss.</p>`}${row('Open scans','Open',"NXT.more('body')",'Existing scan tools and history')}</section><p class="n99-small nxp-progress-body-note">Body fat and muscle figures only appear from saved Evo scans. They are not calculated from waist or scale weight.</p>`;
   }
   function more() {
     applyAppearance();
