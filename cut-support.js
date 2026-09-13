@@ -514,12 +514,13 @@ const NXT = (() => {
   function diagnosisCard() {
     const d=diagnose();
     const tone={dietary_drift:"watch",water_masking:"good",recovery_deficit:"watch",metabolic_adaptation:"watch"}[d.verdict]||"";
+    const evidence=(d.evidence||[]).filter(e=>cfg().targetConfirmed||e.label!=='Forecast');
     return `<section class="n99-card n99-review ${tone}">
-    <div class="n99-eyebrow">DIAGNOSIS</div>
+    <div class="n99-eyebrow">Trend</div>
     <h2>${esc(d.headline)}</h2>
-    <ul>${(d.evidence||[]).map(e=>`<li class="n99-list-row"><span>${esc(e.label)}</span><span class="n99-status ${esc(e.tone)}">${esc(e.value)}</span></li>`).join('')}</ul>
+    <ul>${evidence.map(e=>`<li class="n99-list-row"><span>${esc(e.label)}</span><span class="n99-status ${esc(e.tone)}">${esc(e.value)}</span></li>`).join('')}</ul>
     <div class="n99-row">${(d.actions||[]).map(a=>`<span class="n99-small n99-status ${esc(a.kind)}">${esc(a.text)}</span>`).join('')}</div>
-    <small class="n99-small">Confidence: ${esc(d.confidence)}</small>
+    <small class="n99-small">Diagnosis confidence: ${esc(d.confidence)}</small>
   </section>`;
   }
   function calorieCard() {
@@ -663,7 +664,7 @@ Object.assign(NXT, (()=>{
     // Both layers stretch the y-domain, so they are read before the scales are built.
     const bandRows=(N.trendConfidence(rows)||[]).filter(r=>r.date>=start&&r.date<=state.date);
     for(const b of bandRows)values.push(b.lower,b.upper);
-    const forecastRead=N.forecastGoal(rows),fc=forecastGeometry(forecastRead,start,bandRows);
+    const forecastRead=N.forecastGoal(rows),fc=N.cfg().targetConfirmed?forecastGeometry(forecastRead,start,bandRows):null;
     // A clipped cone stops short of the goal, so the target has to be forced into the domain: the
     // reference line marking it would otherwise be drawn outside the plot, and the svg does not clip.
     if(fc)values.push(...fc.cone.map(c=>c[1]),fc.mid[1][1],fc.target);
@@ -719,7 +720,8 @@ Object.assign(NXT, (()=>{
     const model=chartModel();N.ui.chart=model;
     const {visible,W,H,left,right,top,bottom}=model;
     const ranges=[[14,'2W'],[30,'1M'],[90,'3M'],[0,'All']];
-    const controls=`<div class="n99-chart-controls"><div class="n99-segments" role="group" aria-label="Chart date range">${ranges.map(([r,l])=>`<button aria-pressed="${N.ui.range===r}" class="${N.ui.range===r?'active':''}" onclick="NXT.setRange(${r})">${l}</button>`).join('')}</div><label class="n99-check"><input type="checkbox" ${N.ui.showGoal?'checked':''} ${N.cfg().targetConfirmed?'':'disabled'} onchange="NXT.setGoalVisible(this.checked)">Goal band</label></div>`;
+    const goalOn=!!N.cfg().targetConfirmed;
+    const controls=`<div class="n99-chart-controls"><div class="n99-segments" role="group" aria-label="Chart date range">${ranges.map(([r,l])=>`<button type="button" aria-pressed="${N.ui.range===r}" class="${N.ui.range===r?'active':''}" onclick="NXT.setRange(${r})">${l}</button>`).join('')}</div>${goalOn?`<label class="n99-check"><input type="checkbox" ${N.ui.showGoal?'checked':''} onchange="NXT.setGoalVisible(this.checked)">Goal band</label>`:''}</div>`;
     if(!visible.length)return `<section class="n99-card n99-chart"><div class="n99-row"><h2>Weight trend</h2><span class="n99-unit">kg</span></div>${controls}<div class="n99-chart-empty"><div class="n99-empty-number">—<small> kg</small></div><h3>${N.weights().length?'No weigh-ins in this period':'Your first weigh-in starts here'}</h3><p>${N.weights().length?'Choose All to see older entries, or log a current weight.':'Your actual readings will appear as dots. A trend line starts when a seven-day window has three readings.'}</p>${N.button('＋ Log weight','apx95OpenQuickWeight()')}</div></section>${N.diagnosisCard()}`;
     const {points,segments,ticks,y,bands,forecast,anchor,plateau,forecastRead,goalRef,futureDays,todayX}=model,selected=Math.max(0,points.findIndex(p=>p.date===N.ui.selected)),idx=N.ui.selected&&selected>=0?selected:points.length-1;
     const p=points[idx],baseline=H-bottom;
@@ -734,7 +736,7 @@ Object.assign(NXT, (()=>{
     const plateauLabel=anchor&&plateau?.plateau?`<text x="${px(Math.min(W-right-52,Math.max(left+52,anchor.x)))}" y="${px(Math.max(top+13,anchor.y-16))}" text-anchor="middle" fill="#eee8f6" font-size="15" pointer-events="none">Plateau: ${plateau.plateauDays} days</text>`:'';
     return `<section class="n99-card n99-chart"><div class="n99-row"><div><div class="n99-eyebrow">The bigger picture</div><h2>Weight trend</h2></div><span class="n99-unit">kg</span></div>${controls}
       <div class="n99-chart-selected" aria-live="polite"><div><span id="n99-chart-date">${N.shortDate(p.date)}</span><strong id="n99-chart-weight">${p.weight.toFixed(1)}<small> kg</small></strong></div><div><span>7-day average</span><b id="n99-chart-average">${p.avg===null?'Building data':p.avg.toFixed(2)+' kg'}</b><small id="n99-chart-coverage">${p.coverage} readings in this window</small></div></div>
-      <svg id="n99-chart-svg" class="n99-chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="n99-chart-title n99-chart-desc" onpointerdown="NXT.scrub(event)" onpointermove="if(event.buttons)NXT.scrub(event)"><title id="n99-chart-title">Bodyweight, seven-day rolling average and trend forecast</title><desc id="n99-chart-desc">${points.length} weigh-ins. Silver dots are recorded weights. The purple line is a calendar-day average, shown only with at least three readings. The shaded band around it is the spread of readings about that average.${forecast?` A dashed line carries the recent trend on towards your goal, inside a cone whose lower and upper walls reach it at ${forecast.lowWeeks} and ${forecast.highWeeks} weeks.${goalRef===null?'':' The horizontal dashed line marks your goal weight.'}`:''} Use the slider below to inspect exact values.</desc>
+      <svg id="n99-chart-svg" class="n99-chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="n99-chart-title n99-chart-desc" onpointerdown="NXT.scrub(event)" onpointermove="if(event.buttons)NXT.scrub(event)"><title id="n99-chart-title">Bodyweight and seven-day rolling average${forecast?' with trend forecast':''}</title><desc id="n99-chart-desc">${points.length} weigh-ins. Silver dots are recorded weights. The purple line is a calendar-day average, shown only with at least three readings. The shaded band around it is the spread of readings about that average.${forecast?` A dashed line carries the recent trend on towards your goal, inside a cone whose lower and upper walls reach it at ${forecast.lowWeeks} and ${forecast.highWeeks} weeks.${goalRef===null?'':' The horizontal dashed line marks your goal weight.'}`:''} Use the slider below to inspect exact values.</desc>
       <defs><linearGradient id="n99-chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b18aff" stop-opacity=".18"/><stop offset="1" stop-color="#b18aff" stop-opacity="0"/></linearGradient><linearGradient id="n99-chart-cone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b18aff" stop-opacity=".16"/><stop offset="1" stop-color="#b18aff" stop-opacity=".05"/></linearGradient></defs>
       ${band}${ticks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="#ffffff" stroke-opacity=".065"/><text x="${left-10}" y="${t.y+5}" text-anchor="end" fill="#b0a7bb" font-size="16">${Number(t.value.toFixed(1))}</text>`).join('')}
       ${goalMark}${today}${cone}${bandFill}
@@ -746,7 +748,7 @@ Object.assign(NXT, (()=>{
       <text x="${left}" y="${H-12}" fill="#b0a7bb" font-size="16">${N.shortDate(model.start)}</text><text x="${px(Math.min(W-right,todayX))}" y="${H-12}" text-anchor="${futureDays?'middle':'end'}" fill="#b0a7bb" font-size="16">${N.shortDate(state.date)}</text></svg>
       ${points.length>1?`<input class="n99-scrubber" id="n99-chart-slider" type="range" min="0" max="${points.length-1}" value="${idx}" aria-label="Inspect weigh-in by date" aria-valuetext="${N.shortDate(p.date)}, ${p.weight} kilograms" oninput="NXT.selectPoint(Number(this.value))">`:''}
       <div class="n99-legend"><span><i class="raw"></i>Weigh-in</span><span><i></i>7-day trend</span>${forecast?'<span><i class="dash"></i>Forecast</span>':''}<span>Drag to inspect</span></div>
-      <p class="n99-small">${trendReadText(forecastRead,plateau)}</p>
+      ${((read)=>read?`<p class="n99-small">${read}</p>`:'')(trendReadText(goalOn?forecastRead:{ok:false,reason:''},plateau))}
       ${N.ui.showGoal&&N.cfg().targetConfirmed?`<p class="n99-small">Your chosen range: ${goalLow()}–${goalHigh()} kg. A weight range alone does not measure leanness.</p>`:''}
     </section>${N.diagnosisCard()}`;
   }
@@ -762,7 +764,7 @@ Object.assign(NXT, (()=>{
   function scrub(event) {
     const m=N.ui.chart,svg=document.getElementById('n99-chart-svg');if(!m?.points?.length||!svg)return;
     const bounds=svg.getBoundingClientRect(),x=(event.clientX-bounds.left)/bounds.width*m.W;
-    const index=m.points.reduce((best,p,i)=>Math.abs(p.x-x)<Math.abs(m.points[best].x-x)?i:best,0);selectPoint(index);
+    const index=m.points.reduce((best,p,i)=>Math.abs(p.x-x)<Math.abs(m.points[best].x-x)?i:best,0);N.selectPoint(index);
   }
   function setRange(range) {N.ui.range=range;N.ui.selected=null;N.repaint();}
   function setGoalVisible(on) {N.ui.showGoal=on;N.repaint();}

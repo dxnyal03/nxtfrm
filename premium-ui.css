@@ -864,34 +864,171 @@ body:has(#nxp-set-form:focus-within) .tabs { visibility:hidden;pointer-events:no
 .nxp .n99-legend { font-size:.8125rem;gap:10px; }
 .nxp .n99-legend > span:last-child { margin-left:0; }
 
-/* V101.4 Progress — evidence workspace. Scoped; does not alter Home, Train, or shell algebra. */
-.nxp-progress { min-width:0; }
-.nxp-progress > .nxp-heading { margin:var(--nxt-space-2) 0 var(--nxt-space-3); }
+/* V102.3A Progress Weight — chart-led instrument. Tabs shared; Weight layout scoped. */
+.nxp-progress { min-width:0;overflow-x:hidden; }
+.nxp-progress > .nxp-heading { margin:var(--nxt-space-2) 0 var(--nxt-space-2); }
 .nxp-progress > .nxp-heading h1 { font-size:1.25rem;letter-spacing:-.03em;font-weight:650; }
-.nxp-progress-tabs { display:flex;gap:var(--nxt-space-1); }
-.nxp-progress-tabs button { flex:1 1 0;min-width:44px;min-height:var(--nxt-control-compact);padding:10px 8px; }
-.nxp-progress .n99-chart { margin-top:0; }
-.nxp-progress .n99-chart h2 { font-size:1.25rem; }
-.nxp-progress .n99-chart-selected { gap:var(--nxt-space-3); }
-.nxp-progress .n99-chart-selected strong { font-size:clamp(1.75rem,8vw,2.5rem); }
-.nxp-progress .n99-chart-controls { display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--nxt-space-2); }
+.nxp-progress-tabs {
+  display:flex;
+  gap:0;
+  margin:0 0 var(--nxt-space-2);
+  padding:0;
+  border-bottom:1px solid var(--nxt-hairline);
+}
+.nxp-progress .nxp-progress-tabs button,
+.nxp-progress-tabs button {
+  flex:1 1 0;
+  min-width:44px;
+  min-height:var(--nxt-control-compact);
+  padding:10px 6px;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  color:var(--nxt-text-tertiary);
+  font-size:.75rem;
+  font-weight:var(--nxt-weight-nav);
+  line-height:1.2;
+}
+.nxp-progress .nxp-progress-tabs button.active,
+.nxp-progress-tabs button.active {
+  color:var(--nxt-text);
+  background:transparent;
+  border-color:transparent;
+  box-shadow:inset 0 -2px 0 var(--nxt-purple);
+}
+.nxp-progress-hero { margin:0 0 var(--nxt-space-2);min-width:0; }
+.nxp-progress-hero-primary { display:flex;flex-wrap:wrap;align-items:center;gap:0 10px; }
+.nxp-progress-hero-primary #n99-chart-weight { flex:1 0 100%; }
+.nxp-progress-hero .n99-chart-selected {
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:var(--nxt-space-3);
+  padding:0;
+}
+.nxp-progress-hero .n99-chart-selected strong {
+  font-size:1.75rem;
+  letter-spacing:-.03em;
+  font-weight:var(--nxt-weight-metric);
+  line-height:1.15;
+  margin-top:2px;
+}
+.nxp-progress-hero .n99-chart-selected strong small { font-size:.875rem;color:var(--nxt-text-tertiary); }
+.nxp-progress-hero .n99-chart-selected span { font-size:.75rem;color:var(--nxt-text-tertiary); }
+.nxp-progress-hero .n99-chart-selected b {
+  color:var(--nxt-text-secondary);
+  font-size:.8125rem;
+  font-weight:var(--nxt-weight-meta);
+  margin:2px 0;
+  letter-spacing:0;
+}
+.nxp-progress-hero .n99-chart-selected small { font-size:.6875rem;color:var(--nxt-text-tertiary); }
+.nxp-progress p.nxp-progress-compare {
+  margin:6px 0 0;
+  font-size:.75rem;
+  line-height:1.4;
+  color:var(--nxt-text-tertiary);
+  overflow-wrap:anywhere;
+}
+.nxp-progress-latest {
+  margin:0;
+  min-height:44px;
+  padding:0;
+  font-size:.75rem!important;
+  line-height:1.2;
+  display:inline-flex;
+  align-items:center;
+}
+.nxp-progress-latest[hidden] { display:none!important; }
+.nxp-progress-weight .n99-chart-controls {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:var(--nxt-space-1);
+  margin:0 0 var(--nxt-space-2);
+}
 .nxp-progress .n99-segments { display:flex;flex:1 1 220px;min-width:0; }
-.nxp-progress .n99-segments button { flex:1 1 44px;min-width:44px;min-height:var(--nxt-control-compact);padding:8px 6px; }
+.nxp-progress-weight .n99-segments {
+  background:transparent;
+  border:0;
+  padding:0;
+  gap:2px;
+  border-radius:0;
+}
+.nxp-progress .n99-segments button {
+  flex:1 1 44px;
+  min-width:44px;
+  min-height:var(--nxt-control-compact);
+  padding:8px 6px;
+}
+.nxp-progress-weight .n99-segments button {
+  border-radius:var(--nxt-radius-control);
+  color:var(--nxt-text-tertiary);
+}
+.nxp-progress-weight .n99-segments button.active {
+  background:var(--nxt-purple-tint);
+  color:var(--nxt-text);
+}
 .nxp-progress .n99-chart-controls > label { flex:0 0 auto;min-height:var(--nxt-control-compact);margin:0;align-items:center; }
-.nxp-progress .n99-chart + .n99-review { margin-top:var(--nxt-space-2);padding:var(--nxt-space-3) var(--nxt-space-4);background:var(--nxt-surface);box-shadow:none; }
-.nxp-progress .n99-chart + .n99-review h2 { font-size:1rem;font-weight:550;letter-spacing:-.02em; }
-.nxp-progress .n99-chart + .n99-review .n99-eyebrow { font-size:.75rem; }
-.nxp-progress .n99-chart + .n99-review .n99-list-row { min-height:44px;padding:10px 0; }
-.nxp-progress-pace { display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--nxt-space-1) var(--nxt-space-3);padding:var(--nxt-space-3) 0;border-bottom:1px solid var(--nxt-border); }
-.nxp-progress-pace strong { font-size:1.125rem;font-weight:600;font-variant-numeric:tabular-nums; }
-.nxp-progress-pace small { font-size:.75rem;color:var(--nxt-muted); }
-.nxp-progress-tdee { margin:0;padding:var(--nxt-space-2) 0 0;border-top:1px solid var(--nxt-border); }
-.nxp-progress-tdee .n99-card { margin:var(--nxt-space-2) 0 0;padding:var(--nxt-space-3); }
+.nxp-progress-weight .n99-chart.n99-card {
+  margin:0;
+  padding:10px 12px 12px;
+  background:var(--nxt-surface);
+  box-shadow:none;
+  border:0;
+  border-radius:var(--nxt-radius-surface);
+}
+.nxp-progress-weight .n99-chart-svg { margin-top:0; }
+.nxp-progress-weight .n99-scrubber { height:44px; }
+.nxp-progress-weight .n99-chart > .n99-row[hidden],
+.nxp-progress-weight .n99-chart > .n99-small[hidden] { display:none!important; }
+.nxp-progress-weight .n99-empty-number { display:none; }
+.nxp-progress-weight .n99-chart-empty { padding:18px 8px 12px; }
+.nxp-progress-weight .n99-chart-empty h3 { font-size:1rem; }
+.nxp-progress-weight .n99-legend {
+  border-top-color:var(--nxt-hairline);
+  padding-top:10px;
+  margin-top:2px;
+  font-size:.6875rem;
+}
+.nxp-progress-weight .n99-small { font-size:.75rem;color:var(--nxt-text-tertiary); }
+.nxp-progress-weight .nxp-progress-insight,
+.nxp-progress-weight .n99-chart + .n99-review {
+  margin:var(--nxt-space-3) 0 0;
+  padding:var(--nxt-space-3) 0 0;
+  background:none;
+  box-shadow:none;
+  border:0;
+  border-top:1px solid var(--nxt-hairline);
+  border-radius:0;
+}
+.nxp-progress-weight .nxp-progress-insight h2,
+.nxp-progress-weight .n99-chart + .n99-review h2 {
+  font-size:.9375rem;
+  font-weight:550;
+  letter-spacing:-.02em;
+  line-height:1.35;
+}
+.nxp-progress-weight .nxp-progress-insight .n99-eyebrow,
+.nxp-progress-weight .n99-chart + .n99-review .n99-eyebrow { font-size:.6875rem;letter-spacing:.06em;color:var(--nxt-text-tertiary); }
+.nxp-progress-weight .nxp-progress-insight .n99-list-row,
+.nxp-progress-weight .n99-chart + .n99-review .n99-list-row { min-height:44px;padding:10px 0; }
+.nxp-progress-tdee { margin:0;padding:var(--nxt-space-2) 0 0;border-top:1px solid var(--nxt-hairline); }
+.nxp-progress-tdee > summary { min-height:var(--nxt-control-compact); }
+.nxp-progress-tdee .n99-card { margin:var(--nxt-space-2) 0 0;padding:var(--nxt-space-3);box-shadow:none; }
+.nxp-progress-weight .nxp-setting { min-height:var(--nxt-control-compact);padding:12px 0; }
 .nxp-progress .n99-strength-row { gap:var(--nxt-space-3);min-width:0; }
 .nxp-progress .n99-spark { flex:0 0 88px;width:88px;min-width:0; }
 @media(max-width:360px) {
-  .nxp-progress .n99-chart { padding:16px 12px 14px; }
-  .nxp-progress .n99-chart-selected { flex-wrap:wrap;align-items:flex-end; }
+  .nxp-progress > .nxp-heading { margin:0 0 var(--nxt-space-2); }
+  .nxp-progress-hero { margin-bottom:var(--nxt-space-2); }
+  .nxp-progress-tabs button { font-size:.6875rem;padding:10px 4px; }
+  .nxp-progress-hero .n99-chart-selected { flex-wrap:wrap;align-items:flex-end;gap:var(--nxt-space-2); }
+  .nxp-progress-hero .n99-chart-selected strong { font-size:1.5rem; }
+  .nxp-progress-hero .n99-chart-selected > div:last-child { text-align:left; }
+  .nxp-progress p.nxp-progress-compare { margin-top:4px; }
+  .nxp-progress-weight .n99-chart.n99-card { padding:8px 8px 10px; }
 }
 .nxp-setting { display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:19px 0;border:0;border-bottom:1px solid #35323e;background:none;color:var(--n99-text);text-align:left;min-height:64px; }
 .nxp-setting > span:first-child { min-width:0;flex:1; }
