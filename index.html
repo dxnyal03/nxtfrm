@@ -4869,13 +4869,11 @@ function bindTabs(){
   document.querySelectorAll("[data-tab]").forEach(btn=>{
     if(btn.__apexBound)return;
     btn.__apexBound=true;
-    btn.addEventListener?.("click",function(ev){
-      ev.preventDefault?.();
-      ev.stopPropagation?.();
-      switchTab(this.dataset.tab);
-    });
+    // One handler only: the inline onclick slot is created at parse time, so adding a
+    // listener here made every tap run switchTab (and persist/render) twice.
     btn.onclick=function(ev){
       ev&&ev.preventDefault&&ev.preventDefault();
+      ev&&ev.stopPropagation&&ev.stopPropagation();
       switchTab(this.dataset.tab);
       return false;
     };
@@ -4926,6 +4924,8 @@ function render(){
     document.querySelectorAll("[data-tab]").forEach(t=>{
       const isActive=t.dataset.tab===tabName;
       t.classList.toggle("active",isActive);
+      if(isActive)t.setAttribute("aria-current","page");
+      else t.removeAttribute("aria-current");
     });
 
     if(tabName==="home") renderHome();
