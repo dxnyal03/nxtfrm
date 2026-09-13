@@ -67,26 +67,27 @@ const NXP = (() => {
   function linkSignal(label,value,action) {return `<button type="button" class="nxp-home-signal" onclick="${esc(action)}"><small>${esc(label)}</small><strong>${esc(value)}</strong></button>`;}
   function draftKey() {return sessionKey()+'__'+state.exercise;}
   function rememberInput(el) {const key=draftKey(),d=ui.drafts.get(key)||{};d[el.id]=el.value;ui.drafts.set(key,d);if(el.id==='n99-set-type'){const b=document.getElementById('nxp-log-button');if(b)b.textContent='＋ Log '+(el.value==='warmup'?'warm-up':'set '+(N.done(state.exercise)+1));}}
-  function trainChrome() {return `<header class="nxp-train-chrome"><div><p class="nxp-caption">${esc(N.label(state.dayType))}</p><p>${N.shortDate(state.date)}</p></div>${button('Change','showSessionSheet()',true)}</header>`;}
-  function trainIdle(kind,body) {document.getElementById('trainPage').innerHTML=`<div class="n99 nxp nxp-train ${kind}">${trainChrome()}${body}</div>`;}
+  function trainChrome() {return `<header class="nxp-train-chrome"><div><h1>${esc(N.label(state.dayType))}</h1><p>${esc(state.gym||'Gym')} · ${N.shortDate(state.date)}</p></div>${button('Change','showSessionSheet()',true)}</header>`;}
+  function trainIdle(kind,body) {document.getElementById('trainPage').innerHTML=`<div class="n99 nxp nxp-train nxp-train-idle ${kind}">${trainChrome()}${body}</div>`;}
+  function idleSecondary(label,action) {return `<button type="button" class="n99-text" onclick="${esc(action)}">${label}</button>`;}
   function cardioWeekLine() {
     const mins=N.cardioWeek(),target=Number(settings.zone2WeeklyTarget)||90;
     return {mins,target,pct:target?Math.min(100,mins/target*100):0};
   }
   function trainRest() {
     const w=cardioWeekLine();
-    trainIdle('nxp-train-rest',`<section class="nxp-train-state"><h2>No lifting session due</h2><p>Recovery is part of the plan. Nothing needs to be made up today.</p><p class="nxp-caption">${w.mins} / ${w.target} cardio min this week</p><div class="nxp-train-state-actions">${button('Quick recovery check-in','apx96OpenReadiness()')}${button('Log cardio','showCardioSheet()',true)}</div></section>`);
+    trainIdle('nxp-train-rest',`<section class="nxp-train-idle-copy"><h2>No lifting session due</h2><p>Recovery is part of the plan. Nothing needs to be made up today.</p></section><p class="nxp-caption nxp-train-idle-metric">${w.mins} / ${w.target} cardio min this week</p><div class="nxp-train-idle-actions">${button('Quick recovery check-in','apx96OpenReadiness()')}${idleSecondary('Log cardio','showCardioSheet()')}</div>`);
   }
   function trainZone2() {
     const w=cardioWeekLine();
-    trainIdle('nxp-train-zone2',`<section class="nxp-train-state"><h2>Easy cardio</h2><p>Zone 2 — a conversational effort. No lifting session is due.</p><div class="nxp-train-pace"><span class="nxp-caption">This week</span><strong>${w.mins} <em>/ ${w.target} min</em></strong><div class="n99-session-rail" aria-hidden="true"><span style="width:${w.pct}%"></span></div></div><div class="nxp-train-state-actions">${button('Log cardio','showCardioSheet()')}${button('Check-in','apx96OpenReadiness()',true)}</div></section>`);
+    trainIdle('nxp-train-zone2',`<section class="nxp-train-idle-copy"><p>Zone 2 — a conversational effort. No lifting session is due.</p></section><div class="nxp-train-pace"><span class="nxp-caption">This week</span><strong>${w.mins} <em>/ ${w.target} min</em></strong><div class="n99-session-rail" aria-hidden="true"><span style="width:${w.pct}%"></span></div></div><div class="nxp-train-idle-actions">${button('Log cardio','showCardioSheet()')}${idleSecondary('Check-in','apx96OpenReadiness()')}</div>`);
   }
   function trainFloorball() {
     const recent=(state.floorball||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,3);
-    trainIdle('nxp-train-floorball',`<section class="nxp-train-state"><h2>Floorball</h2><p>Hard conditioning. Count it toward recovery; no extra intervals needed.</p><div class="nxp-train-floorball-grid"><label>Duration <small>min</small><input id="apx96FbDuration" type="number" min="1" max="600" inputmode="numeric" placeholder="120"></label><label>Intensity <small>1–10</small><input id="apx96FbIntensity" type="number" min="1" max="10" inputmode="numeric" placeholder="8"></label></div><label>Notes<textarea id="apx96FbNotes" rows="3" placeholder="Energy, match load, soreness…"></textarea></label><div class="nxp-train-state-actions">${button('Save session','apx96SaveFloorball()')}</div>${recent.length?`<h3 class="nxp-group-title">Recent</h3>${recent.map(x=>`<div class="nxp-train-recent"><span>${esc(N.shortDate(x.date))}</span><b>${esc(x.duration||'—')} min · RPE ${esc(x.intensity||'—')}</b>${x.notes?`<small>${esc(x.notes)}</small>`:''}</div>`).join('')}`:`<p class="nxp-caption">No Floorball sessions logged yet.</p>`}</section>`);
+    trainIdle('nxp-train-floorball',`<section class="nxp-train-idle-copy"><p>Hard conditioning day. Log duration and effort.</p></section><section class="nxp-train-floorball-log"><div class="nxp-train-floorball-grid"><label>Duration <small>min</small><input id="apx96FbDuration" type="number" min="1" max="600" inputmode="numeric"></label><label>Intensity <small>1–10</small><input id="apx96FbIntensity" type="number" min="1" max="10" inputmode="numeric"></label></div><label class="nxp-train-floorball-notes">Notes<textarea id="apx96FbNotes" rows="2" placeholder="Energy, match load, soreness…"></textarea></label><div class="nxp-train-idle-actions">${button('Save session','apx96SaveFloorball()')}</div></section>${recent.length?`<section class="nxp-train-floorball-history"><h2 class="nxp-caption">Recent</h2>${recent.map(x=>`<div class="nxp-train-recent"><span>${esc(N.shortDate(x.date))}</span><b>${esc(x.duration||'—')} min · RPE ${esc(x.intensity||'—')}</b>${x.notes?`<small>${esc(x.notes)}</small>`:''}</div>`).join('')}</section>`:`<p class="nxp-caption nxp-train-idle-metric">No Floorball sessions logged yet.</p>`}`);
   }
   function trainEmpty() {
-    trainIdle('nxp-train-empty',`<section class="nxp-train-state"><h2>No exercises in this session</h2><p>This session currently has no exercises.</p><div class="nxp-train-state-actions">${button('Add exercise','v88OpenAddModal()')}${button('Restore programme','NXT.fullSession()',true)}</div></section>`);
+    trainIdle('nxp-train-empty',`<section class="nxp-train-idle-copy"><h2>No exercises in this session</h2><p>This session currently has no exercises.</p></section><div class="nxp-train-idle-actions">${button('Add exercise','v88OpenAddModal()')}${idleSecondary('Restore programme','NXT.fullSession()')}</div>`);
   }
   function training() {
     applyAppearance();
