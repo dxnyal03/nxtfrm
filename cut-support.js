@@ -1098,7 +1098,26 @@ window.showCardioSheet=NXT.cardioModal;
 renderRest=NXT.recoveryDay;
 window.apx96OpenReadiness=NXT.recoveryModal;
 apx96SaveReadiness=NXT.saveRecovery;
-readiness=function(){const r=NXT.cfg().recovery[state.date];if(r&&[r.sleep,r.energy,r.soreness].some(x=>x!==''&&x!==undefined&&x!==null)){state.read=r;return {...NXT.old.readiness(),known:true};}const head=document.getElementById('headScore');if(head){head.textContent='—';head.style.setProperty('--score',0);head.setAttribute('aria-label','No recovery check-in for today');}return {score:78,msg:'Check-in not logged',known:false};};
+readiness=function(){
+  const r=NXT.cfg().recovery[state.date];
+  const head=document.getElementById('headScore');
+  if(r&&[r.sleep,r.energy,r.soreness].some(x=>x!==''&&x!==undefined&&x!==null)){
+    state.read=r;
+    const out={...NXT.old.readiness(),known:true};
+    if(head){
+      head.textContent=String(out.score);
+      head.style.setProperty('--score',out.score);
+      head.setAttribute('aria-label','Readiness '+out.score);
+    }
+    return out;
+  }
+  if(head){
+    head.textContent='—';
+    head.style.setProperty('--score',0);
+    head.setAttribute('aria-label','No recovery check-in for today');
+  }
+  return {score:78,msg:'Check-in not logged',known:false};
+};
 suggestedRestSeconds=function(ex){return /press|row|pulldown|deadlift|squat/i.test(ex)&&!/tricep|pushdown/i.test(ex)?150:90;};
 weeklyLossRate=function(){const change=NXT.trendStats().change;return change===null?null:-change;};
 weekStartString=NXT.weekStart;
@@ -1341,7 +1360,7 @@ function openCloudLoginFromBanner(){switchTab('more');NXT.more('data');}
 window.dismissCloudLocalBanner=dismissCloudLocalBanner;
 window.openCloudLoginFromBanner=openCloudLoginFromBanner;
 const _render=render;
-render=function(){_render.apply(this,arguments);updateCloudSyncStatus();};
+render=function(){_render.apply(this,arguments);updateCloudSyncStatus();readiness();};
 
 let cloudSaveQuiet=false;
 saveCloudNow=async function(show=true){

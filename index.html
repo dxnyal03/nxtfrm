@@ -4625,7 +4625,7 @@ textarea:disabled {
           <div id="cloudSyncStatus" class="cloud-sync-status is-busy">Checking…</div>
         </div>
       </div>
-      <div class="score-wrap"><span class="score-label">Readiness</span><div class="score" id="headScore">78</div></div>
+      <div class="score-wrap"><span class="score-label">Readiness</span><div class="score" id="headScore" style="--score:0" aria-label="No recovery check-in for today">—</div></div>
     </div>
   </header>
   <div id="cloudLocalBanner" class="cloud-local-banner" hidden>
@@ -4839,8 +4839,6 @@ function readiness(){
   if(s)score+=Math.min(10,Math.max(-18,(s-6.5)*7));
   score+=(e-3)*6; score-=Math.max(0,sore-2)*8;
   score=Math.max(35,Math.min(96,Math.round(score)));
-  const headScore=document.getElementById("headScore");
-  if(headScore){headScore.textContent=score;headScore.style.setProperty("--score",score)}
   const msg=score>=80?"Ready":score>=65?"Manage fatigue":"Go light";
   return{score,msg};
 }
