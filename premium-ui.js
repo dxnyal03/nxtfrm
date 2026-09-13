@@ -142,8 +142,14 @@ const NXP = (() => {
     const period=r===14?'Last 2 weeks':r===30?'Last month':r===90?'Last 3 months':'All recorded weigh-ins';
     const tabs=`<div class="n99-progress-tabs nxp-progress-tabs" role="group" aria-label="Progress view">${[['overview','Weight'],['strength','Performance'],['body','Body']].map(([key,title])=>`<button type="button" class="${v===key?'active':''}" aria-pressed="${v===key}" onclick="NXT.setView('${key}')">${title}</button>`).join('')}</div>`;
     const chrome=`<header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(period)}</p></div>${button('＋ Weight','apx95OpenQuickWeight()',true)}</header>`;
-    if(v==='strength'||v==='body'){
-      document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress">${chrome}${tabs}${v==='strength'?N.strengthHTML():N.bodyHTML()}</div>`;
+    if(v==='body'){
+      document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress">${chrome}${tabs}${N.bodyHTML()}</div>`;
+      return;
+    }
+    if(v==='strength'){
+      const items=N.strengthItems();
+      document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-strength"><header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(performanceSubtitle(items))}</p></div>${button('＋ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${performanceSummary(items)}<div class="nxp-progress-strength-body">${N.strengthHTML()}</div></div>`;
+      arrangeStrengthView(items);
       return;
     }
     const vsPrior=s.change===null?'Latest 7-day mean vs previous 7 days is still building — each week needs 3 weigh-ins.':`Latest 7-day mean vs previous 7 days: ${N.signed(s.change)} kg`;
@@ -208,6 +214,66 @@ const NXP = (() => {
         else el.textContent=keep.join(' · ');
       });
     }
+  }
+  function performanceSubtitle(items) {
+    const last=items.map(x=>x.latestDate).filter(Boolean).sort().at(-1);
+    if(!items.length)return 'No lifting history yet';
+    if(items.every(x=>x.status==='Older history'))return 'Older history';
+    return last?'Last comparable lift '+N.shortDate(last):items.length+' exercises tracked';
+  }
+  function performanceSummary(items) {
+    const last=items.map(x=>x.latestDate).filter(Boolean).sort().at(-1);
+    const older=items.filter(x=>x.status==='Older history').length;
+    const holding=items.filter(x=>x.tone==='good').length;
+    const review=items.filter(x=>x.status==='Review').length;
+    const building=items.filter(x=>x.status==='Building data').length;
+    const watch=items.filter(x=>x.status==='Watch').length;
+    let title='No lifts yet';
+    let detail='Log the same exercise at the same gym to start a comparison.';
+    if(items.length&&older===items.length){
+      title='Older history';
+      detail=last?`Last comparable lift ${N.shortDate(last)}. None of the ${items.length} tracked exercises is recent enough for a current comparison.`:`${items.length} exercises tracked, none recent enough to compare.`;
+    }else if(items.length){
+      title=review?`${holding} holding / improving · ${review} to review`:holding||watch?`${holding} holding / improving`:`${items.length} exercises`;
+      const bits=[older?older+' older history':'',building?building+' still building':'',watch?watch+' watch':''].filter(Boolean);
+      detail=(last?'Last comparable lift '+N.shortDate(last)+'. ':'')+(bits.length?bits.join(' · ')+'.':'Comparable sessions are available.');
+    }
+    return `<section class="nxp-progress-strength-summary"><span class="nxp-caption">Performance history</span><strong>${esc(title)}</strong><p>${esc(detail)}</p></section>`;
+  }
+  function arrangeStrengthView(items) {
+    const root=document.querySelector('.nxp-progress-strength');
+    if(!root)return;
+    const cards=[...root.querySelectorAll('.nxp-progress-strength-body > .n99-card')];
+    const intro=cards[0],list=cards[1];
+    if(intro){
+      intro.classList.add('nxp-progress-strength-note');
+      const heading=intro.querySelector('h2'),stats=intro.querySelector('.n99-stats');
+      if(heading)heading.hidden=true;
+      if(stats)stats.hidden=true;
+      if(list)list.insertAdjacentElement('afterend',intro);
+    }
+    if(list){
+      list.classList.add('nxp-progress-strength-list');
+      const heading=list.querySelector('h2');
+      if(heading){
+        heading.className='nxp-caption nxp-progress-strength-heading';
+        heading.textContent=items.length?'Exercise trends · '+items.length:'Exercise trends';
+      }
+    }
+    const rows=[...root.querySelectorAll('.n99-strength-row')];
+    items.forEach((item,i)=>{
+      const row=rows[i];if(!row)return;
+      const meta=row.querySelector('p');
+      const last=item.history.at(-1),set=last?.sets?.at(-1);
+      const bits=[item.gym,item.sessions+(item.sessions===1?' session':' sessions')];
+      if(item.latestDate)bits.push(N.shortDate(item.latestDate));
+      const load=set?N.finite(set.weight):null,reps=set?N.finite(set.reps):null;
+      if(load!==null&&reps!==null&&reps>0)bits.push((Number.isInteger(load)?load:load.toFixed(1))+' kg × '+reps);
+      else if(item.latestE1rm)bits.push('Est. 1RM '+Math.round(item.latestE1rm));
+      if(meta)meta.textContent=bits.join(' · ');
+      const status=row.querySelector('.n99-status');
+      if(status&&item.status==='Older history')status.classList.add('nxp-progress-status-quiet');
+    });
   }
   function more() {
     applyAppearance();
