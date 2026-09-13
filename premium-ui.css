@@ -1329,17 +1329,18 @@ html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[dat
 .nxp-cal-day.has-lift { background:rgba(180,154,255,.07); }
 .nxp-cal-day.is-today b { color:var(--nxt-purple-bright);font-weight:var(--nxt-weight-metric); }
 .nxp-cal-day.is-selected { background:var(--nxt-purple-tint);box-shadow:inset 0 0 0 1px var(--nxt-purple);color:var(--nxt-text); }
-/* Lift loudest, cardio second, weigh-in quietest: weigh-ins are near daily. */
+/* Lift loudest, cardio second, weigh-in quietest. Size/position stay the hierarchy; neon hue only separates kind. */
 .nxp-cal-marks { display:flex;align-items:center;justify-content:center;gap:3px;height:5px; }
 .nxp-cal-marks i { display:block;border-radius:50%; }
-.nxp-cal-marks i.lift { width:5px;height:5px;background:var(--nxt-purple-bright); }
-.nxp-cal-marks i.cond { width:4px;height:4px;background:rgba(180,154,255,.5); }
-.nxp-cal-marks i.body { width:3px;height:3px;background:var(--nxt-text-tertiary); }
+.nxp-cal-marks i.lift { width:5px;height:5px;background:var(--nxt-purple);box-shadow:0 0 5px var(--nxt-purple); }
+.nxp-cal-marks i.cond { width:4px;height:4px;background:#ffbf2a;box-shadow:0 0 4px #ffbf2a; }
+.nxp-cal-marks i.body { width:3px;height:3px;background:#7ae1ff;box-shadow:0 0 3px #7ae1ff; }
 .nxp-cal-legend { display:flex;flex-wrap:wrap;gap:2px 12px;margin:10px 0 0;padding-left:4px;font-size:.75rem;color:var(--nxt-text-tertiary); }
 .nxp-cal-legend span { display:inline-flex;align-items:center;gap:5px; }
-.nxp-cal-legend span::before { content:"";border-radius:50%;width:5px;height:5px;background:var(--nxt-purple-bright); }
-.nxp-cal-legend span.cond::before { width:4px;height:4px;background:rgba(180,154,255,.5); }
-.nxp-cal-legend span.body::before { width:3px;height:3px;background:var(--nxt-text-tertiary); }
+.nxp-cal-legend span::before { content:"";border-radius:50%; }
+.nxp-cal-legend span.lift::before { width:5px;height:5px;background:var(--nxt-purple);box-shadow:0 0 5px var(--nxt-purple); }
+.nxp-cal-legend span.cond::before { width:4px;height:4px;background:#ffbf2a;box-shadow:0 0 4px #ffbf2a; }
+.nxp-cal-legend span.body::before { width:3px;height:3px;background:#7ae1ff;box-shadow:0 0 3px #7ae1ff; }
 
 /* Selected day: the transition from month to record. */
 .nxp-history-selected { min-width:0; }
@@ -1409,6 +1410,15 @@ html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[dat
   .nxp-more .nxp-more-account + .nxp-group-title { margin-top:4px; }
   .nxp-more .nxp-group-title { margin:10px 2px 0; }
   .nxp-more .nxp-setting { padding:10px 2px; }
+}
+@media (max-width:340px) and (max-height:600px) {
+  .nxp .nxp-more-chrome { margin:4px 0 8px; }
+  .nxp-more-account { margin-bottom:4px;padding-bottom:6px; }
+  .nxp-more-account h2 { margin-top:2px; }
+  .nxp-more-account p { margin-top:2px; }
+  .nxp-more .nxp-more-account + .nxp-group-title { margin-top:2px; }
+  .nxp-more .nxp-group-title { margin:8px 2px 0; }
+  .nxp-more .nxp-setting { padding:8px 2px;min-height:var(--nxt-control-compact); }
 }
 #morePage.nxp-settings-page .n99-heading { margin:var(--nxt-space-2) 0 var(--nxt-space-3); }
 #morePage.nxp-settings-page .n99-heading h1 { font-size:1.25rem;letter-spacing:-.03em;font-weight:650; }
