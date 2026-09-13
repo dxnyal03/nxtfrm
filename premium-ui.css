@@ -1382,18 +1382,34 @@ html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[dat
   .nxp-cal-legend { gap:2px 10px; }
 }
 
-/* V101.6 More — configuration hub. Scoped; does not alter Home, Train, Progress, History, or shell algebra. */
+/* V102.6 More — settings hub. Scoped; does not alter Home, Train, Progress, History, or shell algebra. */
 .nxp-more { min-width:0; }
 .nxp .nxp-more-chrome { margin:var(--nxt-space-2) 0 var(--nxt-space-3); }
 .nxp .nxp-more-chrome h1 { font-size:1.25rem;letter-spacing:-.03em;font-weight:650; }
-.nxp-more .nxp-group-title { margin:16px 4px 8px;color:var(--nxt-muted); }
-.nxp-more .nxp-more-chrome + .nxp-group-title { margin-top:0; }
-.nxp-more .nxp-settings-group { padding:0 14px;border-radius:16px;background:var(--nxt-surface);border-color:var(--nxt-border); }
-.nxp-more .nxp-setting { align-items:flex-start;gap:8px 12px;padding:12px 0;min-height:var(--nxt-control-compact); }
+.nxp-more-account { margin:0 0 var(--nxt-space-4);padding:0 2px 14px;border-bottom:1px solid var(--nxt-hairline); }
+.nxp-more-account .nxp-caption { color:var(--nxt-text-tertiary); }
+.nxp-more-account h2 { margin:4px 0 0;font-size:1.125rem;font-weight:620;letter-spacing:-.02em;overflow-wrap:anywhere; }
+.nxp-more-account p { margin:4px 0 0;font-size:.875rem;color:var(--nxt-text-secondary);overflow-wrap:anywhere; }
+.nxp-more .nxp-group-title { margin:18px 2px 4px;font-size:.75rem;font-weight:var(--nxt-weight-meta);letter-spacing:.08em;text-transform:uppercase;color:var(--nxt-text-tertiary); }
+.nxp-more .nxp-more-account + .nxp-group-title { margin-top:var(--nxt-space-2); }
+.nxp-more-group { margin:0;padding:0;background:transparent;border:0; }
+.nxp-more .nxp-setting { align-items:flex-start;gap:8px 12px;padding:12px 2px;min-height:var(--nxt-control-compact);border-bottom:1px solid var(--nxt-hairline); }
+.nxp-more-group .nxp-setting:last-child { border-bottom:0; }
 .nxp-more .nxp-setting > span:first-child { flex:1 1 0;min-width:0; }
-.nxp-more .nxp-setting small { margin-top:2px; }
-.nxp-more .nxp-setting-value { max-width:none;flex:0 0 auto;overflow-wrap:normal;white-space:nowrap; }
-.nxp-more .nxp-footer { margin:20px 0 4px;color:var(--nxt-muted); }
+.nxp-more .nxp-setting small { margin-top:2px;overflow-wrap:anywhere; }
+.nxp-more .nxp-setting-value { max-width:42%;flex:0 1 auto;overflow-wrap:anywhere;white-space:normal; }
+.nxp-more-signout {
+  display:flex;align-items:center;justify-content:center;
+  width:100%;min-height:var(--nxt-control-compact);margin:var(--nxt-space-4) 0 0;padding:0;
+  border:0;background:transparent;color:#d7a4ab;font-size:.9375rem;font-weight:var(--nxt-weight-meta);
+}
+.nxp-more .nxp-footer { margin:20px 2px 4px;font-size:.75rem;color:var(--nxt-text-tertiary); }
+@media(max-width:360px) {
+  .nxp-more-account { margin-bottom:6px;padding-bottom:8px; }
+  .nxp-more .nxp-more-account + .nxp-group-title { margin-top:4px; }
+  .nxp-more .nxp-group-title { margin:10px 2px 0; }
+  .nxp-more .nxp-setting { padding:10px 2px; }
+}
 #morePage.nxp-settings-page .n99-heading { margin:var(--nxt-space-2) 0 var(--nxt-space-3); }
 #morePage.nxp-settings-page .n99-heading h1 { font-size:1.25rem;letter-spacing:-.03em;font-weight:650; }
 #morePage.nxp-settings-page .n99-calorie { padding:14px 16px;border-radius:16px;background:var(--nxt-raised); }

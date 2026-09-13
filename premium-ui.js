@@ -324,14 +324,26 @@ const NXP = (() => {
     if(view==='data'){dataView();return;}
     if(view!=='hub'){base.more();return;}
     const lifts=Object.values(settings.weeklyPlan||{}).filter(t=>!['Rest','Zone2','Floorball'].includes(t)).length;
-    page.innerHTML=shell(`${header('More','Secondary settings and tools')}
-      <h2 class="nxp-group-title">Profile & cut</h2><section class="nxp-settings-group">${row('Profile & cut',c.calories?formatNumber(c.calories)+' kcal':'Set up',"NXT.more('goals')",c.targetConfirmed?goalLow()+'–'+goalHigh()+' kg range':'Calorie guide and optional goal range')}</section>
-      <h2 class="nxp-group-title">Training</h2><section class="nxp-settings-group">${row('Training',lifts+' lifting days',"NXT.more('training')",'Plan, workouts and gyms')}</section>
-      <h2 class="nxp-group-title">Cardio & recovery</h2><section class="nxp-settings-group">${row('Cardio & recovery',(Number(settings.zone2WeeklyTarget)||90)+' min / week',"NXT.more('coach')",'Weekly minutes and check-ins')}</section>
-      <h2 class="nxp-group-title">Body & scans</h2><section class="nxp-settings-group">${row('Body & scans',N.cleanRows(c.waist,'cm').length+' waist entries',"NXT.more('body')",'Evo scans and measurements')}</section>
-      <h2 class="nxp-group-title">Preferences</h2><section class="nxp-settings-group">${row('Appearance','Purple · charcoal',"NXT.more('appearance')")}${row('Reminders',state.notifs?.enabled?'Enabled':'Off',"NXT.more('notifications')")}</section>
-      <h2 class="nxp-group-title">Data & app</h2><section class="nxp-settings-group">${row('Data & sync',cloudUser?'Signed in':'Local-first',"NXT.more('data')",'Backup export: '+backupLabel())}${row('App','Install & reset',"NXT.more('app')")}</section>
+    const waist=N.cleanRows(c.waist,'cm').length;
+    page.innerHTML=shell(`${header('More')}
+      ${moreAccount()}
+      ${moreGroup('Plan',row('Profile & cut',c.calories?formatNumber(c.calories)+' kcal':'Set up',"NXT.more('goals')",c.targetConfirmed?goalLow()+'–'+goalHigh()+' kg range':'Calorie guide and optional goal range')+row('Training',lifts+' lifting days',"NXT.more('training')",'Plan, workouts and gyms'))}
+      ${moreGroup('Recovery',row('Cardio & recovery',(Number(settings.zone2WeeklyTarget)||90)+' min / week',"NXT.more('coach')",'Weekly minutes and check-ins'))}
+      ${moreGroup('Body',row('Body & scans',waist?waist+(waist===1?' waist entry':' waist entries'):'None yet',"NXT.more('body')",'Evo scans and measurements'))}
+      ${moreGroup('Preferences',row('Appearance','Purple · charcoal',"NXT.more('appearance')")+row('Reminders',state.notifs?.enabled?'Enabled':'Off',"NXT.more('notifications')"))}
+      ${moreGroup('Data',row('Data & sync',cloudUser?'Signed in':'Local-only',"NXT.more('data')",'Backup export: '+backupLabel())+row('App','Install & reset',"NXT.more('app')"))}
+      ${cloudUser?`<button type="button" class="nxp-more-signout" onclick="cloudSignOut()">Sign out</button>`:''}
       <p class="nxp-footer">NXTFRM · your next form</p>`,'nxp-more');
+  }
+  function moreAccount() {
+    const signed=!!cloudUser;
+    const configured=!!((localStorage.getItem('apm_sb_url')||'').trim()&&(localStorage.getItem('apm_sb_key')||'').trim());
+    const title=signed?(cloudUser.email||'Signed in'):configured?'Sign-in needed':'Local-only';
+    const detail=[state.gym||null,signed?'Cloud session on this device':'Stored on this device'].filter(Boolean).join(' · ');
+    return `<section class="nxp-more-account"><span class="nxp-caption">Account</span><h2>${esc(title)}</h2><p>${esc(detail)}</p></section>`;
+  }
+  function moreGroup(title,html) {
+    return `<h2 class="nxp-group-title">${esc(title)}</h2><section class="nxp-more-group">${html}</section>`;
   }
   function saveAppearance() {N.cfg().appearance={text:val('nxp-text')==='large'?'large':'normal',motion:val('nxp-motion')==='reduced'?'reduced':'system'};applyAppearance();N.commit('Appearance saved');}
   function dataView() {
