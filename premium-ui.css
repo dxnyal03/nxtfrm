@@ -1277,26 +1277,90 @@ html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[dat
   .tabs .tab span:first-child { transition: none; transform: none; }
 }
 
-/* V101.5 History — chronological audit. Scoped; does not alter Home, Train, Progress, or shell algebra. */
+/* V102.5 History — calendar-first record. Scoped; does not alter Home, Train, Progress, or shell algebra. */
 .nxp-history { min-width:0; }
 .nxp-history > .nxp-heading { margin:var(--nxt-space-2) 0 var(--nxt-space-3); }
 .nxp-history > .nxp-heading h1 { font-size:1.25rem;letter-spacing:-.03em;font-weight:650; }
-.nxp.nxp-history .n99-progress-tabs.nxp-history-filters { display:flex;flex-wrap:wrap;gap:var(--nxt-space-1);overflow:visible;margin:0 0 var(--nxt-space-3);padding:0 0 var(--nxt-space-3);border-bottom:1px solid var(--nxt-border); }
-.nxp.nxp-history .n99-progress-tabs.nxp-history-filters button { flex:1 1 0;min-width:44px;min-height:var(--nxt-control-compact);padding:10px 8px; }
-.nxp-history .apx96-calendar { margin-top:0;padding:10px 12px;border-radius:16px; }
-.nxp-history .apx96-kicker { font-size:.75rem!important;letter-spacing:0!important;text-transform:none!important;color:var(--nxt-muted)!important; }
-.nxp-history .apx96-month { font-size:1rem!important;line-height:1.25;overflow-wrap:anywhere; }
-.nxp-history .apx96-calendar-head { align-items:flex-start;gap:8px; }
-.nxp-history .apx96-weekdays span { font-size:.75rem!important;padding:8px 0!important; }
-.nxp-history .apx96-cal-day b { font-size:.875rem!important; }
-.nxp-history .apx96-cal-nav button { min-width:44px;min-height:44px;width:44px;height:44px;font-size:1rem; }
-.nxp-history .apx96-cal-day { min-height:52px; }
-.nxp-history .nxp-group-title { margin:16px 4px 8px; }
-.nxp-history > p { margin:8px 4px 0;font-size:.875rem;color:var(--nxt-muted); }
-.nxp-history-card { display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;width:100%;min-width:0;min-height:var(--nxt-control-compact);margin:0 0 var(--nxt-space-2);padding:10px 12px;background:var(--nxt-surface);border:1px solid var(--nxt-border);border-radius:var(--nxt-radius-control);color:var(--nxt-text); }
-.nxp-history-card > b { font-size:1rem;font-weight:580;line-height:1.3;overflow-wrap:anywhere; }
-.nxp-history-card .nxp-caption { font-size:.75rem; }
-.nxp-history-card small { width:100%;margin:0;padding:0;border:0;font-size:.8125rem;color:var(--nxt-muted);overflow-wrap:anywhere; }
+.nxp-history > .nxp-heading p { margin:2px 0 0;font-size:.875rem;color:var(--nxt-text-secondary); }
+
+/* Filter bar: a seated segment track, related to Progress segments without cloning them. */
+.nxp-history-filters {
+  display:grid;grid-template-columns:repeat(4,1fr);gap:2px;
+  margin:0 0 var(--nxt-space-4);padding:3px;
+  border:1px solid var(--nxt-hairline);border-radius:var(--nxt-radius-control);
+  background:var(--nxt-surface);
+}
+.nxp-history-filters button {
+  min-width:0;min-height:var(--nxt-control-compact);padding:0 4px;
+  border:0;border-radius:11px;background:transparent;
+  color:var(--nxt-text-tertiary);font-size:.8125rem;font-weight:var(--nxt-weight-meta);
+  transition:color var(--nxt-motion),background-color var(--nxt-motion);
+}
+.nxp-history-filters button.active { background:var(--nxt-purple-tint);color:var(--nxt-text); }
+
+/* Calendar: the protagonist. Raised charcoal, hairline edge, no gradient. */
+.nxp-history-calendar {
+  margin:0 0 var(--nxt-space-4);padding:var(--nxt-space-3) 10px 10px;
+  border:1px solid var(--nxt-border);border-radius:var(--nxt-radius-card);
+  background:var(--nxt-raised);
+  box-shadow:0 14px 34px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.02);
+}
+.nxp-cal-head { display:flex;align-items:center;justify-content:space-between;gap:var(--nxt-space-2);margin:0 0 var(--nxt-space-2);padding-left:4px; }
+/* Size and weight stay with the shared .nxp h2 rule; only the box behaviour is History's. */
+.nxp-cal-month { min-width:0;margin:0;letter-spacing:-.02em;overflow-wrap:anywhere; }
+.nxp-cal-nav { display:flex;align-items:center;gap:2px;flex:0 0 auto; }
+.nxp-cal-nav button {
+  display:grid;place-items:center;width:var(--nxt-control-compact);height:var(--nxt-control-compact);
+  border:0;border-radius:12px;background:transparent;color:var(--nxt-text-secondary);font-size:1.0625rem;line-height:1;
+  transition:color var(--nxt-motion),background-color var(--nxt-motion);
+}
+.nxp-cal-nav button.nxp-cal-today { width:auto;min-width:var(--nxt-control-compact);padding:0 8px;font-size:.8125rem;font-weight:var(--nxt-weight-meta);white-space:nowrap; }
+.nxp-cal-weekdays,.nxp-cal-grid { display:grid;grid-template-columns:repeat(7,1fr);gap:2px; }
+.nxp-cal-weekdays span { padding:6px 0;color:var(--nxt-text-tertiary);font-size:.75rem;font-weight:var(--nxt-weight-meta);text-align:center; }
+.nxp-cal-day {
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  min-height:52px;padding:6px 0;
+  border:0;border-radius:12px;background:transparent;color:var(--nxt-text-secondary);
+  font-variant-numeric:tabular-nums;
+  transition:background-color var(--nxt-motion),color var(--nxt-motion);
+}
+.nxp-cal-day b { font-size:.9375rem;font-weight:var(--nxt-weight-meta);line-height:1; }
+.nxp-cal-day.is-outside { color:var(--nxt-text-tertiary);opacity:.5; }
+.nxp-cal-day.has-lift { background:rgba(180,154,255,.07); }
+.nxp-cal-day.is-today b { color:var(--nxt-purple-bright);font-weight:var(--nxt-weight-metric); }
+.nxp-cal-day.is-selected { background:var(--nxt-purple-tint);box-shadow:inset 0 0 0 1px var(--nxt-purple);color:var(--nxt-text); }
+/* Lift loudest, cardio second, weigh-in quietest: weigh-ins are near daily. */
+.nxp-cal-marks { display:flex;align-items:center;justify-content:center;gap:3px;height:5px; }
+.nxp-cal-marks i { display:block;border-radius:50%; }
+.nxp-cal-marks i.lift { width:5px;height:5px;background:var(--nxt-purple-bright); }
+.nxp-cal-marks i.cond { width:4px;height:4px;background:rgba(180,154,255,.5); }
+.nxp-cal-marks i.body { width:3px;height:3px;background:var(--nxt-text-tertiary); }
+.nxp-cal-legend { display:flex;flex-wrap:wrap;gap:2px 12px;margin:10px 0 0;padding-left:4px;font-size:.75rem;color:var(--nxt-text-tertiary); }
+.nxp-cal-legend span { display:inline-flex;align-items:center;gap:5px; }
+.nxp-cal-legend span::before { content:"";border-radius:50%;width:5px;height:5px;background:var(--nxt-purple-bright); }
+.nxp-cal-legend span.cond::before { width:4px;height:4px;background:rgba(180,154,255,.5); }
+.nxp-cal-legend span.body::before { width:3px;height:3px;background:var(--nxt-text-tertiary); }
+
+/* Selected day: the transition from month to record. */
+.nxp-history-selected { min-width:0; }
+.nxp-history-selected-head { margin:0 0 var(--nxt-space-2);padding-left:2px; }
+.nxp-history-weekday { display:block;font-size:.75rem;font-weight:var(--nxt-weight-meta);letter-spacing:.08em;text-transform:uppercase;color:var(--nxt-purple-bright); }
+.nxp-history-selected-head h2 { margin:3px 0 0;font-size:1.125rem;font-weight:620;letter-spacing:-.02em; }
+.nxp-history-selected-summary { margin:5px 0 0;font-size:.875rem;color:var(--nxt-text-secondary);overflow-wrap:anywhere; }
+.nxp-history-empty { margin:var(--nxt-space-3) 0 0;padding-left:2px;font-size:.875rem;color:var(--nxt-text-tertiary); }
+.nxp-history-block { margin-top:var(--nxt-space-3);padding:var(--nxt-space-3) 2px 0;border-top:1px solid var(--nxt-hairline); }
+.nxp-history-block-label { display:block;font-size:.75rem;font-weight:var(--nxt-weight-meta);letter-spacing:.08em;text-transform:uppercase;color:var(--nxt-text-tertiary); }
+.nxp-history-block-title { margin:4px 0 0;font-size:1rem;font-weight:580;overflow-wrap:anywhere; }
+.nxp-history-ex { display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:var(--nxt-space-3);min-width:0; }
+.nxp-history-ex b { font-size:.9375rem;font-weight:540;overflow-wrap:anywhere; }
+.nxp-history-ex span { flex:0 0 auto;font-size:.8125rem;color:var(--nxt-text-tertiary);font-variant-numeric:tabular-nums; }
+.nxp-history-sets { display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:3px;font-size:.875rem;color:var(--nxt-text-secondary);font-variant-numeric:tabular-nums; }
+.nxp-history-meta { margin:3px 0 0;font-size:.8125rem;color:var(--nxt-text-tertiary);overflow-wrap:anywhere; }
+.nxp-history-edit {
+  display:inline-flex;align-items:center;gap:4px;
+  min-height:var(--nxt-control-compact);margin-top:var(--nxt-space-2);padding:0;
+  border:0;background:transparent;color:var(--nxt-purple-bright);font-size:.875rem;font-weight:var(--nxt-weight-meta);
+}
 .nxp-history-set { display:flex;align-items:center;gap:8px;min-height:var(--nxt-control-compact);padding:8px 0;width:100%;background:none;color:var(--n99-text);text-align:left;border-bottom:1px solid #42364f; }
 .nxp-history-set > span:first-child { flex:1;min-width:0; }
 .nxp-history-set b { font-size:.9375rem;font-weight:550;overflow-wrap:anywhere; }
@@ -1306,8 +1370,16 @@ html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[dat
 .nxp-history-day .n99-small { margin:0 0 var(--nxt-space-2); }
 .nxp-history-day .n99-button { margin-top:var(--nxt-space-3); }
 @media(max-width:360px) {
-  .nxp.nxp-history .n99-progress-tabs.nxp-history-filters button { flex:1 1 calc(50% - var(--nxt-space-1)); }
-  .nxp-history .apx96-calendar { padding:8px; }
+  /* Buy day-cell width back from the calendar's own padding and gutters. */
+  .nxp-history-calendar { padding:10px 5px 8px; }
+  .nxp-cal-weekdays,.nxp-cal-grid { gap:1px; }
+  .nxp-cal-head { padding-left:2px; }
+  /* "September 2026" plus three 44px targets needs the title a notch smaller to stay on one line.
+     Specific enough to beat .n99.nxp h2, which sets 1.35rem. */
+  .nxp-history h2.nxp-cal-month { font-size:1rem; }
+  .nxp-cal-nav button.nxp-cal-today { padding:0 6px; }
+  .nxp-history-filters button { font-size:.75rem; }
+  .nxp-cal-legend { gap:2px 10px; }
 }
 
 /* V101.6 More — configuration hub. Scoped; does not alter Home, Train, Progress, History, or shell algebra. */

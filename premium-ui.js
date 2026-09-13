@@ -389,19 +389,142 @@ const NXP = (() => {
     finally{controller?.abort();c.busy=false;c.checkedAt=Date.now();paintConnection();}
   }
   function dateRows(date) {return (state.logs||[]).filter(r=>r&&r.date===date);}
-  function history() {
-    applyAppearance();const month=calendarMonthState(),filter=state.historyFilter||'all';
-    const source=filter==='strength'?[state.logs]:filter==='conditioning'?[state.cardio,state.floorball]:filter==='body'?[state.bws]:[state.logs,state.cardio,state.floorball,state.bws,state.scans,state.rest];
-    const dates=[...new Set(source.flatMap(a=>(a||[]).map(r=>r?.date)).filter(d=>typeof d==='string'&&d.startsWith(month)&&Number.isFinite(N.dateMs(d))))].sort().reverse();
-    const empty=filter==='strength'?'No lifting sessions this month.':filter==='conditioning'?'No cardio logged this month.':filter==='body'?'No weigh-ins this month.':'No activity logged this month.';
-    document.getElementById('historyPage').innerHTML=`<div class="n99 nxp nxp-history"><header class="nxp-heading nxp-history-chrome"><div><h1>History</h1></div></header><div class="n99-progress-tabs nxp-history-filters" role="group" aria-label="Activity type">${[['all','All'],['strength','Lifting'],['conditioning','Cardio'],['body','Weight']].map(([k,t])=>`<button type="button" aria-pressed="${filter===k}" class="${filter===k?'active':''}" onclick="nxt98SetHistoryFilter('${k}')">${t}</button>`).join('')}</div>${apx96CalendarHTML()}<h2 class="nxp-group-title">${dates.length?'Logged days':'No records in this view'}</h2>${dates.map(d=>historyCard(d,filter)).join('')}${!dates.length?`<p>${esc(empty)}</p>`:''}</div>`;
+  const HISTORY_TABS=[['all','All'],['strength','Lifting'],['conditioning','Cardio'],['body','Weight']];
+  const historyNum=v=>{const n=Number(v);return Number.isFinite(n)&&n>0?String(Math.round(n*100)/100):null;};
+  const historyPlural=(n,word)=>`${n} ${word}${n===1?'':'s'}`;
+  function historyScope(filter) {
+    return {lift:filter==='all'||filter==='strength',cond:filter==='all'||filter==='conditioning',body:filter==='all'||filter==='body'};
   }
-  function historyCard(date,filter=state.historyFilter||'all') {
-    const logs=dateRows(date).filter(r=>r.setType!=='warmup'),types=[...new Set(logs.map(r=>N.label(r.dayType)))],gyms=[...new Set(logs.map(r=>r.gym||'Gym A'))];
-    const cardio=(state.cardio||[]).filter(r=>r.date===date).reduce((a,r)=>a+Number(r.duration||r.minutes||0),0),bw=N.weights().find(r=>r.date===date),fb=(state.floorball||[]).some(r=>r.date===date);
-    const parts=[gyms.length?gyms.join(' · '):'',logs.length?logs.length+' sets':'',cardio?cardio+' min cardio':'',fb?'Floorball':'',bw?bw.weight+' kg':''].filter(Boolean);
-    const title=filter==='strength'?types.join(' + ')||'Lifting':filter==='conditioning'?fb&&cardio?'Cardio + Floorball':fb?'Floorball':'Cardio':filter==='body'?'Weigh-in':types.join(' + ')||(cardio?'Cardio':fb?'Floorball':bw?'Weigh-in':(state.scans||[]).some(r=>r.date===date)?'Scan':(state.rest||[]).some(r=>r.date===date)?'Rest':'Daily records');
-    return `<button type="button" class="nxp-history-card" onclick="NXP.historyDay('${date}')"><span class="nxp-caption">${esc(N.shortDate(date))}</span><b>${esc(title)}</b><small>${esc(parts.join(' · ')||'View records')}</small></button>`;
+  function historyRecords(date) {
+    const logs=logsForDate(date).slice().sort((a,b)=>(Number(a.ts||0)-Number(b.ts||0))||(Number(a.setNum||0)-Number(b.setNum||0)));
+    const bw=bwForDate(date);
+    return {logs,cardio:cardioForDate(date),floorball:(state.floorball||[]).filter(r=>r&&r.date===date),bw:bw&&historyNum(bw.weight)?bw:null};
+  }
+  function historyMarks(date,scope) {
+    const r=historyRecords(date);
+    return {lift:scope.lift&&r.logs.length>0,cond:scope.cond&&(r.cardio.length>0||r.floorball.length>0),body:scope.body&&!!r.bw};
+  }
+  function historyMonthDates(month,scope) {
+    const seen=new Set(),add=arr=>(arr||[]).forEach(r=>{const d=r&&r.date;if(typeof d==='string'&&d.startsWith(month)&&Number.isFinite(N.dateMs(d)))seen.add(d);});
+    if(scope.lift)add(state.logs);
+    if(scope.cond){add(state.cardio);add(state.floorball);}
+    if(scope.body)add(state.bws);
+    return [...seen].sort();
+  }
+  function historyMonthSummary(month,filter,scope) {
+    const days=historyMonthDates(month,scope).length;
+    if(!days)return filter==='strength'?'No lifting logged this month':filter==='conditioning'?'No cardio logged this month':filter==='body'?'No weigh-ins this month':'No records this month';
+    if(filter==='strength')return historyPlural(days,'lifting day');
+    if(filter==='conditioning')return historyPlural(days,'cardio day');
+    if(filter==='body')return historyPlural(days,'weigh-in');
+    return historyPlural(days,'active day');
+  }
+  function historySelectedDate(month,scope) {
+    const current=state.historyDate;
+    if(typeof current==='string'&&current.startsWith(month)&&Number.isFinite(N.dateMs(current)))return current;
+    const today=localToday();
+    if(today.startsWith(month))return today;
+    const dates=historyMonthDates(month,scope);
+    return dates.length?dates[dates.length-1]:`${month}-01`;
+  }
+  function historyCalendar(month,scope,selected) {
+    const [year,monthNum]=month.split('-').map(Number);
+    const first=new Date(year,monthNum-1,1,12,0,0);
+    const title=first.toLocaleDateString('en-SG',{month:'long',year:'numeric'});
+    const firstDow=(first.getDay()+6)%7,days=new Date(year,monthNum,0).getDate(),prevDays=new Date(year,monthNum-1,0).getDate();
+    const total=Math.ceil((firstDow+days)/7)*7,today=localToday(),cells=[];
+    for(let i=0;i<total;i++){
+      const offset=i-firstDow+1;
+      let y=year,m=monthNum,d=offset,outside=false;
+      if(offset<1){m=monthNum-1;if(m<1){m=12;y--;}d=prevDays+offset;outside=true;}
+      else if(offset>days){m=monthNum+1;if(m>12){m=1;y++;}d=offset-days;outside=true;}
+      const key=dateKeyFromParts(y,m,d),marks=historyMarks(key,scope),cls=['nxp-cal-day'];
+      if(outside)cls.push('is-outside');
+      if(key===today)cls.push('is-today');
+      if(key===selected)cls.push('is-selected');
+      if(marks.lift)cls.push('has-lift');
+      const kinds=[marks.lift?'lifting':'',marks.cond?'cardio':'',marks.body?'weigh-in':''].filter(Boolean);
+      const label=new Date(`${key}T12:00:00`).toLocaleDateString('en-SG',{day:'numeric',month:'long'})+(kinds.length?`, ${kinds.join(', ')}`:', no records');
+      cells.push(`<button type="button" class="${cls.join(' ')}" aria-label="${esc(label)}" aria-pressed="${key===selected?'true':'false'}"${key===today?' aria-current="date"':''} onclick="NXP.historySelect('${key}')"><b>${d}</b><span class="nxp-cal-marks" aria-hidden="true">${marks.lift?'<i class="lift"></i>':''}${marks.cond?'<i class="cond"></i>':''}${marks.body?'<i class="body"></i>':''}</span></button>`);
+    }
+    return `<section class="nxp-history-calendar"><div class="nxp-cal-head"><h2 class="nxp-cal-month">${esc(title)}</h2><div class="nxp-cal-nav"><button type="button" aria-label="Previous month" onclick="NXP.historyShiftMonth(-1)">‹</button><button type="button" class="nxp-cal-today" aria-label="Jump to current month" onclick="NXP.historyThisMonth()">Today</button><button type="button" aria-label="Next month" onclick="NXP.historyShiftMonth(1)">›</button></div></div><div class="nxp-cal-weekdays" aria-hidden="true">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>`<span>${x}</span>`).join('')}</div><div class="nxp-cal-grid">${cells.join('')}</div><p class="nxp-cal-legend"><span class="lift">Lifting</span><span class="cond">Cardio</span><span class="body">Weigh-in</span></p></section>`;
+  }
+  function historyLiftingBlock(date,logs) {
+    const order=[],groups=new Map();
+    logs.forEach(r=>{const key=r.exercise||'Exercise';if(!groups.has(key)){groups.set(key,[]);order.push(key);}groups.get(key).push(r);});
+    const types=[...new Set(logs.map(r=>dayTypeLabel(r.dayType)).filter(Boolean))],gyms=[...new Set(logs.map(r=>r.gym).filter(Boolean))];
+    const identity=[types.join(' + '),gyms.join(' · ')].filter(Boolean).join(' · ');
+    const rows=order.map(name=>{
+      const sets=groups.get(name);
+      const lines=sets.map(r=>{
+        const load=historyNum(r.weight),reps=historyNum(r.reps);
+        if(load&&reps)return `${reps} × ${load} kg`;
+        if(reps)return `${reps} reps`;
+        return load?`${load} kg`:null;
+      }).filter(Boolean);
+      return `<div class="nxp-history-ex"><b>${esc(name)}</b><span>${esc(historyPlural(sets.length,'set'))}</span></div>${lines.length?`<div class="nxp-history-sets">${lines.map(l=>`<span>${esc(l)}</span>`).join('')}</div>`:''}`;
+    }).join('');
+    return `<div class="nxp-history-block"><span class="nxp-history-block-label">Lifting</span>${identity?`<p class="nxp-history-block-title">${esc(identity)}</p>`:''}${rows}<button type="button" class="nxp-history-edit" onclick="NXP.historyDay('${date}')">Edit sets<i aria-hidden="true">›</i></button></div>`;
+  }
+  function historyConditioningBlock(cardio,floorball) {
+    const rows=[];
+    cardio.forEach(r=>{
+      const mins=historyNum(r.duration||r.minutes),hr=historyNum(r.hr),effort=historyNum(r.intensity),incline=historyNum(r.incline),speed=historyNum(r.speed);
+      rows.push({name:r.type||'Cardio',value:mins?`${mins} min`:'',meta:[hr?`HR ${hr}`:'',effort?`Intensity ${effort}`:'',incline?`Incline ${incline}`:'',speed?`Speed ${speed}`:'',r.gym||''].filter(Boolean)});
+    });
+    floorball.forEach(r=>{
+      const mins=historyNum(r.duration),effort=historyNum(r.intensity);
+      rows.push({name:'Floorball',value:mins?`${mins} min`:'',meta:[effort?`Intensity ${effort}`:'',r.notes?String(r.notes):''].filter(Boolean)});
+    });
+    return `<div class="nxp-history-block"><span class="nxp-history-block-label">Cardio</span>${rows.map(r=>`<div class="nxp-history-ex"><b>${esc(r.name)}</b>${r.value?`<span>${esc(r.value)}</span>`:''}</div>${r.meta.length?`<p class="nxp-history-meta">${esc(r.meta.join(' · '))}</p>`:''}`).join('')}</div>`;
+  }
+  function historyWeightBlock(bw) {
+    return `<div class="nxp-history-block"><span class="nxp-history-block-label">Weight</span><div class="nxp-history-ex"><b>${esc(historyNum(bw.weight))} kg</b>${bw.timeOfDay?`<span>${esc(bw.timeOfDay)}</span>`:''}</div></div>`;
+  }
+  function historyDayView(date,filter,scope) {
+    const r=historyRecords(date),when=new Date(`${date}T12:00:00`),blocks=[],parts=[];
+    if(scope.lift&&r.logs.length)blocks.push(historyLiftingBlock(date,r.logs));
+    if(scope.cond&&(r.cardio.length||r.floorball.length))blocks.push(historyConditioningBlock(r.cardio,r.floorball));
+    if(scope.body&&r.bw)blocks.push(historyWeightBlock(r.bw));
+    if(scope.lift&&r.logs.length){
+      parts.push(historyPlural(r.logs.length,'set'));
+      const exercises=new Set(r.logs.map(x=>x.exercise).filter(Boolean)).size;
+      if(exercises)parts.push(historyPlural(exercises,'exercise'));
+    }
+    if(scope.cond){
+      // Durations only sum within one activity; a walk and a match are not 145 min of anything.
+      const activities=[...r.cardio,...r.floorball];
+      if(activities.length>1)parts.push(`${activities.length} activities`);
+      else if(activities.length){
+        const mins=historyNum(activities[0].duration||activities[0].minutes);
+        if(mins)parts.push(`${mins} min`);
+      }
+    }
+    if(scope.body&&r.bw)parts.push(`${historyNum(r.bw.weight)} kg`);
+    const emptyCopy=filter==='strength'?'No lifting logged on this date.':filter==='conditioning'?'No cardio logged on this date.':filter==='body'?'No weigh-in recorded on this date.':'No training or measurements logged.';
+    return `<section class="nxp-history-selected"><header class="nxp-history-selected-head"><span class="nxp-history-weekday">${esc(when.toLocaleDateString('en-SG',{weekday:'long'}))}</span><h2>${esc(when.toLocaleDateString('en-SG',{day:'numeric',month:'long',year:'numeric'}))}</h2>${parts.length?`<p class="nxp-history-selected-summary">${esc(parts.join(' · '))}</p>`:''}</header>${blocks.length?blocks.join(''):`<p class="nxp-history-empty">${esc(emptyCopy)}</p>`}</section>`;
+  }
+  function history() {
+    applyAppearance();
+    const month=calendarMonthState(),filter=state.historyFilter||'all',scope=historyScope(filter),selected=historySelectedDate(month,scope);
+    document.getElementById('historyPage').innerHTML=`<div class="n99 nxp nxp-history"><header class="nxp-heading nxp-history-chrome"><div><h1>History</h1><p>${esc(historyMonthSummary(month,filter,scope))}</p></div></header><div class="nxp-history-filters" role="group" aria-label="Activity type">${HISTORY_TABS.map(([k,t])=>`<button type="button" aria-pressed="${filter===k?'true':'false'}" class="${filter===k?'active':''}" onclick="nxt98SetHistoryFilter('${k}')">${t}</button>`).join('')}</div>${historyCalendar(month,scope,selected)}${historyDayView(selected,filter,scope)}</div>`;
+  }
+  function historySelect(date) {
+    if(!Number.isFinite(N.dateMs(date)))return;
+    state.historyDate=date;
+    const month=date.slice(0,7);
+    if(month!==calendarMonthState())state.historyMonth=month;
+    history();
+  }
+  function historyShiftMonth(delta) {
+    const [y,m]=calendarMonthState().split('-').map(Number),d=new Date(y,m-1+delta,1,12,0,0);
+    state.historyMonth=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    history();
+  }
+  function historyThisMonth() {
+    state.historyDate=localToday();
+    state.historyMonth=state.historyDate.slice(0,7);
+    history();
   }
   function historyDay(date) {
     if(!Number.isFinite(N.dateMs(date)))return;
@@ -412,7 +535,7 @@ const NXP = (() => {
   function editHistorySet(i) {const r=ui.historyRows[i];if(r)openEditSet(r.id);}
   function otherDayDetails(date) {base.historyDay(date);}
   function sessionSummary() {historyDay(state.date);}
-  return {ui,home,training,progress,more,history,rememberInput,logSet,queue,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails};
+  return {ui,home,training,progress,more,history,rememberInput,logSet,queue,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,historyShiftMonth,historyThisMonth};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;
