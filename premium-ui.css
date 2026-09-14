@@ -53,14 +53,15 @@
 
   --nxt-motion: .15s ease;
 
-  --nxt-z-cta: 20;
-  --nxt-z-rest: 24;
   --nxt-z-header: 30;
   --nxt-z-tabs: 80;
+  --nxt-z-cta: 90; /* log CTA must sit above dock hit-targets when edges kiss */
+  --nxt-z-rest: 92;
   --nxt-z-modal: 10000;
 
   --nxt-safe-top: env(safe-area-inset-top, 0px);
   --nxt-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --nxt-screen-top: max(10px, calc(var(--nxt-safe-top) + 8px));
 
   --nxt-tabs-gap: 0px;
   --nxt-tabs-pad-top: 12px;
@@ -70,7 +71,7 @@
   --nxt-tabs-chrome: calc(var(--nxt-tabs-pad-top) + var(--nxt-tab-min-height) + var(--nxt-tabs-pad-bottom) + var(--nxt-tabs-border-y));
   --nxt-tabs-stack: calc(var(--nxt-tabs-gap) + var(--nxt-tabs-chrome) + var(--nxt-safe-bottom));
 
-  --nxt-cta-clearance: 6px;
+  --nxt-cta-clearance: 10px;
   --nxt-cta-keyboard: 12px;
 
   --nxt-header-pad-top: 8px;
@@ -96,7 +97,17 @@ body {
 }
 
 .content {
+  padding-top: var(--nxt-screen-top) !important; /* viewport-fit=cover needs a real Dynamic Island reserve */
   padding-bottom: 0 !important; /* stop stacking index.html V28 132px pad on top of the measured reserve */
+  max-width: 580px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+#app, .app {
+  max-width: 580px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .n99.nxp details:not([open]) > *:not(summary) {
@@ -109,21 +120,37 @@ body {
 }
 
 .tabs {
-  left: 50%;
-  bottom: 0;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 580px;
-  border: 0;
-  border-radius: 0;
-  border-top: 1px solid var(--nxt-hairline);
-  background: rgba(16,16,20,.97) !important; /* beats cut-support.css + #nxtfrm-v98-premium dock fill */
+  position: fixed !important; /* index sets this early; keep it when later layers fight */
+  left: 50% !important;
+  right: auto !important;
+  bottom: 0 !important; /* beats V98 bottom: calc(8px + safe) floating capsule */
+  transform: translateX(-50%) !important;
+  width: 100% !important;
+  max-width: 580px !important; /* beats V98 max-width:440px pill */
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important; /* flat premium bar, not floating dock */
+  border-top: 1px solid var(--nxt-hairline) !important;
+  background: #101014 !important; /* opaque — no content bleed through dock */
   border-color: var(--nxt-hairline) !important;
-  box-shadow: none !important; /* beats floating-dock shadows in earlier layers */
+  box-shadow: none !important; /* fully flat — no soft lift over content */
   padding: var(--nxt-tabs-pad-top) 6px calc(var(--nxt-tabs-pad-bottom) + var(--nxt-safe-bottom)) !important;
   z-index: var(--nxt-z-tabs) !important;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  isolation: isolate;
+  overflow: hidden; /* prevent progress/chrome ghosts painting into the bar */
+  pointer-events: auto;
+}
+.tabs-inner {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 2px !important;
+  width: 100%;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+  background: transparent !important;
 }
 
 .tabs .tab {
@@ -552,7 +579,7 @@ body:has(#nxp-set-form:focus-within) .tabs { visibility:hidden;pointer-events:no
 
 /* V102.2A Train lifting workspace. Scoped; does not alter Rest, Zone 2, Floorball, empty, Home, or shell algebra. */
 .nxp-train-lift { min-width:0; padding-bottom: calc(var(--nxt-tabs-stack) + var(--nxt-cta-clearance) + 88px); }
-.nxp-train-lift .nxp-train-chrome { margin:var(--nxt-space-1) 0 var(--nxt-space-2);align-items:flex-start; }
+.nxp-train-lift .nxp-train-chrome { margin:0 0 var(--nxt-space-3);align-items:flex-start;gap:12px; }
 .nxp-train-lift .nxp-train-chrome h1 {
   margin:0;
   font-size:1.25rem;
@@ -737,18 +764,33 @@ body:has(#nxp-set-form:focus-within) .tabs { visibility:hidden;pointer-events:no
   border-radius:var(--nxt-radius-control);
   background:var(--nxt-raised);
   color:var(--nxt-text-secondary);
-  font-size:.875rem;
+  font-size:1rem; /* iOS Safari zooms form controls below 16px */
 }
 .nxp-train-lift .nxp-log-action {
   position:fixed;
-  left:0;
-  right:0;
+  left:50%;
+  right:auto;
+  transform:translateX(-50%);
   bottom:calc(var(--nxt-tabs-stack) + var(--nxt-cta-clearance));
   z-index:var(--nxt-z-cta);
   width:min(580px,100%);
-  margin:0 auto;
-  padding:8px 12px;
-  background:linear-gradient(180deg,rgba(16,16,20,0),var(--nxt-bg) 42%);
+  margin:0;
+  padding:10px 12px 12px;
+  background:linear-gradient(180deg,rgba(16,16,20,0), #101014 36%, #101014 100%);
+  pointer-events:none; /* let only the button receive taps */
+  box-sizing:border-box;
+}
+.nxp-train-lift .nxp-log-action > * { pointer-events:auto; }
+.nxp-train-lift #nxp-set-form {
+  display:flex;
+  flex-direction:column;
+  gap:var(--nxt-space-2);
+  min-width:0;
+  padding-bottom:74px; /* fixed CTA is out of flow; keep Rest/+30s/Skip from sliding underneath */
+}
+.nxp-train-lift .nxp-rest {
+  position:relative;
+  z-index:var(--nxt-z-rest);
 }
 .nxp-train-lift .nxp-train-cta {
   width:100%;
@@ -796,7 +838,7 @@ body:has(#nxp-set-form:focus-within) .tabs { visibility:hidden;pointer-events:no
   border-color:var(--nxt-border);
 }
 .nxp-train-lift .nxp-set-history {
-  margin:0 0 var(--nxt-space-3);
+  margin:var(--nxt-space-3) 0 var(--nxt-space-3);
   padding:var(--nxt-space-3);
   border:1px solid var(--nxt-border);
   border-radius:var(--nxt-radius-card);
@@ -865,7 +907,7 @@ body:has(#nxp-set-form:focus-within) .tabs { visibility:hidden;pointer-events:no
 }
 .nxp-train-lift .nxp-train-done h2 { font-size:1.25rem;letter-spacing:-.03em;overflow-wrap:anywhere; }
 .nxp-train-lift .nxp-queue {
-  margin:var(--nxt-space-2) 0 0;
+  margin:var(--nxt-space-3) 0 0;
   padding-top:var(--nxt-space-2);
   border-top:1px solid var(--nxt-border);
 }
@@ -915,7 +957,7 @@ body:has(#nxp-set-form:focus-within) .tabs { visibility:hidden;pointer-events:no
 .nxp .n99-legend > span:last-child { margin-left:0; }
 
 /* V102.3A Progress Weight — chart-led instrument. Tabs shared; Weight layout scoped. */
-.nxp-progress { min-width:0;overflow-x:hidden; }
+.nxp-progress { min-width:0;overflow-x:hidden;padding-bottom:calc(var(--nxt-tabs-stack) + var(--nxt-space-3)); }
 .nxp-progress > .nxp-heading { margin:var(--nxt-space-2) 0 var(--nxt-space-2); }
 .nxp-progress > .nxp-heading h1 { font-size:1.25rem;letter-spacing:-.03em;font-weight:650; }
 .nxp-progress-tabs {
@@ -924,6 +966,15 @@ body:has(#nxp-set-form:focus-within) .tabs { visibility:hidden;pointer-events:no
   margin:0 0 var(--nxt-space-2);
   padding:0;
   border-bottom:1px solid var(--nxt-hairline);
+  position:relative; /* never fixed/sticky — was painting over the dock when layers fought */
+  top:auto;
+  bottom:auto;
+  left:auto;
+  right:auto;
+  transform:none;
+  z-index:0;
+  background:var(--nxt-bg);
+  isolation:isolate;
 }
 .nxp-progress .nxp-progress-tabs button,
 .nxp-progress-tabs button {
@@ -1645,3 +1696,28 @@ html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[dat
   .nxp-train-idle .nxp-train-floorball-grid { gap:var(--nxt-space-2); }
   .nxp-train-idle .nxp-train-floorball-notes { margin-bottom:var(--nxt-space-3); }
 }
+
+/* V106.1 premium chrome lock — beat legacy floating dock + train collisions */
+body.apex-keyboard-open .tabs {
+  transform: translateX(-50%) !important; /* don't yeet the dock with translateY(145%) while logging */
+  pointer-events: none !important;
+  opacity: 0.35;
+}
+body.apex-keyboard-open .nxp-train-lift .nxp-log-action {
+  bottom: var(--nxt-cta-keyboard) !important;
+}
+.nxp-train-lift .nxp-train-chrome {
+  position: relative;
+  z-index: 2;
+  gap: 10px;
+}
+.nxp-train-lift .nxp-train-chrome .n99-button {
+  position: relative;
+  z-index: 2;
+}
+.nxp-progress > .nxp-heading h1 {
+  font-size: 1.375rem;
+  line-height: 1.2;
+}
+.nxp-train-lift .nxp-set-history,
+.nxp-train-lift .nxp-queue { margin-top: var(--nxt-space-3); }
