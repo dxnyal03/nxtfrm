@@ -3,6 +3,7 @@ const ASSETS = [
   './',
   './index.html',
   './cut-support.js',
+  './wearables.js',
   './cut-support.css',
   './premium-ui.js',
   './premium-ui.css',
