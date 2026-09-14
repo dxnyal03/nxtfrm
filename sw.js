@@ -9,6 +9,7 @@ const ASSETS = [
   './wearables.canonical.js',
   './wearables.days.js',
   './wearables.snapshots.js',
+  './wearables.resolution.js',
   './cut-support.css',
   './premium-ui.js',
   './premium-ui.css',

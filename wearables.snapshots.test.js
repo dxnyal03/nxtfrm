@@ -771,6 +771,40 @@ test("G3A public methods remain present after snapshots attach", function () {
   assert.ok(api.snapshots);
 });
 
+test("appendVersion appends to the same lineage and rolls back on pointer failure", function () {
+  const world = loadWorld();
+  const window = openWindow(world);
+  acceptHrAt(world, "2026-09-14T01:00:00Z");
+  const v1 = assembleNow(world, window);
+  assert.strictEqual(v1.outcome, "assembled");
+  const before = JSON.stringify(fromVm(world.snapshots.getSnapshot(v1.snapshot_id)));
+  const body = fromVm(v1.snapshot);
+  body.build_reason = "rebuild";
+  const v2 = fromVm(world.snapshots.appendVersion({
+    snapshot: body,
+    built_at_utc: "2026-09-14T19:00:00Z",
+    advanced_at_utc: "2026-09-14T19:00:00Z"
+  }));
+  assert.strictEqual(v2.outcome, "appended_version");
+  assert.strictEqual(v2.snapshot_version, 2);
+  assert.strictEqual(v2.snapshot.supersedes_snapshot_id, v1.snapshot_id);
+  assert.strictEqual(world.snapshots.getCurrentPointer("u_g4b", window.day_window_id).snapshot_id, v2.snapshot_id);
+  assert.strictEqual(JSON.stringify(fromVm(world.snapshots.getSnapshot(v1.snapshot_id))), before);
+  assert.strictEqual(fromVm(world.snapshots.listSnapshots("u_g4b", window.day_window_id)).length, 2);
+
+  const v3Body = fromVm(v2.snapshot);
+  v3Body.build_reason = "rebuild";
+  world.snapshots._test.failNextPointer();
+  const failed = fromVm(world.snapshots.appendVersion({
+    snapshot: v3Body,
+    built_at_utc: "2026-09-14T20:00:00Z"
+  }));
+  assert.strictEqual(failed.outcome, "invalid_pointer");
+  assert.strictEqual(world.snapshots.getCurrentPointer("u_g4b", window.day_window_id).snapshot_id, v2.snapshot_id);
+  assert.strictEqual(fromVm(world.snapshots.listSnapshots("u_g4b", window.day_window_id)).length, 2);
+  assert.strictEqual(JSON.stringify(fromVm(world.snapshots.getSnapshot(v1.snapshot_id))), before);
+});
+
 console.log("");
 console.log((failed ? "FAILED" : "OK") + "  " + passed + " passed, " + failed + " failed");
 process.exit(failed ? 1 : 0);

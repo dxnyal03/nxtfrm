@@ -40,6 +40,7 @@
     assembled: "assembled",
     reused: "reused",
     assembled_version: "assembled_version",
+    appended_version: "appended_version",
     pointer_set: "pointer_set",
     pointer_unchanged: "pointer_unchanged",
     missing_pointer: "missing_pointer",
@@ -792,6 +793,79 @@
       }
     }
 
+    function appendVersion(input) {
+      input = input || {};
+      var before = snapshotState();
+      try {
+        if (hooks.failBeforeCommit) {
+          hooks.failBeforeCommit = false;
+          throw snapErr(OUTCOME.invalid_snapshot, "Forced pre-commit failure.");
+        }
+        var incoming = clone(input.snapshot);
+        if (!incoming || incoming.document_type !== "wearable_daily_snapshot") {
+          throw snapErr(OUTCOME.invalid_snapshot, "DailySnapshot envelope is invalid.");
+        }
+        if (!days || typeof days.getWindow !== "function") {
+          throw snapErr(OUTCOME.invalid_day_window, "G4A day-window store is required.");
+        }
+        var window = days.getWindow(incoming.day_window_id);
+        if (!window) throw snapErr(OUTCOME.invalid_day_window, "day window does not exist.");
+        if (window.user_id !== incoming.user_id) throw snapErr(OUTCOME.invalid_day_window, "day window user mismatch.");
+        var prior = uniqueLeaf(incoming.user_id, incoming.day_window_id);
+        if (!prior) throw snapErr(OUTCOME.invalid_snapshot, "appendVersion requires an existing snapshot lineage.");
+        incoming.snapshot_version = prior.snapshot_version + 1;
+        incoming.supersedes_snapshot_id = prior.snapshot_id;
+        if (!isNonEmptyString(incoming.build_reason)) incoming.build_reason = "rebuild";
+        if (input.built_at_utc) incoming.built_at_utc = input.built_at_utc;
+        if (!Number.isFinite(parseUtc(incoming.built_at_utc))) {
+          throw snapErr(OUTCOME.invalid_snapshot, "built_at_utc must be canonical UTC.");
+        }
+        var signature = evidenceSignature(incoming);
+        var contentKey = ptrKey(incoming.user_id, incoming.day_window_id) + "\n" + signature;
+        incoming.snapshot_id = "snap:" + sha256Hex(contentKey + "\n" + String(incoming.snapshot_version)).slice(0, 32);
+        if (snaps.has(incoming.snapshot_id)) {
+          throw snapErr(OUTCOME.invalid_snapshot, "snapshot_id collision.");
+        }
+        incoming.quality_flags = derivedFlags(incoming, window);
+        validateSnapshot(incoming, window);
+        var existingPtr = pointers.get(ptrKey(incoming.user_id, incoming.day_window_id));
+        var pointer = {
+          document_type: "current_snapshot_pointer",
+          schema_version: SCHEMA,
+          user_id: incoming.user_id,
+          day_window_id: incoming.day_window_id,
+          snapshot_id: incoming.snapshot_id,
+          snapshot_version: incoming.snapshot_version,
+          advanced_at_utc: input.advanced_at_utc || incoming.built_at_utc,
+          accepted_delivery_id: input.accepted_delivery_id == null
+            ? (existingPtr ? existingPtr.accepted_delivery_id : null)
+            : input.accepted_delivery_id
+        };
+        if (!Number.isFinite(parseUtc(pointer.advanced_at_utc))) {
+          throw snapErr(OUTCOME.invalid_pointer, "advanced_at_utc must be canonical UTC.");
+        }
+        if (hooks.failPointer) {
+          hooks.failPointer = false;
+          throw snapErr(OUTCOME.invalid_pointer, "Forced pointer failure.");
+        }
+        snaps.set(incoming.snapshot_id, clone(incoming));
+        var list = byLineage.get(ptrKey(incoming.user_id, incoming.day_window_id)) || [];
+        list.push(incoming.snapshot_id);
+        byLineage.set(ptrKey(incoming.user_id, incoming.day_window_id), list);
+        pointers.set(ptrKey(incoming.user_id, incoming.day_window_id), clone(pointer));
+        return resultBase(OUTCOME.appended_version, {
+          snapshot_id: incoming.snapshot_id,
+          snapshot_version: incoming.snapshot_version,
+          snapshot: clone(incoming),
+          pointer: clone(pointer)
+        });
+      } catch (err) {
+        restoreState(before);
+        if (err && OUTCOME[err.code]) return resultBase(err.code, { reason: err.message });
+        throw err;
+      }
+    }
+
     function setCurrent(userId, dayWindowId, snapshotId, snapshotVersion, advancedAtUtc) {
       var before = snapshotState();
       try {
@@ -852,6 +926,7 @@
 
     return {
       assemble: assemble,
+      appendVersion: appendVersion,
       getSnapshot: function (id) {
         var doc = snaps.get(id);
         return doc ? clone(doc) : null;
