@@ -11,6 +11,7 @@ const ASSETS = [
   './wearables.snapshots.js',
   './wearables.resolution.js',
   './wearables.recovery.js',
+  './wearables.recovery-integration.js',
   './cut-support.css',
   './premium-ui.js',
   './premium-ui.css',
