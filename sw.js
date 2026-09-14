@@ -4,6 +4,7 @@ const ASSETS = [
   './index.html',
   './cut-support.js',
   './wearables.js',
+  './wearables.adapters.js',
   './cut-support.css',
   './premium-ui.js',
   './premium-ui.css',
