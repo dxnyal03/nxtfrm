@@ -6339,7 +6339,7 @@ function useSubstituteTemp(index){
 
 
 
-if("serviceWorker" in navigator && location.hostname==="localhost"){
+if("serviceWorker" in navigator && (location.hostname==="localhost"||location.hostname==="127.0.0.1"||location.hostname==="[::1]"||location.hostname==="::1")){
   // Local dev serves files uncached, and any worker from an earlier visit is removed.
   navigator.serviceWorker.getRegistrations().then(regs=>regs.forEach(reg=>reg.unregister())).catch(()=>{});
 }else if("serviceWorker" in navigator && location.protocol!=="file:" && !window.NXTFRM_STANDALONE){
@@ -10084,8 +10084,9 @@ document.addEventListener("focusout",function(e){
 <script src="wearables.resolution.js"></script>
 <script src="wearables.recovery.js"></script>
 <script src="wearables.recovery-integration.js"></script>
-<link rel="stylesheet" href="premium-ui.css">
-<script src="premium-ui.js"></script>
+<script src="wearables.training-readiness.js?v=103"></script>
+<link rel="stylesheet" href="premium-ui.css?v=103">
+<script src="premium-ui.js?v=103"></script>
 <script src="seed.dev.js"></script>
 <script src="seed.scenarios.js"></script>
 <script src="wearables.fixtures.js"></script>

@@ -37,6 +37,7 @@ const NXP = (() => {
     const recLogged=!!(rec&&[rec.sleep,rec.energy,rec.soreness].some(v=>v!==''&&v!==undefined&&v!==null));
     const recEnergy=rec?N.finite(rec.energy):null,recSore=rec?N.finite(rec.soreness):null;
     const recLabel=!recLogged?'Not logged':(recEnergy!==null&&recEnergy<=2)||(recSore!==null&&recSore>=4)?'Review':recEnergy!==null&&recEnergy>=4?'Good':'Okay';
+    void recLabel;
     const cardioMins=N.cardioWeek(),cardioTarget=Number(settings.zone2WeeklyTarget)||90;
     const lifts=N.strengthItems();
     const liftReview=lifts.filter(x=>x.status==='Review').length;
@@ -56,7 +57,8 @@ const NXP = (() => {
       <button type="button" class="nxp-home-decision ${esc(r.tone)}" onclick="NXT.openReview()"><span class="nxp-caption">NXTFRM Decision</span><b>${esc(r.title)}</b>${r.message?`<p>${esc(r.message)}</p>`:r.reason?`<p>${esc(r.reason)}</p>`:''}<span class="nxp-home-review">View evidence →</span></button>
       <section class="nxp-home-card nxp-home-today"><div class="n99-row"><span class="nxp-caption">${finished?'Workout saved':'Today’s training'}</span>${link('Change','showSessionSheet()')}</div><h2>${esc(N.label(state.dayType))}</h2><p>${esc(context)}</p><button type="button" class="n99-button nxp-home-cta" onclick="${esc(finished?"switchTab('train')":action)}">${esc(title)}</button>${lastLiftLine?`<p class="nxp-home-last"><span class="nxp-caption">Last lift</span><span>${esc(lastLiftLine)}</span></p>`:''}</section>
       <section class="nxp-home-card nxp-home-weight"><span class="nxp-caption">Bodyweight</span><strong>${last?esc(last.weight.toFixed(1))+' <em>kg</em>':'—'}</strong><p>${esc(weekly)}${s.change===null?'':' / week'}</p><small>${esc(weightNote)}</small>${link('View progress ›',"switchTab('weight')")}</section>
-      <div class="nxp-home-signals" role="group" aria-label="Recovery, cardio and performance">${linkSignal('Recovery',recLabel,'apx96OpenReadiness()')}${linkSignal('Cardio',cardioMins+' / '+cardioTarget+' min','showCardioSheet()')}${linkSignal('Performance',perfLabel,"NXT.ui.view='strength';switchTab('weight')")}</div>
+      ${recoveryHomeCard()}
+      <div class="nxp-home-signals" role="group" aria-label="Cardio and performance">${linkSignal('Cardio',cardioMins+' / '+cardioTarget+' min','showCardioSheet()')}${linkSignal('Performance',perfLabel,"NXT.ui.view='strength';switchTab('weight')")}</div>
       <button type="button" class="nxp-home-kcal" onclick="NXT.openCalories()"><span><small>Calorie guide</small><strong>${cal?formatNumber(cal)+' <em>kcal</em>':'Set target'}</strong></span><span>${cal?'Edit':'Set up'}</span></button>
       ${N.adherenceHTML()}
       <nav class="nxp-home-secondary" aria-label="Quick actions">${link('＋ Weight','apx95OpenQuickWeight()')}${state.dayType==='Zone2'?'':link('Log cardio','showCardioSheet()')}${state.dayType==='Rest'?'':link('Check-in','apx96OpenReadiness()')}</nav>
@@ -65,10 +67,62 @@ const NXP = (() => {
     </div>`;
   }
   function linkSignal(label,value,action) {return `<button type="button" class="nxp-home-signal" onclick="${esc(action)}"><small>${esc(label)}</small><strong>${esc(value)}</strong></button>`;}
+  function recoveryPreview() {return (typeof NXT==='object'&&NXT&&NXT.recoveryPreview)||null;}
+  function currentIntegrated() {
+    const preview=recoveryPreview();
+    if(preview&&preview.integrated)return preview.integrated;
+    const api=NXT.wearables&&NXT.wearables.recoveryIntegration;
+    if(!api||typeof api.integrate!=='function')return null;
+    const out=api.integrate({
+      local_date:state.date,
+      manualRecovery:N.cfg().recovery[state.date]||null,
+      wearableRecovery:preview&&preview.wearableRecovery||null,
+      wearableLocalDate:preview&&preview.wearableLocalDate||null
+    });
+    return out&&out.result||null;
+  }
+  function currentTraining(integrated) {
+    const preview=recoveryPreview();
+    if(preview&&preview.training)return preview.training;
+    const api=NXT.wearables&&NXT.wearables.trainingReadiness;
+    if(!api||typeof api.advise!=='function'||!integrated)return null;
+    const out=api.advise({integratedRecovery:integrated});
+    return out&&out.result||null;
+  }
+  function recoveryHomeCard() {
+    const integrated=currentIntegrated();
+    const guard=NXT.wearables&&NXT.wearables.trainingReadiness;
+    const wear=guard&&typeof guard.presentWearable==='function'&&integrated?guard.presentWearable(integrated):{has_score:false,caption:'No wearable data',headline:null,status_note:null};
+    const check=guard&&typeof guard.presentCheckin==='function'&&integrated?guard.presentCheckin(integrated):{label:'Not logged',detail:'No check-in today',present:false};
+    const wearValue=wear.has_score&&wear.headline!=null?wear.headline:'—';
+    const wearNote=wear.status_note?` <em>${esc(wear.status_note)}</em>`:'';
+    return `<button type="button" class="nxp-home-recovery" onclick="NXP.openRecovery()"><span class="nxp-caption">Recovery</span><span class="nxp-rec-source"><small>Wearable</small><strong>${esc(wearValue)}</strong><span>${esc(wear.caption||'')}${wearNote}</span></span><span class="nxp-rec-source"><small>Check-in</small><strong>${esc(check.label)}</strong><span>${esc(check.detail||'')}</span></span></button>`;
+  }
+  function trainGuidanceHTML() {
+    const training=currentTraining(currentIntegrated());
+    if(!training||training.state==='no_recovery_signal')return '';
+    const detail=training.guidance&&training.guidance.detail?`<small>${esc(training.guidance.detail)}</small>`:'';
+    return `<aside class="nxp-train-rec" data-state="${esc(training.state)}"><span class="nxp-caption">Recovery guidance</span><strong>${esc(training.guidance.message)}</strong>${detail}</aside>`;
+  }
+  function openRecovery() {
+    const integrated=currentIntegrated();
+    const guard=NXT.wearables&&NXT.wearables.trainingReadiness;
+    const wear=guard&&integrated?guard.presentWearable(integrated):null;
+    const check=guard&&integrated?guard.presentCheckin(integrated):null;
+    const signals=guard&&integrated&&typeof guard.describeSignals==='function'?guard.describeSignals(integrated):[];
+    const wearLine=wear&&wear.has_score?`<p class="nxp-rec-hero"><b>${esc(wear.headline)}</b><span>${esc(wear.caption||'')}${wear.status_note?' · '+esc(wear.status_note):''}</span></p>`:`<p class="nxp-rec-hero"><b>—</b><span>${esc(wear&&wear.caption||'No wearable data')}</span></p>`;
+    const checkLine=`<p class="nxp-rec-checkin"><b>${esc(check&&check.label||'Not logged')}</b><span>${esc(check&&check.detail||'No check-in today')}</span></p>`;
+    const signalHTML=signals.map(function(s){
+      if(!s.selected||!s.value)return `<div class="nxp-rec-signal"><b>${esc(s.name)}</b><p>${esc(s.trend)}</p></div>`;
+      return `<div class="nxp-rec-signal"><b>${esc(s.name)}</b><strong>${esc(s.value)}</strong><p>${esc(s.trend)}</p></div>`;
+    }).join('');
+    N.modal('Recovery',`<div class="nxp-rec-detail"><h3>Wearable</h3>${wearLine}${signalHTML?`<div class="nxp-rec-signals">${signalHTML}</div>`:''}<h3>Check-in</h3>${checkLine}${button('Update check-in','apx96OpenReadiness()',true)}</div>`);
+  }
+  function setRecoveryPreview(preview) {NXT.recoveryPreview=preview||null;}
   function draftKey() {return sessionKey()+'__'+state.exercise;}
   function rememberInput(el) {const key=draftKey(),d=ui.drafts.get(key)||{};d[el.id]=el.value;ui.drafts.set(key,d);if(el.id==='n99-set-type'){const b=document.getElementById('nxp-log-button');if(b)b.textContent='＋ Log '+(el.value==='warmup'?'warm-up':'set '+(N.done(state.exercise)+1));}}
   function trainChrome() {return `<header class="nxp-train-chrome"><div><h1>${esc(N.label(state.dayType))}</h1><p>${esc(state.gym||'Gym')} · ${N.shortDate(state.date)}</p></div>${button('Change','showSessionSheet()',true)}</header>`;}
-  function trainIdle(kind,body) {document.getElementById('trainPage').innerHTML=`<div class="n99 nxp nxp-train nxp-train-idle ${kind}">${trainChrome()}${body}</div>`;}
+  function trainIdle(kind,body) {document.getElementById('trainPage').innerHTML=`<div class="n99 nxp nxp-train nxp-train-idle ${kind}">${trainChrome()}${trainGuidanceHTML()}${body}</div>`;}
   function idleSecondary(label,action) {return `<button type="button" class="n99-text" onclick="${esc(action)}">${label}</button>`;}
   function cardioWeekLine() {
     const mins=N.cardioWeek(),target=Number(settings.zone2WeeklyTarget)||90;
@@ -106,6 +160,7 @@ const NXP = (() => {
     const restLeft=apx96RestRemaining();
     document.getElementById('trainPage').innerHTML=`<div class="n99 nxp nxp-train nxp-train-lift">
       <header class="nxp-train-chrome"><div><h1>${esc(N.label(state.dayType))}</h1><p>${esc(state.gym)} · ${N.shortDate(state.date)}</p></div>${button('Session','NXP.sessionMenu()',true)}</header>
+      ${trainGuidanceHTML()}
       ${finished?'':`<div class="nxp-session-progress"><span>${count} of ${total} working sets</span><button type="button" class="n99-text" onclick="NXP.queue()">Exercise ${index+1} of ${list.length}</button></div>
       <div class="n99-session-rail" aria-hidden="true"><span style="width:${total?Math.min(100,count/total*100):0}%"></span></div>`}
       ${finished?`<section class="nxp-train-done">${N.card('Workout saved',`<p>${N.sessionLogs().filter(r=>r.setType!=='warmup').length} working sets recorded. Everything you logged is in History.</p><div class="n99-stack">${button('View session','NXP.sessionSummary()')}${button('Resume workout','NXT.resume()',true)}</div>`)}</section>`:`
@@ -547,7 +602,7 @@ const NXP = (() => {
   function editHistorySet(i) {const r=ui.historyRows[i];if(r)openEditSet(r.id);}
   function otherDayDetails(date) {base.historyDay(date);}
   function sessionSummary() {historyDay(state.date);}
-  return {ui,home,training,progress,more,history,rememberInput,logSet,queue,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,historyShiftMonth,historyThisMonth};
+  return {ui,home,training,progress,more,history,rememberInput,logSet,queue,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;

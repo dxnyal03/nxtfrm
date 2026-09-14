@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nxtfrm-v102-premium-cache';
+const CACHE_NAME = 'nxtfrm-v103-premium-cache';
 const ASSETS = [
   './',
   './index.html',
@@ -12,6 +12,7 @@ const ASSETS = [
   './wearables.resolution.js',
   './wearables.recovery.js',
   './wearables.recovery-integration.js',
+  './wearables.training-readiness.js',
   './cut-support.css',
   './premium-ui.js',
   './premium-ui.css',
