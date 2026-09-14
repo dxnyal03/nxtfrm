@@ -67,27 +67,64 @@ const NXP = (() => {
     </div>`;
   }
   function linkSignal(label,value,action) {return `<button type="button" class="nxp-home-signal" onclick="${esc(action)}"><small>${esc(label)}</small><strong>${esc(value)}</strong></button>`;}
-  function recoveryPreview() {return (typeof NXT==='object'&&NXT&&NXT.recoveryPreview)||null;}
+  function previewAllowed() {
+    const sync=NXT.wearables&&NXT.wearables.sync;
+    if(sync&&typeof sync.previewAllowed==='function')return !!sync.previewAllowed();
+    try {
+      const host=String(location.hostname||'');
+      return host==='localhost'||host==='127.0.0.1'||host==='[::1]'||host==='::1'||location.protocol==='file:';
+    } catch (e) { return false; }
+  }
+  function recoveryPreview() {
+    if(!previewAllowed())return null;
+    return (typeof NXT==='object'&&NXT&&NXT.recoveryPreview)||null;
+  }
   function currentIntegrated() {
     const preview=recoveryPreview();
+    const sync=NXT.wearables&&NXT.wearables.sync;
+    const manual=N.cfg().recovery[state.date]||null;
+    if(sync&&typeof sync.integrateToday==='function'){
+      const out=sync.integrateToday({local_date:state.date,manualRecovery:manual});
+      if(out)return out;
+    }
     if(preview&&preview.integrated)return preview.integrated;
     const api=NXT.wearables&&NXT.wearables.recoveryIntegration;
     if(!api||typeof api.integrate!=='function')return null;
+    const wearable=sync&&sync.runtime&&sync.runtime.wearableByDate?sync.runtime.wearableByDate[state.date]:null;
     const out=api.integrate({
       local_date:state.date,
-      manualRecovery:N.cfg().recovery[state.date]||null,
-      wearableRecovery:preview&&preview.wearableRecovery||null,
-      wearableLocalDate:preview&&preview.wearableLocalDate||null
+      manualRecovery:manual,
+      wearableRecovery:wearable||(preview&&preview.wearableRecovery)||null,
+      wearableLocalDate:(wearable||(preview&&preview.wearableRecovery))?state.date:null
     });
     return out&&out.result||null;
   }
   function currentTraining(integrated) {
+    const api=NXT.wearables&&NXT.wearables.trainingReadiness;
+    if(api&&typeof api.advise==='function'&&integrated){
+      const out=api.advise({integratedRecovery:integrated});
+      if(out&&out.result)return out.result;
+    }
     const preview=recoveryPreview();
     if(preview&&preview.training)return preview.training;
-    const api=NXT.wearables&&NXT.wearables.trainingReadiness;
-    if(!api||typeof api.advise!=='function'||!integrated)return null;
-    const out=api.advise({integratedRecovery:integrated});
-    return out&&out.result||null;
+    return null;
+  }
+  function wearableConnectionLabel() {
+    const sync=NXT.wearables&&NXT.wearables.sync;
+    const list=sync&&typeof sync.listConnections==='function'?sync.listConnections():[];
+    const live=list.find(c=>c&&c.sync_enabled!==false&&c.state&&c.state!=='disconnected');
+    if(!live)return 'Not connected';
+    if(live.state==='syncing')return 'Syncing';
+    if(live.state==='auth_expired')return 'Reconnect';
+    if(live.state==='degraded'||live.state==='error')return 'Needs attention';
+    if(live.state==='connected'||live.state==='sync_pending')return 'Connected';
+    return 'Not connected';
+  }
+  function openWearableConnection() {
+    const sync=NXT.wearables&&NXT.wearables.sync;
+    const live=sync&&typeof sync.connectLive==='function'?sync.connectLive({provider_id:'garmin.connect'}):null;
+    const decision=(live&&live.live_auth&&live.live_auth.decision)||'LIVE PROVIDER AUTH DEFERRED — SECURE BACKEND / PROVIDER ACCESS REQUIRED';
+    N.modal('Connect wearable',`<p>Wearable connection stays disconnected until a confidential backend can complete provider OAuth. Historical canonical evidence already on this device is not erased if you disconnect later.</p><p class="n99-small">${esc(decision)}</p>${button('Close','closeModal()',true)}`);
   }
   function recoveryHomeCard() {
     const integrated=currentIntegrated();
@@ -383,7 +420,7 @@ const NXP = (() => {
     page.innerHTML=shell(`${header('More')}
       ${moreAccount()}
       ${moreGroup('Plan',row('Profile & cut',c.calories?formatNumber(c.calories)+' kcal':'Set up',"NXT.more('goals')",c.targetConfirmed?goalLow()+'–'+goalHigh()+' kg range':'Calorie guide and optional goal range')+row('Training',lifts+' lifting days',"NXT.more('training')",'Plan, workouts and gyms'))}
-      ${moreGroup('Recovery',row('Cardio & recovery',(Number(settings.zone2WeeklyTarget)||90)+' min / week',"NXT.more('coach')",'Weekly minutes and check-ins'))}
+      ${moreGroup('Recovery',row('Wearable',wearableConnectionLabel(),'NXP.openWearableConnection()','Connect stays disconnected until a secure backend exists')+row('Cardio & recovery',(Number(settings.zone2WeeklyTarget)||90)+' min / week',"NXT.more('coach')",'Weekly minutes and check-ins'))}
       ${moreGroup('Body',row('Body & scans',waist?waist+(waist===1?' waist entry':' waist entries'):'None yet',"NXT.more('body')",'Evo scans and measurements'))}
       ${moreGroup('Preferences',row('Appearance','Purple · charcoal',"NXT.more('appearance')")+row('Reminders',state.notifs?.enabled?'Enabled':'Off',"NXT.more('notifications')"))}
       ${moreGroup('Data',row('Data & sync',cloudUser?'Signed in':'Local-only',"NXT.more('data')",'Backup export: '+backupLabel())+row('App','Install & reset',"NXT.more('app')"))}
@@ -602,7 +639,7 @@ const NXP = (() => {
   function editHistorySet(i) {const r=ui.historyRows[i];if(r)openEditSet(r.id);}
   function otherDayDetails(date) {base.historyDay(date);}
   function sessionSummary() {historyDay(state.date);}
-  return {ui,home,training,progress,more,history,rememberInput,logSet,queue,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview};
+  return {ui,home,training,progress,more,history,rememberInput,logSet,queue,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;

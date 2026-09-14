@@ -536,6 +536,65 @@
         }
       },
       intervalsOverlap: intervalsOverlap,
+      exportState: function () {
+        return {
+          day_windows: clone(Array.from(windows.values())),
+          pointers: clone(Array.from(pointers.values()))
+        };
+      },
+      hydrateState: function (state, opts) {
+        opts = opts || {};
+        var skipped = [];
+        var degraded = false;
+        if (opts.replace !== false) {
+          windows = new Map();
+          pointers = new Map();
+          bySemantic = new Map();
+        }
+        function skip(kind, reason, id) {
+          degraded = true;
+          skipped.push({ kind: kind, reason: reason, id: id || null });
+        }
+        (state && state.day_windows || []).forEach(function (doc) {
+          try {
+            validateWindow(clone(doc));
+            windows.set(doc.day_window_id, clone(doc));
+            bySemantic.set(semanticKey(doc), doc.day_window_id);
+          } catch (err) {
+            skip("day_window", err && err.message ? err.message : "malformed", doc && doc.day_window_id);
+          }
+        });
+        (state && state.pointers || []).forEach(function (doc) {
+          try {
+            if (doc && Object.prototype.hasOwnProperty.call(doc, "is_current")) {
+              throw daysErr(OUTCOME.invalid_pointer, "pointer must not persist is_current.");
+            }
+            validatePointer(clone(doc));
+            var window = windows.get(doc.day_window_id);
+            if (!window) throw daysErr(OUTCOME.invalid_pointer, "pointer targets a missing day window.");
+            if (window.user_id !== doc.user_id) throw daysErr(OUTCOME.invalid_pointer, "pointer user_id does not match window.");
+            if (window.local_date !== doc.local_date) throw daysErr(OUTCOME.invalid_pointer, "pointer local_date does not match window.");
+            pointers.set(ptrKey(doc.user_id, doc.local_date), clone(doc));
+          } catch (err) {
+            skip("day_window_pointer", err && err.message ? err.message : "invalid_pointer", doc && doc.day_window_id);
+          }
+        });
+        return { outcome: degraded ? "degraded" : "ok", skipped: skipped, degraded: degraded };
+      },
+      listAllWindows: function (userId) {
+        var out = [];
+        windows.forEach(function (doc) {
+          if (!userId || doc.user_id === userId) out.push(clone(doc));
+        });
+        return out;
+      },
+      listAllPointers: function (userId) {
+        var out = [];
+        pointers.forEach(function (doc) {
+          if (!userId || doc.user_id === userId) out.push(clone(doc));
+        });
+        return out;
+      },
       status: status,
       createDays: createDays,
       OUTCOME: OUTCOME,

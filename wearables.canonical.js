@@ -837,9 +837,86 @@
       };
     }
 
+    function exportState() {
+      return {
+        observation_revisions: clone(Array.from(obsRevs.values())),
+        activity_revisions: clone(Array.from(actRevs.values())),
+        observation_pointers: clone(Array.from(obsPtrs.values())),
+        activity_pointers: clone(Array.from(actPtrs.values())),
+        diagnostics: clone(diagnostics)
+      };
+    }
+
+    function hydrateState(state, opts) {
+      opts = opts || {};
+      var skipped = [];
+      var degraded = false;
+      if (opts.replace !== false) {
+        obsRevs = new Map();
+        actRevs = new Map();
+        obsPtrs = new Map();
+        actPtrs = new Map();
+        diagnostics = [];
+      }
+      function skip(kind, reason, id) {
+        degraded = true;
+        skipped.push({ kind: kind, reason: reason, id: id || null });
+      }
+      (state && state.observation_revisions || []).forEach(function (doc) {
+        try {
+          validateObservationRevision(clone(doc));
+          obsRevs.set(doc.provenance.identities.revision_id, clone(doc));
+        } catch (err) {
+          skip("observation_revision", err && err.message ? err.message : "malformed", doc && doc.provenance && doc.provenance.identities && doc.provenance.identities.revision_id);
+        }
+      });
+      (state && state.activity_revisions || []).forEach(function (doc) {
+        try {
+          validateActivityRevision(clone(doc));
+          actRevs.set(doc.provenance.identities.activity_revision_id, clone(doc));
+        } catch (err) {
+          skip("activity_revision", err && err.message ? err.message : "malformed", doc && doc.provenance && doc.provenance.identities && doc.provenance.identities.activity_revision_id);
+        }
+      });
+      (state && state.observation_pointers || []).forEach(function (doc) {
+        try {
+          assertNoCurrentFlag(doc, "current_observation_pointer");
+          if (!doc || doc.document_type !== "current_observation_pointer") throw canonErr(ERROR.malformed_revision, "observation pointer envelope is invalid.");
+          var target = obsRevs.get(doc.revision_id);
+          if (!target) throw canonErr(ERROR.malformed_revision, "observation pointer target is missing.");
+          if (target.user_id !== doc.user_id) throw canonErr(ERROR.malformed_revision, "observation pointer user_id does not match revision.");
+          if (target.provenance.identities.canonical_observation_id !== doc.canonical_observation_id) {
+            throw canonErr(ERROR.malformed_revision, "observation pointer lineage does not match revision.");
+          }
+          obsPtrs.set(ptrKey(doc.user_id, doc.canonical_observation_id), clone(doc));
+        } catch (err) {
+          skip("observation_pointer", err && err.message ? err.message : "invalid_pointer", doc && doc.revision_id);
+        }
+      });
+      (state && state.activity_pointers || []).forEach(function (doc) {
+        try {
+          assertNoCurrentFlag(doc, "current_activity_pointer");
+          if (!doc || doc.document_type !== "current_activity_pointer") throw canonErr(ERROR.malformed_revision, "activity pointer envelope is invalid.");
+          var target = actRevs.get(doc.activity_revision_id);
+          if (!target) throw canonErr(ERROR.malformed_revision, "activity pointer target is missing.");
+          if (target.user_id !== doc.user_id) throw canonErr(ERROR.malformed_revision, "activity pointer user_id does not match revision.");
+          if (target.provenance.identities.canonical_activity_id !== doc.canonical_activity_id) {
+            throw canonErr(ERROR.malformed_revision, "activity pointer lineage does not match revision.");
+          }
+          actPtrs.set(ptrKey(doc.user_id, doc.canonical_activity_id), clone(doc));
+        } catch (err) {
+          skip("activity_pointer", err && err.message ? err.message : "invalid_pointer", doc && doc.activity_revision_id);
+        }
+      });
+      if (state && Array.isArray(state.diagnostics)) diagnostics = diagnostics.concat(clone(state.diagnostics));
+      return { outcome: degraded ? "degraded" : "ok", skipped: skipped, degraded: degraded };
+    }
+
     return {
       acceptCandidate: acceptCandidate,
       acceptBatch: acceptBatch,
+      exportState: exportState,
+      hydrateState: hydrateState,
       getObservationRevision: function (id) {
         var doc = obsRevs.get(id);
         return doc ? clone(doc) : null;
@@ -863,6 +940,34 @@
       },
       listActivityRevisions: function (userId, lineageId) {
         return clone(listAct(userId, lineageId));
+      },
+      listAllObservationRevisions: function (userId) {
+        var out = [];
+        obsRevs.forEach(function (doc) {
+          if (!userId || doc.user_id === userId) out.push(clone(doc));
+        });
+        return out;
+      },
+      listAllActivityRevisions: function (userId) {
+        var out = [];
+        actRevs.forEach(function (doc) {
+          if (!userId || doc.user_id === userId) out.push(clone(doc));
+        });
+        return out;
+      },
+      listAllObservationPointers: function (userId) {
+        var out = [];
+        obsPtrs.forEach(function (doc) {
+          if (!userId || doc.user_id === userId) out.push(clone(doc));
+        });
+        return out;
+      },
+      listAllActivityPointers: function (userId) {
+        var out = [];
+        actPtrs.forEach(function (doc) {
+          if (!userId || doc.user_id === userId) out.push(clone(doc));
+        });
+        return out;
       },
       listDiagnostics: function () { return clone(diagnostics); },
       status: status,

@@ -962,6 +962,107 @@
       intervalsOverlap: intervalsOverlap,
       inWindow: inWindow,
       membershipTime: membershipTime,
+      exportState: function () {
+        return {
+          snapshots: clone(Array.from(snaps.values())),
+          pointers: clone(Array.from(pointers.values()))
+        };
+      },
+      hydrateState: function (state, opts) {
+        opts = opts || {};
+        var skipped = [];
+        var degraded = false;
+        if (opts.replace !== false) {
+          snaps = new Map();
+          pointers = new Map();
+          byLineage = new Map();
+          byContent = new Map();
+        }
+        function skip(kind, reason, id) {
+          degraded = true;
+          skipped.push({ kind: kind, reason: reason, id: id || null });
+        }
+        var incoming = (state && state.snapshots || []).slice().sort(function (a, b) {
+          var au = String(a && a.user_id || "");
+          var bu = String(b && b.user_id || "");
+          if (au < bu) return -1;
+          if (au > bu) return 1;
+          var aw = String(a && a.day_window_id || "");
+          var bw = String(b && b.day_window_id || "");
+          if (aw < bw) return -1;
+          if (aw > bw) return 1;
+          var av = Number(a && a.snapshot_version) || 0;
+          var bv = Number(b && b.snapshot_version) || 0;
+          if (av < bv) return -1;
+          if (av > bv) return 1;
+          var ai = String(a && a.snapshot_id || "");
+          var bi = String(b && b.snapshot_id || "");
+          if (ai < bi) return -1;
+          if (ai > bi) return 1;
+          return 0;
+        });
+        incoming.forEach(function (doc) {
+          try {
+            if (!doc || doc.document_type !== "wearable_daily_snapshot" || doc.schema_version !== SCHEMA) {
+              throw snapErr(OUTCOME.invalid_snapshot, "DailySnapshot envelope is invalid.");
+            }
+            if (Object.prototype.hasOwnProperty.call(doc, "is_current")) {
+              throw snapErr(OUTCOME.invalid_snapshot, "DailySnapshot must not persist is_current.");
+            }
+            if (!isNonEmptyString(doc.snapshot_id) || !isNonEmptyString(doc.user_id) || !isNonEmptyString(doc.day_window_id)) {
+              throw snapErr(OUTCOME.invalid_snapshot, "Snapshot identity is incomplete.");
+            }
+            if (!Number.isInteger(doc.snapshot_version) || doc.snapshot_version < 1) {
+              throw snapErr(OUTCOME.invalid_snapshot, "snapshot_version must be an integer >= 1.");
+            }
+            snaps.set(doc.snapshot_id, clone(doc));
+            var lk = ptrKey(doc.user_id, doc.day_window_id);
+            var list = byLineage.get(lk) || [];
+            list.push(doc.snapshot_id);
+            byLineage.set(lk, list);
+            try {
+              byContent.set(lk + "\n" + evidenceSignature(doc), doc.snapshot_id);
+            } catch (e2) {}
+          } catch (err) {
+            skip("snapshot", err && err.message ? err.message : "malformed", doc && doc.snapshot_id);
+          }
+        });
+        (state && state.pointers || []).forEach(function (doc) {
+          try {
+            if (doc && Object.prototype.hasOwnProperty.call(doc, "is_current")) {
+              throw snapErr(OUTCOME.invalid_pointer, "pointer must not persist is_current.");
+            }
+            if (!doc || doc.document_type !== "current_snapshot_pointer") {
+              throw snapErr(OUTCOME.invalid_pointer, "snapshot pointer envelope is invalid.");
+            }
+            var snap = snaps.get(doc.snapshot_id);
+            if (!snap) throw snapErr(OUTCOME.invalid_pointer, "pointer targets a missing snapshot.");
+            if (snap.user_id !== doc.user_id) throw snapErr(OUTCOME.invalid_pointer, "pointer user_id does not match snapshot.");
+            if (snap.day_window_id !== doc.day_window_id) throw snapErr(OUTCOME.invalid_pointer, "pointer day_window_id does not match snapshot.");
+            if (snap.snapshot_version !== doc.snapshot_version) {
+              throw snapErr(OUTCOME.invalid_pointer, "pointer snapshot_version does not match snapshot.");
+            }
+            pointers.set(ptrKey(doc.user_id, doc.day_window_id), clone(doc));
+          } catch (err) {
+            skip("snapshot_pointer", err && err.message ? err.message : "invalid_pointer", doc && doc.snapshot_id);
+          }
+        });
+        return { outcome: degraded ? "degraded" : "ok", skipped: skipped, degraded: degraded };
+      },
+      listAllSnapshots: function (userId) {
+        var out = [];
+        snaps.forEach(function (doc) {
+          if (!userId || doc.user_id === userId) out.push(clone(doc));
+        });
+        return out;
+      },
+      listAllPointers: function (userId) {
+        var out = [];
+        pointers.forEach(function (doc) {
+          if (!userId || doc.user_id === userId) out.push(clone(doc));
+        });
+        return out;
+      },
       status: status,
       createSnapshots: createSnapshots,
       OUTCOME: OUTCOME,

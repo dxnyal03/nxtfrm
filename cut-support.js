@@ -1051,7 +1051,16 @@ Object.assign(NXT, (()=>{
     const keys=['apm_logs','apm_cardio','apm_floorball','apm_bws','apm_evo_scans','apm_rest','apm_current_read','apm_current_gym','apm_gyms','apm_notifications','apm_coach_insights','apm_session_plans','apm_exercise_notes','apm_settings','apm_last_open_date'];
     for(const key of keys)localStorage.removeItem(key);
     // Prevent an automatic cloud write while this device reloads after its local-only reset.
-    clearTimeout(cloudTimer);cloudUser=null;location.reload();
+    clearTimeout(cloudTimer);cloudUser=null;
+    const reload=()=>{location.reload();};
+    try {
+      const store=typeof NXT==='object'&&NXT.wearables&&NXT.wearables.store;
+      if(store&&typeof store.deleteDatabase==='function'){
+        Promise.resolve(store.deleteDatabase()).then(reload,reload);
+        return;
+      }
+    } catch (e) {}
+    reload();
   }
   function install(migrate=true) {
     for(const [type,rows] of Object.entries(N.defaults))TEMPLATES[type]=N.copy(rows);
