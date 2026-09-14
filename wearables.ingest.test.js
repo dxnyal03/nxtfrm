@@ -540,7 +540,7 @@ test("41-50. G3C performs no canonical writes or I/O", function () {
 test("51. Existing G3A tests still pass unchanged", function () {
   const result = spawnSync(process.execPath, [path.join(ROOT, "wearables.test.js")], { encoding: "utf8" });
   assert.strictEqual(result.status, 0, result.stdout + result.stderr);
-  assert.ok(result.stdout.indexOf("OK  15 passed") !== -1);
+  assert.ok(result.stdout.indexOf("OK  18 passed") !== -1);
 });
 
 test("52. Existing G3B tests still pass unchanged", function () {

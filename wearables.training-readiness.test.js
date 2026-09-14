@@ -407,7 +407,7 @@ test("signals: usable values and unresolved never shown as selected", function (
 test("G3A tests still pass", function () {
   const result = spawnSync(process.execPath, [path.join(ROOT, "wearables.test.js")], { encoding: "utf8" });
   assert.strictEqual(result.status, 0, result.stdout + result.stderr);
-  assert.ok(result.stdout.indexOf("OK  15 passed") !== -1);
+  assert.ok(result.stdout.indexOf("OK  18 passed") !== -1);
 });
 
 test("G3B tests still pass", function () {

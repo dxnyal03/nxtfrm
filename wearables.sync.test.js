@@ -746,7 +746,7 @@ test("SW caches production wearable modules only", function () {
   assert.ok(sw.indexOf("wearables.store.js") !== -1);
   assert.ok(sw.indexOf("wearables.sync.js") !== -1);
   assert.ok(sw.indexOf("wearables.provider-garmin.js") !== -1);
-  assert.ok(/nxtfrm-v105-premium-cache/.test(sw));
+  assert.ok(/nxtfrm-v106-premium-cache/.test(sw));
   assert.ok(sw.indexOf("wearables.store.test.js") === -1);
   assert.ok(sw.indexOf("wearables.sync.test.js") === -1);
   assert.ok(sw.indexOf("wearables.fixtures.js") === -1);

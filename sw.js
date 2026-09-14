@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nxtfrm-v105-premium-cache';
+const CACHE_NAME = 'nxtfrm-v106-premium-cache';
 const ASSETS = [
   './',
   './index.html',

@@ -1012,7 +1012,7 @@ Object.assign(NXT, (()=>{
   }
   function exportSafety() {
     let saved;try{saved=JSON.parse(localStorage.getItem('nxtfrm_recovery_snapshot')||'null');}catch(e){}
-    if(!saved?.data)return toast('No safety copy yet. Export your current full backup instead.');
+    if(!saved?.data)return toast('No safety copy yet. Export an app backup instead. Wearable evidence is not included in that file.');
     const url=URL.createObjectURL(new Blob([JSON.stringify(saved.data,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='nxtfrm-safety-copy.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
   function restoreSafety() {

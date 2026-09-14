@@ -15,7 +15,24 @@
     return Number.isFinite(ms) && new Date(ms).toISOString().slice(0, 10) === date;
   }
 
+  function loopbackHost(host) {
+    return host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host === "::1";
+  }
+
+  function productionHost() {
+    try {
+      if (typeof location !== "object" || !location) return false;
+      var host = String(location.hostname || "");
+      if (loopbackHost(host)) return false;
+      if (location.protocol === "file:") return false;
+      return !!host;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function runtimeMode(explicit) {
+    if (productionHost()) return "production";
     if (explicit === "production" || explicit === "development" || explicit === "test") return explicit;
     try {
       if (typeof process === "object" && process && process.env) {
@@ -26,7 +43,7 @@
     try {
       if (typeof location === "object" && location) {
         var host = String(location.hostname || "");
-        if (host === "localhost" || host === "127.0.0.1") return "development";
+        if (loopbackHost(host)) return "development";
         if (location.protocol === "file:") return "development";
         return "production";
       }

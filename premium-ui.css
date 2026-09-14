@@ -104,6 +104,7 @@ body {
 }
 
 .top {
+  display: none !important;
   z-index: var(--nxt-z-header);
 }
 
@@ -550,7 +551,7 @@ body:has(#nxp-set-form:focus-within) .tabs { visibility:hidden;pointer-events:no
 .nxp-queue-row.is-done > span:first-child { color:var(--nxt-accent); }
 
 /* V102.2A Train lifting workspace. Scoped; does not alter Rest, Zone 2, Floorball, empty, Home, or shell algebra. */
-.nxp-train-lift { min-width:0; padding-bottom:64px; }
+.nxp-train-lift { min-width:0; padding-bottom: calc(var(--nxt-tabs-stack) + var(--nxt-cta-clearance) + 88px); }
 .nxp-train-lift .nxp-train-chrome { margin:var(--nxt-space-1) 0 var(--nxt-space-2);align-items:flex-start; }
 .nxp-train-lift .nxp-train-chrome h1 {
   margin:0;
@@ -888,7 +889,7 @@ body:has(#nxp-set-form:focus-within) .tabs { visibility:hidden;pointer-events:no
   .nxp-train-lift .nxp-load-inputs input[type="number"] { font-size:1.35rem!important; }
 }
 @media (max-width:340px) and (max-height:600px) {
-  .nxp-train-lift { padding-bottom:0; }
+  .nxp-train-lift { padding-bottom: calc(var(--nxt-tabs-stack) + 24px); }
   .nxp-train-lift .nxp-train-chrome { margin:0 0 var(--nxt-space-1); }
   .nxp-train-lift .nxp-ex { margin-bottom:var(--nxt-space-2); }
   .nxp-train-lift .nxp-aim { margin-bottom:var(--nxt-space-2);padding:6px 10px; }

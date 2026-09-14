@@ -62,7 +62,7 @@ const NXP = (() => {
       <button type="button" class="nxp-home-kcal" onclick="NXT.openCalories()"><span><small>Calorie guide</small><strong>${cal?formatNumber(cal)+' <em>kcal</em>':'Set target'}</strong></span><span>${cal?'Edit':'Set up'}</span></button>
       ${N.adherenceHTML()}
       <nav class="nxp-home-secondary" aria-label="Quick actions">${link('＋ Weight','apx95OpenQuickWeight()')}${state.dayType==='Zone2'?'':link('Log cardio','showCardioSheet()')}${state.dayType==='Rest'?'':link('Check-in','apx96OpenReadiness()')}</nav>
-      <details class="nxp-home-week nxp-disclosure"><summary><span>Your week</span><small>${N.completedWeek()} lifting days logged</small></summary>${N.weekHTML()}<div class="nxp-card-foot"><span>${cardioMins} / ${cardioTarget} cardio min</span>${link('Edit plan ›',"NXT.more('training')")}</div></details>
+      <details class="nxp-home-week nxp-disclosure" open><summary><span>Your week</span><small>${N.completedWeek()} lifting days logged</small></summary>${N.weekHTML()}<div class="nxp-card-foot"><span>${cardioMins} / ${cardioTarget} cardio min</span>${link('Edit plan ›',"NXT.more('training')")}</div></details>
       <details class="nxp-home-trend nxp-disclosure"><summary><span>Weight detail</span><small>${last?last.weight.toFixed(1)+' kg':'No weigh-in yet'}</small></summary><div class="n99-stats">${N.metric('7-day average',s.current.n>=3?s.current.avg.toFixed(1)+'<small> kg</small>':'—',s.current.n>=3?'From '+s.current.n+' weigh-ins':'Needs 3 readings in 7 days')}${N.metric('Weekly change',s.change===null?'—':N.signed(s.change,2)+'<small> kg</small>',s.change===null?'Building a comparison':'Compared with prior 7 days')}</div><div class="nxp-card-foot"><span>${last?'Latest: '+last.weight.toFixed(1)+' kg · '+N.shortDate(last.date):'Your first weigh-in sets the baseline.'}</span>${link('View progress ›',"switchTab('weight')")}</div></details>
     </div>`;
   }
@@ -218,8 +218,18 @@ const NXP = (() => {
     </div>`;
     setTimeout(apx96TickTimer,0);
   }
-  function queueRows() {return template().map((e,i)=>{const current=e.name===state.exercise,complete=N.done(e.name)>=e.sets;return `<button type="button" class="nxp-queue-row${current?' is-current':''}${complete?' is-done':''}" onclick="NXP.chooseExercise(${i})"><span>${complete?'✓':i+1}</span><span><b>${esc(e.name)}</b><small>${e.reps[0]}–${e.reps[1]} reps</small></span><span>${N.done(e.name)} / ${e.sets}</span></button>`;}).join('');}
-  function queue() {N.modal('Workout queue',queueRows()+button('Manage exercises','apx96OpenQueueManager()',true));}
+  function queueRows() {
+    const list=template();
+    if(!list.length){
+      return `<p class="n99-small nxp-queue-empty">No exercises are queued for this session. Add an exercise or restore your saved programme.</p>`;
+    }
+    return list.map((e,i)=>{const current=e.name===state.exercise,complete=N.done(e.name)>=e.sets;return `<button type="button" class="nxp-queue-row${current?' is-current':''}${complete?' is-done':''}" onclick="NXP.chooseExercise(${i})"><span>${complete?'✓':i+1}</span><span><b>${esc(e.name)}</b><small>${e.reps[0]}–${e.reps[1]} reps</small></span><span>${N.done(e.name)} / ${e.sets}</span></button>`;}).join('');
+  }
+  function queue() {
+    const list=template();
+    const manage=list.length?button('Manage exercises','apx96OpenQueueManager()',true):button('Add exercise','v88OpenAddModal()')+button('Restore programme','NXT.fullSession()',true);
+    N.modal('Workout queue',queueRows()+manage);
+  }
   function chooseExercise(i) {closeModal();N.selectExercise(i);}
   function editCurrentSet(i) {const r=N.sessionLogs().filter(r=>r.exercise===state.exercise)[i];if(r)openEditSet(r.id);}
   function logSet() {
@@ -441,7 +451,7 @@ const NXP = (() => {
   function dataView() {
     const settingsHTML=cloudCardHTML().replace(/>Online</g,'>Signed in<').replace(/>Connected</g,'>Signed in<').replace('Supabase Anon Public Key','Supabase publishable / anon key').replace('id="sbKey" class="input"','id="sbKey" type="password" autocomplete="off" class="input"');
     document.getElementById('morePage').innerHTML=shell(`${header('Data & sync','Your records stay yours.',button('‹ Back',"NXT.more('hub')",true))}<section class="n99-card"><div class="n99-row"><h2>Supabase connection</h2><span class="nxp-tag">Read-only test</span></div><p>${esc(cloudLabel())}</p><div id="nxp-connection-result" aria-live="polite">${connectionHTML()}</div>${button('Test connection','NXP.testConnection()')}<p class="n99-small">Checks your project, sign-in and whether your backup row is visible. It does not upload, load or replace workout data. Write access is not tested.</p><details class="nxp-advanced"><summary>Account & connection settings</summary>${settingsHTML}</details></section>
-      <section class="n99-card"><h2>Backup & restore</h2><p>Export a copy before updating or switching devices.</p><p class="n99-small">Export last requested: ${esc(backupLabel())}. Check your Downloads to confirm the file was saved.</p><div class="n99-stack">${button('Export full backup','exportJSON()')}${button('Export workout CSV','exportCSV()',true)}</div><details class="nxp-advanced"><summary>Restore a backup</summary>${backupRestoreHTML()}</details></section>
+      <section class="n99-card"><h2>Backup & restore</h2><p>Export workouts, weigh-ins, settings and check-ins stored in this browser. Wearable evidence in the on-device wearable store is not included; it remains on this device until you reset the app, and can be rebuilt by a later provider sync.</p><p class="n99-small">Export last requested: ${esc(backupLabel())}. Check your Downloads to confirm the file was saved.</p><div class="n99-stack">${button('Export app backup','exportJSON()')}${button('Export workout CSV','exportCSV()',true)}</div><details class="nxp-advanced"><summary>Restore a backup</summary>${backupRestoreHTML()}</details></section>
       <details class="n99-card"><summary>Local safety copy</summary><p>Recovery copy made before a restore, cloud load or reset. It is not an independent backup.</p><div class="n99-stack">${button('Download safety copy','NXT.exportSafety()',true)}${button('Restore safety copy','NXT.restoreSafety()',true)}</div></details><details class="n99-card"><summary>Advanced cloud setup</summary>${supabaseSQLHelpHTML()}</details>`);
   }
   function exportBackup() {try{base.exportJSON();N.cfg().backupExportRequestedAt=Date.now();persist();toast('Backup download requested — check Downloads');}catch(e){toast('Could not prepare the backup. Try again before changing devices.');}}

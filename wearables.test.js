@@ -296,6 +296,22 @@ test("8. body mass stays a wearable candidate and does not alter weigh-ins", fun
   assert.notStrictEqual(weighIns[0].weight, mass.value);
 });
 
+function assertFixtureForbidden(api, docs, opts) {
+  assert.throws(function () {
+    api.useFixtureProvider(docs, opts);
+  }, function (err) {
+    return err && err.code === "fixture_forbidden_in_production";
+  });
+  const st = api.status();
+  assert.strictEqual(st.mode, "production");
+  assert.strictEqual(st.ready, false);
+  assert.strictEqual(st.fixture_allowed, false);
+  assert.strictEqual(st.provider, "none");
+  assert.strictEqual(st.production_guard, "fixture_forbidden_in_production");
+  assert.strictEqual(api.getDaily("2026-09-14", { userId: "u_syn_a" }), null);
+  assert.strictEqual(api.getDayWindow("2026-09-14", { userId: "u_syn_a" }), null);
+}
+
 test("9. fixture provider refuses production mode", function () {
   const world = loadWorld({ loadFixtures: false });
   const prod = world.factory.create({ mode: "production" });
@@ -316,6 +332,57 @@ test("9. fixture provider refuses production mode", function () {
   const hosted = loadWorld({ loadFixtures: true, location: { hostname: "nxtfrm.app", protocol: "https:" } });
   assert.strictEqual(hosted.wearables.status().mode, "production");
   assert.strictEqual(hosted.wearables.getDaily("2026-09-14", { userId: "u_syn_a" }), null);
+});
+
+test("9a. production host cannot be downgraded via useFixtureProvider mode", function () {
+  const docs = loadWorld().docs;
+  const world = loadWorld({
+    loadFixtures: false,
+    location: { hostname: "app.nxtfrm.example", protocol: "https:" }
+  });
+  assert.strictEqual(world.wearables.status().mode, "production");
+  assert.strictEqual(world.wearables.status().ready, false);
+  assertFixtureForbidden(world.wearables, docs, { mode: "development" });
+});
+
+test("9b. production host cannot be downgraded via create mode", function () {
+  const docs = loadWorld().docs;
+  const world = loadWorld({
+    loadFixtures: false,
+    location: { hostname: "app.nxtfrm.example", protocol: "https:" }
+  });
+  const api = world.factory.create({ mode: "development" });
+  assert.strictEqual(api.status().mode, "production");
+  assert.strictEqual(api.status().ready, false);
+  assert.strictEqual(api.status().fixture_allowed, false);
+  assertFixtureForbidden(api, docs, { mode: "development" });
+});
+
+test("9c. localhost, file, loopback, and Node still allow explicit development", function () {
+  const docs = loadWorld().docs;
+  [
+    { hostname: "localhost", protocol: "http:" },
+    { hostname: "127.0.0.1", protocol: "http:" },
+    { hostname: "::1", protocol: "http:" },
+    { hostname: "[::1]", protocol: "http:" },
+    { hostname: "", protocol: "file:" }
+  ].forEach(function (location) {
+    const world = loadWorld({ loadFixtures: false, location: location });
+    const api = world.factory.create({ mode: "development" });
+    const st = api.useFixtureProvider(docs, { mode: "development" });
+    assert.strictEqual(st.mode, "development");
+    assert.strictEqual(st.ready, true);
+    assert.strictEqual(st.fixture_allowed, true);
+    assert.ok(api.getDaily("2026-09-14", { userId: "u_syn_a" }));
+  });
+  const ctx = { console: console, NXT: {}, process: { env: {} } };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, "wearables.js"), "utf8"), ctx, { filename: "wearables.js" });
+  const nodeApi = ctx.NXTFRMWearables.create({ mode: "test" });
+  const nodeStatus = nodeApi.useFixtureProvider(docs, { mode: "test" });
+  assert.strictEqual(nodeStatus.mode, "test");
+  assert.strictEqual(nodeStatus.ready, true);
+  assert.ok(nodeApi.getDaily("2026-09-14", { userId: "u_syn_a" }));
 });
 
 test("10. no network or real persistence occurs", function () {

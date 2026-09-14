@@ -415,7 +415,7 @@ test("32-37. fixture adapter performs zero storage or network I/O", function () 
 test("38. existing wearables.test.js still passes unchanged", function () {
   const result = spawnSync(process.execPath, [path.join(ROOT, "wearables.test.js")], { encoding: "utf8" });
   assert.strictEqual(result.status, 0, result.stdout + result.stderr);
-  assert.ok(result.stdout.indexOf("OK  15 passed") !== -1);
+  assert.ok(result.stdout.indexOf("OK  18 passed") !== -1);
 });
 
 test("39. existing getDaily behavior is unchanged", function () {

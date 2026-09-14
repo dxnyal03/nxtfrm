@@ -34,6 +34,8 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
+/* Hide leftover V-era chrome before JS so refresh cannot flash an old header/readiness score. */
+header.top{display:none!important}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",Roboto,Arial,sans-serif;
   width:100%;
@@ -8041,7 +8043,14 @@ function applyDayOverrideForDate(){
   const override=settings.dayOverrides[state.date];
   if(override){
     state.dayType=override;
+    return;
   }
+  if(typeof NXT==="object"&&NXT&&typeof NXT.typeFor==="function"){
+    state.dayType=NXT.typeFor(state.date);
+    return;
+  }
+  const d=new Date(state.date+"T12:00:00").getDay();
+  state.dayType=settings.weeklyPlan?.[d]||PLAN[d].type;
 }
 
 
@@ -9054,11 +9063,8 @@ if(typeof window!=='undefined') window.onerror=function(msg,src,line,col,err){
   if(root) root.innerHTML=`<div class="card"><div class="title">App error</div><div class="sub" style="margin-top:8px">${String(msg)}</div></div>`;
 };
 initCloudFromStorage();
-try{render(); }catch(e){
-  const root=document.getElementById("homePage");
-  if(root) root.innerHTML=`<div class="card"><div class="title">App error</div><div class="sub" style="margin-top:8px">${String(e.message||e)}</div></div>`;
-  console.error(e);
-}
+/* Do not paint the legacy renderer here. cut-support + premium-ui replace
+   renderHome/renderTrain; an early render() is the old-version flash. */
 
 
 
@@ -9750,10 +9756,10 @@ function apx96MoreSectionHTML(view){
     content=notificationsSettingsHTML();
   }else if(view==="data"){
     title="Data & sync";subtitle="Backup, restore, cloud and exports.";
-    content=`${cloudCardHTML()}${backupRestoreHTML()}<div class="apx96-card"><div class="apx96-kicker">Exports</div><div class="apx96-card-title">Take your data anywhere</div><div style="display:grid;gap:8px;margin-top:12px"><button class="btn secondary" onclick="exportJSON()">EXPORT FULL BACKUP</button><button class="btn secondary" onclick="exportCSV()">EXPORT WORKOUT CSV</button></div></div><details class="apx96-details"><summary>Advanced cloud setup</summary><div class="apx96-details-body">${supabaseSQLHelpHTML()}</div></details>`;
+    content=`${cloudCardHTML()}${backupRestoreHTML()}<div class="apx96-card"><div class="apx96-kicker">Exports</div><div class="apx96-card-title">Take your app data</div><div class="apx96-soft" style="margin-top:6px">Workouts, weigh-ins, settings and check-ins. Wearable evidence in the on-device wearable store is not included.</div><div style="display:grid;gap:8px;margin-top:12px"><button class="btn secondary" onclick="exportJSON()">EXPORT APP BACKUP</button><button class="btn secondary" onclick="exportCSV()">EXPORT WORKOUT CSV</button></div></div><details class="apx96-details"><summary>Advanced cloud setup</summary><div class="apx96-details-body">${supabaseSQLHelpHTML()}</div></details>`;
   }else{
     title="App & install";subtitle="Install, version and safety controls.";
-    content=`${installInstructionsHTML()}<div class="apx96-card"><div class="apx96-kicker">Build</div><div class="apx96-card-title">NXTFRM V98</div><div class="apx96-soft" style="margin-top:6px">Premium interface · offline-first · compatible with APEXCUT V93–V97 data.</div></div><div class="apx96-card apx96-danger"><div class="apx96-kicker">Danger zone</div><div class="apx96-card-title">Reset local app data</div><div class="apx96-soft" style="margin-top:6px">Export a full backup first. Reset cannot be undone on this device.</div><button class="btn danger" style="margin-top:12px" onclick="if(confirm('Clear all local NXTFRM data?')){localStorage.clear();location.reload()}">RESET APP DATA</button></div>`;
+    content=`${installInstructionsHTML()}<div class="apx96-card"><div class="apx96-kicker">Build</div><div class="apx96-card-title">NXTFRM V98</div><div class="apx96-soft" style="margin-top:6px">Premium interface · offline-first · compatible with APEXCUT V93–V97 data.</div></div><div class="apx96-card apx96-danger"><div class="apx96-kicker">Danger zone</div><div class="apx96-card-title">Reset local app data</div><div class="apx96-soft" style="margin-top:6px">Export an app backup first if you need workouts, weigh-ins and settings. Wearable evidence on this device is not in that file and will be cleared by reset. A local safety copy of app records is kept; reset still cannot be undone from the wearable store.</div><button class="btn danger" style="margin-top:12px" onclick="if(confirm('Clear all local NXTFRM data?')){localStorage.clear();location.reload()}">RESET APP DATA</button></div>`;
   }
   return `<div class="apx96-page">${apx96MoreHeader(title,subtitle)}<div class="apx96-more-section">${content}</div></div>`;
 }
@@ -10084,15 +10090,23 @@ document.addEventListener("focusout",function(e){
 <script src="wearables.resolution.js"></script>
 <script src="wearables.recovery.js"></script>
 <script src="wearables.recovery-integration.js"></script>
-<script src="wearables.training-readiness.js?v=105"></script>
-<script src="wearables.store.js?v=105"></script>
-<script src="wearables.provider-garmin.js?v=105"></script>
-<script src="wearables.sync.js?v=105"></script>
-<link rel="stylesheet" href="premium-ui.css?v=105">
-<script src="premium-ui.js?v=105"></script>
+<script src="wearables.training-readiness.js?v=106"></script>
+<script src="wearables.store.js?v=106"></script>
+<script src="wearables.provider-garmin.js?v=106"></script>
+<script src="wearables.sync.js?v=106"></script>
+<link rel="stylesheet" href="premium-ui.css?v=106">
+<script src="premium-ui.js?v=106"></script>
 <script src="seed.dev.js"></script>
 <script src="seed.scenarios.js"></script>
-<script src="wearables.fixtures.js"></script>
+<script>
+(function loadWearableFixturesDevOnly(){
+  var host=String(location.hostname||"");
+  if(!(host==="localhost"||host==="127.0.0.1"||host==="[::1]"||host==="::1"||location.protocol==="file:"))return;
+  var s=document.createElement("script");
+  s.src="wearables.fixtures.js";
+  document.body.appendChild(s);
+})();
+</script>
 </body>
 <script>
 /* Quick Win: Form Validation with aria-invalid */

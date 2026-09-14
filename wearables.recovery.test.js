@@ -1011,7 +1011,7 @@ test("R1-R1 28-30. Manual app recovery, storage, and network remain untouched", 
 test("56. Existing G3A tests still pass unchanged", function () {
   const result = spawnSync(process.execPath, [path.join(ROOT, "wearables.test.js")], { encoding: "utf8" });
   assert.strictEqual(result.status, 0, result.stdout + result.stderr);
-  assert.ok(result.stdout.indexOf("OK  15 passed") !== -1);
+  assert.ok(result.stdout.indexOf("OK  18 passed") !== -1);
 });
 
 test("57. Existing G3B tests still pass unchanged", function () {
