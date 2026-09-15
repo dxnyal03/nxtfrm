@@ -296,6 +296,243 @@ test("interactive controls have focus, pressed and disabled states", function ()
   assert.ok(css.indexOf(".tabs .tab:focus-visible") !== -1);
 });
 
+/* ===========================================================================
+   V108 Phase 3 — Train premium + interactive refinement.
+   These are behavioural and layout contracts, not snapshots of a particular
+   look: each one names a way the screen previously failed a lifter, so a later
+   restyle is free to change the paint but not to reintroduce the failure.
+   =========================================================================== */
+
+test("load and reps are steppers wired to the engine's own inputs", function () {
+  // Tapping a value must not require the numeric keyboard: opening it is what
+  // used to push the CTA off screen mid-set.
+  assert.ok(ui.indexOf('class="nxp-step"') !== -1, "stepper buttons must ship");
+  assert.ok(/data-step-target="\$\{id\}"/.test(ui), "a stepper must name the input it drives");
+  // The engine reads these two ids with val(); the steppers write through them
+  // rather than keeping a parallel value of their own.
+  assert.ok(ui.indexOf("stepper('weightInput'") !== -1);
+  assert.ok(ui.indexOf("stepper('repsInput'") !== -1);
+  assert.ok(/function stepValue\(btn\)[\s\S]{0,700}rememberInput\(input\)/.test(ui),
+    "a step must go through rememberInput so the draft survives the next repaint");
+  // The weight increment is the exercise's own, not a constant invented here.
+  assert.ok(ui.indexOf("trimNum(t.inc||2.5)") !== -1, "weight steps by the exercise increment");
+});
+
+test("press-and-hold cannot fire by accident and cannot eat a scroll", function () {
+  const hold = ui.slice(ui.indexOf("const HOLD_DELAY"), ui.indexOf("function noteRestTotal"));
+  const delay = hold.match(/HOLD_DELAY=(\d+)/);
+  assert.ok(delay && Number(delay[1]) >= 350, "a repeat must need a deliberate hold");
+  // A drag that starts on a stepper is a scroll, not an input.
+  assert.ok(/function holdMove\(event\)[\s\S]{0,400}holdEnd\(\)/.test(hold));
+  assert.ok(hold.indexOf("HOLD_SLOP") !== -1);
+  ["pointerup", "pointercancel", "pointerleave"].forEach(function (name) {
+    assert.ok(hold.indexOf("'" + name + "'") !== -1, name + " must end a hold");
+  });
+  // Keyboard activation still steps exactly once (a pointer tap already
+  // stepped on pointerdown, so the click handler must skip it).
+  assert.ok(hold.indexOf("event.detail!==0") !== -1, "keyboard activation must step once");
+  assert.ok(css.indexOf("touch-action: manipulation") !== -1, "steppers must let the page scroll");
+});
+
+test("a logged set is confirmed in place, never in a modal", function () {
+  assert.ok(ui.indexOf("ui.confirmFrom=before") !== -1, "the confirmation is armed before the engine repaints");
+  assert.ok(ui.indexOf("is-just-logged") !== -1);
+  assert.ok(ui.indexOf("nxp-cta-check") !== -1);
+  // It clears itself without a second repaint: replacing the DOM again would
+  // reset scroll position and blur whatever the lifter touched next.
+  const reset = ui.slice(ui.indexOf("function scheduleConfirmReset"));
+  assert.ok(reset.indexOf("classList.remove('is-just-logged')") !== -1);
+  assert.strictEqual(/scheduleConfirmReset[\s\S]{0,400}(render|training)\(\)/.test(reset), false,
+    "the confirmation must not trigger another full render");
+  // No celebration for an ordinary working set.
+  ["confetti", "fireworks", "sparkle"].forEach(function (word) {
+    assert.strictEqual(css.toLowerCase().indexOf(word), -1, word + " has no place in a gym");
+    assert.strictEqual(ui.toLowerCase().indexOf(word), -1, word + " has no place in a gym");
+  });
+});
+
+test("the rest timer is a region of the page, not an overlay", function () {
+  const block = css.slice(css.indexOf("/* ---- Rest timer ----"), css.indexOf("/* ---- Exercise navigation"));
+  const scoped = block.replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.strictEqual(/position:\s*(fixed|absolute|sticky)/.test(scoped), false,
+    "a floating timer can collide with the controls under it");
+  assert.ok(scoped.indexOf("z-index") === -1, "nothing here should need to win a stacking fight");
+  // It knows the whole rest, not only what is left, so it can show progress.
+  assert.ok(ui.indexOf("function noteRestTotal") !== -1);
+  assert.ok(ui.indexOf("apx96StartRestSource") !== -1, "the engine still owns the countdown");
+});
+
+test("exercise progress is shown without turning it into tiny targets", function () {
+  const rail = ui.slice(ui.indexOf('<div class="nxp-ex-rail">'), ui.indexOf('<section class="nxp-ex-head">'));
+  assert.ok(rail.indexOf('<ol aria-hidden="true">') !== -1, "the segments are presentation");
+  assert.strictEqual(/<li[^>]*><button/.test(rail), false,
+    "a six-segment rail is six targets too small to hit; navigation stays full-size");
+  // The full-size controls are still the way to move between exercises.
+  assert.ok(ui.indexOf('class="nxp-ex-nav"') !== -1);
+  assert.ok(ui.indexOf("NXP.goExercise(-1)") !== -1 && ui.indexOf("NXP.goExercise(1)") !== -1);
+  // Nothing requires a swipe.
+  assert.strictEqual(/addEventListener\('touchstart'|onswipe|swipeLeft/.test(ui), false,
+    "navigation must not depend on a gesture");
+});
+
+test("Train controls are at least 44px and keep their states", function () {
+  // Measured from the declarations rather than trusted: the pre-V108 header
+  // button shipped at 36px.
+  const train = css.slice(css.indexOf("/* V107 Train lifting workspace."), css.indexOf("/* ---- Narrow phones"));
+  const shortMin = train.match(/min-height:\s*(\d+)px/g) || [];
+  shortMin.forEach(function (decl) {
+    const px = Number(decl.match(/(\d+)px/)[1]);
+    assert.ok(px === 3 || px === 4 || px === 20 || px >= 44,
+      "an interactive min-height of " + px + "px is under the touch minimum");
+  });
+  assert.ok(train.indexOf(".nxp-step:active") !== -1);
+  assert.ok(train.indexOf(".nxp-step:disabled") !== -1);
+  assert.ok(train.indexOf(".nxp-ex-nav button:disabled") !== -1);
+  assert.ok(train.indexOf(".nxp-train-cta:active") !== -1);
+  assert.ok(train.indexOf(".nxp-train-cta:disabled") !== -1);
+});
+
+test("the comparison line is typography, not three cards", function () {
+  const aim = css.slice(css.indexOf("/* ---- Last / Target / Rest ----"), css.indexOf("/* ---- Coach note ----"));
+  const cell = aim.slice(aim.indexOf(".nxp-aim-cell {"), aim.indexOf(".nxp-aim-cell + .nxp-aim-cell"));
+  assert.ok(cell.indexOf("background: none") !== -1, "a reading is not a card");
+  assert.ok(cell.indexOf("border: 0") !== -1);
+  // Only the divider between readings carries a line.
+  assert.ok(aim.indexOf(".nxp-aim-cell + .nxp-aim-cell") !== -1);
+});
+
+test("Train uses the shared surfaces instead of inventing card systems", function () {
+  assert.ok(css.indexOf(".nxp-surface {") !== -1 && css.indexOf(".nxp-surface-raised {") !== -1);
+  const train = css.slice(css.indexOf("/* V107 Train lifting workspace."), css.indexOf("/* ---- Narrow phones"));
+  // Every filled region on Train reads from the token scale, so no rule can
+  // drift a private grey or radius into the screen.
+  assert.strictEqual(/background:\s*#[0-9a-f]{3,8}/i.test(train.replace(/\/\*[\s\S]*?\*\//g, "")), false,
+    "Train must not hard-code a surface colour");
+  assert.strictEqual(/border-radius:\s*\d+px/.test(train.replace(/\/\*[\s\S]*?\*\//g, "")), false,
+    "Train must not hard-code a radius");
+});
+
+test("purple marks the few things it is meant to mark", function () {
+  const train = css.slice(css.indexOf("/* V107 Train lifting workspace."), css.indexOf("/* ---- Narrow phones"));
+  const decls = train.replace(/\/\*[\s\S]*?\*\//g, "");
+  // It is the CTA, the selected option, the current position and the active
+  // timer — not a default border or a default text colour.
+  assert.strictEqual(/border-color:\s*var\(--nxt-purple-edge\);\s*\n\s*background:\s*var\(--nxt-surface\)/.test(decls), false);
+  const purpleBorders = (decls.match(/border(?:-color)?:[^;]*--nxt-purple/g) || []).length;
+  assert.ok(purpleBorders <= 6, "purple borders have spread to " + purpleBorders + " rules");
+});
+
+test("the workout queue is a sheet over the engine's own plan", function () {
+  assert.ok(ui.indexOf("class=\"nxp-queue-sheet\"") !== -1);
+  assert.ok(ui.indexOf("nxp-queue-open") !== -1, "Train needs one obvious way into the queue");
+  // Selection goes through the engine.
+  assert.ok(ui.indexOf("NXP.chooseExercise(") !== -1);
+  assert.ok(ui.indexOf("function chooseExercise(i) {closeModal();N.selectExercise(i);}") !== -1);
+  // Every sheet gets the grab bar and the safe-area floor from one rule.
+  assert.ok(css.indexOf(".n99-modal .sheet::before") !== -1, "sheets need a grab affordance");
+  const cut = fs.readFileSync(path.join(ROOT, "cut-support.css"), "utf8");
+  assert.ok(/\.n99-modal \.sheet[^}]*max-height:\s*90dvh/.test(cut), "a sheet must stay in the viewport");
+  assert.ok(/\.n99-modal \.sheet[^}]*overflow-y:\s*auto/.test(cut), "a sheet scrolls inside itself");
+  assert.ok(/\.n99-modal \.sheet[^}]*--nxt-safe-bottom/.test(cut), "a sheet must clear the home indicator");
+});
+
+test("Train shows only metadata the engine actually holds", function () {
+  const train = ui.slice(ui.indexOf("function training() {"), ui.indexOf("function scheduleConfirmReset"));
+  // No invented anatomy: the reference art shows muscle groups, the data does not.
+  ["muscle", "Chest", "Quads", "Biceps", "primary mover"].forEach(function (word) {
+    assert.strictEqual(train.indexOf(word), -1, "Train must not invent " + word);
+  });
+  // The equipment note is shown only when one was saved.
+  assert.ok(train.indexOf("${note?' · '+esc(note):''}") !== -1);
+  const detail = ui.slice(ui.indexOf("function exerciseDetails()"));
+  assert.ok(detail.indexOf("note?`<section") !== -1, "an absent note shows nothing, not a placeholder");
+});
+
+test("the session plan is the one source of truth for queue order", function () {
+  // Two similarly named functions caused a false report that queue editing was
+  // dead. Keep them distinguishable:
+  //   template()        -> ensureSessionPlan() -> state.sessionPlans[key]  (live session)
+  //   NXT.templateFor() -> cfg().templates / TEMPLATES                     (base programme)
+  // Train renders template(), so every queue mutation must write sessionPlans.
+  const tpl = html.slice(html.indexOf("function template(){"), html.indexOf("function currentExerciseIndex()"));
+  assert.ok(tpl.indexOf("ensureSessionPlan(state.dayType)") !== -1,
+    "template() must resolve through the session plan");
+  const cut = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8");
+  const ensure = cut.slice(cut.indexOf("ensureSessionPlan=function"));
+  const body = ensure.slice(0, ensure.indexOf("\n"));
+  assert.ok(body.indexOf("state.sessionPlans[key]") !== -1);
+  assert.ok(body.indexOf("NXT.templateFor(type)") !== -1, "an absent plan seeds from the base programme");
+  // Train reads template(), never templateFor(), so the two cannot drift apart
+  // in the one screen that edits the queue.
+  const train = ui.slice(ui.indexOf("function training() {"), ui.indexOf("function scheduleConfirmReset"));
+  assert.ok(train.indexOf("const list=template();") !== -1);
+  assert.strictEqual(train.indexOf("templateFor()"), -1, "Train must not read the base programme for its queue");
+});
+
+test("every queue mutation writes the store Train reads", function () {
+  // A mutation that edits some other array is a dead button. Each of these must
+  // land in state.sessionPlans under the current session key.
+  ["moveSessionExercise", "v88AddExercise", "v88RemoveExercise", "v88ReplaceAt", "resetSessionOrder"].forEach(function (name) {
+    const start = html.indexOf("function " + name + "(");
+    assert.ok(start !== -1, name + " must exist");
+    const body = html.slice(start, html.indexOf("\nfunction ", start + 1));
+    assert.ok(/state\.sessionPlans\[[^\]]+\]\s*=|sessionPlansSafe\(\)\[[^\]]+\]\s*=/.test(body),
+      name + " must write the session plan");
+    assert.ok(body.indexOf("persist()") !== -1, name + " must persist");
+    assert.ok(body.indexOf("render()") !== -1, name + " must repaint");
+  });
+});
+
+test("reorder keeps the current exercise by identity, not by index", function () {
+  const move = html.slice(html.indexOf("function moveSessionExercise(index,dir){"));
+  const body = move.slice(0, move.indexOf("\nfunction ", 1));
+  assert.ok(body.indexOf("const active=state.exercise;") !== -1);
+  assert.ok(body.indexOf("state.exercise=active") !== -1,
+    "moving an exercise must not switch the lifter to whatever now sits at that index");
+  // Logged sets are keyed by exercise and date; reordering must not touch them.
+  assert.strictEqual(/state\.logs\s*=/.test(body), false, "reorder must never rewrite history");
+});
+
+test("removing the current exercise has a defined fallback", function () {
+  const rm = html.slice(html.indexOf("function v88RemoveExercise(index){"));
+  const body = rm.slice(0, rm.indexOf("\nfunction ", 1));
+  assert.ok(body.indexOf("state.exercise=plan[Math.min(i,plan.length-1)]||\"\"") !== -1,
+    "removal must fall back to the nearest remaining exercise, then to none");
+  // An empty plan is a state the UI handles, not a crash.
+  assert.ok(ui.indexOf("function trainEmpty()") !== -1);
+  assert.ok(ui.indexOf("if(!list.length)return trainEmpty();") !== -1);
+});
+
+test("reset restores the programme a session is seeded from", function () {
+  // Reset read TEMPLATES directly, so a lifter with a saved programme was reset
+  // onto the factory default instead of their own.
+  const reset = html.slice(html.indexOf("function resetSessionOrder(){"));
+  const body = reset.slice(0, reset.indexOf("\nfunction ", 1));
+  assert.ok(body.indexOf("NXT.templateFor(state.dayType)") !== -1,
+    "reset must use the same base ensureSessionPlan() seeds from");
+  // It restores order only; nothing else is cleared.
+  ["state.logs", "exerciseNotes", "cfg().templates", "sessionTargets"].forEach(function (store) {
+    assert.strictEqual(body.indexOf(store + "="), -1, "reset must not clear " + store);
+  });
+});
+
+test("queue reordering is offered only through accessible controls", function () {
+  assert.ok(ui.indexOf("function queueMove(index,delta)") !== -1);
+  assert.ok(ui.indexOf("moveSessionExercise(index,delta)") !== -1, "reorder goes through the engine");
+  // Buttons, not a drag target: reachable by keyboard and unable to capture a
+  // scroll on a sheet that scrolls.
+  assert.ok(/class="nxp-queue-move">[\s\S]{0,400}<button type="button"/.test(ui));
+  assert.ok(ui.indexOf('aria-label="Move ${esc(e.name)} up"') !== -1);
+  assert.ok(ui.indexOf('aria-label="Move ${esc(e.name)} down"') !== -1);
+  assert.strictEqual(/draggable="true"|dragstart/.test(ui), false, "no drag target on a scrolling sheet");
+  // The move buttons meet the touch minimum.
+  const moveCss = css.slice(css.indexOf(".nxp-queue-move button {"), css.indexOf(".nxp-queue-move button:active"));
+  assert.ok(moveCss.indexOf("width: var(--nxt-touch-min)") !== -1);
+  assert.ok(moveCss.indexOf("height: var(--nxt-touch-min)") !== -1);
+  // The current exercise stays identifiable in both modes.
+  assert.ok(css.indexOf(".nxp-queue-row.is-current .nxp-queue-index") !== -1);
+});
+
 test("production fixture runtime does not attach docs", function () {
   const ctx = vm.createContext({
     location: { hostname: "app.nxtfrm.example", protocol: "https:" },

@@ -3549,7 +3549,12 @@ function moveSessionExercise(index,dir){
 function resetSessionOrder(){
   state.sessionPlans=state.sessionPlans||{};
   const key=sessionKey();
-  state.sessionPlans[key]=(TEMPLATES[state.dayType]||[]).map(e=>e.name);
+  // Reset means "back to the programme this session is built from", which is
+  // the saved programme for this gym when one exists. Reading TEMPLATES
+  // directly here threw away a saved programme and dropped the lifter onto the
+  // factory default — the opposite of what ensureSessionPlan() seeds with.
+  const base=(typeof NXT!=="undefined"&&NXT.templateFor)?NXT.templateFor(state.dayType):(TEMPLATES[state.dayType]||[]);
+  state.sessionPlans[key]=(base||[]).map(e=>e.name);
   state.exercise=state.sessionPlans[key][0]||"";
   state.setNum=1;
   persist(); render();

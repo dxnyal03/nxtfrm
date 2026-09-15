@@ -1038,25 +1038,175 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp-train-chrome .nxp-caption { font-size:.75rem;margin-bottom:2px; }
 .nxp-train-chrome .n99-button { width:auto;min-height:44px;min-width:44px;padding:8px 12px;flex-shrink:0;font-size:.8125rem!important; }
 .nxp-train .n99-session-rail { margin:var(--nxt-space-1) 0 var(--nxt-space-3); }
-.nxp-queue-row { width:100%;display:flex;align-items:center;gap:var(--nxt-space-3);padding:8px 0;min-height:44px;background:none;border:0;border-bottom:1px solid #2f2c36;color:var(--nxt-text);text-align:left; }
-.nxp-queue-row > span:first-child { width:22px;flex-shrink:0;color:var(--nxt-muted); }
-.nxp-queue-row b { display:block;font-size:.9375rem;font-weight:550; }
-.nxp-queue-row small { display:block;font-size:.75rem;color:var(--nxt-muted); }
-.nxp-queue-row > span:last-child { margin-left:auto;font-size:.8125rem;color:var(--nxt-muted); }
-.nxp-queue-row.is-current b { color:var(--nxt-accent); }
-.nxp-queue-row.is-done > span:first-child { color:var(--nxt-accent); }
+/* ---- Bottom sheets -----------------------------------------------------
+   Every NXTFRM sheet is the same object: a grab bar, a title row, content that
+   scrolls inside the sheet, and a bottom edge that clears the home indicator.
+   The grab bar is drawn here rather than added to the markup so all sheets get
+   it from one rule. */
+.n99-modal .sheet { padding-top: var(--nxt-space-3); }
+.n99-modal .sheet::before {
+  content: '';
+  display: block;
+  width: 36px;
+  height: 4px;
+  margin: 0 auto var(--nxt-space-4);
+  border-radius: var(--nxt-radius-pill);
+  background: var(--nxt-border-strong);
+}
+.n99-modal :focus-visible { outline: 2px solid var(--nxt-purple-primary); outline-offset: 2px; }
+
+/* ---- Workout queue sheet ---- */
+.nxp-queue-sheet { display: flex; flex-direction: column; gap: var(--nxt-space-3); min-width: 0; }
+.nxp-queue-lede { margin: 0; font-size: var(--nxt-type-meta); color: var(--nxt-text-muted); }
+.nxp-queue-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; min-width: 0; }
+.nxp-queue-list > li {
+  display: flex;
+  align-items: center;
+  gap: var(--nxt-space-2);
+  min-width: 0;
+  border-bottom: 1px solid var(--nxt-border-subtle);
+}
+.nxp-queue-list > li:last-child { border-bottom: 0; }
+.n99-modal .nxp-queue-row {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--nxt-space-3);
+  min-width: 0;
+  min-height: 52px;
+  padding: var(--nxt-space-2) 0;
+  border: 0;
+  background: none;
+  color: var(--nxt-text-primary);
+  font-family: inherit;
+  text-align: left;
+  transition: color var(--nxt-motion);
+}
+.nxp-queue-index {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: var(--nxt-radius-pill);
+  background: var(--nxt-surface-interactive);
+  color: var(--nxt-text-muted);
+  font-size: var(--nxt-type-label);
+  font-variant-numeric: tabular-nums;
+}
+.nxp-queue-name { min-width: 0; }
+.nxp-queue-name b { display: block; font-size: var(--nxt-type-body); font-weight: var(--nxt-weight-meta); overflow-wrap: anywhere; }
+.nxp-queue-name small { display: block; margin-top: 2px; font-size: var(--nxt-type-label); color: var(--nxt-text-muted); }
+.nxp-queue-count {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: var(--nxt-type-meta);
+  font-variant-numeric: tabular-nums;
+  color: var(--nxt-text-secondary);
+}
+.nxp-queue-count em { font-style: normal; color: var(--nxt-text-muted); }
+/* The exercise you are on is the one thing in the sheet that takes purple. */
+/* is-current is declared last: where you are outranks what you finished when an
+   exercise is both. */
+.nxp-queue-row.is-done .nxp-queue-index { background: var(--nxt-purple-deep); color: var(--nxt-text-primary); }
+.nxp-queue-row.is-current .nxp-queue-index { background: var(--nxt-purple-primary); color: var(--nxt-on-purple); }
+.nxp-queue-row.is-current .nxp-queue-name b { color: var(--nxt-purple-primary); }
+.nxp-queue-row:active .nxp-queue-name b { color: var(--nxt-purple-soft); }
+/* Reorder mode. Move buttons sit beside the row rather than replacing it, so
+   the queue reads identically in both modes and nothing shifts when the mode
+   changes. */
+.nxp-queue-move { display: flex; gap: 4px; flex-shrink: 0; }
+.nxp-queue-move button {
+  display: grid;
+  place-items: center;
+  width: var(--nxt-touch-min);
+  height: var(--nxt-touch-min);
+  border: 1px solid var(--nxt-border-subtle);
+  border-radius: var(--nxt-radius-pill);
+  background: var(--nxt-surface-interactive);
+  color: var(--nxt-text-secondary);
+  font-family: inherit;
+  font-size: var(--nxt-type-body);
+  transition: background-color var(--nxt-motion), color var(--nxt-motion);
+}
+.nxp-queue-move button:active { background: var(--nxt-purple-tint); color: var(--nxt-purple-primary); }
+.nxp-queue-move button:disabled { opacity: .3; }
+/* In reorder mode the row is not a switch target, so it should not look like
+   one; the move buttons are the only controls. */
+.nxp-queue-list.is-managing .nxp-queue-row { pointer-events: none; }
+.nxp-queue-list.is-managing .nxp-queue-count { display: none; }
+.nxp-queue-tools { display: flex; flex-wrap: wrap; gap: var(--nxt-space-2); }
+.nxp-queue-tools .n99-button { flex: 1 1 140px; width: auto; min-height: var(--nxt-touch-min); margin: 0; border-radius: var(--nxt-radius-pill); font-size: var(--nxt-type-meta) !important; }
+.nxp-queue-empty { margin: 0; color: var(--nxt-text-muted); }
+
+/* ---- Exercise details sheet ----
+   Shows only what the engine holds: target, rest, increment, the equipment
+   note if one was saved, the current coaching line, and real past sessions. */
+.nxp-detail { display: flex; flex-direction: column; gap: var(--nxt-space-4); min-width: 0; }
+.nxp-detail-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--nxt-space-2); }
+.nxp-detail-fact { min-width: 0; }
+.nxp-detail-fact .nxp-caption {
+  display: block;
+  font-size: var(--nxt-type-micro);
+  letter-spacing: var(--nxt-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--nxt-text-muted);
+}
+.nxp-detail-fact b {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--nxt-type-body-sm);
+  font-weight: var(--nxt-weight-metric);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.nxp-detail-block { min-width: 0; }
+.n99-modal .nxp-detail-block h3 {
+  margin: 0 0 var(--nxt-space-2);
+  font-size: var(--nxt-type-micro);
+  font-weight: var(--nxt-weight-meta);
+  letter-spacing: var(--nxt-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--nxt-text-muted);
+}
+.nxp-detail-block p { margin: 0; font-size: var(--nxt-type-body-sm); line-height: 1.5; color: var(--nxt-text-secondary); overflow-wrap: anywhere; }
+.nxp-detail-history { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.nxp-detail-history li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--nxt-space-3);
+  min-height: 36px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--nxt-border-subtle);
+}
+.nxp-detail-history li:last-child { border-bottom: 0; }
+.nxp-detail-history span { flex-shrink: 0; font-size: var(--nxt-type-label); color: var(--nxt-text-muted); }
+.nxp-detail-history b {
+  min-width: 0;
+  font-size: var(--nxt-type-meta);
+  font-weight: var(--nxt-weight-meta);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.nxp-detail .n99-button { width: 100%; margin: 0; min-height: var(--nxt-touch-min); border-radius: var(--nxt-radius-pill); }
 
 /* V107 Train lifting workspace.
    Every region is in normal document flow, stacked with the spacing scale.
    The previous build pinned the Log Set CTA with position:fixed and a
    hard-coded bottom offset, which laid it over the set dots and both inputs on
    short screens; the CTA is now an ordinary block inside the form, so nothing
-   can overlap and no magic offsets are needed. */
+   can overlap and no magic offsets are needed.
+
+   V108 keeps that geometry and spends the budget on the controls instead:
+   load and reps are steppers, the comparison line is type rather than boxes,
+   and everything below the CTA is ordered by how often a thumb reaches it. */
 .nxp-train-lift {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--nxt-space-3);
+  gap: var(--nxt-space-4);
   padding-bottom: var(--nxt-bottom-reserve);
 }
 
@@ -1079,136 +1229,222 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 }
 .nxp-train-lift .nxp-train-chrome p {
   margin: 2px 0 0;
-  font-size: .8125rem;
+  font-size: var(--nxt-type-meta);
   color: var(--nxt-text-tertiary);
+  overflow-wrap: anywhere;
 }
 .nxp-train-lift .nxp-train-chrome .n99-button {
   width: auto;
-  min-height: 36px;
-  min-width: 44px;
+  min-height: var(--nxt-touch-min);
+  min-width: var(--nxt-touch-min);
   flex-shrink: 0;
   margin: 0;
   padding: 0 14px;
   border-radius: var(--nxt-radius-pill);
-  font-size: .8125rem !important;
+  font-size: var(--nxt-type-meta) !important;
 }
 
-/* ---- Exercise rail ---- */
+/* ---- Exercise rail ----
+   Presentation only. Splitting a six-exercise session into six 4px targets
+   would be a row of controls too small to hit reliably, so the rail shows
+   position and the full-size row below it does the navigating. */
 .nxp-ex-rail { display: block; }
 .nxp-ex-rail ol {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: -10px 0;
+  gap: 5px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
-.nxp-ex-rail li { flex: 1 1 0; min-width: 0; }
-.nxp-ex-rail li button {
-  /* 4px bar, 24px tap target: the padding is the hit area, background-clip
-     keeps the paint on the content box. */
-  display: block;
-  width: 100%;
-  height: 24px;
-  padding: 10px 0;
-  border: 0;
-  border-radius: 999px;
-  background: var(--nxt-raised);
-  background-clip: content-box;
-  transition: background var(--nxt-motion);
+.nxp-ex-rail li {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 4px;
+  border-radius: var(--nxt-radius-pill);
+  background: var(--nxt-surface-interactive);
+  transition: background-color var(--nxt-motion);
 }
-.nxp-ex-rail li.is-done button { background: var(--nxt-violet); background-clip: content-box; }
-.nxp-ex-rail li.is-current button { background: var(--nxt-purple); background-clip: content-box; }
+.nxp-ex-rail li.is-done { background: var(--nxt-purple-deep); }
+.nxp-ex-rail li.is-current { background: var(--nxt-purple-primary); }
 .nxp-ex-rail p {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--nxt-space-3);
-  margin: var(--nxt-space-3) 0 0;
-  font-size: .75rem;
+  margin: 0;
+  font-size: var(--nxt-type-label);
   color: var(--nxt-text-tertiary);
 }
-.nxp-ex-rail p .n99-text {
+.nxp-ex-rail p > span { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.nxp-train-lift .nxp-rail-jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--nxt-touch-min);
+  min-width: 0;
+  margin: 0;
   padding: 0;
-  font-size: .75rem;
-  color: var(--nxt-purple);
+  border: 0;
+  background: none;
+  color: var(--nxt-purple-primary);
+  font-size: var(--nxt-type-label);
+  font-weight: var(--nxt-weight-meta);
+  font-family: inherit;
+  text-align: left;
 }
+.nxp-train-lift .nxp-rail-jump i { font-style: normal; }
+.nxp-train-lift .nxp-rail-jump:active { color: var(--nxt-purple-soft); }
 
-/* ---- Exercise header ---- */
+/* ---- Exercise header ----
+   The name is the hero of the screen. The purple edge marks it as the current
+   exercise without tinting any of the type. */
 .nxp-ex-head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: stretch;
   gap: var(--nxt-space-3);
+  min-width: 0;
 }
-.nxp-ex-head > div { min-width: 0; }
-.nxp-ex-head h2 {
+.nxp-ex-bar {
+  flex: 0 0 3px;
+  width: 3px;
+  border-radius: var(--nxt-radius-pill);
+  background: linear-gradient(180deg, var(--nxt-purple-primary), var(--nxt-purple-deep));
+}
+.nxp-ex-main { min-width: 0; flex: 1 1 auto; }
+.nxp-train-lift .nxp-ex-head h2 {
   margin: 0;
-  font-size: 1.5rem;
-  line-height: 1.15;
+  font-size: 1.625rem;
+  line-height: 1.12;
   font-weight: var(--nxt-weight-hero);
-  letter-spacing: -.02em;
+  letter-spacing: -.022em;
+  text-wrap: balance;
   overflow-wrap: anywhere;
 }
-.nxp-ex-head p {
-  margin: 4px 0 0;
-  font-size: .8125rem;
+.nxp-ex-meta {
+  margin: 6px 0 0;
+  font-size: var(--nxt-type-meta);
   color: var(--nxt-text-tertiary);
   overflow-wrap: anywhere;
 }
-.nxp-ex-head .n99-text {
-  flex-shrink: 0;
-  min-height: 44px;
-  padding: 10px 0 10px 12px;
-  font-size: .8125rem;
-  color: var(--nxt-purple);
+.nxp-ex-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--nxt-space-2);
+  margin-top: 6px;
 }
+.nxp-train-lift .nxp-ex-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: var(--nxt-touch-min);
+  padding: 0 14px;
+  border: 1px solid var(--nxt-border-subtle);
+  border-radius: var(--nxt-radius-pill);
+  background: var(--nxt-surface);
+  color: var(--nxt-text-secondary);
+  font-family: inherit;
+  font-size: var(--nxt-type-meta);
+  font-weight: var(--nxt-weight-meta);
+  transition: background-color var(--nxt-motion), color var(--nxt-motion);
+}
+.nxp-train-lift .nxp-ex-chip i { font-style: normal; color: var(--nxt-text-muted); }
+.nxp-train-lift .nxp-ex-chip:active { background: var(--nxt-surface-interactive); color: var(--nxt-text-primary); }
+/* Swap is the rarer of the two, so it keeps the tap target and drops the fill. */
+.nxp-ex-actions .nxp-ex-chip:last-child {
+  padding: 0 4px;
+  border-color: transparent;
+  background: none;
+  color: var(--nxt-text-muted);
+}
+.nxp-ex-actions .nxp-ex-chip:last-child:active { background: none; color: var(--nxt-purple-primary); }
 
-/* ---- Last / Target / Rest ---- */
-.nxp-aim-grid {
+/* ---- Last / Target / Rest ----
+   One line of three readings. Dividers rather than boxes: three bordered tiles
+   made three equal-weight cards out of one comparison. */
+.nxp-aim {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--nxt-space-2);
+  gap: 0;
 }
-.nxp-aim-grid > div {
+.nxp-train-lift .nxp-aim-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--nxt-border);
-  border-radius: var(--nxt-radius-control);
-  background: var(--nxt-surface);
+  margin: 0;
+  padding: 0 var(--nxt-space-3) 0 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
 }
-.nxp-aim-grid .nxp-caption {
+.nxp-train-lift .nxp-aim-cell + .nxp-aim-cell {
+  padding-left: var(--nxt-space-3);
+  border-left: 1px solid var(--nxt-border-subtle);
+}
+.nxp-train-lift .nxp-aim-cell.is-tappable { min-height: var(--nxt-touch-min); }
+.nxp-aim-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+}
+.nxp-aim-top i {
+  flex-shrink: 0;
+  font-style: normal;
+  font-size: var(--nxt-type-meta);
+  line-height: 1;
+  color: var(--nxt-purple-primary);
+}
+.nxp-aim .nxp-caption {
   display: block;
-  font-size: .625rem;
-  letter-spacing: .06em;
+  min-width: 0;
+  font-size: var(--nxt-type-micro);
+  letter-spacing: var(--nxt-tracking-eyebrow);
   text-transform: uppercase;
-  color: var(--nxt-text-tertiary);
+  color: var(--nxt-text-muted);
+  overflow-wrap: anywhere;
 }
-.nxp-aim-grid b {
+.nxp-aim b {
   display: block;
-  margin-top: 4px;
-  font-size: .9375rem;
+  margin-top: 5px;
+  font-size: 1.0625rem;
+  line-height: 1.15;
   font-weight: var(--nxt-weight-metric);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
   overflow-wrap: anywhere;
 }
-.nxp-aim-grid small {
+/* The unit rides with the figure but never competes with it. */
+.nxp-aim b em {
+  font-style: normal;
+  font-size: .75rem;
+  font-weight: var(--nxt-weight-body);
+  color: var(--nxt-text-muted);
+  padding-left: 1px;
+}
+.nxp-aim small {
   display: block;
-  margin-top: 2px;
-  font-size: .6875rem;
-  color: var(--nxt-text-tertiary);
+  margin-top: 3px;
+  font-size: var(--nxt-type-label);
+  color: var(--nxt-text-muted);
   overflow-wrap: anywhere;
 }
+.nxp-train-lift .nxp-aim-cell.is-tappable:active b { color: var(--nxt-purple-soft); }
 
 /* ---- Coach note ---- */
 .nxp-train-lift .nxp-coach { margin: 0; border: 0; padding: 0; }
 .nxp-train-lift .nxp-coach summary {
-  min-height: 44px;
+  min-height: var(--nxt-touch-min);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--nxt-space-2);
-  font-size: .875rem;
+  font-size: var(--nxt-type-body-sm);
   font-weight: var(--nxt-weight-meta);
   color: var(--nxt-text-secondary);
   cursor: pointer;
@@ -1218,12 +1454,12 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp-train-lift .nxp-coach summary::after {
   content: '+';
   flex-shrink: 0;
-  color: var(--nxt-text-tertiary);
+  color: var(--nxt-text-muted);
 }
 .nxp-train-lift .nxp-coach[open] summary::after { content: '–'; }
 .nxp-train-lift .nxp-coach p {
   margin: 0 0 var(--nxt-space-2);
-  font-size: .8125rem;
+  font-size: var(--nxt-type-meta);
   line-height: 1.5;
   color: var(--nxt-text-secondary);
   overflow-wrap: anywhere;
@@ -1243,249 +1479,410 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   width: 26px;
   height: 26px;
   flex-shrink: 0;
-  border: 1px solid var(--nxt-border);
-  border-radius: 999px;
+  border: 1px solid var(--nxt-border-subtle);
+  border-radius: var(--nxt-radius-pill);
   background: var(--nxt-surface);
-  font-size: .75rem;
+  font-size: var(--nxt-type-label);
   font-weight: var(--nxt-weight-meta);
-  color: var(--nxt-text-tertiary);
+  color: var(--nxt-text-muted);
 }
 .nxp-train-lift .nxp-set-dots > span.done {
   border-color: transparent;
-  background: var(--nxt-violet);
-  color: var(--nxt-text);
+  background: var(--nxt-purple-deep);
+  color: var(--nxt-text-primary);
 }
 .nxp-train-lift .nxp-set-dots > span.next {
-  border-color: var(--nxt-purple);
+  border-color: var(--nxt-purple-primary);
   background: var(--nxt-purple-tint);
-  color: var(--nxt-purple);
+  color: var(--nxt-purple-primary);
+}
+/* The one dot that changed when the set was logged. One short pop, once. */
+.nxp-train-lift .nxp-set-dots > span.is-new { animation: nxp-dot-in var(--nxt-motion-normal) var(--nxt-ease) 1; }
+@keyframes nxp-dot-in {
+  0% { transform: scale(.7); opacity: .4; }
+  60% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 .nxp-train-lift .nxp-set-dots > small {
   margin-left: auto;
-  font-size: .75rem;
-  color: var(--nxt-text-tertiary);
+  font-size: var(--nxt-type-label);
+  color: var(--nxt-text-muted);
 }
 
 /* ---- Set entry form ---- */
 .nxp-train-lift #nxp-set-form {
   display: flex;
   flex-direction: column;
-  gap: var(--nxt-space-3);
+  gap: var(--nxt-space-4);
   min-width: 0;
   margin: 0;
   padding: 0;
 }
-.nxp-train-lift .nxp-load-inputs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--nxt-space-2);
-}
-.nxp-train-lift .nxp-load-inputs label {
+.nxp-steppers {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--nxt-space-3);
   min-width: 0;
-  font-size: .75rem;
+}
+.nxp-stepper { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.nxp-stepper .nxp-field-label {
+  font-size: var(--nxt-type-label);
   font-weight: var(--nxt-weight-meta);
-  color: var(--nxt-text-tertiary);
+  letter-spacing: var(--nxt-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--nxt-text-muted);
 }
-.nxp-train-lift .nxp-load-inputs label > small {
-  font-size: .75rem;
-  font-weight: 400;
-  color: var(--nxt-text-tertiary);
+.nxp-stepper .nxp-field-label small {
+  font-size: var(--nxt-type-label);
+  font-weight: var(--nxt-weight-body);
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--nxt-text-disabled);
 }
-.nxp-train-lift .nxp-load-inputs input[type="number"] {
+.nxp-stepper-row {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 58px;
+  align-items: stretch;
+  gap: var(--nxt-space-2);
+  min-width: 0;
+}
+.nxp-train-lift .nxp-step {
+  display: grid;
+  place-items: center;
+  min-width: 58px;
+  min-height: 64px;
+  padding: 0;
+  border: 1px solid var(--nxt-border-subtle);
+  border-radius: var(--nxt-radius-lg);
+  background: var(--nxt-surface-interactive);
+  color: var(--nxt-text-primary);
+  font-family: inherit;
+  font-size: 1.75rem;
+  line-height: 1;
+  font-weight: var(--nxt-weight-metric);
+  /* Allows the page to scroll from a press that turns into a drag, and stops
+     the double-tap zoom that a fast repeat tap would otherwise trigger. */
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--nxt-motion), color var(--nxt-motion), border-color var(--nxt-motion);
+}
+.nxp-train-lift .nxp-step:active,
+.nxp-train-lift .nxp-step.is-held {
+  border-color: var(--nxt-purple-edge);
+  background: var(--nxt-purple-tint);
+  color: var(--nxt-purple-primary);
+}
+.nxp-train-lift .nxp-step:disabled { opacity: .35; }
+.nxp-train-lift .nxp-stepper input[type="number"] {
   width: 100%;
   min-width: 0;
-  min-height: 60px;
-  padding: 8px 12px;
-  border: 1px solid var(--nxt-border);
-  border-radius: var(--nxt-radius-surface);
+  min-height: 64px;
+  padding: 8px 6px;
+  /* Beats the global input{font-size:16px!important} that exists to stop iOS
+     zooming on focus; iOS only zooms below 16px, so going up is safe. */
+  font-size: 2.25rem !important;
+  border: 1px solid var(--nxt-border-subtle);
+  border-radius: var(--nxt-radius-lg);
   background: var(--nxt-surface);
-  color: var(--nxt-text);
-  font-size: 1.75rem;
-  font-weight: var(--nxt-weight-metric);
+  color: var(--nxt-text-primary);
+  font-size: 2.25rem;
+  line-height: 1;
+  font-weight: var(--nxt-weight-hero);
   font-variant-numeric: tabular-nums;
+  letter-spacing: var(--nxt-tracking-tight);
   text-align: center;
+  /* The steppers are the increment control; the browser's own spinners would
+     be a second, 12px-tall one. */
   -moz-appearance: textfield;
+  appearance: textfield;
+  scroll-margin-block: var(--nxt-space-6);
 }
-.nxp-train-lift .nxp-load-inputs input[type="number"]::-webkit-outer-spin-button,
-.nxp-train-lift .nxp-load-inputs input[type="number"]::-webkit-inner-spin-button {
+.nxp-train-lift .nxp-stepper input[type="number"]::-webkit-outer-spin-button,
+.nxp-train-lift .nxp-stepper input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
-.nxp-train-lift .nxp-load-inputs input:focus {
+.nxp-train-lift .nxp-stepper input:focus {
   border-color: var(--nxt-purple-edge);
   background: var(--nxt-purple-tint);
 }
-.nxp-train-lift .nxp-load-inputs input::placeholder {
-  color: var(--nxt-text-tertiary);
-  font-weight: 400;
+.nxp-train-lift .nxp-stepper input::placeholder {
+  color: var(--nxt-text-disabled);
+  font-weight: var(--nxt-weight-body);
 }
 
-/* ---- Segmented controls (set type + reps left) ---- */
+/* ---- Segmented controls (set type + reps left) ----
+   Both stay comfortable to hit, but neither is allowed to read as loud as the
+   two steppers above or the CTA below: no fill, small label, muted type. */
 .nxp-seg-row {
   display: flex;
   flex-direction: column;
   gap: var(--nxt-space-3);
   min-width: 0;
 }
-/* Set type is a two-option control; it should not stretch the full width just
-   because it has a row to itself. */
-.nxp-seg-block.nxp-seg-type .nxp-seg { max-width: 260px; }
+.nxp-seg-block.nxp-seg-type .nxp-seg { max-width: 220px; }
+.nxp-train-lift .nxp-seg-type .nxp-seg button { font-size: var(--nxt-type-meta); font-weight: var(--nxt-weight-meta); }
 .nxp-seg-block { min-width: 0; margin: 0; padding: 0; border: 0; }
 .nxp-seg-block legend {
   padding: 0 0 6px;
-  font-size: .75rem;
+  font-size: var(--nxt-type-micro);
   font-weight: var(--nxt-weight-meta);
-  color: var(--nxt-text-tertiary);
+  letter-spacing: var(--nxt-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--nxt-text-muted);
 }
-.nxp-seg-block legend small { font-weight: 400; }
+.nxp-seg-block legend small { font-weight: var(--nxt-weight-body); text-transform: none; letter-spacing: 0; }
+.nxp-train-lift .nxp-seg button { min-height: var(--nxt-touch-min); }
+.nxp-train-lift .nxp-seg-rir .nxp-seg button {
+  font-size: var(--nxt-type-body);
+  font-weight: var(--nxt-weight-metric);
+}
+.nxp-train-lift .nxp-seg button.is-on {
+  background: var(--nxt-purple-tint);
+  color: var(--nxt-purple-primary);
+  box-shadow: inset 0 0 0 1.5px var(--nxt-purple-edge);
+}
 
 /* ---- Primary action ---- */
 .nxp-train-lift .nxp-train-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
-  min-height: 54px;
+  min-height: 56px;
   margin: 0;
+  border: 0;
   border-radius: var(--nxt-radius-pill);
-  background: var(--nxt-purple);
-  color: #17141f;
+  background: var(--nxt-purple-primary);
+  color: var(--nxt-on-purple);
   font-size: 1.0625rem !important;
   font-weight: var(--nxt-weight-cta);
+  letter-spacing: -.01em;
   box-shadow: 0 8px 22px rgba(0, 0, 0, .28);
+  transition: background-color var(--nxt-motion), transform var(--nxt-motion-fast) var(--nxt-ease);
 }
-.nxp-train-lift .nxp-train-cta:disabled { opacity: .45; box-shadow: none; }
+.nxp-train-lift .nxp-train-cta:active {
+  background: var(--nxt-purple-soft);
+  transform: scale(.985);
+}
+.nxp-train-lift .nxp-train-cta:disabled { opacity: .45; box-shadow: none; transform: none; }
+.nxp-cta-check {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--nxt-radius-pill);
+  background: var(--nxt-on-purple);
+  color: var(--nxt-purple-primary);
+  font-size: .6875rem;
+  line-height: 1;
+  animation: nxp-dot-in var(--nxt-motion-normal) var(--nxt-ease) 1;
+}
 
-/* ---- Rest timer ---- */
+/* ---- Rest timer ----
+   A first-class region of the screen, not an overlay: it sits in flow directly
+   under the CTA that starts it, so it can never cover a control. */
 .nxp-train-lift .nxp-rest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nxt-space-3);
+  margin: 0;
+  padding: var(--nxt-space-3) var(--nxt-space-4);
+  border: 1px solid var(--nxt-border-subtle);
+  border-radius: var(--nxt-radius-lg);
+  background: var(--nxt-surface);
+  transition: background-color var(--nxt-motion), border-color var(--nxt-motion);
+}
+.nxp-rest-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--nxt-space-2);
-  min-height: 56px;
-  margin: 0;
-  padding: 0 var(--nxt-space-3);
-  border: 1px solid var(--nxt-border);
-  border-radius: var(--nxt-radius-surface);
-  background: var(--nxt-surface);
+  min-height: 44px;
+  min-width: 0;
 }
-.nxp-train-lift .nxp-rest > span {
+.nxp-train-lift .nxp-rest > .nxp-rest-row > span {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
 .nxp-train-lift .nxp-rest small {
-  font-size: .6875rem;
+  font-size: var(--nxt-type-micro);
   font-weight: var(--nxt-weight-meta);
-  letter-spacing: .06em;
+  letter-spacing: var(--nxt-tracking-eyebrow);
   text-transform: uppercase;
-  color: var(--nxt-text-tertiary);
+  color: var(--nxt-text-muted);
 }
 .nxp-train-lift .nxp-rest b {
-  font-size: 1.25rem;
+  font-size: 1.75rem;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  font-weight: var(--nxt-weight-metric);
-  color: var(--nxt-text-secondary);
+  font-weight: var(--nxt-weight-hero);
+  letter-spacing: var(--nxt-tracking-tight);
+  color: var(--nxt-text-disabled);
 }
-.nxp-train-lift .nxp-rest.is-active {
-  border-color: var(--nxt-purple-edge);
-  background: var(--nxt-purple-tint);
-}
-.nxp-train-lift .nxp-rest.is-active b { color: var(--nxt-purple); }
-.nxp-train-lift .nxp-rest > div { display: flex; gap: var(--nxt-space-1); flex-shrink: 0; }
+.nxp-train-lift .nxp-rest:not(.is-active) b { font-size: 1.25rem; font-weight: var(--nxt-weight-metric); }
+.nxp-train-lift .nxp-rest.is-active { border-color: var(--nxt-purple-edge); background: var(--nxt-purple-tint); }
+.nxp-train-lift .nxp-rest.is-active b { color: var(--nxt-purple-primary); }
+.nxp-train-lift .nxp-rest > .nxp-rest-row > div { display: flex; gap: var(--nxt-space-2); flex-shrink: 0; }
 .nxp-train-lift .nxp-rest .n99-button {
   width: auto;
-  min-height: 40px;
-  min-width: 44px;
+  min-height: var(--nxt-touch-min);
+  min-width: var(--nxt-touch-min);
   margin: 0;
-  padding: 0 12px;
+  padding: 0 14px;
   border-radius: var(--nxt-radius-pill);
-  border-color: var(--nxt-border);
-  background: var(--nxt-raised);
-  font-size: .8125rem !important;
+  border-color: var(--nxt-border-subtle);
+  background: var(--nxt-surface-interactive);
+  font-size: var(--nxt-type-meta) !important;
 }
+/* Redraws once per tick, in step with the seconds, so it reads as a countdown
+   rather than an animation. */
+.nxp-rest-rail {
+  height: 3px;
+  border-radius: var(--nxt-radius-pill);
+  background: var(--nxt-border-subtle);
+  overflow: hidden;
+}
+.nxp-rest-rail > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--nxt-purple-primary);
+  transition: width 1s linear;
+}
+
+/* ---- Exercise navigation ----
+   Prev / position / Next as one row. Tapping is the navigation; there is no
+   swipe to learn and nothing that can fight the page scroll. */
+.nxp-ex-nav {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--nxt-space-2);
+}
+.nxp-ex-nav button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--nxt-border-subtle);
+  border-radius: var(--nxt-radius-pill);
+  background: var(--nxt-surface);
+  color: var(--nxt-text-secondary);
+  font-family: inherit;
+  font-size: var(--nxt-type-meta);
+  font-weight: var(--nxt-weight-meta);
+  transition: background-color var(--nxt-motion), color var(--nxt-motion);
+}
+.nxp-ex-nav button:active { background: var(--nxt-surface-interactive); color: var(--nxt-text-primary); }
+.nxp-ex-nav button:disabled { opacity: .35; background: var(--nxt-surface); color: var(--nxt-text-muted); }
+.nxp-ex-nav button span { font-size: 1rem; line-height: 1; }
+.nxp-ex-nav .nxp-ex-nav-pos {
+  min-width: var(--nxt-touch-min);
+  padding: 0 var(--nxt-space-2);
+  border-color: transparent;
+  background: none;
+  color: var(--nxt-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.nxp-ex-nav .nxp-ex-nav-pos:active { background: none; color: var(--nxt-purple-primary); }
 
 /* ---- Today's sets ---- */
 .nxp-train-lift .nxp-set-history {
   margin: 0;
-  padding: var(--nxt-space-3);
-  border: 1px solid var(--nxt-border);
-  border-radius: var(--nxt-radius-card);
+  padding: var(--nxt-space-3) var(--nxt-space-4);
+  border: 1px solid var(--nxt-border-subtle);
+  border-radius: var(--nxt-radius-lg);
   background: var(--nxt-surface);
 }
 .nxp-train-lift .nxp-set-history h3 {
   margin: 0 0 var(--nxt-space-1);
-  font-size: .6875rem;
+  font-size: var(--nxt-type-micro);
   font-weight: var(--nxt-weight-meta);
-  letter-spacing: .06em;
+  letter-spacing: var(--nxt-tracking-eyebrow);
   text-transform: uppercase;
-  color: var(--nxt-text-tertiary);
+  color: var(--nxt-text-muted);
 }
 .nxp-train-lift .nxp-set-row {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: var(--nxt-space-2);
-  min-height: 44px;
+  gap: var(--nxt-space-3);
+  min-height: var(--nxt-touch-min);
   padding: 8px 0;
   border: 0;
-  border-bottom: 1px solid var(--nxt-hairline);
+  border-bottom: 1px solid var(--nxt-border-subtle);
   background: none;
-  color: var(--nxt-text);
+  color: var(--nxt-text-primary);
+  font-family: inherit;
   text-align: left;
 }
 .nxp-train-lift .nxp-set-row:last-child { border-bottom: 0; }
+.nxp-train-lift .nxp-set-row:active { background: var(--nxt-surface-alt); }
 .nxp-train-lift .nxp-set-row > span:first-child {
-  width: 22px;
+  width: 20px;
   flex-shrink: 0;
-  color: var(--nxt-purple);
+  color: var(--nxt-text-muted);
+  font-size: var(--nxt-type-meta);
   font-variant-numeric: tabular-nums;
 }
+.nxp-train-lift .nxp-set-row.is-latest > span:first-child { color: var(--nxt-purple-primary); }
 .nxp-train-lift .nxp-set-row b {
   min-width: 0;
-  font-size: .9375rem;
+  font-size: var(--nxt-type-body);
   font-weight: var(--nxt-weight-metric);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
-.nxp-train-lift .nxp-set-row b small { font-size: .75rem; font-weight: 400; color: var(--nxt-text-tertiary); }
-.nxp-train-lift .nxp-set-row > small { font-size: .75rem; color: var(--nxt-text-tertiary); }
+.nxp-train-lift .nxp-set-row b em {
+  font-style: normal;
+  font-size: var(--nxt-type-label);
+  font-weight: var(--nxt-weight-body);
+  color: var(--nxt-text-muted);
+  padding-left: 1px;
+}
+.nxp-train-lift .nxp-set-row > small { font-size: var(--nxt-type-label); color: var(--nxt-text-muted); }
 .nxp-train-lift .nxp-set-row > span:last-child {
   margin-left: auto;
   flex-shrink: 0;
-  font-size: .75rem;
-  color: var(--nxt-purple);
+  font-size: var(--nxt-type-label);
+  color: var(--nxt-purple-primary);
 }
 
-/* ---- Exercise navigation ---- */
-.nxp-ex-nav {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) 48px;
+/* ---- Queue entry point ---- */
+.nxp-train-lift .nxp-queue-open {
+  display: flex;
   align-items: center;
   gap: var(--nxt-space-2);
-}
-.nxp-ex-nav button {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  border: 1px solid var(--nxt-border);
-  border-radius: 999px;
+  width: 100%;
+  min-height: 52px;
+  margin: 0;
+  padding: 0 var(--nxt-space-4);
+  border: 1px solid var(--nxt-border-subtle);
+  border-radius: var(--nxt-radius-lg);
   background: var(--nxt-surface);
-  color: var(--nxt-text-secondary);
-  font-size: 1.125rem;
+  color: var(--nxt-text-primary);
+  font-family: inherit;
+  font-size: var(--nxt-type-body);
+  font-weight: var(--nxt-weight-meta);
+  text-align: left;
+  transition: background-color var(--nxt-motion);
 }
-.nxp-ex-nav button:disabled { opacity: .35; }
-.nxp-ex-nav > span {
-  text-align: center;
-  font-size: .8125rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--nxt-text-tertiary);
-}
+.nxp-train-lift .nxp-queue-open:active { background: var(--nxt-surface-interactive); }
+.nxp-train-lift .nxp-queue-open small { color: var(--nxt-text-muted); font-size: var(--nxt-type-meta); font-weight: var(--nxt-weight-body); }
+.nxp-train-lift .nxp-queue-open i { margin-left: auto; font-style: normal; color: var(--nxt-text-muted); }
 
-/* ---- Session tools ---- */
+/* ---- Session tools ----
+   Deliberately last and deliberately quiet: undo and finish must not compete
+   for the same thumb position as Log Set. */
 .nxp-train-lift .nxp-session-tools {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1494,12 +1891,11 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 }
 .nxp-train-lift .nxp-session-tools .n99-button {
   width: 100%;
-  min-height: 44px;
+  min-height: var(--nxt-touch-min);
   margin: 0;
   border-radius: var(--nxt-radius-pill);
-  font-size: .8125rem !important;
+  font-size: var(--nxt-type-meta) !important;
 }
-.nxp-train-lift .nxp-queue { margin: 0; }
 
 /* Keeps "Weight kg" on one baseline row so it cannot wrap and knock the two
    inputs out of alignment. */
@@ -1517,30 +1913,30 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp-train-alert {
   margin: 0;
   padding: 10px 14px;
-  border: 1px solid var(--nxt-border);
+  border: 1px solid var(--nxt-border-subtle);
   border-left-width: 3px;
   border-radius: var(--nxt-radius-control);
   background: var(--nxt-surface);
 }
 .nxp-train-alert .nxp-caption {
   display: block;
-  font-size: .625rem;
-  letter-spacing: .06em;
+  font-size: var(--nxt-type-micro);
+  letter-spacing: var(--nxt-tracking-eyebrow);
   text-transform: uppercase;
-  color: var(--nxt-text-tertiary);
+  color: var(--nxt-text-muted);
 }
 .nxp-train-alert strong {
   display: block;
   margin-top: 3px;
-  font-size: .9375rem;
+  font-size: var(--nxt-type-body);
   font-weight: var(--nxt-weight-metric);
   overflow-wrap: anywhere;
 }
 .nxp-train-alert small {
   display: block;
   margin-top: 3px;
-  font-size: .75rem;
-  color: var(--nxt-text-tertiary);
+  font-size: var(--nxt-type-label);
+  color: var(--nxt-text-muted);
   overflow-wrap: anywhere;
 }
 .nxp-train-alert[data-state="proceed_with_caution"] {
@@ -1555,10 +1951,20 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 /* ---- Narrow phones: reflow instead of shrinking ---- */
 @media (max-width: 359px) {
   .nxp-seg-block.nxp-seg-type .nxp-seg { max-width: none; }
-  .nxp-aim-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .nxp-aim-grid > div:last-child { grid-column: 1 / -1; }
-  .nxp-train-lift .nxp-load-inputs input[type="number"] { font-size: 1.5rem; min-height: 56px; }
-  .nxp-ex-head h2 { font-size: 1.3125rem; }
+  .nxp-aim { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--nxt-space-3); }
+  .nxp-train-lift .nxp-aim-cell:nth-child(3) {
+    grid-column: 1 / -1;
+    padding-left: 0;
+    padding-top: var(--nxt-space-3);
+    border-left: 0;
+    border-top: 1px solid var(--nxt-border-subtle);
+  }
+  .nxp-stepper-row { grid-template-columns: 52px minmax(0, 1fr) 52px; }
+  .nxp-train-lift .nxp-step { min-width: 52px; min-height: 58px; }
+  .nxp-train-lift .nxp-stepper input[type="number"] { font-size: 1.875rem !important; min-height: 58px; }
+  .nxp-train-lift .nxp-ex-head h2 { font-size: 1.375rem; }
+  .nxp-ex-nav button { padding: 0 8px; }
+  .nxp-train-lift .nxp-rest b { font-size: 1.5rem; }
 }
 
 .nxp-progress-metrics { display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:25px 0 12px; }
