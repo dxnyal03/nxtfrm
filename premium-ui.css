@@ -1,89 +1,199 @@
 /* V102.1: shared visual foundation. Screen layouts remain V101; later slices opt into primitives. */
 :root {
-  --nxt-bg: #101014;
-  --nxt-surface: #17171e;
-  --nxt-raised: #1f1f28;
-  --nxt-interactive: #22222c;
-  --nxt-border: rgba(228,223,239,.10);
-  --nxt-hairline: rgba(228,223,239,.08);
-  --nxt-atmosphere: rgba(140,118,196,.11);
+  /* =========================================================================
+     NXTFRM design tokens.
+     Semantic names only — components never reach for a literal colour, radius
+     or duration. The legacy --n99-* and short --nxt-* aliases at the end of the
+     block keep the older V99/V100 rules working while they are migrated.
+     ========================================================================= */
 
-  --nxt-text: #f1eef6;
-  --nxt-text-secondary: #b7b1c4;
-  --nxt-text-tertiary: #8e879c;
-  --nxt-muted: var(--nxt-text-secondary);
+  /* ---- Safe areas -------------------------------------------------------
+     The only place env() is read. Everything that needs a device inset reads
+     these variables, so the whole system can be exercised at any inset by
+     overriding them — and so no rule hard-codes one device's offset. */
+  --nxt-safe-top: env(safe-area-inset-top, 0px);
+  --nxt-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --nxt-safe-left: env(safe-area-inset-left, 0px);
+  --nxt-safe-right: env(safe-area-inset-right, 0px);
 
-  --nxt-purple: #b49aff;
-  --nxt-purple-bright: #c8b8ff;
-  --nxt-violet: #6f5f96;
-  --nxt-purple-tint: rgba(180,154,255,.14);
-  --nxt-purple-edge: rgba(180,154,255,.22);
-  --nxt-accent: var(--nxt-purple);
+  /* ---- Background & surfaces --------------------------------------------
+     A violet-leaning charcoal rather than jet black, with four steps of tonal
+     separation so hierarchy reads without borders on everything. */
+  --nxt-background: #0f0e14;
+  --nxt-background-elevated: #14131b;
+  --nxt-surface: #1a1922;
+  --nxt-surface-alt: #1f1e29;
+  --nxt-surface-interactive: #262430;
+  --nxt-surface-selected: rgba(180, 154, 255, .13);
+  --nxt-atmosphere: rgba(140, 118, 196, .10);
 
+  /* ---- Text -------------------------------------------------------------- */
+  --nxt-text-primary: #f2eff7;
+  --nxt-text-secondary: #b5aec4;
+  --nxt-text-muted: #8b8499;
+  --nxt-text-disabled: #5f5a6b;
+
+  /* ---- Borders ----------------------------------------------------------- */
+  --nxt-border-subtle: rgba(232, 226, 245, .085);
+  --nxt-border-strong: rgba(232, 226, 245, .17);
+
+  /* ---- Brand purple ------------------------------------------------------
+     Purple marks brand, active, selected, primary action and key progress —
+     not every interactive thing. */
+  --nxt-purple-primary: #b49aff;
+  --nxt-purple-soft: #cdbcff;
+  --nxt-purple-deep: #6b58a8;
+  --nxt-purple-glow: rgba(180, 154, 255, .22);
+  --nxt-purple-tint: rgba(180, 154, 255, .13);
+  --nxt-purple-edge: rgba(180, 154, 255, .26);
+  --nxt-on-purple: #17121f; /* text on a filled purple surface */
+
+  /* ---- Status -----------------------------------------------------------
+     Green is reserved for positive / good recovery / on-track. It is never a
+     general UI accent. */
   --nxt-success: #6fdba0;
-  --nxt-success-tint: rgba(111,219,160,.12);
+  --nxt-success-tint: rgba(111, 219, 160, .12);
   --nxt-warning: #e8b271;
-  --nxt-warning-tint: rgba(232,178,113,.12);
+  --nxt-warning-tint: rgba(232, 178, 113, .12);
   --nxt-danger: #f0768e;
-  --nxt-danger-tint: rgba(240,118,142,.12);
+  --nxt-danger-tint: rgba(240, 118, 142, .12);
+  --nxt-info-tint: rgba(180, 154, 255, .09);
 
-  --n99-bg: var(--nxt-bg);
-  --n99-surface: var(--nxt-surface);
-  --n99-raised: var(--nxt-raised);
-  --n99-text: var(--nxt-text);
-  --n99-muted: var(--nxt-text-secondary);
-  --n99-border: var(--nxt-border);
-  --n99-accent: var(--nxt-purple);
+  /* ---- Elevation --------------------------------------------------------- */
+  --nxt-shadow-low: 0 1px 2px rgba(0, 0, 0, .28);
+  --nxt-shadow-medium: 0 8px 24px rgba(0, 0, 0, .34);
+
+  /* ---- Radius ------------------------------------------------------------ */
+  --nxt-radius-sm: 10px;
+  --nxt-radius-md: 14px;
+  --nxt-radius-lg: 18px;
+  --nxt-radius-xl: 24px;
+  --nxt-radius-pill: 999px;
+
+  /* ---- Space ------------------------------------------------------------- */
+  --nxt-space-1: 4px;
+  --nxt-space-2: 8px;
+  --nxt-space-3: 12px;
+  --nxt-space-4: 16px;
+  --nxt-space-5: 20px;
+  --nxt-space-6: 24px;
+  --nxt-space-7: 32px;
+  --nxt-space-8: 40px;
+  --nxt-gutter: var(--nxt-space-4); /* one screen side padding for every route */
+
+  /* ---- Typography -------------------------------------------------------
+     Few sizes, carried by weight and spacing rather than scale. */
+  --nxt-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", Roboto, Arial, sans-serif;
+  --nxt-type-display: 2.75rem;   /* 86.7 — the one number on a screen */
+  --nxt-type-metric: 1.75rem;    /* secondary large figures */
+  --nxt-type-title: 1.5rem;      /* screen title */
+  --nxt-type-heading: 1.0625rem; /* section heading */
+  --nxt-type-body: .9375rem;
+  --nxt-type-body-sm: .875rem;
+  --nxt-type-meta: .8125rem;
+  --nxt-type-label: .75rem;      /* metric labels, captions */
+  --nxt-type-micro: .6875rem;    /* uppercase eyebrows */
 
   --nxt-weight-hero: 700;
   --nxt-weight-metric: 650;
   --nxt-weight-title: 600;
   --nxt-weight-cta: 600;
-  --nxt-weight-body: 400;
   --nxt-weight-meta: 500;
+  --nxt-weight-body: 400;
   --nxt-weight-nav: 500;
 
-  --nxt-space-1: 4px;
-  --nxt-space-2: 8px;
-  --nxt-space-3: 12px;
-  --nxt-space-4: 16px;
-  --nxt-space-5: 24px;
-  --nxt-space-6: 32px;
+  --nxt-tracking-tight: -.02em;
+  --nxt-tracking-eyebrow: .07em;
 
-  --nxt-radius-control: 14px;
-  --nxt-radius-surface: 16px;
-  --nxt-radius-card: 20px;
-  --nxt-radius-pill: 999px;
-
-  --nxt-control: 48px;
+  /* ---- Control sizing ---------------------------------------------------- */
+  --nxt-button-height: 48px;
+  --nxt-control-height: 44px;
   --nxt-control-compact: 44px;
+  --nxt-control-sm: 38px;
+  --nxt-touch-min: 44px;
 
-  --nxt-motion: .15s ease;
+  /* ---- Motion -----------------------------------------------------------
+     Short and purposeful. Gym controls must feel immediate. */
+  --nxt-ease: cubic-bezier(.2, .7, .3, 1);
+  --nxt-motion-fast: 110ms;
+  --nxt-motion-normal: 190ms;
+  --nxt-motion: var(--nxt-motion-fast) var(--nxt-ease);
+  --nxt-motion-slow: var(--nxt-motion-normal) var(--nxt-ease);
 
+  /* ---- Layers ------------------------------------------------------------ */
+  --nxt-z-base: 0;
+  --nxt-z-elevated: 10;
+  --nxt-z-sticky: 30;
   --nxt-z-header: 30;
   --nxt-z-tabs: 80;
+  --nxt-z-popover: 500;
+  --nxt-z-sheet: 1000;
   --nxt-z-modal: 10000;
+  --nxt-z-toast: 20000;
 
-  --nxt-safe-top: env(safe-area-inset-top, 0px);
-  --nxt-safe-bottom: env(safe-area-inset-bottom, 0px);
-  --nxt-screen-top: max(10px, calc(var(--nxt-safe-top) + 8px));
-
-  --nxt-tabs-gap: 0px;
-  --nxt-tabs-pad-top: 12px;
+  /* ---- Bottom navigation geometry --------------------------------------
+     One stack of measurements; every route reserves the same space, so the
+     dock never moves between tabs. */
+  --nxt-tabs-pad-top: 10px;
   --nxt-tabs-pad-bottom: 8px;
-  --nxt-tab-min-height: 56px;
+  --nxt-tab-min-height: 52px;
   --nxt-tabs-border-y: 1px;
-  --nxt-tabs-chrome: calc(var(--nxt-tabs-pad-top) + var(--nxt-tab-min-height) + var(--nxt-tabs-pad-bottom) + var(--nxt-tabs-border-y));
-  --nxt-tabs-stack: calc(var(--nxt-tabs-gap) + var(--nxt-tabs-chrome) + var(--nxt-safe-bottom));
+  --nxt-nav-height: calc(var(--nxt-tabs-pad-top) + var(--nxt-tab-min-height) + var(--nxt-tabs-pad-bottom) + var(--nxt-tabs-border-y));
+  --nxt-tabs-chrome: var(--nxt-nav-height);
+  --nxt-tabs-stack: calc(var(--nxt-nav-height) + var(--nxt-safe-bottom));
+  --nxt-bottom-gap: var(--nxt-space-4);
+  --nxt-bottom-reserve: calc(var(--nxt-tabs-stack) + var(--nxt-bottom-gap));
 
+  /* ---- Top chrome -------------------------------------------------------
+     Scales with whatever inset the device reports, so a Dynamic Island, a
+     notch and a flat status bar are all handled by the same rule. */
+  --nxt-screen-top: calc(var(--nxt-safe-top) + var(--nxt-space-3));
   --nxt-header-pad-top: 8px;
   --nxt-header-pad-bottom: 9px;
   --nxt-header-row: 40px;
   --nxt-header-stack: calc(var(--nxt-header-pad-top) + var(--nxt-header-row) + var(--nxt-header-pad-bottom) + var(--nxt-safe-top));
   --nxt-rest-clearance: 20px;
 
-  --nxt-bottom-gap: 16px;
-  --nxt-bottom-reserve: calc(var(--nxt-tabs-chrome) + var(--nxt-safe-bottom) + var(--nxt-bottom-gap));
+  /* ---- Charts -----------------------------------------------------------
+     Shared so every chart in the app reads as one instrument. Phase 5 builds
+     the dual-weight graph on these. */
+  --nxt-chart-ink: var(--nxt-purple-primary);
+  --nxt-chart-ink-secondary: #7f74a8;
+  --nxt-chart-grid: rgba(232, 226, 245, .06);
+  --nxt-chart-axis-text: var(--nxt-text-muted);
+  --nxt-chart-line: 2px;
+  --nxt-chart-line-secondary: 1.5px;
+  --nxt-chart-point: 3.5px;
+  --nxt-chart-point-active: 5.5px;
+  --nxt-chart-band: rgba(180, 154, 255, .10);
+  --nxt-chart-pad: var(--nxt-space-4);
+
+  /* ---- Back-compatible aliases -----------------------------------------
+     Older V99/V100 rules still reference these names. */
+  --nxt-bg: var(--nxt-background);
+  --nxt-raised: var(--nxt-surface-alt);
+  --nxt-interactive: var(--nxt-surface-interactive);
+  --nxt-border: var(--nxt-border-subtle);
+  --nxt-hairline: var(--nxt-border-subtle);
+  --nxt-text: var(--nxt-text-primary);
+  --nxt-text-tertiary: var(--nxt-text-muted);
+  --nxt-muted: var(--nxt-text-secondary);
+  --nxt-purple: var(--nxt-purple-primary);
+  --nxt-purple-bright: var(--nxt-purple-soft);
+  --nxt-violet: var(--nxt-purple-deep);
+  --nxt-accent: var(--nxt-purple-primary);
+  --nxt-radius-control: var(--nxt-radius-md);
+  --nxt-radius-surface: var(--nxt-radius-lg);
+  --nxt-radius-card: var(--nxt-radius-xl);
+  --nxt-control: var(--nxt-button-height);
+
+  --n99-bg: var(--nxt-background);
+  --n99-surface: var(--nxt-surface);
+  --n99-raised: var(--nxt-surface-alt);
+  --n99-text: var(--nxt-text-primary);
+  --n99-muted: var(--nxt-text-secondary);
+  --n99-border: var(--nxt-border-subtle);
+  --n99-accent: var(--nxt-purple-primary);
 }
 
 html, body {
@@ -99,13 +209,20 @@ body {
 }
 
 .content {
-  padding-top: var(--nxt-screen-top) !important; /* viewport-fit=cover needs a real Dynamic Island reserve */
+  padding-top: var(--nxt-screen-top) !important; /* viewport-fit=cover needs a real Dynamic Island / notch reserve */
   padding-bottom: 0 !important; /* stop stacking index.html V28 132px pad on top of the measured reserve */
   max-width: 580px;
   margin-left: auto;
   margin-right: auto;
   box-sizing: border-box;
 }
+/* Exactly one element owns the top inset. When the status banner is showing it
+   sits above the content and has already cleared the Dynamic Island, so the
+   content must not reserve it a second time. */
+body:has(.cloud-local-banner:not([hidden])) .content {
+  padding-top: var(--nxt-space-3) !important;
+}
+
 #app, .app {
   max-width: 580px;
   margin-left: auto;
@@ -132,11 +249,11 @@ body {
   margin: 0 !important;
   border: 0 !important;
   border-radius: 0 !important; /* flat premium bar, not floating dock */
-  border-top: 1px solid var(--nxt-hairline) !important;
-  background: #101014 !important; /* opaque — no content bleed through dock */
+  border-top: 1px solid var(--nxt-border-subtle) !important;
+  background: var(--nxt-background-elevated) !important; /* opaque — no content bleed through dock */
   border-color: var(--nxt-hairline) !important;
   box-shadow: none !important; /* fully flat — no soft lift over content */
-  padding: var(--nxt-tabs-pad-top) 6px calc(var(--nxt-tabs-pad-bottom) + var(--nxt-safe-bottom)) !important;
+  padding: var(--nxt-tabs-pad-top) var(--nxt-space-2) calc(var(--nxt-tabs-pad-bottom) + var(--nxt-safe-bottom)) !important;
   z-index: var(--nxt-z-tabs) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -156,43 +273,337 @@ body {
 }
 
 .tabs .tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   height: auto;
   min-height: var(--nxt-tab-min-height);
+  padding: 0 2px;
   border: 0;
-  border-radius: var(--nxt-radius-control);
+  border-radius: 0;
   background: transparent;
-  font-size: 10px;
-  font-weight: var(--nxt-weight-nav);
-  letter-spacing: 0;
-  gap: 3px;
+  gap: 4px;
   box-shadow: none;
-  transition: color var(--nxt-motion), background-color var(--nxt-motion), box-shadow var(--nxt-motion);
-}
-
-.tabs .tab:not(.active) {
-  color: var(--nxt-text-tertiary) !important; /* beats cut-support.css + #nxtfrm-v98-premium */
-}
-
-.tabs .tab.active {
-  color: var(--nxt-text) !important;
-  background: transparent !important; /* beats cut-support.css + index.html V28/V43 dock pill fills */
-  border: 0 !important;
-  border-radius: 0 !important; /* the 15px radius bent the rule below into an arc */
-  box-shadow: inset 0 -2px 0 var(--nxt-purple) !important;
-}
-
-.tabs .tab.active span:first-child {
-  color: var(--nxt-purple-bright) !important;
-  transform: none;
-}
-
-.tabs .tab span:first-child {
-  color: inherit; /* index.html V28 pinned inactive glyphs darker than their own labels */
+  color: var(--nxt-text-muted);
   transition: color var(--nxt-motion);
 }
+.tabs .tab:not(.active) {
+  color: var(--nxt-text-muted) !important; /* beats cut-support.css + #nxtfrm-v98-premium */
+}
+.tabs .tab.active {
+  color: var(--nxt-purple-primary) !important;
+  background: transparent !important; /* beats V28/V43 dock pill fills */
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
 
-.tabs .tab span:last-child {
+/* One icon family: 22px box, 1.75 stroke, currentColor, identical optical
+   position on every tab so nothing shifts as the selection moves. */
+.tabs .tab .tab-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  color: inherit;
+  font-size: 0; /* kills the legacy glyph line-box rules */
+}
+.tabs .tab .tab-icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+  overflow: visible;
+}
+.tabs .tab .tab-label {
+  font-size: 10px !important;
+  line-height: 1;
   font-weight: var(--nxt-weight-nav);
+  letter-spacing: .01em;
+  color: inherit;
+}
+.tabs .tab.active .tab-label { font-weight: 600; }
+
+/* The selected marker is a short bar above the icon: it reads clearly without
+   an oversized pill, and it never changes the tab's box, so the dock geometry
+   is identical on every route. */
+.tabs .tab::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 18px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--nxt-purple-primary);
+  transform: translateX(-50%) scaleX(0);
+  transform-origin: center;
+  opacity: 0;
+  transition: transform var(--nxt-motion-normal) var(--nxt-ease), opacity var(--nxt-motion) ;
+}
+.tabs .tab { position: relative; }
+.tabs .tab.active::before { transform: translateX(-50%) scaleX(1); opacity: 1; }
+
+.tabs .tab:active .tab-icon { transform: scale(.92); }
+.tabs .tab .tab-icon { transition: transform var(--nxt-motion); }
+
+.tabs .tab:focus-visible {
+  outline: 2px solid var(--nxt-purple-primary);
+  outline-offset: -3px;
+  border-radius: var(--nxt-radius-sm);
+}
+
+/* =========================================================================
+   SHARED COMPONENT SYSTEM (Phase 2)
+   Buttons, segmented controls, inputs, surfaces, focus/pressed/disabled and
+   motion. Screens inherit from here rather than restyling controls locally.
+   ========================================================================= */
+
+/* ---- Focus ------------------------------------------------------------
+   One visible focus ring for every interactive control, so no control is left
+   on a browser default while its neighbour is fully styled. */
+.nxp :focus-visible,
+.nxp-seg button:focus-visible,
+.tabs .tab:focus-visible {
+  outline: 2px solid var(--nxt-purple-primary);
+  outline-offset: 2px;
+}
+.nxp :focus:not(:focus-visible) { outline: none; }
+
+/* ---- Buttons ----------------------------------------------------------
+   Three levels only.
+     PRIMARY   .n99-button            filled purple, one per view
+     SECONDARY .n99-button.secondary  elevated surface, restrained border
+     TERTIARY  .n99-text              text/icon, minimal weight
+   Not every action is a purple pill. */
+.nxp .n99-button {
+  display: block;
+  width: 100%;
+  min-height: var(--nxt-button-height);
+  margin: 0;
+  padding: 12px var(--nxt-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--nxt-radius-md);
+  background: var(--nxt-purple-primary);
+  color: var(--nxt-on-purple);
+  font-size: var(--nxt-type-body) !important;
+  font-weight: var(--nxt-weight-cta) !important;
+  line-height: 1.3;
+  text-align: center;
+  box-shadow: var(--nxt-shadow-low);
+  transition: background-color var(--nxt-motion), border-color var(--nxt-motion),
+              color var(--nxt-motion), transform var(--nxt-motion), opacity var(--nxt-motion);
+}
+.nxp .n99-button:active { background: var(--nxt-purple-soft); transform: scale(.99); }
+
+.nxp .n99-button.secondary {
+  background: var(--nxt-surface-interactive);
+  border-color: var(--nxt-border-strong);
+  color: var(--nxt-text-primary);
+  box-shadow: none;
+}
+.nxp .n99-button.secondary:active { background: var(--nxt-surface-alt); transform: scale(.99); }
+
+.nxp .n99-button:disabled,
+.nxp .n99-button[aria-disabled="true"] {
+  opacity: .42;
+  box-shadow: none;
+  transform: none;
+  pointer-events: none;
+}
+
+/* Loading: the label stays in place so the button cannot change size. */
+.nxp .n99-button[data-loading="true"] {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+.nxp .n99-button[data-loading="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: var(--nxt-on-purple);
+  border-radius: 50%;
+  color: rgba(23, 18, 31, .35);
+  animation: nxt-spin 620ms linear infinite;
+}
+.nxp .n99-button.secondary[data-loading="true"]::after {
+  color: var(--nxt-border-strong);
+  border-top-color: var(--nxt-text-secondary);
+}
+@keyframes nxt-spin { to { transform: rotate(360deg); } }
+
+.nxp .n99-text {
+  min-height: var(--nxt-touch-min);
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--nxt-purple-primary);
+  font-size: var(--nxt-type-body-sm) !important;
+  font-weight: var(--nxt-weight-meta);
+  text-align: left;
+  transition: color var(--nxt-motion), opacity var(--nxt-motion);
+}
+.nxp .n99-text:active { opacity: .6; }
+.nxp .n99-text:disabled { color: var(--nxt-text-disabled); pointer-events: none; }
+
+.nxp .n99-chip {
+  min-height: var(--nxt-control-height);
+  padding: 9px var(--nxt-space-3);
+  border: 1px solid var(--nxt-border-subtle);
+  border-radius: var(--nxt-radius-pill);
+  background: var(--nxt-surface-interactive);
+  color: var(--nxt-text-secondary);
+  font-size: var(--nxt-type-meta) !important;
+  font-weight: var(--nxt-weight-meta);
+  transition: background-color var(--nxt-motion), color var(--nxt-motion);
+}
+.nxp .n99-chip:active { background: var(--nxt-surface-alt); }
+
+/* ---- Segmented control ------------------------------------------------
+   One system for set type, RIR, range pickers and view switches. */
+.nxp-seg {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  padding: 3px;
+  border: 1px solid var(--nxt-border-subtle);
+  border-radius: var(--nxt-radius-pill);
+  background: var(--nxt-surface);
+}
+.nxp-seg button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--nxt-control-sm);
+  padding: 0 var(--nxt-space-2);
+  border: 0;
+  border-radius: var(--nxt-radius-pill);
+  background: none;
+  color: var(--nxt-text-muted);
+  font-size: var(--nxt-type-meta);
+  font-weight: var(--nxt-weight-meta);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transition: background-color var(--nxt-motion), color var(--nxt-motion), box-shadow var(--nxt-motion);
+}
+.nxp-seg button:active { background: var(--nxt-surface-interactive); }
+.nxp-seg button.is-on {
+  background: var(--nxt-surface-selected);
+  color: var(--nxt-purple-primary);
+  box-shadow: inset 0 0 0 1px var(--nxt-purple-edge);
+}
+.nxp-seg button:disabled {
+  color: var(--nxt-text-disabled);
+  background: none;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+/* ---- Inputs -----------------------------------------------------------
+   Form controls belong to the same product as the buttons and cards. */
+.nxp input[type="number"],
+.nxp input[type="text"],
+.nxp input[type="date"],
+.nxp input[type="email"],
+.nxp input[type="password"],
+.nxp textarea,
+.nxp select {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--nxt-control-height);
+  padding: 10px var(--nxt-space-3);
+  border: 1px solid var(--nxt-border-subtle);
+  border-radius: var(--nxt-radius-md);
+  background: var(--nxt-surface);
+  color: var(--nxt-text-primary);
+  font-size: 1rem; /* iOS Safari zooms form controls below 16px */
+  font-family: inherit;
+  transition: border-color var(--nxt-motion), background-color var(--nxt-motion);
+}
+.nxp input:focus,
+.nxp textarea:focus,
+.nxp select:focus {
+  border-color: var(--nxt-purple-edge);
+  background: var(--nxt-surface-alt);
+}
+.nxp input::placeholder,
+.nxp textarea::placeholder { color: var(--nxt-text-disabled); }
+.nxp input:disabled,
+.nxp select:disabled,
+.nxp textarea:disabled { color: var(--nxt-text-disabled); opacity: 1; }
+.nxp input[aria-invalid="true"] { border-color: var(--nxt-danger); }
+
+/* ---- Surfaces ---------------------------------------------------------
+   A card is a meaningful grouping, not a wrapper for every metric. */
+.nxp-surface {
+  padding: var(--nxt-space-4);
+  border: 1px solid var(--nxt-border-subtle);
+  border-radius: var(--nxt-radius-lg);
+  background: var(--nxt-surface);
+}
+.nxp-surface-raised {
+  padding: var(--nxt-space-4);
+  border: 1px solid var(--nxt-border-subtle);
+  border-radius: var(--nxt-radius-xl);
+  background: var(--nxt-surface-alt);
+  box-shadow: var(--nxt-shadow-low);
+}
+
+/* ---- Typography roles ------------------------------------------------- */
+.nxp-eyebrow,
+.nxp .nxp-caption {
+  font-size: var(--nxt-type-micro);
+  font-weight: var(--nxt-weight-meta);
+  letter-spacing: var(--nxt-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--nxt-text-muted);
+}
+/* Large figures read as instrument readouts: tight, tabular, unit de-emphasised. */
+.nxp-display,
+.nxp-metric {
+  font-weight: var(--nxt-weight-hero);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--nxt-tracking-tight);
+  line-height: 1;
+}
+.nxp-display { font-size: var(--nxt-type-display); }
+.nxp-metric { font-size: var(--nxt-type-metric); }
+.nxp-display small,
+.nxp-metric small,
+.nxp-display em,
+.nxp-metric em {
+  font-style: normal;
+  font-size: .4em;
+  font-weight: var(--nxt-weight-meta);
+  letter-spacing: 0;
+  color: var(--nxt-text-muted);
+}
+
+/* ---- Status text ------------------------------------------------------ */
+.nxp-good { color: var(--nxt-success); }
+.nxp-watch { color: var(--nxt-warning); }
+.nxp-bad { color: var(--nxt-danger); }
+
+/* ---- Motion -----------------------------------------------------------
+   Short, purposeful, and fully disabled when the device asks for less. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+:root[data-nxp-motion="reduced"] *,
+:root[data-nxp-motion="reduced"] *::before,
+:root[data-nxp-motion="reduced"] *::after {
+  animation-duration: .001ms !important;
+  transition-duration: .001ms !important;
 }
 
 /* V100: quiet purple-and-charcoal surfaces, readable settings and a focused logger. */
@@ -294,13 +705,9 @@ body {
 .nxp-heading { display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0 24px; }
 .nxp-heading p { font-size:.875rem;color:var(--n99-muted);margin:5px 0 0; }
 .nxp-heading .n99-button { width:auto;padding:10px 13px;min-height:44px;flex-shrink:0;font-size:.875rem!important; }
-.nxp-caption { color:var(--n99-muted);font-size:.875rem;font-weight:500;letter-spacing:0;text-transform:none; }
 .nxp .n99-card { border-radius:20px;padding:20px;box-shadow:0 2px 7px rgba(0,0,0,.035); }
-.nxp .n99-button { border-radius:var(--nxt-radius-control);font-size:1rem!important; }
-.nxp .n99-button.secondary { background:#22222c;border-color:#36343f; }
 .nxp .n99-small,.nxp .n99-list-row small { font-size:.875rem; }
 .nxp .n99-eyebrow { font-size:.8125rem;letter-spacing:.035em;text-transform:none; }
-.nxp .n99-text { font-size:.875rem!important; }
 .nxp-today { background:radial-gradient(ellipse at 100% 0,rgba(173,145,245,.09),transparent 70%),#202027;padding:20px;border-radius:22px; }
 .nxp-today h2 { margin-top:5px;font-size:1.9rem; }
 .nxp-today p { font-size:.9375rem;margin:8px 0 22px; }
@@ -856,11 +1263,14 @@ body {
 
 /* ---- Segmented controls (set type + reps left) ---- */
 .nxp-seg-row {
-  display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: var(--nxt-space-3);
-  align-items: end;
+  min-width: 0;
 }
+/* Set type is a two-option control; it should not stretch the full width just
+   because it has a row to itself. */
+.nxp-seg-block.nxp-seg-type .nxp-seg { max-width: 260px; }
 .nxp-seg-block { min-width: 0; margin: 0; padding: 0; border: 0; }
 .nxp-seg-block legend {
   padding: 0 0 6px;
@@ -869,34 +1279,6 @@ body {
   color: var(--nxt-text-tertiary);
 }
 .nxp-seg-block legend small { font-weight: 400; }
-.nxp-seg {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--nxt-border);
-  border-radius: var(--nxt-radius-pill);
-  background: var(--nxt-surface);
-}
-.nxp-seg button {
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 38px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: var(--nxt-radius-pill);
-  background: none;
-  color: var(--nxt-text-tertiary);
-  font-size: .8125rem;
-  font-weight: var(--nxt-weight-meta);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  transition: background var(--nxt-motion), color var(--nxt-motion);
-}
-.nxp-seg button.is-on {
-  background: var(--nxt-purple-tint);
-  color: var(--nxt-purple);
-  box-shadow: inset 0 0 0 1px var(--nxt-purple-edge);
-}
 
 /* ---- Primary action ---- */
 .nxp-train-lift .nxp-train-cta {
@@ -1110,7 +1492,7 @@ body {
 
 /* ---- Narrow phones: reflow instead of shrinking ---- */
 @media (max-width: 359px) {
-  .nxp-seg-row { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+  .nxp-seg-block.nxp-seg-type .nxp-seg { max-width: none; }
   .nxp-aim-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .nxp-aim-grid > div:last-child { grid-column: 1 / -1; }
   .nxp-train-lift .nxp-load-inputs input[type="number"] { font-size: 1.5rem; min-height: 56px; }
@@ -1516,7 +1898,15 @@ body {
 .nxp-identity img { width:48px;height:48px;border-radius:13px; }
 .nxp-identity b { display:block;font-size:1.125rem;font-weight:600; }
 .nxp-identity span { display:block;font-size:.875rem;color:var(--n99-muted);margin-top:5px; }
-.nxp .nxp-group-title { font-size:.8125rem;font-weight:500;color:#a79daf;letter-spacing:.035em;margin:26px 4px 10px; }
+.n99.nxp .nxp-group-title {
+  margin: var(--nxt-space-6) var(--nxt-space-1) var(--nxt-space-2);
+  font-size: var(--nxt-type-micro);
+  font-weight: var(--nxt-weight-meta);
+  letter-spacing: var(--nxt-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--nxt-text-muted);
+  line-height: 1.2;
+}
 .nxp-settings-group { background:#1f1e27;border:1px solid #35313e;border-radius:18px;padding:0 17px; }
 .nxp-settings-group .nxp-setting:last-child { border-bottom:0; }
 .nxp .nxp-footer { margin:28px 0 4px;text-align:center;color:#93879f;font-size:.8125rem; }
@@ -1540,7 +1930,8 @@ html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[dat
 @media(prefers-reduced-motion:reduce) {
   .nxp *, .nxp *::before,.nxp *::after { animation:none!important;transition:none!important; }
   .tabs .tab,
-  .tabs .tab span:first-child { transition: none; transform: none; }
+  .tabs .tab .tab-icon { transition: none; transform: none; }
+  .tabs .tab::before { transition: none; }
 }
 
 /* V102.5 History — calendar-first record. Scoped; does not alter Home, Train, Progress, or shell algebra. */
@@ -1657,7 +2048,7 @@ html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[dat
 .nxp-more-account .nxp-caption { color:var(--nxt-text-tertiary); }
 .nxp-more-account h2 { margin:4px 0 0;font-size:1.125rem;font-weight:620;letter-spacing:-.02em;overflow-wrap:anywhere; }
 .nxp-more-account p { margin:4px 0 0;font-size:.875rem;color:var(--nxt-text-secondary);overflow-wrap:anywhere; }
-.nxp-more .nxp-group-title { margin:18px 2px 4px;font-size:.75rem;font-weight:var(--nxt-weight-meta);letter-spacing:.08em;text-transform:uppercase;color:var(--nxt-text-tertiary); }
+.n99.nxp.nxp-more .nxp-group-title { margin: var(--nxt-space-5) 2px var(--nxt-space-1); }
 .nxp-more .nxp-more-account + .nxp-group-title { margin-top:var(--nxt-space-2); }
 .nxp-more-group { margin:0;padding:0;background:transparent;border:0; }
 .nxp-more .nxp-setting { align-items:flex-start;gap:8px 12px;padding:12px 2px;min-height:var(--nxt-control-compact);border-bottom:1px solid var(--nxt-hairline); }

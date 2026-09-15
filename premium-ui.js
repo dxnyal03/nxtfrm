@@ -61,7 +61,7 @@ const NXP = (() => {
       <div class="nxp-home-signals" role="group" aria-label="Cardio and performance">${linkSignal('Cardio',cardioMins+' / '+cardioTarget+' min','showCardioSheet()')}${linkSignal('Performance',perfLabel,"NXT.ui.view='strength';switchTab('weight')")}</div>
       <button type="button" class="nxp-home-kcal" onclick="NXT.openCalories()"><span><small>Calorie guide</small><strong>${cal?formatNumber(cal)+' <em>kcal</em>':'Set target'}</strong></span><span>${cal?'Edit':'Set up'}</span></button>
       ${N.adherenceHTML()}
-      <nav class="nxp-home-secondary" aria-label="Quick actions">${link('＋ Weight','apx95OpenQuickWeight()')}${state.dayType==='Zone2'?'':link('Log cardio','showCardioSheet()')}${state.dayType==='Rest'?'':link('Check-in','apx96OpenReadiness()')}</nav>
+      <nav class="nxp-home-secondary" aria-label="Quick actions">${link('+ Weight','apx95OpenQuickWeight()')}${state.dayType==='Zone2'?'':link('Log cardio','showCardioSheet()')}${state.dayType==='Rest'?'':link('Check-in','apx96OpenReadiness()')}</nav>
       <details class="nxp-home-week nxp-disclosure" open><summary><span>Your week</span><small>${N.completedWeek()} lifting days logged</small></summary>${N.weekHTML()}<div class="nxp-card-foot"><span>${cardioMins} / ${cardioTarget} cardio min</span>${link('Edit plan ›',"NXT.more('training')")}</div></details>
       <details class="nxp-home-trend nxp-disclosure"><summary><span>Weight detail</span><small>${last?last.weight.toFixed(1)+' kg':'No weigh-in yet'}</small></summary><div class="n99-stats">${N.metric('7-day average',s.current.n>=3?s.current.avg.toFixed(1)+'<small> kg</small>':'—',s.current.n>=3?'From '+s.current.n+' weigh-ins':'Needs 3 readings in 7 days')}${N.metric('Weekly change',s.change===null?'—':N.signed(s.change,2)+'<small> kg</small>',s.change===null?'Building a comparison':'Compared with prior 7 days')}</div><div class="nxp-card-foot"><span>${last?'Latest: '+last.weight.toFixed(1)+' kg · '+N.shortDate(last.date):'Your first weigh-in sets the baseline.'}</span>${link('View progress ›',"switchTab('weight')")}</div></details>
     </div>`;
@@ -157,7 +157,7 @@ const NXP = (() => {
   }
   function setRecoveryPreview(preview) {NXT.recoveryPreview=preview||null;}
   function draftKey() {return sessionKey()+'__'+state.exercise;}
-  function rememberInput(el) {const key=draftKey(),d=ui.drafts.get(key)||{};d[el.id]=el.value;ui.drafts.set(key,d);if(el.id==='n99-set-type'){const b=document.getElementById('nxp-log-button');if(b)b.textContent='＋ Log '+(el.value==='warmup'?'warm-up':'set '+(N.done(state.exercise)+1));}}
+  function rememberInput(el) {const key=draftKey(),d=ui.drafts.get(key)||{};d[el.id]=el.value;ui.drafts.set(key,d);if(el.id==='n99-set-type'){const b=document.getElementById('nxp-log-button');if(b)b.textContent='+ Log '+(el.value==='warmup'?'warm-up':'set '+(N.done(state.exercise)+1));}}
   function trainChrome() {return `<header class="nxp-train-chrome"><div><h1>${esc(N.label(state.dayType))}</h1><p>${esc(state.gym||'Gym')} · ${N.shortDate(state.date)}</p></div>${button('Change','showSessionSheet()',true)}</header>`;}
   function trainIdle(kind,body) {document.getElementById('trainPage').innerHTML=`<div class="n99 nxp nxp-train nxp-train-idle ${kind}">${trainChrome()}${trainGuidanceHTML()}${body}</div>`;}
   function idleSecondary(label,action) {return `<button type="button" class="n99-text" onclick="${esc(action)}">${label}</button>`;}
@@ -255,7 +255,7 @@ const NXP = (() => {
         <input type="hidden" id="n99-rir" value="${esc(rir)}">
 
         <div class="nxp-seg-row">
-          <fieldset class="nxp-seg-block">
+          <fieldset class="nxp-seg-block nxp-seg-type">
             <legend>Set type</legend>
             <div class="nxp-seg" role="group">${[['working','Working'],['warmup','Warm-up']].map(([v,l])=>`<button type="button" class="${setType===v?'is-on':''}" aria-pressed="${setType===v}" onclick="NXP.setSetType('${v}')">${l}</button>`).join('')}</div>
           </fieldset>
@@ -357,15 +357,15 @@ const NXP = (() => {
     const s=N.trendStats(),v=N.ui.view,r=N.ui.range;
     const period=r===14?'Last 2 weeks':r===30?'Last month':r===90?'Last 3 months':'All recorded weigh-ins';
     const tabs=`<div class="n99-progress-tabs nxp-progress-tabs" role="group" aria-label="Progress view">${[['overview','Weight'],['strength','Performance'],['body','Body']].map(([key,title])=>`<button type="button" class="${v===key?'active':''}" aria-pressed="${v===key}" onclick="NXT.setView('${key}')">${title}</button>`).join('')}</div>`;
-    const chrome=`<header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(period)}</p></div>${button('＋ Weight','apx95OpenQuickWeight()',true)}</header>`;
+    const chrome=`<header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(period)}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>`;
     if(v==='body'){
       const waist=N.cleanRows(N.cfg().waist,'cm'),scans=bodyScans();
-      document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-body"><header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(bodyTitle(waist,scans))}</p></div>${button('＋ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${bodySummary(waist,scans)}${bodyView(waist,scans)}</div>`;
+      document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-body"><header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(bodyTitle(waist,scans))}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${bodySummary(waist,scans)}${bodyView(waist,scans)}</div>`;
       return;
     }
     if(v==='strength'){
       const items=N.strengthItems();
-      document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-strength"><header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(performanceSubtitle(items))}</p></div>${button('＋ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${performanceSummary(items)}<div class="nxp-progress-strength-body">${N.strengthHTML()}</div></div>`;
+      document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-strength"><header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(performanceSubtitle(items))}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${performanceSummary(items)}<div class="nxp-progress-strength-body">${N.strengthHTML()}</div></div>`;
       arrangeStrengthView(items);
       return;
     }
@@ -530,7 +530,7 @@ const NXP = (() => {
       const bits=scanBits(s);
       return `<div class="nxp-progress-body-scan"><span>${esc(N.shortDate(s.date))}</span><b>${esc(bits[0]||'Evo scan')}</b><small>${esc(bits.slice(1).join(' · ')||'Saved scan')}</small></div>`;
     }).join('');
-    return `<section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Waist</h2>${waist.length?waistRows:`<p class="nxp-progress-body-empty">No waist measurements yet. Optional, about once a week, with the same tape position.</p>`}${row('Log waist','＋',"NXT.openWaist()",'Same position and similar conditions')}</section><section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Evo scans</h2>${scans.length?scanRows:`<p class="nxp-progress-body-empty">No scans saved. Compare readings under similar conditions; treat changes as estimates, not proof of fat or muscle loss.</p>`}${row('Open scans','Open',"NXT.more('body')",'Existing scan tools and history')}</section><p class="n99-small nxp-progress-body-note">Body fat and muscle figures only appear from saved Evo scans. They are not calculated from waist or scale weight.</p>`;
+    return `<section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Waist</h2>${waist.length?waistRows:`<p class="nxp-progress-body-empty">No waist measurements yet. Optional, about once a week, with the same tape position.</p>`}${row('Log waist','+',"NXT.openWaist()",'Same position and similar conditions')}</section><section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Evo scans</h2>${scans.length?scanRows:`<p class="nxp-progress-body-empty">No scans saved. Compare readings under similar conditions; treat changes as estimates, not proof of fat or muscle loss.</p>`}${row('Open scans','Open',"NXT.more('body')",'Existing scan tools and history')}</section><p class="n99-small nxp-progress-body-note">Body fat and muscle figures only appear from saved Evo scans. They are not calculated from waist or scale weight.</p>`;
   }
   function more() {
     applyAppearance();

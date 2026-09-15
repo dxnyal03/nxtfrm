@@ -149,6 +149,98 @@ test("no corrupted CSS declarations ship", function () {
   assert.strictEqual(html.indexOf("legs + corecase"), -1);
 });
 
+test("safe-area insets are read in exactly one place", function () {
+  // Every consumer reads --nxt-safe-*, so the whole system can be exercised at
+  // any inset and no rule hard-codes one device's offset.
+  assert.ok(css.indexOf("--nxt-safe-top: env(safe-area-inset-top, 0px)") !== -1);
+  assert.ok(css.indexOf("--nxt-safe-bottom: env(safe-area-inset-bottom, 0px)") !== -1);
+  const cut = fs.readFileSync(path.join(ROOT, "cut-support.css"), "utf8");
+  assert.strictEqual(/env\(safe-area/.test(cut), false, "cut-support.css must use the tokens");
+  // premium-ui.css may only name env() in the token definitions themselves.
+  const envHits = (css.match(/env\(safe-area-inset-[a-z]+/g) || []);
+  assert.strictEqual(envHits.length, 4, "unexpected env() use: " + envHits.join(","));
+  // Only one element reserves the top inset at a time.
+  assert.ok(css.indexOf('body:has(.cloud-local-banner:not([hidden])) .content') !== -1);
+});
+
+test("the cascade runs legacy -> V98 -> cut-support -> premium", function () {
+  // Moving the premium stylesheets into <head> put them ahead of the V98
+  // <style> block that was still in <body>, which silently inverted the
+  // cascade and let V98 win. All layers now live in <head> in order.
+  const head = html.slice(0, html.indexOf("</head>"));
+  const v98 = head.indexOf('<style id="nxtfrm-v98-premium">');
+  const cut = head.indexOf('href="cut-support.css');
+  const prem = head.indexOf('href="premium-ui.css');
+  assert.ok(v98 !== -1, "V98 block must be in <head>");
+  assert.ok(v98 < cut && cut < prem, "order must be V98 -> cut-support -> premium");
+  assert.strictEqual(html.slice(html.indexOf("</head>")).indexOf('<style id="nxtfrm-v98-premium">'), -1);
+});
+
+test("navigation uses one icon family, not glyphs", function () {
+  const nav = html.slice(html.indexOf('<nav class="tabs"'), html.indexOf("</nav>"));
+  for (const glyph of ["\u2302", "\uff0b", "\u25cc", "\u2261", "\u2022\u2022\u2022"]) {
+    assert.strictEqual(nav.indexOf(glyph), -1, "legacy nav glyph still present");
+  }
+  assert.strictEqual((nav.match(/class="tab-icon"/g) || []).length, 5);
+  assert.strictEqual((nav.match(/stroke-width="1\.75"/g) || []).length, 5, "one stroke weight");
+  assert.strictEqual((nav.match(/viewBox="0 0 24 24"/g) || []).length, 5, "one icon geometry");
+  // The dock must not change size with the selection.
+  assert.ok(css.indexOf("--nxt-nav-height:") !== -1);
+});
+
+test("semantic tokens exist and resolve", function () {
+  const required = [
+    "--nxt-background", "--nxt-background-elevated", "--nxt-surface", "--nxt-surface-alt",
+    "--nxt-surface-interactive", "--nxt-surface-selected",
+    "--nxt-text-primary", "--nxt-text-secondary", "--nxt-text-muted", "--nxt-text-disabled",
+    "--nxt-border-subtle", "--nxt-border-strong",
+    "--nxt-purple-primary", "--nxt-purple-soft", "--nxt-purple-deep", "--nxt-purple-glow",
+    "--nxt-success", "--nxt-warning", "--nxt-danger",
+    "--nxt-shadow-low", "--nxt-shadow-medium",
+    "--nxt-radius-sm", "--nxt-radius-md", "--nxt-radius-lg", "--nxt-radius-xl",
+    "--nxt-space-1", "--nxt-space-8",
+    "--nxt-button-height", "--nxt-nav-height", "--nxt-control-height",
+    "--nxt-motion-fast", "--nxt-motion-normal"
+  ];
+  for (const t of required) assert.ok(css.indexOf(t + ":") !== -1, "missing token " + t);
+  // Every var() must resolve to something defined.
+  const used = new Set((css.match(/var\(--nxt-[a-z0-9-]+/g) || []).map(v => v.slice(4)));
+  const defined = new Set((css.match(/--nxt-[a-z0-9-]+(?=\s*:)/g) || []));
+  for (const u of used) assert.ok(defined.has(u), "undefined token referenced: " + u);
+});
+
+test("charts share one theme instead of literals", function () {
+  const cut = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8");
+  assert.ok(cut.indexOf("const CHART = {") !== -1);
+  assert.strictEqual(cut.indexOf("#b18aff"), -1, "chart purple literal still present");
+  assert.ok(css.indexOf("--nxt-chart-ink:") !== -1);
+  assert.ok(css.indexOf("--nxt-chart-grid:") !== -1);
+});
+
+test("the local-only banner reads as information, not caution", function () {
+  const cut = fs.readFileSync(path.join(ROOT, "cut-support.css"), "utf8");
+  const block = cut.slice(cut.indexOf(".cloud-local-banner {"), cut.indexOf(".cloud-local-banner-dismiss"));
+  assert.strictEqual(/#e8bf7c|232,\s*191,\s*124/.test(block), false, "gold caution styling still present");
+  assert.ok(block.indexOf("--nxt-info-tint") !== -1);
+  assert.ok(block.indexOf("--nxt-safe-top") !== -1, "banner must clear the top inset");
+});
+
+test("motion is short and respects prefers-reduced-motion", function () {
+  assert.ok(css.indexOf("@media (prefers-reduced-motion: reduce)") !== -1);
+  assert.ok(css.indexOf('[data-nxp-motion="reduced"]') !== -1);
+  const fast = css.match(/--nxt-motion-fast:\s*(\d+)ms/);
+  assert.ok(fast && Number(fast[1]) <= 150, "gym controls need an immediate response");
+});
+
+test("interactive controls have focus, pressed and disabled states", function () {
+  assert.ok(css.indexOf(":focus-visible") !== -1);
+  assert.ok(css.indexOf(".nxp .n99-button:active") !== -1);
+  assert.ok(css.indexOf(".nxp .n99-button:disabled") !== -1);
+  assert.ok(css.indexOf(".nxp-seg button:active") !== -1);
+  assert.ok(css.indexOf(".nxp-seg button:disabled") !== -1);
+  assert.ok(css.indexOf(".tabs .tab:focus-visible") !== -1);
+});
+
 test("production fixture runtime does not attach docs", function () {
   const ctx = vm.createContext({
     location: { hostname: "app.nxtfrm.example", protocol: "https:" },
