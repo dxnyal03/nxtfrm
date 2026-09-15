@@ -27,7 +27,7 @@ const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
 const fixtures = fs.readFileSync(path.join(ROOT, "wearables.fixtures.js"), "utf8");
 
 // Bump with each shipped release; the gate asserts the SW cache matches.
-const RELEASE_CACHE = "nxtfrm-v108-premium-cache";
+const RELEASE_CACHE = "nxtfrm-v109-premium-cache";
 
 test("index does not statically load fixtures on every host", function () {
   assert.ok(!/<script src="wearables\.fixtures\.js"><\/script>/.test(html));
@@ -531,6 +531,57 @@ test("queue reordering is offered only through accessible controls", function ()
   assert.ok(moveCss.indexOf("height: var(--nxt-touch-min)") !== -1);
   // The current exercise stays identifiable in both modes.
   assert.ok(css.indexOf(".nxp-queue-row.is-current .nxp-queue-index") !== -1);
+});
+
+test("full reset clears the wearable database, not just localStorage", function () {
+  // The More > App reset button ships in index.html with a legacy inline handler
+  // that only clears localStorage. cut-support.js swaps that exact literal for
+  // NXT.resetData(), which also deletes the wearable IndexedDB. The swap is a
+  // string replace, so if either side of it drifts the replace silently no-ops
+  // and the raw handler ships — localStorage is cleared, the wearable evidence
+  // survives, and the UI's "will be cleared by reset" promise quietly breaks.
+  // These assertions fail on that drift.
+  const cut = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8");
+  const LEGACY = "if(confirm('Clear all local NXTFRM data?')){localStorage.clear();location.reload()}";
+
+  // 1. The literal the swap looks for must still exist in the page, exactly once.
+  assert.strictEqual(html.split(LEGACY).length - 1, 1,
+    "the legacy reset handler literal must appear exactly once in index.html");
+
+  // 2. cut-support must still replace that literal with NXT.resetData().
+  const swap = cut.slice(cut.indexOf("apx96MoreSectionHTML(view).replace("));
+  const call = swap.slice(0, swap.indexOf("\n"));
+  assert.ok(call.indexOf(LEGACY) !== -1, "the replace target no longer matches index.html");
+  assert.ok(call.indexOf('"NXT.resetData()"') !== -1, "reset must be routed to NXT.resetData()");
+
+  // 3. resetData must delete the wearable database, not only drop localStorage keys.
+  const fn = cut.slice(cut.indexOf("function resetData() {"));
+  const body = fn.slice(0, fn.indexOf("\n  }") + 4);
+  assert.ok(body.indexOf("store.deleteDatabase") !== -1,
+    "reset must delete the wearable database");
+  assert.ok(/deleteDatabase\(\)\)\.then\(reload, ?reload\)/.test(body.replace(/\s+/g, " ")) ||
+    body.indexOf("Promise.resolve(store.deleteDatabase()).then(reload,reload)") !== -1,
+    "reset must reload only after the database delete settles, on success or failure");
+  assert.ok(body.indexOf("location.reload()") !== -1, "reset must restart the app");
+
+  // 4. It must clear the app records the UI says it clears.
+  ["apm_logs", "apm_bws", "apm_settings", "apm_session_plans", "apm_exercise_notes"].forEach(function (key) {
+    assert.ok(body.indexOf("'" + key + "'") !== -1, "reset must clear " + key);
+  });
+
+  // 5. The live path must never fall back to a bare localStorage.clear().
+  assert.strictEqual(/localStorage\.clear\(\)/.test(body), false,
+    "reset must remove named keys, not blanket-clear storage it does not own");
+
+  // 6. The copy promises wearable deletion; the promise and the code move together.
+  assert.ok(html.indexOf("will be cleared by reset") !== -1,
+    "reset copy must keep telling the user wearable evidence is cleared");
+
+  // 7. The store must actually expose the delete the reset depends on.
+  const store = fs.readFileSync(path.join(ROOT, "wearables.store.js"), "utf8");
+  assert.ok(store.indexOf("indexedDB.deleteDatabase(DB_NAME)") !== -1,
+    "the store must delete the real database");
+  assert.ok(/DB_NAME = "nxtfrm_wearables_db"/.test(store));
 });
 
 test("production fixture runtime does not attach docs", function () {

@@ -2646,11 +2646,11 @@ textarea:disabled {
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="application-name" content="NXTFRM">
 
-<!-- Presentation layers load in <head> so the first paint is already NXTFRM V108.
+<!-- Presentation layers load in <head> so the first paint is already NXTFRM V109.
      These were previously <link>ed at the end of <body>, which let the legacy
      in-head CSS paint the old chrome before the current styles arrived. -->
-<link rel="stylesheet" href="cut-support.css?v=108">
-<link rel="stylesheet" href="premium-ui.css?v=108">
+<link rel="stylesheet" href="cut-support.css?v=109">
+<link rel="stylesheet" href="premium-ui.css?v=109">
 
 </head>
 <body>
@@ -6803,7 +6803,7 @@ function renderMore(){
   ${renderEvoScanPage()}
   <div class="card">
     <div class="kicker">Build</div>
-    <div class="title" style="margin-top:6px">NXTFRM V107</div>
+    <div class="title" style="margin-top:6px">NXTFRM V109</div>
     <div class="sub" style="margin-top:8px">Premium interface · offline-first · data compatible with APEXCUT V93–V106.</div>
   </div>`;
 }
@@ -7244,7 +7244,7 @@ function apx96MoreSectionHTML(view){
     content=`${cloudCardHTML()}${backupRestoreHTML()}<div class="apx96-card"><div class="apx96-kicker">Exports</div><div class="apx96-card-title">Take your app data</div><div class="apx96-soft" style="margin-top:6px">Workouts, weigh-ins, settings and check-ins. Wearable evidence in the on-device wearable store is not included.</div><div style="display:grid;gap:8px;margin-top:12px"><button class="btn secondary" onclick="exportJSON()">EXPORT APP BACKUP</button><button class="btn secondary" onclick="exportCSV()">EXPORT WORKOUT CSV</button></div></div><details class="apx96-details"><summary>Advanced cloud setup</summary><div class="apx96-details-body">${supabaseSQLHelpHTML()}</div></details>`;
   }else{
     title="App & install";subtitle="Install, version and safety controls.";
-    content=`${installInstructionsHTML()}<div class="apx96-card"><div class="apx96-kicker">Build</div><div class="apx96-card-title">NXTFRM V107</div><div class="apx96-soft" style="margin-top:6px">Premium interface · offline-first · compatible with APEXCUT V93–V106 data.</div></div><div class="apx96-card apx96-danger"><div class="apx96-kicker">Danger zone</div><div class="apx96-card-title">Reset local app data</div><div class="apx96-soft" style="margin-top:6px">Export an app backup first if you need workouts, weigh-ins and settings. Wearable evidence on this device is not in that file and will be cleared by reset. A local safety copy of app records is kept; reset still cannot be undone from the wearable store.</div><button class="btn danger" style="margin-top:12px" onclick="if(confirm('Clear all local NXTFRM data?')){localStorage.clear();location.reload()}">RESET APP DATA</button></div>`;
+    content=`${installInstructionsHTML()}<div class="apx96-card"><div class="apx96-kicker">Build</div><div class="apx96-card-title">NXTFRM V109</div><div class="apx96-soft" style="margin-top:6px">Premium interface · offline-first · compatible with APEXCUT V93–V106 data.</div></div><div class="apx96-card apx96-danger"><div class="apx96-kicker">Danger zone</div><div class="apx96-card-title">Reset local app data</div><div class="apx96-soft" style="margin-top:6px">Export an app backup first if you need workouts, weigh-ins and settings. Wearable evidence on this device is not in that file and will be cleared by reset. A local safety copy of app records is kept; reset still cannot be undone from the wearable store.</div><button class="btn danger" style="margin-top:12px" onclick="if(confirm('Clear all local NXTFRM data?')){localStorage.clear();location.reload()}">RESET APP DATA</button></div>`;
   }
   return `<div class="apx96-page">${apx96MoreHeader(title,subtitle)}<div class="apx96-more-section">${content}</div></div>`;
 }
@@ -7269,23 +7269,23 @@ document.addEventListener("focusout",function(e){
 },true);
 </script>
 
-<script src="cut-support.js?v=108"></script>
-<script src="wearables.js?v=108"></script>
-<script src="wearables.adapters.js?v=108"></script>
-<script src="wearables.ingest.js?v=108"></script>
-<script src="wearables.canonical.js?v=108"></script>
-<script src="wearables.days.js?v=108"></script>
-<script src="wearables.snapshots.js?v=108"></script>
-<script src="wearables.resolution.js?v=108"></script>
-<script src="wearables.recovery.js?v=108"></script>
-<script src="wearables.recovery-integration.js?v=108"></script>
-<script src="wearables.training-readiness.js?v=108"></script>
-<script src="wearables.store.js?v=108"></script>
-<script src="wearables.provider-garmin.js?v=108"></script>
-<script src="wearables.sync.js?v=108"></script>
-<script src="premium-ui.js?v=108"></script>
-<script src="seed.dev.js?v=108"></script>
-<script src="seed.scenarios.js?v=108"></script>
+<script src="cut-support.js?v=109"></script>
+<script src="wearables.js?v=109"></script>
+<script src="wearables.adapters.js?v=109"></script>
+<script src="wearables.ingest.js?v=109"></script>
+<script src="wearables.canonical.js?v=109"></script>
+<script src="wearables.days.js?v=109"></script>
+<script src="wearables.snapshots.js?v=109"></script>
+<script src="wearables.resolution.js?v=109"></script>
+<script src="wearables.recovery.js?v=109"></script>
+<script src="wearables.recovery-integration.js?v=109"></script>
+<script src="wearables.training-readiness.js?v=109"></script>
+<script src="wearables.store.js?v=109"></script>
+<script src="wearables.provider-garmin.js?v=109"></script>
+<script src="wearables.sync.js?v=109"></script>
+<script src="premium-ui.js?v=109"></script>
+<script src="seed.dev.js?v=109"></script>
+<script src="seed.scenarios.js?v=109"></script>
 <script>
 (function loadWearableFixturesDevOnly(){
   var host=String(location.hostname||"");
