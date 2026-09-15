@@ -1,30 +1,39 @@
-const CACHE_NAME = 'nxtfrm-v107-premium-cache';
+const RELEASE = '108';
+const CACHE_NAME = 'nxtfrm-v108-premium-cache';
+
+// The offline shell. Versioned URLs match exactly what index.html requests, so
+// a cold start offline serves the same files the page asks for rather than an
+// unversioned near-miss. Retired with the V98 layer: no legacy UI assets remain.
+const VERSIONED = [
+  'cut-support.js',
+  'cut-support.css',
+  'premium-ui.js',
+  'premium-ui.css',
+  'wearables.js',
+  'wearables.adapters.js',
+  'wearables.ingest.js',
+  'wearables.canonical.js',
+  'wearables.days.js',
+  'wearables.snapshots.js',
+  'wearables.resolution.js',
+  'wearables.recovery.js',
+  'wearables.recovery-integration.js',
+  'wearables.training-readiness.js',
+  'wearables.store.js',
+  'wearables.provider-garmin.js',
+  'wearables.sync.js',
+  'seed.dev.js',
+  'seed.scenarios.js'
+];
 const ASSETS = [
   './',
   './index.html',
-  './cut-support.js',
-  './wearables.js',
-  './wearables.adapters.js',
-  './wearables.ingest.js',
-  './wearables.canonical.js',
-  './wearables.days.js',
-  './wearables.snapshots.js',
-  './wearables.resolution.js',
-  './wearables.recovery.js',
-  './wearables.recovery-integration.js',
-  './wearables.training-readiness.js',
-  './wearables.store.js',
-  './wearables.provider-garmin.js',
-  './wearables.sync.js',
-  './cut-support.css',
-  './premium-ui.js',
-  './premium-ui.css',
   './manifest.webmanifest',
   './logo-mark.svg',
   './icon-192.png',
   './icon-512.png',
   './apple-touch-icon.png'
-];
+].concat(VERSIONED.map(function (f) { return './' + f + '?v=' + RELEASE; }));
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -35,6 +44,8 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => Promise.all(keys.map(key => {
+      // Only this app's own shell caches. Never touches localStorage or
+      // IndexedDB, where workouts, history, settings and wearable data live.
       if (key !== CACHE_NAME && /^(nxtfrm-|apexcut-|apex-)/i.test(key)) return caches.delete(key);
     }))).then(() => self.clients.claim())
   );

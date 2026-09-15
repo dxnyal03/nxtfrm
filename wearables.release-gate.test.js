@@ -27,7 +27,7 @@ const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
 const fixtures = fs.readFileSync(path.join(ROOT, "wearables.fixtures.js"), "utf8");
 
 // Bump with each shipped release; the gate asserts the SW cache matches.
-const RELEASE_CACHE = "nxtfrm-v107-premium-cache";
+const RELEASE_CACHE = "nxtfrm-v108-premium-cache";
 
 test("index does not statically load fixtures on every host", function () {
   assert.ok(!/<script src="wearables\.fixtures\.js"><\/script>/.test(html));
@@ -40,9 +40,20 @@ test("early legacy render() is not invoked before premium-ui", function () {
   assert.ok(!/initCloudFromStorage\(\);\s*try\{render\(\)/.test(html));
 });
 
-test("leftover top chrome is hidden before paint", function () {
-  assert.ok(html.indexOf("header.top{display:none!important}") !== -1);
-  assert.ok(/\.top\s*\{[^}]*display:\s*none\s*!important/i.test(css));
+test("the legacy top chrome is gone, not hidden", function () {
+  // V107.5: the V-era header was being shipped and then hidden with a
+  // display:none hack. The markup itself is removed now, so there is nothing
+  // to hide and nothing that can flash.
+  assert.strictEqual(/<header[^>]*class="top"/.test(html), false, "legacy header markup still ships");
+  assert.strictEqual(html.indexOf('id="headScore"'), -1);
+  assert.strictEqual(html.indexOf('class="brand-lockup"'), -1);
+  // The writers must tolerate its absence.
+  const cut = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8");
+  const fn = cut.slice(cut.indexOf("function updateCloudSyncStatus()"));
+  const body = fn.slice(0, fn.indexOf("\nfunction ", 1));
+  assert.strictEqual(/if\s*\(\s*!el\s*\)\s*return/.test(body), false,
+    "a missing status element must not short-circuit the banner update");
+  assert.ok(body.indexOf("updateCloudLocalBanner()") !== -1);
 });
 
 test("backup copy does not claim a full wearable export", function () {
@@ -163,17 +174,61 @@ test("safe-area insets are read in exactly one place", function () {
   assert.ok(css.indexOf('body:has(.cloud-local-banner:not([hidden])) .content') !== -1);
 });
 
-test("the cascade runs legacy -> V98 -> cut-support -> premium", function () {
-  // Moving the premium stylesheets into <head> put them ahead of the V98
-  // <style> block that was still in <body>, which silently inverted the
-  // cascade and let V98 win. All layers now live in <head> in order.
+test("premium-ui is the last word; no versioned layer can override it", function () {
+  // V107.5 retired the V98 stylesheet outright rather than reordering it.
+  assert.strictEqual(html.indexOf("nxtfrm-v98-premium"), -1, "the V98 layer still ships");
+  // Exactly one inline <style>, and it is parsed before both stylesheets.
+  const styleOpens = (html.match(/<style\b/g) || []).length;
+  assert.strictEqual(styleOpens, 1, "expected one inline <style>, found " + styleOpens);
   const head = html.slice(0, html.indexOf("</head>"));
-  const v98 = head.indexOf('<style id="nxtfrm-v98-premium">');
+  const inline = head.indexOf("<style>");
   const cut = head.indexOf('href="cut-support.css');
   const prem = head.indexOf('href="premium-ui.css');
-  assert.ok(v98 !== -1, "V98 block must be in <head>");
-  assert.ok(v98 < cut && cut < prem, "order must be V98 -> cut-support -> premium");
-  assert.strictEqual(html.slice(html.indexOf("</head>")).indexOf('<style id="nxtfrm-v98-premium">'), -1);
+  assert.ok(inline !== -1 && inline < cut && cut < prem, "order must be inline -> cut-support -> premium");
+  // Nothing may define styles after premium-ui.
+  const after = html.slice(html.indexOf("</head>"));
+  assert.strictEqual(/<style\b/.test(after), false, "a <style> block ships after the premium layer");
+  assert.strictEqual(/<link[^>]+rel="stylesheet"/.test(after), false, "a stylesheet ships after the premium layer");
+});
+
+test("retired presentation generations are gone", function () {
+  // Each of these was a whole superseded UI generation left under the runtime.
+  for (const fam of ["v73-", "v75-", "v76-", "v87-", "nxt98"]) {
+    assert.strictEqual(html.indexOf(fam), -1, fam + "* presentation still ships");
+  }
+  // v77/v79/v80 remain only as CSS for the pre-V99 weight chart, which is
+  // reachable solely from the legacy renderWeight declaration that cut-support
+  // and premium-ui both overwrite. It never executes. Retiring it means
+  // removing the dead render* entry points, which is startup-path surgery and
+  // is deliberately left for its own change. It must not grow.
+  const legacyChartRules = (html.match(/\.v(77|79|80)-[\w-]+/g) || []).length;
+  assert.ok(legacyChartRules <= 100, "legacy chart CSS grew to " + legacyChartRules);
+  const noCss = html.replace(/<style[\s\S]*?<\/style>/g, "");
+  assert.strictEqual(/class="[^"]*\bv(73|75|76|87)-/.test(noCss), false, "retired markup is still emitted");
+  // Their render functions must go with them.
+  for (const fn of ["apx96TrainHeaderHTML", "apx96FocusHTML", "apx96QueueHTML",
+                    "apx96WeekHTML", "nxt98HistoryFeedHTML", "nxt98SetHistoryFilter"]) {
+    assert.strictEqual(html.indexOf(fn), -1, fn + " still defined");
+  }
+  // The live History filters must own their handler.
+  assert.ok(ui.indexOf("NXP.setHistoryFilter(") !== -1);
+  assert.strictEqual(ui.indexOf("nxt98SetHistoryFilter"), -1);
+});
+
+test("the service-worker shell matches what the page requests", function () {
+  const RELEASE = /const RELEASE = .(\d+)./.exec(sw)[1];
+  const versioned = JSON.parse("[" + /const VERSIONED = \[([\s\S]*?)\];/.exec(sw)[1].replace(/'/g, '"').replace(/,\s*$/, "") + "]");
+  const plain = JSON.parse("[" + /const ASSETS = \[([\s\S]*?)\]/.exec(sw)[1].replace(/'/g, '"').replace(/,\s*$/, "") + "]");
+  const precached = new Set(plain.concat(versioned.map(f => "./" + f + "?v=" + RELEASE)));
+  const requested = [...html.matchAll(/<(?:script|link)[^>]*?(?:src|href)="((?!https?:|\/\/|data:)[^"]+?\.(?:js|css)(?:\?[^"]*)?)"/g)].map(m => "./" + m[1]);
+  const missing = [...new Set(requested)].filter(u => !precached.has(u));
+  assert.deepStrictEqual(missing, [], "offline shell misses assets the page requests");
+  const extra = [...precached].filter(u => /\.(js|css)(\?|$)/.test(u) && !requested.includes(u));
+  assert.deepStrictEqual(extra, [], "offline shell caches assets nothing requests");
+  // Cache cleanup must only ever touch this app's own shells.
+  assert.ok(sw.indexOf("caches.delete(key)") !== -1);
+  const swCode = sw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+  assert.strictEqual(/localStorage|indexedDB/i.test(swCode), false, "the SW must not touch user data");
 });
 
 test("navigation uses one icon family, not glyphs", function () {

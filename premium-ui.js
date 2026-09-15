@@ -735,7 +735,12 @@ const NXP = (() => {
   function history() {
     applyAppearance();
     const month=calendarMonthState(),filter=state.historyFilter||'all',scope=historyScope(filter),selected=historySelectedDate(month,scope);
-    document.getElementById('historyPage').innerHTML=`<div class="n99 nxp nxp-history"><header class="nxp-heading nxp-history-chrome"><div><h1>History</h1><p>${esc(historyMonthSummary(month,filter,scope))}</p></div></header><div class="nxp-history-filters" role="group" aria-label="Activity type">${HISTORY_TABS.map(([k,t])=>`<button type="button" aria-pressed="${filter===k?'true':'false'}" class="${filter===k?'active':''}" onclick="nxt98SetHistoryFilter('${k}')">${t}</button>`).join('')}</div>${historyCalendar(month,scope,selected)}${historyDayView(selected,filter,scope)}</div>`;
+    document.getElementById('historyPage').innerHTML=`<div class="n99 nxp nxp-history"><header class="nxp-heading nxp-history-chrome"><div><h1>History</h1><p>${esc(historyMonthSummary(month,filter,scope))}</p></div></header><div class="nxp-history-filters" role="group" aria-label="Activity type">${HISTORY_TABS.map(([k,t])=>`<button type="button" aria-pressed="${filter===k?'true':'false'}" class="${filter===k?'active':''}" onclick="NXP.setHistoryFilter('${k}')">${t}</button>`).join('')}</div>${historyCalendar(month,scope,selected)}${historyDayView(selected,filter,scope)}</div>`;
+  }
+  function setHistoryFilter(filter) {
+    state.historyFilter=filter;
+    ui.historyRows=[];
+    history();
   }
   function historySelect(date) {
     if(!Number.isFinite(N.dateMs(date)))return;
@@ -763,7 +768,7 @@ const NXP = (() => {
   function editHistorySet(i) {const r=ui.historyRows[i];if(r)openEditSet(r.id);}
   function otherDayDetails(date) {base.historyDay(date);}
   function sessionSummary() {historyDay(state.date);}
-  return {ui,home,training,progress,more,history,rememberInput,logSet,queue,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection};
+  return {ui,home,training,progress,more,history,rememberInput,logSet,queue,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;

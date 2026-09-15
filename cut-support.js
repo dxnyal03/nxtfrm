@@ -965,7 +965,7 @@ Object.assign(NXT, (()=>{
     else if(view==='training')content=programmeHTML();
     else if(view==='coach')content=coachHTML();
     else {
-      document.getElementById('morePage').innerHTML=N.old.apx96MoreSectionHTML(view).replaceAll('NXTFRM V98','NXTFRM V100').replaceAll('V93–V97','V93–V99').replace("if(confirm('Clear all local NXTFRM data?')){localStorage.clear();location.reload()}","NXT.resetData()");
+      document.getElementById('morePage').innerHTML=N.old.apx96MoreSectionHTML(view).replace("if(confirm('Clear all local NXTFRM data?')){localStorage.clear();location.reload()}","NXT.resetData()");
       if(view==='data')document.getElementById('morePage').insertAdjacentHTML('beforeend',`<div class="n99">${N.card('Safety copy',`<p>A local recovery copy is made before a restore, cloud load or reset. Export it to keep an independent copy.</p><div class="n99-stack">${N.button('Download safety copy','NXT.exportSafety()',true)}${N.button('Restore safety copy','NXT.restoreSafety()',true)}</div>`)}</div>`);
       return;
     }
@@ -1375,8 +1375,10 @@ function cloudSyncAgo(ts){
   return new Date(ts).toLocaleDateString('en-SG',{day:'numeric',month:'short'});
 }
 function updateCloudSyncStatus(){
+  // The V-era header that held #cloudSyncStatus is gone. The status line is
+  // optional, but the local-only banner update at the end of this function is
+  // not, so the missing element must not short-circuit it.
   const el=document.getElementById('cloudSyncStatus');
-  if(!el)return;
   let text='Checking…',tone='busy';
   if(!cloudSessionChecked){text='Checking…';tone='busy';}
   else if(lastCloudError&&cloudStatusText!=='Syncing...'){text='Sync error';tone='warn';}
@@ -1384,8 +1386,10 @@ function updateCloudSyncStatus(){
   else if(!cloudUser){text='Not logged in';tone='warn';}
   else if(lastCloudSyncAt){text='Synced · '+cloudSyncAgo(lastCloudSyncAt);tone='ok';}
   else {text='Syncing...';tone='busy';}
-  el.textContent=text;
-  el.className='cloud-sync-status is-'+tone;
+  if(el){
+    el.textContent=text;
+    el.className='cloud-sync-status is-'+tone;
+  }
   updateCloudLocalBanner();
 }
 let cloudBannerDismissed=false;

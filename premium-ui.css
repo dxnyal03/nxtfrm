@@ -589,8 +589,70 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp-watch { color: var(--nxt-warning); }
 .nxp-bad { color: var(--nxt-danger); }
 
+/* ---- Legacy markup, current system -------------------------------------
+   Some dialogs still emit the pre-V99 .btn / .card markup. Rather than let a
+   retired version stylesheet keep them alive, they map onto the design system
+   here. Migrated from the V98 block, which is now deleted. */
+.btn {
+  display: block;
+  width: 100%;
+  min-height: var(--nxt-button-height);
+  padding: 12px var(--nxt-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--nxt-radius-md);
+  background: var(--nxt-purple-primary);
+  color: var(--nxt-on-purple);
+  font-size: var(--nxt-type-body);
+  font-weight: var(--nxt-weight-cta);
+  line-height: 1.3;
+  text-align: center;
+  box-shadow: var(--nxt-shadow-low);
+  transition: background-color var(--nxt-motion), transform var(--nxt-motion);
+}
+.btn:active { background: var(--nxt-purple-soft); transform: scale(.99); }
+.btn.secondary {
+  background: var(--nxt-surface-interactive);
+  border-color: var(--nxt-border-strong);
+  color: var(--nxt-text-primary);
+  box-shadow: none;
+}
+.btn.secondary:active { background: var(--nxt-surface-alt); }
+.btn.danger {
+  background: var(--nxt-danger-tint);
+  border-color: var(--nxt-danger);
+  color: var(--nxt-danger);
+  box-shadow: none;
+}
+.btn:disabled { opacity: .42; box-shadow: none; pointer-events: none; }
+
+/* Legacy card surfaces reachable from the older settings and history dialogs. */
+.apx95-card,
+.apx96-card,
+.apx96-calendar,
+.apx96-more-section > .card,
+.apx96-more-section > .premium-card,
+.apx96-more-section > .lean-card,
+.apx96-more-section > .strength-card,
+.apx96-more-section > .apx96-card {
+  border: 1px solid var(--nxt-border-subtle);
+  border-radius: var(--nxt-radius-xl);
+  background: var(--nxt-surface);
+  box-shadow: none;
+}
+
 /* ---- Motion -----------------------------------------------------------
    Short, purposeful, and fully disabled when the device asks for less. */
+
+/* Route change. Migrated from the V98 `nxt98-enter` keyframe so the one page
+   transition in the app is driven by the motion tokens. */
+@keyframes nxt-route-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+.content:not(.hide) {
+  animation: nxt-route-enter var(--nxt-motion-normal) var(--nxt-ease);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: .001ms !important;
