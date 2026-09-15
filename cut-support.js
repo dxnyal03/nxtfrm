@@ -69,6 +69,25 @@ const NXT = (() => {
     return [...byDate.values()].sort((a,b)=>a.date.localeCompare(b.date));
   }
   function weights() { return cleanRows(state.bws); }
+  /* Chart-only view over the raw weigh-ins. cleanRows() collapses each date to a
+     single canonical row (morning preferred) and is what every trend, forecast
+     and cut calculation reads; this instead keeps one row per date for ONE
+     timing, so a second series can be drawn without touching that contract.
+     Nothing here writes: state.bws is read and left exactly as stored. */
+  function timingRows(timing,input=state.bws) {
+    const want=String(timing||'').toLowerCase(),byDate=new Map();
+    for(const r of Array.isArray(input)?input:[]) {
+      if(!r||!Number.isFinite(dateMs(r.date))||r.date>state.date)continue;
+      if(String(r.timeOfDay||'').toLowerCase()!==want)continue;
+      const v=finite(r.weight);
+      if(v===null||v<20||v>400)continue;
+      const prior=byDate.get(r.date);
+      /* "Latest" follows the order contract the rest of the app uses: the stored
+         ts when both rows carry one, otherwise later insertion wins. */
+      if(!prior||finite(r.ts)===null||finite(prior.ts)===null||Number(r.ts)>=Number(prior.ts))byDate.set(r.date,{...r,weight:v});
+    }
+    return [...byDate.values()].sort((a,b)=>a.date.localeCompare(b.date));
+  }
   function windowStats(rows,end=state.date,days=7,key="weight") {
     const start=dateAdd(end,1-days),items=rows.filter(r=>r.date>=start&&r.date<=end);
     return {items,n:items.length,avg:items.length?items.reduce((s,r)=>s+r[key],0)/items.length:null};
@@ -609,7 +628,7 @@ const NXT = (() => {
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any target change stays your choice.</p><div class="n99-stack">${button('Review calorie guide','NXT.openCalories()',true)}${button('Update recovery check-in','apx96OpenReadiness()',true)}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
@@ -688,6 +707,12 @@ Object.assign(NXT, (()=>{
     const visible=series.filter(r=>r.date>=start),W=420,H=290,left=48,right=16,top=22,bottom=44;
     if(!visible.length)return {visible,start,W,H,left,right,top,bottom};
     const values=visible.flatMap(r=>r.avg===null?[r.weight]:[r.weight,r.avg]);
+    /* Post-workout is contextual only: it never enters trend(), trendConfidence(),
+       forecastGoal() or detectPlateau() above. It is pulled in here solely so the
+       shared kg domain covers it — a post-workout reading is usually the lowest
+       point of the day and would otherwise be drawn outside the plot. */
+    const postRows=N.timingRows('Post-workout').filter(r=>r.date>=start&&r.date<=state.date);
+    for(const r of postRows)values.push(r.weight);
     const bandShown=showGoal&&N.cfg().targetConfirmed;
     if(bandShown)values.push(goalLow(),goalHigh());
     // Both layers stretch the y-domain, so they are read before the scales are built.
@@ -712,6 +737,10 @@ Object.assign(NXT, (()=>{
     const first=N.dateMs(start),end=Math.max(N.dateMs(state.date),first+86400000)+futureDays*86400000;
     const xMs=ms=>left+(ms-first)/(end-first)*(W-left-right),x=d=>xMs(N.dateMs(d)),y=v=>top+(high-v)/(high-low)*(H-top-bottom);
     const points=visible.map(r=>({...r,x:x(r.date),y:y(r.weight),ty:r.avg===null?null:y(r.avg)}));
+    /* Same x and y closures as the primary series: there is one scale, so a
+       second y-axis cannot be introduced by accident. */
+    const post=postRows.map(r=>({...r,x:x(r.date),y:y(r.weight)}));
+    const postByDate=new Map(post.map(r=>[r.date,r]));
     const segments=[];let segment=[];
     for(const p of points) {
       if(p.avg===null||(segment.length&&N.dateMs(p.date)-N.dateMs(segment.at(-1).date)>7*86400000)) {if(segment.length)segments.push(segment);segment=[];}
@@ -741,9 +770,23 @@ Object.assign(NXT, (()=>{
     const anchor=forecast?{x:forecast.mid.x1,y:forecast.mid.y1,fitted:true}:tail?{x:tail.x,y:tail.y,fitted:false}:null;
     // A cone terminating at an unmarked height points at nothing, so the goal keeps one dashed
     // reference line whenever a forecast is drawn. Only the shaded band answers to the checkbox.
-    return {visible,start,W,H,left,right,top,bottom,low,high,points,segments,ticks,x,y,
+    return {visible,start,W,H,left,right,top,bottom,low,high,points,post,postByDate,segments,ticks,x,y,
       todayX:x(state.date),futureDays,bands,forecast,anchor,forecastRead,plateau:N.detectPlateau(rows),
       goalRef:forecast&&!bandShown?y(forecast.target):null};
+  }
+  /* The primary series is the canonical per-date row, which prefers Morning but
+     falls back to whatever timing exists on days with no morning reading. That
+     fallback is unchanged, so the readout names the timing actually recorded
+     rather than claiming every point is a morning one. */
+  function pointTiming(p) {
+    const t=String(p&&p.timeOfDay||'').trim();
+    if(!t)return 'Timing not recorded';
+    return /^morning$/i.test(t)?'Morning':t;
+  }
+  function postDelta(p,postRow) {
+    if(!postRow||!p||!Number.isFinite(p.weight)||!Number.isFinite(postRow.weight))return '';
+    const d=postRow.weight-p.weight;
+    return (d>0?'+':'')+d.toFixed(1)+' kg vs '+(/^morning$/i.test(String(p.timeOfDay||''))?'morning':'the day\u2019s other reading');
   }
   function chartHTML() {
     const model=chartModel();N.ui.chart=model;
@@ -752,7 +795,7 @@ Object.assign(NXT, (()=>{
     const goalOn=!!N.cfg().targetConfirmed;
     const controls=`<div class="n99-chart-controls"><div class="n99-segments" role="group" aria-label="Chart date range">${ranges.map(([r,l])=>`<button type="button" aria-pressed="${N.ui.range===r}" class="${N.ui.range===r?'active':''}" onclick="NXT.setRange(${r})">${l}</button>`).join('')}</div>${goalOn?`<label class="n99-check"><input type="checkbox" ${N.ui.showGoal?'checked':''} onchange="NXT.setGoalVisible(this.checked)">Goal band</label>`:''}</div>`;
     if(!visible.length)return `<section class="n99-card n99-chart"><div class="n99-row"><h2>Weight trend</h2><span class="n99-unit">kg</span></div>${controls}<div class="n99-chart-empty"><div class="n99-empty-number">—<small> kg</small></div><h3>${N.weights().length?'No weigh-ins in this period':'Your first weigh-in starts here'}</h3><p>${N.weights().length?'Choose All to see older entries, or log a current weight.':'Your actual readings will appear as dots. A trend line starts when a seven-day window has three readings.'}</p>${N.button('+ Log weight','apx95OpenQuickWeight()')}</div></section>${N.diagnosisCard()}`;
-    const {points,segments,ticks,y,bands,forecast,anchor,plateau,forecastRead,goalRef,futureDays,todayX}=model,selected=Math.max(0,points.findIndex(p=>p.date===N.ui.selected)),idx=N.ui.selected&&selected>=0?selected:points.length-1;
+    const {points,post,postByDate,segments,ticks,y,bands,forecast,anchor,plateau,forecastRead,goalRef,futureDays,todayX}=model,selected=Math.max(0,points.findIndex(p=>p.date===N.ui.selected)),idx=N.ui.selected&&selected>=0?selected:points.length-1;
     const p=points[idx],baseline=H-bottom;
     const band=N.ui.showGoal&&N.cfg().targetConfirmed?`<rect x="${left}" y="${y(goalHigh())}" width="${W-left-right}" height="${y(goalLow())-y(goalHigh())}" fill="${CHART.ink}" fill-opacity=".065"/><line x1="${left}" x2="${W-right}" y1="${y(goalHigh())}" y2="${y(goalHigh())}" stroke="${CHART.ink}" stroke-opacity=".4" stroke-dasharray="5 5"/>`:'';
     const px=v=>v.toFixed(2);
@@ -762,21 +805,32 @@ Object.assign(NXT, (()=>{
     const today=futureDays?`<line x1="${px(todayX)}" x2="${px(todayX)}" y1="${top}" y2="${baseline}" stroke="${CHART.grid}" stroke-opacity=".09" pointer-events="none"/>`:'';
     const forecastLine=forecast?`<line x1="${px(forecast.mid.x1)}" y1="${px(forecast.mid.y1)}" x2="${px(forecast.mid.x2)}" y2="${px(forecast.mid.y2)}" stroke="${CHART.ink}" stroke-width="${CHART.lineForecast}" stroke-linecap="round" stroke-dasharray="7 6" stroke-opacity=".8" pointer-events="none"/>${forecast.endpoint?`<circle cx="${px(forecast.endpoint.x)}" cy="${px(forecast.endpoint.y)}" r="4" fill="none" stroke="${CHART.ink}" stroke-width="2" pointer-events="none"/>`:''}`:'';
     const anchorDot=anchor?`<circle cx="${px(anchor.x)}" cy="${px(anchor.y)}" r="${CHART.pointActive}" fill="${CHART.ink}" stroke="${CHART.activeRing}" stroke-width="2" pointer-events="none"/>`:'';
+    /* Secondary by construction: thinner, dimmer, hollow, and drawn under the
+       primary dots. Uses CHART.inkSecondary, the existing supporting-series
+       token — no new colour enters the system. */
+    const postRuns=[];let postRun=[];
+    for(const pt of post) {
+      if(postRun.length&&N.dateMs(pt.date)-N.dateMs(postRun.at(-1).date)>7*86400000){postRuns.push(postRun);postRun=[];}
+      postRun.push(pt);
+    }
+    if(postRun.length)postRuns.push(postRun);
+    const postSeries=post.length?`${postRuns.filter(r=>r.length>1).map(r=>`<path d="${smoothPath(r)}" fill="none" stroke="${CHART.inkSecondary}" stroke-width="${CHART.lineForecast}" stroke-opacity=".55" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>`).join('')}${post.map(pt=>`<circle cx="${px(pt.x)}" cy="${px(pt.y)}" r="${CHART.point}" fill="${CHART.bg||'none'}" stroke="${CHART.inkSecondary}" stroke-width="1.6" pointer-events="none"/>`).join('')}`:'';
     const plateauLabel=anchor&&plateau?.plateau?`<text x="${px(Math.min(W-right-52,Math.max(left+52,anchor.x)))}" y="${px(Math.max(top+13,anchor.y-16))}" text-anchor="middle" fill="${CHART.label}" font-size="${CHART.axisSize}" pointer-events="none">Plateau: ${plateau.plateauDays} days</text>`:'';
     return `<section class="n99-card n99-chart"><div class="n99-row"><div><div class="n99-eyebrow">The bigger picture</div><h2>Weight trend</h2></div><span class="n99-unit">kg</span></div>${controls}
-      <div class="n99-chart-selected" aria-live="polite"><div><span id="n99-chart-date">${N.shortDate(p.date)}</span><strong id="n99-chart-weight">${p.weight.toFixed(1)}<small> kg</small></strong></div><div><span>7-day average</span><b id="n99-chart-average">${p.avg===null?'Building data':p.avg.toFixed(2)+' kg'}</b><small id="n99-chart-coverage">${p.coverage} readings in this window</small></div></div>
+      <div class="n99-chart-selected" aria-live="polite"><div><span id="n99-chart-date">${N.shortDate(p.date)}</span><strong id="n99-chart-weight">${p.weight.toFixed(1)}<small> kg</small></strong><small id="n99-chart-timing">${esc(pointTiming(p))}</small></div><div><span>7-day average</span><b id="n99-chart-average">${p.avg===null?'Building data':p.avg.toFixed(2)+' kg'}</b><small id="n99-chart-coverage">${p.coverage} readings in this window</small></div><div class="n99-chart-post" id="n99-chart-post" ${postByDate.has(p.date)?'':'hidden'}><span>Post-workout</span><b id="n99-chart-post-weight">${postByDate.has(p.date)?postByDate.get(p.date).weight.toFixed(1)+' kg':''}</b><small id="n99-chart-post-delta">${esc(postDelta(p,postByDate.get(p.date)))}</small></div></div>
       <svg id="n99-chart-svg" class="n99-chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="n99-chart-title n99-chart-desc" onpointerdown="NXT.scrub(event)" onpointermove="if(event.buttons)NXT.scrub(event)"><title id="n99-chart-title">Bodyweight and seven-day rolling average${forecast?' with trend forecast':''}</title><desc id="n99-chart-desc">${points.length} weigh-ins. Silver dots are recorded weights. The purple line is a calendar-day average, shown only with at least three readings. The shaded band around it is the spread of readings about that average.${forecast?` A dashed line carries the recent trend on towards your goal, inside a cone whose lower and upper walls reach it at ${forecast.lowWeeks} and ${forecast.highWeeks} weeks.${goalRef===null?'':' The horizontal dashed line marks your goal weight.'}`:''} Use the slider below to inspect exact values.</desc>
       <defs><linearGradient id="n99-chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${CHART.ink}" stop-opacity="${CHART.areaOpacity}"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity="0"/></linearGradient><linearGradient id="n99-chart-cone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".14"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity=".04"/></linearGradient></defs>
       ${band}${ticks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}"/><text x="${left-10}" y="${t.y+5}" text-anchor="end" fill="${CHART.axisText}" font-size="${CHART.axisSize}">${Number(t.value.toFixed(1))}</text>`).join('')}
       ${goalMark}${today}${cone}${bandFill}
       ${segments.map(seg=>`${seg.length>1?`<path d="${smoothPath(seg)} L ${seg.at(-1).x} ${baseline} L ${seg[0].x} ${baseline} Z" fill="url(#n99-chart-fill)"/>`:''}<path d="${smoothPath(seg)}" fill="none" stroke="${CHART.ink}" stroke-width="${CHART.line}" stroke-linecap="round" stroke-linejoin="round"/>${seg.length===1?`<circle cx="${seg[0].x}" cy="${seg[0].y}" r="${CHART.point}" fill="${CHART.ink}"/>`:''}`).join('')}
       ${forecastLine}
+      ${postSeries}
       ${points.map(pt=>`<circle cx="${pt.x}" cy="${pt.y}" r="${CHART.point}" fill="${CHART.raw}" fill-opacity=".85"/>`).join('')}
       <line id="n99-chart-cursor" x1="${p.x}" x2="${p.x}" y1="${top}" y2="${baseline}" stroke="${CHART.cursor}" stroke-opacity=".38" stroke-dasharray="3 4"/><circle id="n99-chart-active" cx="${p.x}" cy="${p.y}" r="${CHART.pointActive}" fill="${CHART.active}" stroke="${CHART.activeRing}" stroke-width="2"/>
       ${anchorDot}${plateauLabel}
       <text x="${left}" y="${H-12}" fill="${CHART.axisText}" font-size="${CHART.axisSize}">${N.shortDate(model.start)}</text><text x="${px(Math.min(W-right,todayX))}" y="${H-12}" text-anchor="${futureDays?'middle':'end'}" fill="${CHART.axisText}" font-size="${CHART.axisSize}">${N.shortDate(state.date)}</text></svg>
       ${points.length>1?`<input class="n99-scrubber" id="n99-chart-slider" type="range" min="0" max="${points.length-1}" value="${idx}" aria-label="Inspect weigh-in by date" aria-valuetext="${N.shortDate(p.date)}, ${p.weight} kilograms" oninput="NXT.selectPoint(Number(this.value))">`:''}
-      <div class="n99-legend"><span><i class="raw"></i>Weigh-in</span><span><i></i>7-day trend</span>${forecast?'<span><i class="dash"></i>Forecast</span>':''}<span>Drag to inspect</span></div>
+      <div class="n99-legend"><span><i class="raw"></i>Morning</span>${post.length?'<span><i class="post"></i>Post-workout</span>':''}<span><i></i>7-day trend</span>${forecast?'<span><i class="dash"></i>Forecast</span>':''}<span>Drag to inspect</span></div>
       ${((read)=>read?`<p class="n99-small">${read}</p>`:'')(trendReadText(goalOn?forecastRead:{ok:false,reason:''},plateau))}
       ${N.ui.showGoal&&N.cfg().targetConfirmed?`<p class="n99-small">Your chosen range: ${goalLow()}–${goalHigh()} kg. A weight range alone does not measure leanness.</p>`:''}
     </section>${N.diagnosisCard()}`;
@@ -786,6 +840,13 @@ Object.assign(NXT, (()=>{
     N.ui.selected=p.date;
     const text=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
     text('n99-chart-date',N.shortDate(p.date));text('n99-chart-weight',p.weight.toFixed(1)+' kg');text('n99-chart-average',p.avg===null?'Building data':p.avg.toFixed(2)+' kg');text('n99-chart-coverage',p.coverage+' readings in this window');
+    text('n99-chart-timing',pointTiming(p));
+    /* A missing post-workout reading hides the block rather than showing 0 or
+       borrowing the morning value. */
+    const postRow=m.postByDate?m.postByDate.get(p.date):null,postBox=document.getElementById('n99-chart-post');
+    if(postBox)postBox.hidden=!postRow;
+    text('n99-chart-post-weight',postRow?postRow.weight.toFixed(1)+' kg':'');
+    text('n99-chart-post-delta',postDelta(p,postRow));
     const line=document.getElementById('n99-chart-cursor'),dot=document.getElementById('n99-chart-active'),slider=document.getElementById('n99-chart-slider');
     line?.setAttribute('x1',p.x);line?.setAttribute('x2',p.x);dot?.setAttribute('cx',p.x);dot?.setAttribute('cy',p.y);
     if(slider){slider.value=index;slider.setAttribute('aria-valuetext',N.shortDate(p.date)+', '+p.weight+' kilograms');}
@@ -1186,7 +1247,7 @@ apx96OpenQueueManager=function(){NXT.old.apx96OpenQueueManager();document.queryS
 v88OpenNoteModal=function(ex){NXT.ui.noteExercise=ex;NXT.modal('Equipment note',`<p>${esc(state.gym)} · ${esc(ex)}</p><label>Note<textarea id="n99-equipment-note" maxlength="2000">${esc(v88NoteFor(ex))}</textarea></label>${NXT.button('Save note','NXT.saveEquipmentNote()')}`);};
 NXT.saveEquipmentNote=function(){state.exerciseNotes=state.exerciseNotes||{};state.exerciseNotes[v88NoteKey(NXT.ui.noteExercise)]=val('n99-equipment-note').trim();NXT.commit('Equipment note saved');};
 closeModal=function(){NXT.old.closeModal();window.__apexTyping=false;state.typingWeight=false;NXT.ui.lastFocus?.focus?.();};
-apx95OpenQuickWeight=function(){NXT.modal('Log bodyweight',`<form onsubmit="event.preventDefault();apx95SaveQuickWeight()"><div class="n99-form-grid"><label>Date<input id="apx95WeightDate" type="date" required max="${state.date}" value="${state.date}"></label><label>Weight · kg<input id="apx95WeightValue" type="number" min="20" max="400" step="0.1" inputmode="decimal" required></label></div><label>Timing<select id="apx95WeightTime"><option>Morning</option><option>Pre-workout</option><option>Post-workout</option><option>Night</option></select></label><p class="n99-small">Use similar conditions each time. The chart keeps the latest morning reading for each day when available; every original entry stays saved.</p><button type="submit" class="n99-button">Save weigh-in</button></form>`);};
+apx95OpenQuickWeight=function(){NXT.modal('Log bodyweight',`<form onsubmit="event.preventDefault();apx95SaveQuickWeight()"><div class="n99-form-grid"><label>Date<input id="apx95WeightDate" type="date" required max="${state.date}" value="${state.date}"></label><label>Weight · kg<input id="apx95WeightValue" type="number" min="20" max="400" step="0.1" inputmode="decimal" required></label></div><label>Timing<select id="apx95WeightTime"><option>Morning</option><option>Pre-workout</option><option>Post-workout</option><option>Night</option></select></label><p class="n99-small">Use similar conditions each time. Morning readings drive your progress trend; post-workout readings are shown separately for context. Every original entry stays saved.</p><button type="submit" class="n99-button">Save weigh-in</button></form>`);};
 apx95SaveQuickWeight=function(){const date=val('apx95WeightDate'),weight=NXT.finite(val('apx95WeightValue'));if(!Number.isFinite(NXT.dateMs(date))||date>state.date||weight===null||weight<20||weight>400)return toast('Enter a valid date and bodyweight.');state.bws.push({id:uid(),date,weight,timeOfDay:val('apx95WeightTime')||'Morning',ts:Date.now()});NXT.commit('Weigh-in saved');};
 saveEditedSet=function(id){
   const row=(state.logs||[]).find(r=>r.id===id),weight=NXT.finite(val('editSetWeight')),reps=NXT.finite(val('editSetReps')),date=val('editSetDate'),number=NXT.finite(val('editSetNum'));

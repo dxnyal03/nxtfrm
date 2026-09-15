@@ -1970,6 +1970,26 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp-progress-metrics { display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:25px 0 12px; }
 .nxp .n99-chart { padding:22px 17px 17px; }
 .nxp .n99-chart-selected strong { font-size:2.5rem; }
+/* Post-workout readout: same block rhythm as the 7-day average beside it, one
+   step quieter so the morning figure stays the headline. */
+.nxp .n99-chart-selected .n99-chart-post { text-align:right;min-width:0; }
+.nxp .n99-chart-selected .n99-chart-post > span {
+  display:block;
+  font-size:var(--nxt-type-micro);
+  letter-spacing:var(--nxt-tracking-eyebrow);
+  text-transform:uppercase;
+  color:var(--nxt-text-muted);
+}
+.nxp .n99-chart-selected .n99-chart-post b {
+  display:block;
+  margin-top:3px;
+  font-size:var(--nxt-type-body);
+  font-weight:var(--nxt-weight-metric);
+  font-variant-numeric:tabular-nums;
+  color:var(--nxt-purple-deep);
+}
+.nxp .n99-chart-selected .n99-chart-post small { display:block;margin-top:2px;font-size:var(--nxt-type-label);color:var(--nxt-text-muted);overflow-wrap:anywhere; }
+.nxp .n99-chart-selected #n99-chart-timing { display:block;margin-top:3px;font-size:var(--nxt-type-label);color:var(--nxt-text-muted); }
 .nxp .n99-legend { font-size:.8125rem;gap:10px; }
 .nxp .n99-legend > span:last-child { margin-left:0; }
 

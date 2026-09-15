@@ -82,8 +82,20 @@ html,body { background:var(--n99-bg)!important; }
 .n99 input::placeholder,.n99 textarea::placeholder { color:#817c88; }
 .n99 select { appearance:auto; }
 .n99 textarea { min-height:100px; }
-.n99-form-grid { display:grid;grid-template-columns:1fr 1fr;gap:0 12px; }
+/* `1fr` is minmax(auto,1fr), and that `auto` floor is the child's min-content.
+   An <input type="date"> reports the intrinsic width of the dd/mm/yyyy spinner
+   as its min-content, and on iOS that floor is wider than half a 320px sheet —
+   so the two tracks each refused to shrink and their borders collided.
+   minmax(0,1fr) lets the tracks shrink; min-width:0 lets the flex label inside
+   them shrink too. Below 360px there is not enough room for two date-sized
+   controls side by side at all, so they stack rather than being squeezed. */
+.n99-form-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px; }
+.n99-form-grid > * { min-width:0; }
 .n99-form-grid.four { gap:0 8px; }
+@media (max-width:359px) {
+  .n99-form-grid { grid-template-columns:1fr;gap:0; }
+  .n99-form-grid.four { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
 .n99 label.n99-check { flex-direction:row;align-items:flex-start;gap:10px;line-height:1.5; }
 .n99 .n99-check input { accent-color:var(--n99-accent);width:18px;height:18px;flex:0 0 18px;margin-top:2px; }
 .n99-estimate { display:flex;flex-direction:column;gap:8px;background:#2b2635;border:1px solid #4b405d;padding:20px;border-radius:16px;margin-top:14px; }
@@ -122,6 +134,7 @@ html,body { background:var(--n99-bg)!important; }
 .n99-legend > span:last-child { margin-left:auto;color:#807a8a; }
 .n99-legend i { width:15px;height:3px;border-radius:3px;background:#b18aff; }
 .n99-legend i.raw { width:6px;height:6px;border-radius:50%;background:#d0c8de; }
+.n99-legend i.post { width:6px;height:6px;border-radius:50%;background:none;border:1.6px solid #7f74a8; }
 .n99-legend i.dash { width:15px;height:0;border-radius:0;background:none;border-top:2px dashed #b18aff; }
 .n99-chart-empty { padding:36px 12px;text-align:center; }
 .n99-chart-empty p { max-width:330px;margin:12px auto 22px; }

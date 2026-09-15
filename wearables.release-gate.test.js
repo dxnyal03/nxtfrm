@@ -584,6 +584,148 @@ test("full reset clears the wearable database, not just localStorage", function 
   assert.ok(/DB_NAME = "nxtfrm_wearables_db"/.test(store));
 });
 
+/* ===========================================================================
+   V109.1 Progress/Weight hotfix.
+   =========================================================================== */
+
+test("weigh-in date and weight cannot collide in the sheet", function () {
+  const cut = fs.readFileSync(path.join(ROOT, "cut-support.css"), "utf8");
+  const grid = cut.slice(cut.indexOf(".n99-form-grid {"), cut.indexOf(".n99 label.n99-check"));
+  // `1fr` is minmax(auto,1fr); that auto floor is the child's min-content, and an
+  // <input type="date"> reports the dd/mm/yyyy spinner width as its min-content.
+  // On a 320px sheet neither track could shrink to fit, so the borders collided.
+  assert.ok(/grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/.test(grid),
+    "tracks must be allowed to shrink below min-content");
+  assert.strictEqual(/grid-template-columns:\s*1fr 1fr\s*;/.test(grid), false,
+    "the auto-floor form of the track list must not come back");
+  assert.ok(/\.n99-form-grid > \*\s*\{[^}]*min-width:\s*0/.test(grid),
+    "the flex label between grid and input must be allowed to shrink too");
+  assert.ok(/gap:\s*0 12px/.test(grid), "the two controls must keep a visible gap");
+  // Below 360px there is not room for two date-sized controls at all, so they stack.
+  assert.ok(/@media \(max-width:359px\)[\s\S]{0,200}\.n99-form-grid \{ grid-template-columns:1fr/.test(cut),
+    "narrow phones must stack rather than squeeze");
+  // The inputs themselves were already shrinkable; keep it that way.
+  assert.ok(/\.n99 input[^{]*\{[^}]*min-width:0/.test(cut));
+  assert.ok(/\.n99 input[^{]*\{[^}]*max-width:100%/.test(cut));
+});
+
+test("post-workout weight is charted without touching the canonical row set", function () {
+  const cut = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8");
+  // cleanRows() feeds every trend, forecast and cut calculation. The new series
+  // must not be built by changing it.
+  const clean = cut.slice(cut.indexOf("function cleanRows(input,key=\"weight\")"), cut.indexOf("function weights()"));
+  assert.strictEqual(clean.indexOf("Post-workout"), -1, "cleanRows must stay timing-agnostic apart from its morning preference");
+  assert.ok(clean.indexOf('morning=String(r.timeOfDay||"").toLowerCase()==="morning"') !== -1,
+    "the existing morning preference and its legacy fallback must be unchanged");
+  // The chart series is a separate read-only aggregation.
+  assert.ok(cut.indexOf("function timingRows(timing,input=state.bws)") !== -1);
+  const tr = cut.slice(cut.indexOf("function timingRows("), cut.indexOf("function windowStats("));
+  assert.strictEqual(/state\.bws\s*=|\.push\(|\.splice\(/.test(tr), false, "timingRows must not mutate stored weigh-ins");
+  assert.ok(tr.indexOf("Number(r.ts)>=Number(prior.ts)") !== -1, "latest-per-date must follow the stored ts order contract");
+});
+
+test("both weight series share one kg axis", function () {
+  const cut = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8");
+  const model = cut.slice(cut.indexOf("function chartModel("), cut.indexOf("function chartHTML()"));
+  // Post-workout values widen the same domain the primary series built...
+  assert.ok(model.indexOf("for(const r of postRows)values.push(r.weight);") !== -1,
+    "post-workout must be inside the shared y-domain, not clipped out of the plot");
+  // ...and are projected through the same x()/y() closures, so a second axis
+  // cannot be introduced without deleting this line.
+  assert.ok(model.indexOf("const post=postRows.map(r=>({...r,x:x(r.date),y:y(r.weight)}));") !== -1,
+    "post-workout must use the primary scales");
+  const scaleDefs = (model.match(/const xMs=|,y=v=>top\+/g) || []).length;
+  assert.ok(scaleDefs <= 2, "only one x and one y scale may be defined");
+  assert.strictEqual(/y2=|yRight|secondAxis|rightAxis/.test(model), false, "no second y-axis");
+});
+
+test("post-workout never reaches a progress calculation", function () {
+  const cut = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8");
+  const model = cut.slice(cut.indexOf("function chartModel("), cut.indexOf("function chartHTML()"));
+  // Every derived-progress call in the model must read the canonical rows, never
+  // the post-workout rows.
+  ["N.trend(rows)", "N.trendConfidence(rows)", "N.forecastGoal(rows)", "N.detectPlateau(rows)"].forEach(function (call) {
+    assert.ok(model.indexOf(call) !== -1, call + " must still read the canonical rows");
+  });
+  assert.strictEqual(/N\.(trend|trendConfidence|forecastGoal|detectPlateau|trendStats)\(\s*post/.test(model), false,
+    "no progress calculation may be handed the post-workout series");
+  // The whole-file check: the canonical helpers default to weights(), which is
+  // cleanRows(state.bws) — morning-preferred and unchanged.
+  ["function ewmaTrend(rows=weights())", "function trend(rows=weights())", "function trendConfidence(rows=weights())",
+   "function forecastGoal(rows=weights())", "function detectPlateau(rows=weights())", "function trendStats(rows=weights())"
+  ].forEach(function (sig) {
+    assert.ok(cut.indexOf(sig) !== -1, "unchanged signature expected: " + sig);
+  });
+  assert.strictEqual(/timingRows\([^)]*\)[^;]*(trend|forecast|plateau|tdee|adherence)/i.test(cut), false,
+    "timingRows output must not feed coaching maths");
+});
+
+test("a missing timing is drawn as absent, never as zero or a copy", function () {
+  const cut = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8");
+  const tr = cut.slice(cut.indexOf("function timingRows("), cut.indexOf("function windowStats("));
+  // Only real readings enter the series; there is no fill, default or carry-forward.
+  assert.strictEqual(/\|\|\s*0|=\s*0\b|fill\(|interpolat/i.test(tr), false,
+    "an absent reading must stay absent");
+  assert.ok(tr.indexOf("if(String(r.timeOfDay||'').toLowerCase()!==want)continue;") !== -1,
+    "a row of another timing must be skipped, not coerced");
+  // The readout hides rather than invents when there is no post-workout row.
+  const sel = cut.slice(cut.indexOf("function selectPoint(index)"), cut.indexOf("function scrub(event)"));
+  assert.ok(sel.indexOf("postBox.hidden=!postRow") !== -1, "no post-workout reading hides the block");
+  assert.ok(sel.indexOf("postRow?postRow.weight.toFixed(1)+' kg':''") !== -1, "never substitute a value");
+});
+
+test("the two series are named for the user, not by internal timing keys", function () {
+  const cut = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8");
+  assert.ok(cut.indexOf('<i class="raw"></i>Morning') !== -1, "primary series is labelled Morning");
+  assert.ok(cut.indexOf('<i class="post"></i>Post-workout') !== -1, "secondary series is labelled Post-workout");
+  const css = fs.readFileSync(path.join(ROOT, "cut-support.css"), "utf8");
+  assert.ok(css.indexOf(".n99-legend i.post") !== -1, "the legend needs a swatch for the second series");
+  // The primary row keeps the existing legacy fallback, so the readout names the
+  // timing actually recorded instead of claiming every point is a morning one.
+  assert.ok(cut.indexOf("function pointTiming(p)") !== -1);
+  assert.ok(cut.indexOf("'Timing not recorded'") !== -1, "legacy rows with no timing must say so");
+  // Copy matches the new behaviour.
+  assert.ok(cut.indexOf("Morning readings drive your progress trend") !== -1);
+  assert.ok(cut.indexOf("post-workout readings are shown separately for context") !== -1);
+  assert.ok(cut.indexOf("Every original entry stays saved") !== -1);
+  assert.strictEqual(cut.indexOf("The chart keeps the latest morning reading for each day"), -1,
+    "the superseded copy must be gone");
+});
+
+test("the weight hotfix introduces no storage migration", function () {
+  const cut = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8");
+  // Saving a weigh-in still writes exactly the record it always did.
+  assert.ok(cut.indexOf("state.bws.push({id:uid(),date,weight,timeOfDay:val('apx95WeightTime')||'Morning',ts:Date.now()})") !== -1,
+    "the stored weigh-in shape must be unchanged");
+  assert.ok(cut.indexOf("<option>Morning</option><option>Pre-workout</option><option>Post-workout</option><option>Night</option>") !== -1,
+    "the four timing options must be unchanged");
+  // No rewriting of existing rows anywhere in the new code.
+  const tr = cut.slice(cut.indexOf("function timingRows("), cut.indexOf("function windowStats("));
+  assert.strictEqual(/timeOfDay\s*=/.test(tr), false, "stored timings must never be reassigned");
+});
+
+test("morning outranks post-workout in the canonical row, and the one gap is pinned", function () {
+  const cut = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8");
+  const clean = cut.slice(cut.indexOf("function cleanRows(input,key=\"weight\")"), cut.indexOf("  /* Chart-only view"));
+  // What holds today, verified in the running app:
+  //   * a post-workout row can NEVER displace a morning row for the same date;
+  //   * on a date with NO morning row, the last non-morning row wins — so a
+  //     post-workout entry becomes that day's canonical trend point.
+  // The second case means post-workout CAN reach the trend on a skipped-morning
+  // day. Fixing it changes trend output for existing users, so it is deliberately
+  // out of scope for a presentation hotfix. This test pins the current rule: if
+  // the fallback is ever changed, it must be a considered decision with its own
+  // verification, not a silent side effect.
+  assert.ok(clean.indexOf('const prior=byDate.get(r.date),morning=String(r.timeOfDay||"").toLowerCase()==="morning";') !== -1,
+    "morning preference must stay as shipped");
+  assert.ok(clean.indexOf('if(!prior||morning||String(prior.timeOfDay||"").toLowerCase()!=="morning")byDate.set(r.date,{...r,[key]:v});') !== -1,
+    "the last-non-morning-wins fallback must stay as shipped until it is deliberately changed");
+  // Whatever that rule is, the chart series must not be what enforces it.
+  const tr = cut.slice(cut.indexOf("function timingRows("), cut.indexOf("function windowStats("));
+  assert.strictEqual(tr.indexOf("byDate.set") === -1, false);
+  assert.strictEqual(/cleanRows|weights\(\)/.test(tr), false, "the chart series must not route through the canonical set");
+});
+
 test("production fixture runtime does not attach docs", function () {
   const ctx = vm.createContext({
     location: { hostname: "app.nxtfrm.example", protocol: "https:" },
