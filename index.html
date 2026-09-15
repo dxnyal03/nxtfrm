@@ -96,7 +96,7 @@ input,select,textarea{outline:0}
   color:var(--muted2);
   font-size:10px;
   font-weight:1000;
-  text-transform:legs + corecase;
+  text-transform:uppercase;
   letter-spacing:.18em;
 }
 .big-num{
@@ -122,7 +122,7 @@ input,select,textarea{outline:0}
   padding:11px 10px;
   min-height:64px;
 }
-.metric span{display:block;color:var(--muted2);font-size:9px;text-transform:legs + corecase;letter-spacing:.13em;font-weight:1000}
+.metric span{display:block;color:var(--muted2);font-size:9px;text-transform:uppercase;letter-spacing:.13em;font-weight:1000}
 .metric b{display:block;font-size:20px;letter-spacing:-.7px;margin-top:6px}
 .progress{
   height:6px;
@@ -174,7 +174,7 @@ input,select,textarea{outline:0}
   font-size:10px;
   font-weight:1000;
   letter-spacing:.16em;
-  text-transform:legs + corecase;
+  text-transform:uppercase;
   margin-bottom:7px;
 }
 .input,.select,.textarea{
@@ -602,7 +602,7 @@ body {
   color:#bea0ff;
   font-size:10px;
   font-weight:1000;
-  text-transform:legs + corecase;
+  text-transform:uppercase;
   letter-spacing:.08em;
 }
 .focus-toggle{
@@ -688,7 +688,7 @@ body {
   font-size:9px;
   font-weight:1000;
   letter-spacing:.02em;
-  text-transform:legs + corecase;
+  text-transform:uppercase;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
@@ -1307,7 +1307,7 @@ body{
 .coach-stat span{
   display:block;
   font-size:9px;
-  text-transform:legs + corecase;
+  text-transform:uppercase;
   letter-spacing:.12em;
   color:#71717a;
   font-weight:1000;
@@ -1332,7 +1332,7 @@ body{
 .coach-panel-title{
   font-size:10px;
   font-weight:1000;
-  text-transform:legs + corecase;
+  text-transform:uppercase;
   letter-spacing:.145em;
   color:#71717a;
 }
@@ -1430,7 +1430,7 @@ body{
   color:#71717a;
   font-size:10px;
   font-weight:1000;
-  text-transform:legs + corecase;
+  text-transform:uppercase;
   letter-spacing:.145em;
 }
 .focus-stat b{
@@ -1679,7 +1679,7 @@ body{
   display:block;
   font-size:9px;
   line-height:1;
-  text-transform:legs + corecase;
+  text-transform:uppercase;
   letter-spacing:.12em;
   color:#71717a;
   font-weight:1000;
@@ -1760,7 +1760,7 @@ body{
   display:block;
   font-size:9px;
   line-height:1;
-  text-transform:legs + corecase;
+  text-transform:uppercase;
   letter-spacing:.11em;
   color:#71717a;
   font-weight:1000;
@@ -1832,7 +1832,7 @@ body{
   display:block;
   font-size:9px;
   line-height:1;
-  text-transform:legs + corecase;
+  text-transform:uppercase;
   letter-spacing:.10em;
   color:#71717a;
   font-weight:1000;
@@ -1859,7 +1859,7 @@ body{
   margin:0;
   font-size:9px;
   line-height:1;
-  text-transform:legs + corecase;
+  text-transform:uppercase;
   letter-spacing:.13em;
   color:#71717a;
   font-weight:1000;
@@ -1902,7 +1902,7 @@ body{
   display:block;
   font-size:9px;
   line-height:1;
-  text-transform:legs + corecase;
+  text-transform:uppercase;
   letter-spacing:.11em;
   color:#71717a;
   font-weight:1000;
@@ -2199,7 +2199,7 @@ body{
 .po-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#a78bfa,#7dd3fc);transition:width .35s ease}
 .po-fill.ready{background:linear-gradient(90deg,#a477f5,#bea0ff)}
 .po-fill.hold{background:linear-gradient(90deg,#f59e0b,#fde68a)}
-.po-scale{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:7px;font-size:9px;font-weight:1000;color:#71717a;text-transform:legs + corecase;letter-spacing:.08em}
+.po-scale{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:7px;font-size:9px;font-weight:1000;color:#71717a;text-transform:uppercase;letter-spacing:.08em}
 .po-scale span:nth-child(2){text-align:center}.po-scale span:nth-child(3){text-align:right}
 .po-detail{margin-top:7px;font-size:11px;line-height:1.35;color:#a1a1aa}
 
@@ -2279,7 +2279,7 @@ body{
   line-height:1.15!important;
   font-weight:1000!important;
   color:#71717a!important;
-  text-transform:legs + corecase!important;
+  text-transform:uppercase!important;
   letter-spacing:.08em!important;
 }
 .po-scale span:nth-child(2){text-align:center!important}
@@ -2379,7 +2379,7 @@ body{
   padding:7px 10px;
   font-size:10px;
   font-weight:1000;
-  text-transform:legs + corecase;
+  text-transform:uppercase;
   letter-spacing:.12em;
 }
 .complete-title{
@@ -4370,7 +4370,7 @@ details.card[open] summary::after{content:"–";color:var(--green)}
 .complete-actions .primary{background:var(--green)!important;color:#0b0a0d!important}
 .lean-switch.on,.toggle.on{background:var(--green)!important}.lean-switch.on::after{background:#0b0a0d!important}
 .import-box{border-radius:18px!important;background:rgba(255,255,255,.035)!important;border-color:rgba(255,255,255,.075)!important}
-body.apex-keyboard-open .tabs{transform:translate(-50%,145%);pointer-events:none}
+/* V107: the dock stays put while typing; premium-ui.css dims it instead. */
 @media(max-width:390px){
   .content{padding-left:11px;padding-right:11px}
   .home-day-button{font-size:33px!important}
@@ -4611,6 +4611,12 @@ textarea:disabled {
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="application-name" content="NXTFRM">
 
+<!-- Presentation layers load in <head> so the first paint is already NXTFRM V107.
+     These were previously <link>ed at the end of <body>, which let the legacy
+     in-head CSS paint the old chrome before the current styles arrived. -->
+<link rel="stylesheet" href="cut-support.css?v=107">
+<link rel="stylesheet" href="premium-ui.css?v=107">
+
 </head>
 <body>
 <div class="toast" id="toast"></div>
@@ -4682,6 +4688,27 @@ const PLAN={
   6:{type:"Legs",label:"Legs Day",icon:"🦵"},
   0:{type:"Rest",label:"Full rest",icon:"🌙"}
 };
+
+/* Single source of truth for "what session is scheduled on this date".
+   Every caller (boot, date roll, override clear, cut-support) routes through
+   here so a weekly-plan edit or a dated override cannot be resolved one way in
+   one screen and another way in the next. Precedence: dated override, then the
+   weekly plan, then the built-in split. weeklyPlan is keyed by JS getDay()
+   (0 = Sunday); date strings are read at local noon so DST cannot shift the day. */
+function dayOfWeekFor(date){
+  const ms=Date.parse(String(date)+"T12:00:00");
+  return Number.isFinite(ms)?new Date(ms).getDay():new Date().getDay();
+}
+function planTypeForDow(dow){
+  return (settings.weeklyPlan&&settings.weeklyPlan[dow])||(PLAN[dow]&&PLAN[dow].type)||"Rest";
+}
+function resolveDayType(date){
+  const key=date||(typeof state==="object"&&state?state.date:null);
+  if(!key)return "Rest";
+  const override=settings.dayOverrides&&settings.dayOverrides[key];
+  if(override)return override;
+  return planTypeForDow(dayOfWeekFor(key));
+}
 
 const TEMPLATES={
   Push:[
@@ -4795,7 +4822,7 @@ let state={
   sessionPlans:load("apm_session_plans",{}),
   exerciseNotes:load("apm_exercise_notes",{})
 };
-state.dayType=settings.weeklyPlan[new Date(state.date+"T12:00:00").getDay()]||PLAN[new Date(state.date+"T12:00:00").getDay()].type;
+state.dayType=resolveDayType(state.date);
 
 function load(k,fb){try{return JSON.parse(localStorage.getItem(k))??fb}catch{return fb}}
 function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
@@ -5067,7 +5094,7 @@ function progressionHTML(exercise){
         <div class="po-fill" style="width:${pos}%"></div>
         <div class="po-dot" style="left:${pos}%"></div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px;text-align:center;font-size:9px;font-weight:1000;text-transform:legs + corecase;letter-spacing:.1em;color:var(--muted2)">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px;text-align:center;font-size:9px;font-weight:1000;text-transform:uppercase;letter-spacing:.1em;color:var(--muted2)">
         <div ${zone==="Too Heavy"?'style="color:#ddd6fe"':''}>Too Heavy</div>
         <div ${zone==="Build Reps"?'style="color:#ddd6fe"':''}>Build Reps</div>
         <div ${zone==="Ready"?'style="color:#ddd6fe"':''}>Ready</div>
@@ -8040,25 +8067,14 @@ function cycleDayType(){
 }
 function applyDayOverrideForDate(){
   settings.dayOverrides=settings.dayOverrides||{};
-  const override=settings.dayOverrides[state.date];
-  if(override){
-    state.dayType=override;
-    return;
-  }
-  if(typeof NXT==="object"&&NXT&&typeof NXT.typeFor==="function"){
-    state.dayType=NXT.typeFor(state.date);
-    return;
-  }
-  const d=new Date(state.date+"T12:00:00").getDay();
-  state.dayType=settings.weeklyPlan?.[d]||PLAN[d].type;
+  state.dayType=resolveDayType(state.date);
 }
 
 
 function clearTodayOverride(){
   settings.dayOverrides=settings.dayOverrides||{};
   delete settings.dayOverrides[state.date];
-  const d=new Date(state.date+"T12:00:00").getDay();
-  state.dayType=settings.weeklyPlan?.[d]||PLAN[d].type;
+  state.dayType=resolveDayType(state.date);
   state.exercise=(TEMPLATES[state.dayType]&&TEMPLATES[state.dayType][0]&&TEMPLATES[state.dayType][0].name)||"";
   persist();
   render();
@@ -8207,8 +8223,7 @@ function setDateToToday({silent=false}={}){
   const today=localToday();
   state.date=today;
   settings.dayOverrides=settings.dayOverrides||{};
-  const dow=new Date(today+"T12:00:00").getDay();
-  state.dayType=settings.dayOverrides[today] || settings.weeklyPlan?.[dow] || PLAN[dow].type;
+  state.dayType=resolveDayType(today);
   state.exercise=(TEMPLATES[state.dayType]&&TEMPLATES[state.dayType][0]&&TEMPLATES[state.dayType][0].name)||"";
   state.setNum=1;
   localStorage.setItem("apm_last_open_date",today);
@@ -8885,28 +8900,38 @@ function smartAlternativesFor(ex){
   });
   return [...new Set([...exact,...inferred])];
 }
+/* settings.weeklyPlan is keyed by JS getDay() (0 = Sunday). This editor lists
+   Monday first, so the row index must be mapped to the real day number before
+   reading or writing — indexing weeklyPlan by the row position edited the wrong
+   day (row 0 "Mon" wrote Sunday). WEEK_ROW_DOW is that mapping. */
+const WEEK_ROW_DOW=[1,2,3,4,5,6,0];
+const WEEK_CYCLE_ORDER=["Push","Pull","Pump","Legs","Zone2","Floorball","Rest"];
 function weeklyPlanHTML(){
   const labels=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-  const order=["Push","Zone2","Floorball","Pull","Floorball","Pump","Rest"];
   settings.weeklyPlan=settings.weeklyPlan||{};
   return `<div class="card">
     <div class="kicker">Weekly plan</div>
-    <div class="title" style="margin-top:6px">Aggressive cut split</div>
-    <div class="sub">Tap a day to cycle it. Push/Pull stay unchanged; Legs + Core appears once.</div>
+    <div class="title" style="margin-top:6px">Your weekly split</div>
+    <div class="sub">Tap a day to cycle its session.</div>
     <div class="week-plan">
       ${labels.map((d,i)=>{
-        const val=settings.weeklyPlan[i]||order[i];
+        const dow=WEEK_ROW_DOW[i];
+        const val=planTypeForDow(dow);
         return `<button class="week-row" onclick="cycleWeeklyDay(${i})"><b>${d}</b><span>${esc(dayTypeLabel(val))}</span></button>`;
       }).join("")}
     </div>
   </div>`;
 }
 function cycleWeeklyDay(i){
-  const order=["Push","Zone2","Floorball","Pull","Pump","Rest"];
+  const dow=WEEK_ROW_DOW[i];
+  if(dow===undefined)return;
   settings.weeklyPlan=settings.weeklyPlan||{};
-  const cur=settings.weeklyPlan[i]||["Push","Zone2","Floorball","Pull","Floorball","Pump","Rest"][i];
-  const idx=order.indexOf(cur);
-  settings.weeklyPlan[i]=order[(idx+1+order.length)%order.length];
+  const cur=planTypeForDow(dow);
+  const idx=WEEK_CYCLE_ORDER.indexOf(cur);
+  settings.weeklyPlan[dow]=WEEK_CYCLE_ORDER[(idx+1+WEEK_CYCLE_ORDER.length)%WEEK_CYCLE_ORDER.length];
+  // The edit has to reach the rest of the app, not just this list.
+  state.dayType=resolveDayType(state.date);
+  state.exercise=(TEMPLATES[state.dayType]&&TEMPLATES[state.dayType][0]&&TEMPLATES[state.dayType][0].name)||state.exercise;
   persist();
   render();
 }
@@ -9512,8 +9537,7 @@ function apx96WeekRows(){
     const key=date.toISOString().slice(0,10);
     const summary=typeof summaryForDate==="function"?summaryForDate(key):{sets:0,z2:0,bw:null};
     const floor=(state.floorball||[]).some(x=>x.date===key);
-    const dow=date.getDay();
-    const type=settings.dayOverrides?.[key]||settings.weeklyPlan?.[dow]||PLAN[dow]?.type||"Rest";
+    const type=resolveDayType(key);
     return {key,date,type,summary,floor};
   });
 }
@@ -10079,7 +10103,6 @@ document.addEventListener("focusout",function(e){
 },true);
 </script>
 
-<link rel="stylesheet" href="cut-support.css">
 <script src="cut-support.js"></script>
 <script src="wearables.js"></script>
 <script src="wearables.adapters.js"></script>
@@ -10090,12 +10113,11 @@ document.addEventListener("focusout",function(e){
 <script src="wearables.resolution.js"></script>
 <script src="wearables.recovery.js"></script>
 <script src="wearables.recovery-integration.js"></script>
-<script src="wearables.training-readiness.js?v=106"></script>
-<script src="wearables.store.js?v=106"></script>
-<script src="wearables.provider-garmin.js?v=106"></script>
-<script src="wearables.sync.js?v=106"></script>
-<link rel="stylesheet" href="premium-ui.css?v=106">
-<script src="premium-ui.js?v=106"></script>
+<script src="wearables.training-readiness.js?v=107"></script>
+<script src="wearables.store.js?v=107"></script>
+<script src="wearables.provider-garmin.js?v=107"></script>
+<script src="wearables.sync.js?v=107"></script>
+<script src="premium-ui.js?v=107"></script>
 <script src="seed.dev.js"></script>
 <script src="seed.scenarios.js"></script>
 <script>

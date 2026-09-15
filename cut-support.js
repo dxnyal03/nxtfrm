@@ -427,7 +427,13 @@ const NXT = (() => {
   }
   function cardioWeek() { return (state.cardio||[]).filter(r=>r&&r.date>=weekStart()&&r.date<=state.date&&finite(r.duration)>0).reduce((s,r)=>s+Number(r.duration),0); }
   function completedWeek() { return new Set(workRows().filter(r=>r.date>=weekStart()).map(r=>r.date)).size; }
-  function typeFor(d) { return settings.dayOverrides?.[d]||settings.weeklyPlan?.[new Date(dateMs(d)).getUTCDay()]||"Rest"; }
+  /* Delegates to index.html's resolveDayType so dated overrides, the weekly plan
+     and the built-in split are read in one order everywhere. The local fallback
+     keeps this module usable if it is ever loaded on its own. */
+  function typeFor(d) {
+    if(typeof resolveDayType==="function")return resolveDayType(d);
+    return settings.dayOverrides?.[d]||settings.weeklyPlan?.[new Date(dateMs(d)).getUTCDay()]||"Rest";
+  }
   function templateFor(type=state.dayType,gym=state.gym) {
     const saved=cfg().templates[gym+"__"+type];
     return NXT.validTemplate?.(saved)?saved:TEMPLATES[type]||[];

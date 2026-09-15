@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nxtfrm",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["/private/tmp/claude-501/-Users-alidanial-Documents-NXTFRM/74ffb0d1-f264-42c4-8d98-b952d3959da5/scratchpad/devserver.py", "8761", "/Users/alidanial/Documents/NXTFRM"],
+      "port": 8761
+    },
+    {
+      "name": "design-v103-preview",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8743", "--directory", "design-v103"],
+      "port": 8743
+    }
+  ]
+}
