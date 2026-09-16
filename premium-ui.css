@@ -55,9 +55,18 @@
   --nxt-success-tint: rgba(111, 219, 160, .12);
   --nxt-warning: #e8b271;
   --nxt-warning-tint: rgba(232, 178, 113, .12);
+  --nxt-warning-edge: rgba(232, 178, 113, .34); /* visible warm border; tint is too faint to read as an edge */
   --nxt-danger: #f0768e;
   --nxt-danger-tint: rgba(240, 118, 142, .12);
   --nxt-info-tint: rgba(180, 154, 255, .09);
+
+  /* ---- Activity kinds ---------------------------------------------------
+     The three record types History marks on a day. Shape carries the
+     distinction (see .nxp-cal-marks); these only reinforce it. Deliberately no
+     blue — the palette stays purple and warm. */
+  --nxt-activity-lift: var(--nxt-purple-primary);
+  --nxt-activity-cardio: var(--nxt-warning);
+  --nxt-activity-weight: var(--nxt-text-secondary);
 
   /* ---- Elevation --------------------------------------------------------- */
   --nxt-shadow-low: 0 1px 2px rgba(0, 0, 0, .28);
@@ -113,12 +122,34 @@
   --nxt-touch-min: 44px;
 
   /* ---- Motion -----------------------------------------------------------
-     Short and purposeful. Gym controls must feel immediate. */
-  --nxt-ease: cubic-bezier(.2, .7, .3, 1);
-  --nxt-motion-fast: 110ms;
-  --nxt-motion-normal: 190ms;
-  --nxt-motion: var(--nxt-motion-fast) var(--nxt-ease);
-  --nxt-motion-slow: var(--nxt-motion-normal) var(--nxt-ease);
+     Durations are keyed to PURPOSE, never one value copied everywhere: a press
+     has to read as instant, a sheet travels the height of the screen and needs
+     longer, and a countdown is constant-rate so it takes linear. Easing follows
+     direction — decelerate when arriving, accelerate when leaving — and exits
+     run at roughly two-thirds of their entry, because leaving should feel
+     quicker than arriving. Gym controls must never wait on an animation. */
+  --nxt-ease: cubic-bezier(.2, .7, .3, 1);          /* standard, settles into place */
+  --nxt-ease-out: cubic-bezier(.16, .84, .44, 1);   /* arriving */
+  --nxt-ease-in: cubic-bezier(.4, 0, .9, .3);       /* leaving */
+  --nxt-ease-linear: linear;                        /* constant-rate progress only */
+
+  /* These two stay literal ms: the release gate parses --nxt-motion-fast and
+     holds it at or under 150ms so gym controls can never drift slow. A var()
+     here would silently defeat that check, so the literal is the source of
+     truth and the purpose-named tokens alias onto it. */
+  --nxt-motion-fast: 110ms;      /* toggles, selection, icon state */
+  --nxt-motion-normal: 190ms;    /* chart state, disclosure, queue movement */
+
+  --nxt-duration-press: 90ms;    /* tactile confirmation, inside the 100ms feedback budget */
+  --nxt-duration-fast: var(--nxt-motion-fast);
+  --nxt-duration-normal: var(--nxt-motion-normal);
+  --nxt-duration-sheet: 260ms;   /* bottom-sheet travel */
+  --nxt-duration-exit: 170ms;    /* ~65% of the sheet entry */
+  --nxt-motion: var(--nxt-duration-fast) var(--nxt-ease);
+  --nxt-motion-slow: var(--nxt-duration-normal) var(--nxt-ease);
+  --nxt-motion-press: var(--nxt-duration-press) var(--nxt-ease-out);
+  --nxt-motion-enter: var(--nxt-duration-sheet) var(--nxt-ease-out);
+  --nxt-motion-leave: var(--nxt-duration-exit) var(--nxt-ease-in);
 
   /* ---- Layers ------------------------------------------------------------ */
   --nxt-z-base: 0;
@@ -645,6 +676,86 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 
 /* Route change. Migrated from the V98 `nxt98-enter` keyframe so the one page
    transition in the app is driven by the motion tokens. */
+/* =========================================================================
+   Applied motion. Every rule below answers to the shared tokens and to the
+   reduced-motion blocks further down; nothing here loops, bounces or decorates.
+   Guidance followed: feedback inside ~100ms, decelerate arriving / accelerate
+   leaving, linear only for constant-rate progress, transform+opacity only, and
+   no more than a couple of moving things per view.
+   ========================================================================= */
+
+/* Nav dock. The selected marker cannot glide between tabs without a second nav
+   implementation owning a shared indicator, which is out of scope — so it grows
+   from the centre and the label/icon crossfade carry the change instead. */
+.tabs .tab::before {
+  transition: transform var(--nxt-duration-normal) var(--nxt-ease-out),
+              opacity var(--nxt-duration-fast) var(--nxt-ease-out);
+}
+.tabs .tab,
+.tabs .tab .tab-label { transition: color var(--nxt-duration-fast) var(--nxt-ease-out); }
+.tabs .tab .tab-icon { transition: transform var(--nxt-motion-press); }
+.tabs .tab:active .tab-icon { transform: scale(.92); }
+
+/* Controls. A press confirms by compressing slightly; it must never bounce and
+   must never delay the action it confirms. */
+.nxp .n99-button,
+.nxp .nxp-seg button,
+.nxp .nxp-action,
+.nxp .nxp-link {
+  transition: background-color var(--nxt-duration-fast) var(--nxt-ease-out),
+              color var(--nxt-duration-fast) var(--nxt-ease-out),
+              border-color var(--nxt-duration-fast) var(--nxt-ease-out),
+              transform var(--nxt-motion-press);
+}
+.nxp .n99-button:active,
+.nxp .nxp-action:active { transform: scale(.985); }
+.nxp .nxp-seg button:active { transform: scale(.97); }
+
+/* Chart inspection. The cursor and active point take a very short ease so
+   scrubbing reads as smooth rather than steppy, while still tracking the finger
+   — anything longer than this would feel like lag under the thumb. */
+#n99-chart-cursor { transition: x1 var(--nxt-motion-press), x2 var(--nxt-motion-press); }
+#n99-chart-active { transition: cx var(--nxt-motion-press), cy var(--nxt-motion-press), r var(--nxt-duration-fast) var(--nxt-ease-out); }
+.n99-chart-svg .n99-chart-post-mark { transition: opacity var(--nxt-duration-fast) var(--nxt-ease-out); }
+
+/* Sheets travel the height of the screen, so they get the longest duration in
+   the system — and leave faster than they arrive. */
+.n99-modal { animation: nxt-dim-in var(--nxt-duration-fast) var(--nxt-ease-out) both; }
+.n99-modal .sheet { animation: nxt-sheet-in var(--nxt-motion-enter) both; }
+@keyframes nxt-dim-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes nxt-sheet-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Chart range change. The page re-renders wholesale, so the honest way to avoid
+   an abrupt swap is a short settle on the new plot — the geometry is never
+   interpolated and no data value is tweened. Fires only on a deliberate range
+   change (see setRange), never on an ordinary repaint. */
+.n99-chart-svg.is-range-change {
+  animation: nxt-chart-settle var(--nxt-duration-normal) var(--nxt-ease-out) both;
+}
+@keyframes nxt-chart-settle {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: none; }
+}
+/* A newly added reading: the plot holds still and only the freshest marker
+   arrives, so it reads as "your measurement landed" rather than a replayed
+   intro. :last-of-type is the most recent morning dot in document order. */
+.n99-chart-svg.is-new-point circle:last-of-type {
+  animation: nxt-point-in var(--nxt-duration-normal) var(--nxt-ease-out) both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes nxt-point-in {
+  from { opacity: 0; transform: scale(.4); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Disclosures and rows: state changes, not decoration. */
+.nxp details > summary { transition: color var(--nxt-duration-fast) var(--nxt-ease-out); }
+.nxp .nxp-setting { transition: background-color var(--nxt-duration-fast) var(--nxt-ease-out); }
+
 @keyframes nxt-route-enter {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: none; }
@@ -703,8 +814,7 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 }
 
 .nxp-action,
-.nxp-link,
-.nxp-chip {
+.nxp-link {
   font: inherit;
   cursor: pointer;
   touch-action: manipulation;
@@ -742,25 +852,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   text-align: left;
 }
 .nxp-link:active { opacity: .82; }
-.nxp-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: var(--nxt-control-compact);
-  min-width: 44px;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: var(--nxt-radius-control);
-  background: var(--nxt-interactive);
-  color: var(--nxt-text-secondary);
-  font-weight: var(--nxt-weight-meta);
-}
-.nxp-chip.is-on,
-.nxp-chip[aria-pressed="true"] {
-  background: var(--nxt-purple-tint);
-  color: var(--nxt-text);
-}
-
 .nxp h1 { font-size:2rem;line-height:1.2;letter-spacing:-.03em; }
 .nxp h2 { font-size:1.35rem;letter-spacing:-.02em; }
 .nxp p { font-size:1rem; }
@@ -770,14 +861,14 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp .n99-card { border-radius:20px;padding:20px;box-shadow:0 2px 7px rgba(0,0,0,.035); }
 .nxp .n99-small,.nxp .n99-list-row small { font-size:.875rem; }
 .nxp .n99-eyebrow { font-size:.8125rem;letter-spacing:.035em;text-transform:none; }
-.nxp-today { background:radial-gradient(ellipse at 100% 0,rgba(173,145,245,.09),transparent 70%),#202027;padding:20px;border-radius:22px; }
+.nxp-today { background:radial-gradient(ellipse at 100% 0,rgba(173,145,245,.09),transparent 70%),var(--nxt-surface-alt);padding:20px;border-radius:var(--nxt-radius-xl); }
 .nxp-today h2 { margin-top:5px;font-size:1.9rem; }
 .nxp-today p { font-size:.9375rem;margin:8px 0 22px; }
-.nxp-calories { width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px;border:1px solid #3b344e;border-radius:20px;background:#282234;color:var(--n99-text);text-align:left; }
-.nxp-calories small { display:block;font-size:.875rem;color:#c3b5d9; }
+.nxp-calories { width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px;border:1px solid var(--nxt-border-strong);border-radius:var(--nxt-radius-lg);background:var(--nxt-surface-interactive);color:var(--n99-text);text-align:left; }
+.nxp-calories small { display:block;font-size:.875rem;color:var(--nxt-text-secondary); }
 .nxp-calories strong { display:block;font-size:1.8rem;letter-spacing:-.035em;margin-top:5px;font-weight:650; }
-.nxp-calories em { font-style:normal;font-size:.875rem;font-weight:400;color:#c3b5d9; }
-.nxp-calories > span:last-child { color:#cebae9;font-size:.875rem;white-space:nowrap; }
+.nxp-calories em { font-style:normal;font-size:.875rem;font-weight:400;color:var(--nxt-text-secondary); }
+.nxp-calories > span:last-child { color:var(--nxt-text-secondary);font-size:.875rem;white-space:nowrap; }
 .nxp-calories i { font-style:normal;margin-left:8px; }
 .nxp-calories + .n99-quick { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 16px; }
 .nxp-calories + .n99-quick .n99-button { width:100%;min-width:0;min-height:44px;margin:0;padding:10px 8px;font-size:.8125rem!important;white-space:normal;overflow-wrap:anywhere;line-height:1.25; }
@@ -793,7 +884,7 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp-insight { display:flex;flex-direction:column;gap:8px;text-align:left;padding:20px 4px;width:100%;background:none;border:0;color:var(--n99-text); }
 .nxp-insight b { font-size:1.125rem;font-weight:600; }
 .nxp-insight > span:last-child { font-size:.875rem;color:var(--n99-accent); }
-.nxp-insight.watch { border-left:2px solid #edc481;padding-left:16px; }
+.nxp-insight.watch { border-left:2px solid var(--nxt-warning);padding-left:16px; }
 
 /* V102.1 Home — command centre. Scoped; does not alter Train, Progress, History, More, or shell algebra. */
 .nxp-home { min-width:0; }
@@ -872,7 +963,7 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   margin:0;
   border-radius:var(--nxt-radius-pill);
   background:var(--nxt-purple);
-  color:#16141c;
+  color:var(--nxt-on-purple);
   font-weight:var(--nxt-weight-cta);
 }
 .nxp-home-last {
@@ -1312,9 +1403,15 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   background: linear-gradient(180deg, var(--nxt-purple-primary), var(--nxt-purple-deep));
 }
 .nxp-ex-main { min-width: 0; flex: 1 1 auto; }
+/* The exercise is what this screen is about, so it has to lead. It was 26px
+   against a 36px stepper digit, which made the number you are typing the
+   loudest thing on the page and the thing it belongs to the quieter one. The
+   gap is now closed from both ends; the input stays large because reading and
+   hitting it one-handed mid-set is an ergonomic requirement, not a hierarchy
+   claim, and the name wins on weight, position and full-bleed width. */
 .nxp-train-lift .nxp-ex-head h2 {
   margin: 0;
-  font-size: 1.625rem;
+  font-size: 1.8125rem;
   line-height: 1.12;
   font-weight: var(--nxt-weight-hero);
   letter-spacing: -.022em;
@@ -1582,12 +1679,12 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   padding: 8px 6px;
   /* Beats the global input{font-size:16px!important} that exists to stop iOS
      zooming on focus; iOS only zooms below 16px, so going up is safe. */
-  font-size: 2.25rem !important;
+  font-size: 2rem !important;
   border: 1px solid var(--nxt-border-subtle);
   border-radius: var(--nxt-radius-lg);
   background: var(--nxt-surface);
   color: var(--nxt-text-primary);
-  font-size: 2.25rem;
+  font-size: 2rem;
   line-height: 1;
   font-weight: var(--nxt-weight-hero);
   font-variant-numeric: tabular-nums;
@@ -1961,18 +2058,18 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   }
   .nxp-stepper-row { grid-template-columns: 52px minmax(0, 1fr) 52px; }
   .nxp-train-lift .nxp-step { min-width: 52px; min-height: 58px; }
-  .nxp-train-lift .nxp-stepper input[type="number"] { font-size: 1.875rem !important; min-height: 58px; }
-  .nxp-train-lift .nxp-ex-head h2 { font-size: 1.375rem; }
+  .nxp-train-lift .nxp-stepper input[type="number"] { font-size: 1.6875rem !important; min-height: 58px; }
+  .nxp-train-lift .nxp-ex-head h2 { font-size: 1.5625rem; }
   .nxp-ex-nav button { padding: 0 8px; }
   .nxp-train-lift .nxp-rest b { font-size: 1.5rem; }
 }
 
 .nxp-progress-metrics { display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:25px 0 12px; }
-.nxp .n99-chart { padding:22px 17px 17px; }
+.nxp .n99-chart { padding:0; background:none; }
 .nxp .n99-chart-selected strong { font-size:2.5rem; }
 /* Post-workout readout: same block rhythm as the 7-day average beside it, one
    step quieter so the morning figure stays the headline. */
-.nxp .n99-chart-selected .n99-chart-post { text-align:right;min-width:0; }
+.nxp .n99-chart-selected .n99-chart-post { min-width:0; }
 .nxp .n99-chart-selected .n99-chart-post > span {
   display:block;
   font-size:var(--nxt-type-micro);
@@ -2037,12 +2134,50 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp-progress-hero { margin:0 0 var(--nxt-space-2);min-width:0; }
 .nxp-progress-hero-primary { display:flex;flex-wrap:wrap;align-items:center;gap:0 10px; }
 .nxp-progress-hero-primary #n99-chart-weight { flex:1 0 100%; }
+/* Instrument readout, not three columns fighting for a 390px line. The headline
+   figure spans the full width; every other metric is a label/value row on one
+   baseline, separated by a hairline. Three side-by-side groups forced
+   "POST-WORKOUT" to wrap onto two lines and shifted the whole block as values
+   changed while scrubbing — a readout that moves while you read it is useless.
+   Rows plus tabular numerals keep the geometry fixed whatever the values do. */
 .nxp-progress-hero .n99-chart-selected {
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-end;
-  gap:var(--nxt-space-3);
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:baseline;
+  gap:0 var(--nxt-space-4);
   padding:0;
+}
+.nxp-progress-hero .n99-chart-selected > div { grid-column:1 / -1;min-width:0; }
+.nxp-progress-hero .n99-chart-selected > div[hidden] { display:none !important; }
+/* The post-workout row only exists on days that have one, and it must stay that
+   way — a placeholder value here would be inventing data the contract forbids.
+   But letting the row appear and vanish mid-scrub shifted the entire chart
+   below it by ~31px on every drag. So the row keeps its place and simply goes
+   invisible: visibility:hidden also drops it from the accessibility tree, so
+   "absent" still reads as absent to a screen reader, while the geometry holds
+   still under the finger. */
+.nxp-progress-hero .n99-chart-selected > div.n99-chart-post[hidden] {
+  display:grid !important;
+  visibility:hidden;
+  min-height:1.375rem;
+}
+.nxp-progress-hero .n99-chart-selected > div:not(:first-child) {
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:baseline;
+  gap:0 var(--nxt-space-3);
+  margin-top:7px;
+  padding-top:7px;
+  border-top:1px solid var(--nxt-border-subtle);
+  text-align:left;
+}
+.nxp-progress-hero .n99-chart-selected > div:not(:first-child) > span { grid-column:1;grid-row:1; }
+.nxp-progress-hero .n99-chart-selected > div:not(:first-child) > b {
+  grid-column:2;grid-row:1;margin:0;text-align:right;white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.nxp-progress-hero .n99-chart-selected > div:not(:first-child) > small {
+  grid-column:1 / -1;grid-row:2;margin-top:1px;
 }
 .nxp-progress-hero .n99-chart-selected strong {
   font-size:1.75rem;
@@ -2084,7 +2219,7 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   align-items:center;
   justify-content:space-between;
   gap:var(--nxt-space-1);
-  margin:0 0 var(--nxt-space-2);
+  margin:0 0 var(--nxt-space-1);
 }
 .nxp-progress .n99-segments { display:flex;flex:1 1 220px;min-width:0; }
 .nxp-progress-weight .n99-segments {
@@ -2100,22 +2235,37 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   min-height:var(--nxt-control-compact);
   padding:8px 6px;
 }
+/* The range filter is subordinate to the number, the trend and the plot, so it
+   stops being a row of filled pills. Two segmented rows stacked directly above
+   the chart were competing with each other and with the data; now they differ
+   by ROLE — the view tabs above keep the underline that means "navigation",
+   while the range is a quiet text filter whose selection is carried by colour
+   and weight alone. The 44px target is unchanged; only the paint is lighter. */
 .nxp-progress-weight .n99-segments button {
   border-radius:var(--nxt-radius-control);
-  color:var(--nxt-text-tertiary);
+  color:var(--nxt-text-muted);
+  background:none;
+  font-size:var(--nxt-type-meta);
+  font-weight:var(--nxt-weight-meta);
+  letter-spacing:.01em;
 }
 .nxp-progress-weight .n99-segments button.active {
-  background:var(--nxt-purple-tint);
-  color:var(--nxt-text);
+  background:none;
+  color:var(--nxt-purple-primary);
+  font-weight:var(--nxt-weight-title);
 }
 .nxp-progress .n99-chart-controls > label { flex:0 0 auto;min-height:var(--nxt-control-compact);margin:0;align-items:center; }
+/* No card around the chart. A plot boxed inside a surface, inside the page, is
+   two containers doing the job of none — and it costs ~24px of plot width on a
+   390px phone, which is exactly where the data needs it. Hierarchy here comes
+   from the headline figure and a hairline, not from a filled panel. */
 .nxp-progress-weight .n99-chart.n99-card {
   margin:0;
-  padding:10px 12px 12px;
-  background:var(--nxt-surface);
+  padding:0;
+  background:none;
   box-shadow:none;
   border:0;
-  border-radius:var(--nxt-radius-surface);
+  border-radius:0;
 }
 .nxp-progress-weight .n99-chart-svg { margin-top:0; }
 .nxp-progress-weight .n99-scrubber { height:44px; }
@@ -2275,15 +2425,27 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp-progress-body > .nxp-heading p { overflow-wrap:anywhere; }
 .nxp-progress-body-summary { margin:0 0 var(--nxt-space-3);min-width:0; }
 .nxp-progress-body-summary .nxp-caption { display:block;font-size:.75rem; }
+/* Body's headline is a measurement, so it is set like one — the same instrument
+   type as the Weight hero, with the unit de-emphasised and tabular figures so a
+   changing value never shifts the line. It was 1.25rem prose carrying a count. */
 .nxp-progress-body-summary strong {
   display:block;
-  margin:2px 0 4px;
-  font-size:1.25rem;
+  margin:2px 0 5px;
+  font-size:1.75rem;
   font-weight:var(--nxt-weight-metric);
-  letter-spacing:-.03em;
-  line-height:1.2;
+  letter-spacing:var(--nxt-tracking-tight);
+  line-height:1.15;
+  font-variant-numeric:tabular-nums;
   overflow-wrap:anywhere;
 }
+.nxp-progress-body-summary strong em {
+  font-style:normal;
+  font-size:.875rem;
+  font-weight:var(--nxt-weight-meta);
+  letter-spacing:0;
+  color:var(--nxt-text-muted);
+}
+.nxp-progress-body-scanline { margin-top:3px !important;color:var(--nxt-text-muted) !important; }
 .nxp-progress-body-summary p {
   margin:0;
   font-size:.8125rem;
@@ -2376,12 +2538,12 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   .nxp-progress-body-summary strong { font-size:1.125rem; }
   .nxp-progress-body-section { padding-top:var(--nxt-space-2); }
 }
-.nxp-setting { display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:19px 0;border:0;border-bottom:1px solid #35323e;background:none;color:var(--n99-text);text-align:left;min-height:64px; }
+.nxp-setting { display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:19px 0;border:0;border-bottom:1px solid var(--nxt-border-subtle);background:none;color:var(--n99-text);text-align:left;min-height:64px; }
 .nxp-setting > span:first-child { min-width:0;flex:1; }
 .nxp-setting b { display:block;font-size:1rem;font-weight:550;line-height:1.4; }
 .nxp-setting small { display:block;font-size:.8125rem;line-height:1.45;margin-top:5px;color:var(--n99-muted); }
-.nxp-setting-value { display:flex;align-items:center;justify-content:flex-end;gap:12px;max-width:44%;font-size:.875rem;color:#aaa1b9;text-align:right;overflow-wrap:anywhere; }
-.nxp-setting-value i { font-style:normal;font-size:1.25rem;color:#80758f; }
+.nxp-setting-value { display:flex;align-items:center;justify-content:flex-end;gap:12px;max-width:44%;font-size:.875rem;color:var(--nxt-text-secondary);text-align:right;overflow-wrap:anywhere; }
+.nxp-setting-value i { font-style:normal;font-size:1.25rem;color:var(--nxt-text-muted); }
 .nxp-identity { display:flex;align-items:center;gap:14px;padding:4px 0 18px; }
 .nxp-identity img { width:48px;height:48px;border-radius:13px; }
 .nxp-identity b { display:block;font-size:1.125rem;font-weight:600; }
@@ -2395,19 +2557,19 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   color: var(--nxt-text-muted);
   line-height: 1.2;
 }
-.nxp-settings-group { background:#1f1e27;border:1px solid #35313e;border-radius:18px;padding:0 17px; }
+.nxp-settings-group { background:var(--nxt-surface-alt);border:1px solid var(--nxt-border-subtle);border-radius:var(--nxt-radius-lg);padding:0 17px; }
 .nxp-settings-group .nxp-setting:last-child { border-bottom:0; }
-.nxp .nxp-footer { margin:28px 0 4px;text-align:center;color:#93879f;font-size:.8125rem; }
-.nxp-tag { padding:6px 8px;border:1px solid #554668;border-radius:8px;font-size:.75rem;color:#c1acda; }
-.nxp-connection { padding:15px;margin:15px 0;background:#24212e;border:1px solid #4b3e61;border-radius:12px; }
+.nxp .nxp-footer { margin:28px 0 4px;text-align:center;color:var(--nxt-text-muted);font-size:.8125rem; }
+.nxp-tag { padding:6px 8px;border:1px solid var(--nxt-border-strong);border-radius:var(--nxt-radius-sm);font-size:.75rem;color:var(--nxt-text-secondary); }
+.nxp-connection { padding:15px;margin:15px 0;background:var(--nxt-surface-interactive);border:1px solid var(--nxt-purple-edge);border-radius:var(--nxt-radius-md); }
 .nxp-connection b { font-size:.9375rem;font-weight:550; }
 .nxp-connection ul { padding-left:20px;margin:12px 0; }
-.nxp-connection li { font-size:.875rem;color:#c5bbd3;margin:7px 0;line-height:1.45; }
+.nxp-connection li { font-size:.875rem;color:var(--nxt-text-secondary);margin:7px 0;line-height:1.45; }
 .nxp-connection small { display:block;font-size:.8125rem; }
-.nxp-connection.watch { border-color:#776047; }
-.nxp-advanced { margin-top:18px;padding-top:10px;border-top:1px solid #3a3344; }
+.nxp-connection.watch { border-color:var(--nxt-warning-edge); }
+.nxp-advanced { margin-top:18px;padding-top:10px;border-top:1px solid var(--nxt-border-subtle); }
 .nxp-advanced > summary { font-size:1rem; }
-.nxp-advanced .card { background:#24222d!important;box-shadow:none!important;padding:16px!important;margin:14px 0!important; }
+.nxp-advanced .card { background:var(--nxt-surface-interactive)!important;box-shadow:none!important;padding:16px!important;margin:14px 0!important; }
 .nxp-advanced .sub,.nxp-advanced .label,.nxp-settings-page .sub,.nxp-settings-page .apx96-soft { font-size:.875rem!important;line-height:1.5!important; }
 .nxp-advanced .title,.nxp-settings-page .title { font-size:1.125rem!important;line-height:1.35!important; }
 .nxp-advanced .btn,.nxp-settings-page .btn { font-size:.9375rem!important;min-height:48px!important;letter-spacing:0!important; }
@@ -2441,14 +2603,20 @@ html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[dat
   color:var(--nxt-text-tertiary);font-size:.8125rem;font-weight:var(--nxt-weight-meta);
   transition:color var(--nxt-motion),background-color var(--nxt-motion);
 }
-.nxp-history-filters button.active { background:var(--nxt-purple-tint);color:var(--nxt-text); }
+/* Same role as the Progress range filter, so the same paint: selection is
+   carried by colour and weight, not by a filled pill. A filter that looks like
+   navigation reads as navigation. */
+.nxp-history-filters button.active { background:none;color:var(--nxt-purple-primary);font-weight:var(--nxt-weight-title); }
 
 /* Calendar: the protagonist. Raised charcoal, hairline edge, no gradient. */
 .nxp-history-calendar {
   margin:0 0 var(--nxt-space-4);padding:var(--nxt-space-3) 10px 10px;
   border:1px solid var(--nxt-border);border-radius:var(--nxt-radius-card);
   background:var(--nxt-raised);
-  box-shadow:0 14px 34px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.02);
+  /* The 34px drop shadow here was the heaviest elevation left in the app and the
+     only surface still lifting off the page. The calendar is a grid on a page,
+     not a floating panel; a hairline is enough to bound it. */
+  box-shadow:none;
 }
 .nxp-cal-head { display:flex;align-items:center;justify-content:space-between;gap:var(--nxt-space-2);margin:0 0 var(--nxt-space-2);padding-left:4px; }
 /* Size and weight stay with the shared .nxp h2 rule; only the box behaviour is History's. */
@@ -2474,18 +2642,26 @@ html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[dat
 .nxp-cal-day.has-lift { background:rgba(180,154,255,.07); }
 .nxp-cal-day.is-today b { color:var(--nxt-purple-bright);font-weight:var(--nxt-weight-metric); }
 .nxp-cal-day.is-selected { background:var(--nxt-purple-tint);box-shadow:inset 0 0 0 1px var(--nxt-purple);color:var(--nxt-text); }
-/* Lift loudest, cardio second, weigh-in quietest. Size/position stay the hierarchy; neon hue only separates kind. */
-.nxp-cal-marks { display:flex;align-items:center;justify-content:center;gap:3px;height:5px; }
-.nxp-cal-marks i { display:block;border-radius:50%; }
-.nxp-cal-marks i.lift { width:5px;height:5px;background:var(--nxt-purple);box-shadow:0 0 5px var(--nxt-purple); }
-.nxp-cal-marks i.cond { width:4px;height:4px;background:#ffbf2a;box-shadow:0 0 4px #ffbf2a; }
-.nxp-cal-marks i.body { width:3px;height:3px;background:#7ae1ff;box-shadow:0 0 3px #7ae1ff; }
+/* Three record kinds, three shapes: a filled disc for lifting, an open ring for
+   cardio, a bar for a weigh-in. Shape is the primary distinction, so a day reads
+   correctly with no colour vision at all and in gym lighting that washes hue out;
+   colour only reinforces it. The old 5/4/3px size ladder differentiated by one
+   pixel, which no one can resolve at this scale — every mark now shares a 6px
+   footprint and takes its weight from fill instead, which also keeps the row
+   optically even. The neon box-shadow glow is gone: at three marks per cell it
+   bled the dots into one smear. */
+.nxp-cal-marks { display:flex;align-items:center;justify-content:center;gap:3px;height:6px; }
+.nxp-cal-marks i,
+.nxp-cal-legend span::before { display:block;box-sizing:border-box;width:6px;height:6px;flex:none; }
+.nxp-cal-marks i.lift,
+.nxp-cal-legend span.lift::before { border-radius:var(--nxt-radius-pill);background:var(--nxt-activity-lift); }
+.nxp-cal-marks i.cond,
+.nxp-cal-legend span.cond::before { border-radius:var(--nxt-radius-pill);border:1.5px solid var(--nxt-activity-cardio); }
+.nxp-cal-marks i.body,
+.nxp-cal-legend span.body::before { height:2.5px;border-radius:1.5px;background:var(--nxt-activity-weight); }
 .nxp-cal-legend { display:flex;flex-wrap:wrap;gap:2px 12px;margin:10px 0 0;padding-left:4px;font-size:.75rem;color:var(--nxt-text-tertiary); }
 .nxp-cal-legend span { display:inline-flex;align-items:center;gap:5px; }
-.nxp-cal-legend span::before { content:"";border-radius:50%; }
-.nxp-cal-legend span.lift::before { width:5px;height:5px;background:var(--nxt-purple);box-shadow:0 0 5px var(--nxt-purple); }
-.nxp-cal-legend span.cond::before { width:4px;height:4px;background:#ffbf2a;box-shadow:0 0 4px #ffbf2a; }
-.nxp-cal-legend span.body::before { width:3px;height:3px;background:#7ae1ff;box-shadow:0 0 3px #7ae1ff; }
+.nxp-cal-legend span::before { content:""; }
 
 /* Selected day: the transition from month to record. */
 .nxp-history-selected { min-width:0; }
@@ -2511,7 +2687,7 @@ html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[dat
 .nxp-history-set > span:first-child { flex:1;min-width:0; }
 .nxp-history-set b { font-size:.9375rem;font-weight:550;overflow-wrap:anywhere; }
 .nxp-history-set small { display:block;margin-top:2px;font-size:.8125rem;overflow-wrap:anywhere; }
-.nxp-history-set > span:last-child { flex-shrink:0;font-size:.8125rem;color:#c3acdc; }
+.nxp-history-set > span:last-child { flex-shrink:0;font-size:.8125rem;color:var(--nxt-text-secondary); }
 .nxp-history-day .n99-stats { margin:0 0 var(--nxt-space-2); }
 .nxp-history-day .n99-small { margin:0 0 var(--nxt-space-2); }
 .nxp-history-day .n99-button { margin-top:var(--nxt-space-3); }
@@ -2547,7 +2723,7 @@ html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[dat
 .nxp-more-signout {
   display:flex;align-items:center;justify-content:center;
   width:100%;min-height:var(--nxt-control-compact);margin:var(--nxt-space-4) 0 0;padding:0;
-  border:0;background:transparent;color:#d7a4ab;font-size:.9375rem;font-weight:var(--nxt-weight-meta);
+  border:0;background:transparent;color:var(--nxt-danger);font-size:.9375rem;font-weight:var(--nxt-weight-meta);
 }
 .nxp-more .nxp-footer { margin:20px 2px 4px;font-size:.75rem;color:var(--nxt-text-tertiary); }
 @media(max-width:360px) {
@@ -2657,7 +2833,7 @@ html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[dat
   margin:0;
   border-radius:var(--nxt-radius-pill);
   background:var(--nxt-purple);
-  color:#16141c;
+  color:var(--nxt-on-purple);
   font-size:1.0625rem!important;
   font-weight:var(--nxt-weight-cta);
   box-shadow:0 8px 20px rgba(0,0,0,.22);
@@ -2755,3 +2931,426 @@ body.apex-keyboard-open .tabs {
 }
 .nxp-train-lift .nxp-set-history,
 .nxp-train-lift .nxp-queue { margin-top: var(--nxt-space-3); }
+
+/* =========================================================================
+   Train interaction motion. Deliberately the LAST rules in this file: the V107
+   Train section above declares its own transitions on the same selectors at the
+   same specificity, so these have to come after it to win. Nothing here
+   animates a value, a width or a layout property — long-press repeat must never
+   wait on a transition.
+   ========================================================================= */
+.nxp-train-lift .nxp-step {
+  transition: background-color var(--nxt-duration-press) var(--nxt-ease-out),
+              border-color var(--nxt-duration-press) var(--nxt-ease-out),
+              transform var(--nxt-duration-press) var(--nxt-ease-out);
+}
+.nxp-train-lift .nxp-step:active,
+.nxp-train-lift .nxp-step.is-held { transform: scale(.94); }
+.nxp-train-lift .nxp-stepper input[type="number"] {
+  transition: border-color var(--nxt-duration-fast) var(--nxt-ease-out),
+              background-color var(--nxt-duration-fast) var(--nxt-ease-out);
+}
+
+/* Log Set: a press, then a calm hand-off into the rest state. */
+.nxp-train-lift .nxp-train-cta { transition: background-color var(--nxt-duration-fast) var(--nxt-ease-out), transform var(--nxt-duration-press) var(--nxt-ease-out); }
+.nxp-train-lift .nxp-train-cta:active { transform: scale(.985); }
+.nxp-train-lift .nxp-rest { transition: border-color var(--nxt-duration-normal) var(--nxt-ease-out), background-color var(--nxt-duration-normal) var(--nxt-ease-out); }
+
+/* Rest rail drains at a constant rate, so it takes linear — an eased countdown
+   misrepresents how much time is actually left. */
+.nxp-train-lift .nxp-rest .nxp-rest-rail > span { transition: width 1s var(--nxt-ease-linear); }
+.nxp-train-lift .nxp-rest b { transition: color var(--nxt-duration-normal) var(--nxt-ease-out); }
+
+/* Prev/Next: the exercise block settles in from the direction of travel. The
+   navigation itself is never delayed — this paints after the DOM has changed. */
+.nxp-train-lift .nxp-ex-head { animation: nxt-ex-in var(--nxt-duration-normal) var(--nxt-ease-out) both; }
+@keyframes nxt-ex-in {
+  from { opacity: 0; transform: translateX(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Queue reorder: the moved row and its neighbours settle rather than snap. */
+.n99-modal .nxp-queue-row { transition: background-color var(--nxt-duration-fast) var(--nxt-ease-out), transform var(--nxt-duration-normal) var(--nxt-ease-out); }
+.n99-modal .nxp-queue-row:active { transform: scale(.99); }
+
+/* =========================================================================
+   SEGMENTED CONTROLS AND CHIPS — one contract, role-based variants.
+
+   There are three segmented families in the app and it would be easy to read
+   that as duplication to be flattened. It is not: they do three different jobs.
+   .nxp-progress-tabs navigates between views, .nxp-seg picks an option inside a
+   form, .n99-segments filters a range. Making all three look identical would
+   remove information, not add consistency — a filter that looks exactly like
+   navigation is a worse control, not a more systematic one.
+
+   So the CONTRACT is unified here — geometry, touch floor, focus ring, selected
+   -state mechanism and motion are now identical across all three — while the
+   paint stays keyed to role. Same for chips. This is the part that was actually
+   inconsistent; the visual difference was the part that was already correct.
+   ========================================================================= */
+.nxp .nxp-seg button,
+.nxp .n99-segments button,
+.nxp .nxp-progress-tabs button,
+.nxp .nxp-history-filters button {
+  min-height: var(--nxt-touch-min);
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--nxt-duration-fast) var(--nxt-ease-out),
+              color var(--nxt-duration-fast) var(--nxt-ease-out),
+              box-shadow var(--nxt-duration-fast) var(--nxt-ease-out),
+              transform var(--nxt-duration-press) var(--nxt-ease-out);
+}
+.nxp .nxp-seg button:active,
+.nxp .n99-segments button:active,
+.nxp .nxp-progress-tabs button:active,
+.nxp .nxp-history-filters button:active { transform: scale(.97); }
+.nxp .nxp-seg button:focus-visible,
+.nxp .n99-segments button:focus-visible,
+.nxp .nxp-progress-tabs button:focus-visible,
+.nxp .nxp-history-filters button:focus-visible {
+  outline: 2px solid var(--nxt-purple-primary);
+  outline-offset: 2px;
+}
+
+/* One selected-state contract. The app sets a class AND aria-pressed together
+   at every live call site, but only the class was ever styled — so the ARIA was
+   carrying meaning nothing verified. Keying the paint off BOTH means the two can
+   no longer drift apart silently: if a future call site sets one and forgets the
+   other, the control visibly stops matching its own accessible state. */
+.nxp .nxp-seg button.is-on,
+.nxp .nxp-seg button[aria-pressed="true"] { color: var(--nxt-purple-primary); }
+.nxp .n99-segments button.active,
+.nxp .n99-segments button[aria-pressed="true"] { color: var(--nxt-purple-primary); }
+
+/* Chips: one geometry and one interaction, whichever family emits them. */
+.nxp .n99-chip,
+.nxp .nxp-ex-chip,
+.nxp .apx96-chip {
+  min-height: var(--nxt-control-compact);
+  border-radius: var(--nxt-radius-pill);
+  font-family: inherit;
+  touch-action: manipulation;
+  transition: background-color var(--nxt-duration-fast) var(--nxt-ease-out),
+              border-color var(--nxt-duration-fast) var(--nxt-ease-out),
+              transform var(--nxt-duration-press) var(--nxt-ease-out);
+}
+.nxp button.n99-chip:active,
+.nxp button.nxp-ex-chip:active,
+.nxp button.apx96-chip:active { transform: scale(.96); }
+
+/* History's filter row kept a seated track while the Progress range filter had
+   none, so the same control read as two different weights on two screens. The
+   track goes; selection is already carried by colour and weight. */
+.nxp .nxp-history-filters { background: none; border-color: transparent; }
+
+/* =========================================================================
+   TREND DIAGNOSIS — a coach's read, not a settings table.
+
+   Before: every value sat in its own grey capsule, a rule ran between every
+   row, adherence used an olive #342d1e that read as mud on charcoal, the
+   actionable sentence appeared twice, and "Diagnosis confidence: low" trailed
+   off the bottom looking like debug output. The labels were also visually
+   heavier than the values they described, so the eye landed on the wrong half.
+
+   After: one region, no inner cards. Values lead on weight and tabular figures;
+   labels recede. Only genuine caution takes amber, and it takes the token amber
+   at a low tint rather than a filled brown block. Unavailable readings are made
+   quieter than real ones instead of being dressed as disabled inputs.
+   ========================================================================= */
+.nxp .n99-diagnosis { padding-top: var(--nxt-space-5); }
+.nxp .n99-diagnosis h2 {
+  margin: 4px 0 0;
+  font-size: 1.375rem;
+  line-height: 1.25;
+  letter-spacing: var(--nxt-tracking-tight);
+  text-wrap: balance;
+}
+.nxp .n99-diagnosis .n99-diag-sub {
+  margin: 7px 0 0;
+  font-size: var(--nxt-type-body-sm);
+  line-height: 1.5;
+  color: var(--nxt-text-secondary);
+}
+
+/* Rows: whitespace separates them, not a rule per row. A single hairline opens
+   the block so it reads as one list rather than four stacked strips. */
+.nxp .n99-diagnosis .n99-diag-rows {
+  margin-top: var(--nxt-space-4);
+  padding-top: var(--nxt-space-3);
+  border-top: 1px solid var(--nxt-border-subtle);
+}
+.nxp .n99-diagnosis .n99-diag-row {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--nxt-space-4);
+  padding: 7px 0;
+}
+.nxp .n99-diagnosis .n99-diag-label {
+  font-size: var(--nxt-type-body-sm);
+  color: var(--nxt-text-muted);
+}
+.nxp .n99-diagnosis .n99-diag-value {
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.nxp .n99-diagnosis .n99-diag-value b {
+  display: block;
+  font-size: var(--nxt-type-body);
+  font-weight: var(--nxt-weight-title);
+  color: var(--nxt-text-primary);
+  font-variant-numeric: tabular-nums;
+  transition: color var(--nxt-duration-normal) var(--nxt-ease-out);
+}
+.nxp .n99-diagnosis .n99-diag-value small {
+  display: block;
+  margin-top: 1px;
+  font-size: var(--nxt-type-label);
+  color: var(--nxt-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Semantic tone lives on the figure itself — no filled block behind it.
+
+   Colour is spent only where it changes what you do. "Good" is the expected
+   state, so it reads as ordinary primary text: colouring it green put two of
+   three values in success green during a normal cut, which drowned out the one
+   value actually asking for attention. Amber is therefore the only colour most
+   readings will ever show, and it means exactly one thing — look at this.
+   The value text already says "No plateau detected" or "-0.44 kg / week", so
+   nothing is lost by letting the expected case be quiet. */
+.nxp .n99-diagnosis .n99-diag-value.good b { color: var(--nxt-text-primary); }
+.nxp .n99-diagnosis .n99-diag-value.watch b { color: var(--nxt-warning); }
+.nxp .n99-diagnosis .n99-diag-value.neutral b { color: var(--nxt-text-secondary); }
+
+/* An unavailable reading should look unavailable: quieter than everything that
+   was actually measured, and never dressed up as a disabled control. */
+.nxp .n99-diagnosis .n99-diag-row.is-absent .n99-diag-value b {
+  color: var(--nxt-text-muted);
+  font-weight: var(--nxt-weight-meta);
+}
+.nxp .n99-diagnosis .n99-diag-row.is-absent .n99-diag-label { color: var(--nxt-text-disabled); }
+
+/* The remaining action, when it is not already said in the sub-copy. */
+.nxp .n99-diagnosis .n99-diag-actions { margin-top: var(--nxt-space-3); }
+.nxp .n99-diagnosis .n99-diag-action {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--nxt-purple-edge);
+  font-size: var(--nxt-type-body-sm);
+  line-height: 1.45;
+  color: var(--nxt-text-secondary);
+}
+.nxp .n99-diagnosis .n99-diag-action.adjust { border-left-color: var(--nxt-warning-edge); }
+
+/* Confidence belongs to the module, so it sits on the same hairline rhythm as
+   the rows rather than trailing off the bottom as loose small print. */
+.nxp .n99-diagnosis .n99-diag-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--nxt-space-3);
+  margin-top: var(--nxt-space-3);
+  padding-top: var(--nxt-space-3);
+  border-top: 1px solid var(--nxt-border-subtle);
+  font-size: var(--nxt-type-label);
+  color: var(--nxt-text-muted);
+}
+.nxp .n99-diagnosis .n99-diag-foot b {
+  font-weight: var(--nxt-weight-meta);
+  color: var(--nxt-text-secondary);
+  text-transform: capitalize;
+}
+@media (max-width: 359px) {
+  .nxp .n99-diagnosis .n99-diag-row { gap: var(--nxt-space-3); }
+  .nxp .n99-diagnosis h2 { font-size: 1.25rem; }
+}
+
+/* =========================================================================
+   TRAIN — muscle context.
+   Text names the muscles; the figure only shows where they are. It is
+   deliberately small and sits between the meta line and the Last/Target/Rest
+   strip, so the logging controls keep their position and their weight. No card,
+   no panel — it belongs to the exercise header, in the existing flat system.
+   ========================================================================= */
+.nxp-train-lift .nxp-ex-title {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  letter-spacing: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color var(--nxt-duration-fast) var(--nxt-ease-out);
+}
+.nxp-train-lift .nxp-ex-title:active { color: var(--nxt-purple-primary); }
+.nxp-train-lift .nxp-ex-title:focus-visible {
+  outline: 2px solid var(--nxt-purple-primary);
+  outline-offset: 3px;
+  border-radius: var(--nxt-radius-sm);
+}
+.nxp-train-lift .nxp-ex-muscles {
+  margin: 5px 0 0;
+  font-size: var(--nxt-type-body-sm);
+  line-height: 1.4;
+  color: var(--nxt-text-secondary);
+  overflow-wrap: anywhere;
+}
+/* Two columns: text left, anatomy right. The figure used to sit underneath and
+   pushed the controls down while leaving the right-hand side empty — now it
+   occupies that space and nothing can collide, because each has its own track.
+   The anatomy column is sized to the graphic, so a wide chest crop and a narrow
+   leg crop both sit flush without stretching. */
+.nxp-train-lift .nxp-ex-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--nxt-space-3);
+}
+.nxp-train-lift .nxp-ex-text { min-width: 0; }
+
+.nxp-train-lift .nxp-ex-anat {
+  display: block;
+  margin: 2px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  /* Capped so a wide crop never crowds the title out of its column. */
+  max-width: 108px;
+  /* The graphic is decorative, but the control around it is real, so it keeps a
+     usable target without being padded out into a button-looking box. */
+  min-height: var(--nxt-touch-min);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity var(--nxt-duration-fast) var(--nxt-ease-out);
+}
+.nxp-train-lift .nxp-ex-anat:active { opacity: .75; }
+.nxp-train-lift .nxp-ex-anat:focus-visible {
+  outline: 2px solid var(--nxt-purple-primary);
+  outline-offset: 4px;
+  border-radius: var(--nxt-radius-sm);
+}
+.nxp-train-lift .nxp-ex-anat .nxa { height: 84px; width: auto; max-width: 108px; display: block; }
+@media (max-width: 359px) {
+  .nxp-train-lift .nxp-ex-anat .nxa { height: 68px; max-width: 84px; }
+  .nxp-train-lift .nxp-ex-top { gap: var(--nxt-space-2); }
+}
+
+/* Changing exercise is a move through the queue, so the heading arrives from
+   the side you came from and the drawing simply crossfades — one idea, two
+   elements, nothing else on the screen moves. The classes are emitted by
+   training() only on a genuine change, so logging a set does not replay this.
+   Distance stays small: this is orientation, not spectacle. */
+@keyframes nxp-ex-enter-forward {
+  from { opacity: 0; transform: translate3d(9px, 0, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes nxp-ex-enter-back {
+  from { opacity: 0; transform: translate3d(-9px, 0, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes nxp-ex-anat-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.nxp-train-lift .nxp-ex-top.is-forward .nxp-ex-text {
+  animation: nxp-ex-enter-forward var(--nxt-motion-normal) var(--nxt-ease-out) both;
+}
+.nxp-train-lift .nxp-ex-top.is-back .nxp-ex-text {
+  animation: nxp-ex-enter-back var(--nxt-motion-normal) var(--nxt-ease-out) both;
+}
+.nxp-train-lift .nxp-ex-top.is-forward .nxp-ex-anat,
+.nxp-train-lift .nxp-ex-top.is-back .nxp-ex-anat {
+  animation: nxp-ex-anat-enter var(--nxt-motion-normal) var(--nxt-ease-out) both;
+}
+
+/* A newly added optional exercise settles into the list rather than appearing
+   fully formed. Height is not animated: the row expands instantly and only
+   opacity and a short lift are in motion, so nothing reflows mid-animation. */
+@keyframes nxp-addon-reveal {
+  from { opacity: 0; transform: translate3d(0, 6px, 0); }
+  to { opacity: 1; transform: none; }
+}
+.nxp-addon-row.is-new {
+  animation: nxp-addon-reveal var(--nxt-motion-normal) var(--nxt-ease-out) both;
+}
+
+/* Anatomy palette. Graphite body, violet for what is worked; the secondary
+   tone is the same hue at lower emphasis so the two never compete. Shape and
+   the text line carry the meaning, never colour alone. */
+/* Clip to the crop. overflow:visible let paths outside the viewBox paint over
+   the text above and leaked stray hands into the frame — a crop has to actually
+   crop. */
+.nxa { overflow: hidden; }
+.nxa-body { fill: var(--nxt-surface-alt); stroke: var(--nxt-background); stroke-width: 3; }
+.nxa-m { stroke: var(--nxt-background); stroke-width: 2.4; }
+.nxa-hi path { stroke: var(--nxt-background); stroke-width: 2.4; }
+.nxa-hi { transition: opacity var(--nxt-duration-normal) var(--nxt-ease-out); }
+
+/* Detail sheet: room for the whole body, front and back. */
+.nxp-detail-anat { display: flex; gap: var(--nxt-space-4); margin: 0 0 var(--nxt-space-4); }
+.nxp-detail-anat .nxa-pane { flex: 1 1 0; min-width: 0; text-align: center; }
+.nxp-detail-anat .nxa { height: 190px; width: 100%; }
+.nxp-detail-anat .nxa-cap {
+  display: block; margin-bottom: 4px;
+  font-size: var(--nxt-type-label); color: var(--nxt-text-muted);
+  letter-spacing: .06em; text-transform: uppercase;
+}
+
+/* Today's focus: a quiet line in the existing rail, not a second module. The
+   current exercise keeps visual priority; this only frames it. */
+.nxp-train-lift .nxp-session-focus {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--nxt-space-2);
+  margin: 6px 0 0;
+  font-size: var(--nxt-type-label);
+}
+.nxp-train-lift .nxp-session-focus > span {
+  color: var(--nxt-text-muted); letter-spacing: .06em; text-transform: uppercase;
+}
+.nxp-train-lift .nxp-session-focus > b {
+  font-weight: var(--nxt-weight-meta); color: var(--nxt-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+/* =========================================================================
+   OPTIONAL ADD-ONS on Rest / Zone 2.
+   Quiet by construction: the day's own content stays primary and this sits
+   under it as a plain section, not a card. No warning tone, no empty-queue
+   language, nothing that implies the day is unfinished without it.
+   ========================================================================= */
+.nxp-addon { margin-top: var(--nxt-space-6); padding-top: var(--nxt-space-4); border-top: 1px solid var(--nxt-border-subtle); }
+.nxp-addon > h2 { margin: 0 0 var(--nxt-space-2); }
+.nxp-addon-hint { margin: 0 0 var(--nxt-space-3); color: var(--nxt-text-muted); }
+.nxp-addon-row { display: flex; align-items: center; gap: var(--nxt-space-2); padding: 4px 0; }
+.nxp-addon-row.is-current .nxp-addon-name b { color: var(--nxt-purple-primary); }
+.nxp-addon-name {
+  flex: 1 1 auto; min-width: 0; display: block; padding: 8px 0;
+  min-height: var(--nxt-touch-min);
+  border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer;
+}
+.nxp-addon-name b { display: block; font-size: var(--nxt-type-body); font-weight: var(--nxt-weight-title); overflow-wrap: anywhere; }
+.nxp-addon-name small { display: block; margin-top: 2px; font-size: var(--nxt-type-label); color: var(--nxt-text-muted); overflow-wrap: anywhere; }
+.nxp-addon-drop {
+  flex: 0 0 auto; width: var(--nxt-touch-min); height: var(--nxt-touch-min);
+  border: 0; border-radius: var(--nxt-radius-pill); background: var(--nxt-surface-interactive);
+  color: var(--nxt-text-secondary); font-size: 1.125rem; line-height: 1; cursor: pointer;
+  transition: background-color var(--nxt-duration-fast) var(--nxt-ease-out), transform var(--nxt-duration-press) var(--nxt-ease-out);
+}
+.nxp-addon-drop:active { transform: scale(.94); }
+.nxp-addon-add {
+  display: inline-flex; align-items: center; min-height: var(--nxt-touch-min);
+  margin-top: var(--nxt-space-2); padding: 0; border: 0; background: none;
+  color: var(--nxt-purple-primary); font: inherit; font-weight: var(--nxt-weight-title); cursor: pointer;
+}
+.nxp-addon-search { width: 100%; margin: var(--nxt-space-3) 0; }
+.nxp-addon-list { max-height: 48vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.nxp-addon-option { width: 100%; text-align: left; min-height: var(--nxt-touch-min); }
+.nxp-addon-option small { display: block; font-size: var(--nxt-type-label); color: var(--nxt-text-muted); }

@@ -7,6 +7,7 @@ const CACHE_NAME = 'nxtfrm-v109-premium-cache';
 const VERSIONED = [
   'cut-support.js',
   'cut-support.css',
+  'train-anatomy.js',
   'premium-ui.js',
   'premium-ui.css',
   'wearables.js',

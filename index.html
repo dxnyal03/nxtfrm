@@ -163,20 +163,13 @@ input,select,textarea{outline:0}
   border-bottom:1px solid rgba(255,255,255,.06);
 }
 .list-item:last-child{border-bottom:0}
-.tabs{
-  position:fixed;
-  left:50%;
-  bottom:0;
-  transform:translateX(-50%);
-  z-index:50;
-  width:100%;
-  max-width:430px;
-  padding:9px 8px calc(10px + var(--nxt-safe-bottom, 0px));
-  background:rgba(11,13,18,.82);
-  backdrop-filter:blur(24px);
-  -webkit-backdrop-filter:blur(24px);
-  border-top:1px solid rgba(255,255,255,.06);
-}
+/* V110: the six legacy .tabs rules that used to live in this block were retired.
+   Every visual property they set (position, inset, width, max-width, padding,
+   radius, border, background, shadow, backdrop-filter, z-index) is declared with
+   !important by the token-driven bar in premium-ui.css, which loads afterwards and
+   won every one of them. Retirement was verified by comparing the full computed
+   style of .tabs / .tabs-inner / .tab before and after removal at 320px and 390px.
+   The bar is now owned in one place and reads --nxt-tabs-* for its geometry. */
 .tabs-inner{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 .tab{
   height:49px;
@@ -379,10 +372,6 @@ body {
   letter-spacing:.13em !important;
   margin-bottom:6px !important;
 }
-.tabs{
-  max-width:430px !important;
-  padding:8px 8px 9px !important;
-}
 .tabs-inner{
   grid-template-columns:repeat(5,minmax(0,1fr)) !important;
   gap:5px !important;
@@ -522,11 +511,6 @@ body{
 }
 .content{
   padding-bottom: calc(132px + var(--nxt-safe-bottom, 0px)) !important;
-}
-.tabs{
-  z-index: 90 !important;
-  background: linear-gradient(180deg, rgba(11,13,18,.35), rgba(11,13,18,.98) 22%) !important;
-  padding-top: 14px !important;
 }
 .card{
   overflow: hidden;
@@ -690,9 +674,6 @@ body{
 }
 .modal .btn:last-child{
   margin-bottom:4px !important;
-}
-.tabs{
-  z-index:80 !important;
 }
 @supports(height:100svh){
   .sheet{max-height:calc(100svh - 88px) !important;}
@@ -2226,10 +2207,6 @@ body{
   background:rgba(255,255,255,.055)!important;
   border-color:rgba(255,255,255,.085)!important;
 }
-.tabs{
-  background:rgba(8,10,16,.86)!important;
-  border-top-color:rgba(255,255,255,.075)!important;
-}
 .tab:not(.active){
   color:#77708A!important;
 }
@@ -2430,11 +2407,6 @@ body::before{
 }
 .input:focus,.select:focus,.textarea:focus,.focus-input:focus,.v88-note-box:focus{
   border-color:rgba(177,138,255,.46)!important;box-shadow:0 0 0 4px rgba(177,138,255,.08)!important;
-}
-.tabs{
-  left:50%;bottom:calc(8px + var(--nxt-safe-bottom, 0px));width:calc(100% - 20px);max-width:440px;
-  padding:7px;transform:translateX(-50%);border:1px solid rgba(255,255,255,.09);border-radius:25px;
-  background:rgba(14,14,15,.9);box-shadow:0 18px 54px rgba(0,0,0,.58);backdrop-filter:blur(26px) saturate(150%);-webkit-backdrop-filter:blur(26px) saturate(150%);
 }
 .tabs-inner{gap:4px}
 .tab{
@@ -2842,6 +2814,12 @@ let state={
   notifs:load("apm_notifications",{enabled:false,weighIn:true,zone2:true,backup:true,weighInTime:"08:00",backupDay:"SUN",sent:{}}),
   coachInsights:load("apm_coach_insights",{}),
   sessionPlans:load("apm_session_plans",{}),
+  /* Optional strength add-ons on non-strength days, keyed by sessionKey().
+     Deliberately a SEPARATE map from sessionPlans: Zone2's plan already holds
+     the scheduled "Zone 2 Cardio" pseudo-exercise, and merging the two would
+     mix a planned activity with optional extras. Nothing here is ever read by
+     resolveDayType(), so an add-on cannot reclassify the day. */
+  addOns:load("apm_addons",{}),
   exerciseNotes:load("apm_exercise_notes",{})
 };
 state.dayType=resolveDayType(state.date);
@@ -2861,7 +2839,7 @@ let cloudTimer=null;
 
 function persist(){
   save("apm_logs",state.logs);save("apm_cardio",state.cardio);save("apm_floorball",state.floorball);
-  save("apm_bws",state.bws);save("apm_evo_scans",state.scans);save("apm_rest",state.rest);save("apm_coach_insights",state.coachInsights);save("apm_session_plans",state.sessionPlans);save("apm_exercise_notes",state.exerciseNotes);save("apm_current_read",state.read);save("apm_current_gym",state.gym);save("apm_gyms",state.gyms);save("apm_settings",settings);save("apm_notifications",state.notifs)
+  save("apm_bws",state.bws);save("apm_evo_scans",state.scans);save("apm_rest",state.rest);save("apm_coach_insights",state.coachInsights);save("apm_session_plans",state.sessionPlans);save("apm_addons",state.addOns);save("apm_exercise_notes",state.exerciseNotes);save("apm_current_read",state.read);save("apm_current_gym",state.gym);save("apm_gyms",state.gyms);save("apm_settings",settings);save("apm_notifications",state.notifs)
 
   scheduleCloudSave();}
 function today(){
@@ -3566,6 +3544,11 @@ function v88AllExerciseNames(){
   const names=[];
   try{Object.values(TEMPLATES).flat().forEach(e=>{if(e&&e.name&&!names.includes(e.name))names.push(e.name)});}catch(e){}
   ["Incline Dumbbell Press","Smith Machine Bench Press","Machine Shoulder Press","Cable Lateral Raise","Tricep Pushdown","Tricep Dips","Lat Pulldown","Seated Cable Row","Chest Supported Row","Face Pull","EZ Bar Curl","Hammer Curl","Leg Press","Leg Curl","Leg Extension","Standing Calf Raise","Ab Crunch"].forEach(n=>{if(!names.includes(n))names.push(n)});
+  /* The shipped dictionary is additive here: nothing is removed or renamed, and
+     a name that no template defines still resolves through exerciseDefByName's
+     fallback. Without this the session builder offered a smaller list than the
+     optional add-on picker did. */
+  try{if(typeof NXTLIB!=="undefined")NXTLIB.names().forEach(n=>{if(!names.includes(n))names.push(n)});}catch(e){}
   return names.sort((a,b)=>a.localeCompare(b));
 }
 function v88NoteKey(ex,gym=state.gym){return `${gym||"Gym"}__${ex}`;}
@@ -7283,6 +7266,7 @@ document.addEventListener("focusout",function(e){
 <script src="wearables.store.js?v=109"></script>
 <script src="wearables.provider-garmin.js?v=109"></script>
 <script src="wearables.sync.js?v=109"></script>
+<script src="train-anatomy.js?v=109"></script>
 <script src="premium-ui.js?v=109"></script>
 <script src="seed.dev.js?v=109"></script>
 <script src="seed.scenarios.js?v=109"></script>

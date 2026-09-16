@@ -563,12 +563,61 @@ const NXT = (() => {
     const d=diagnose();
     const tone={dietary_drift:"watch",water_masking:"good",recovery_deficit:"watch",metabolic_adaptation:"watch"}[d.verdict]||"";
     const evidence=(d.evidence||[]).filter(e=>cfg().targetConfirmed||e.label!=='Forecast');
-    return `<section class="n99-card n99-review ${tone}">
+
+    /* --- Presentation only. Every string below comes out of diagnose() as-is;
+       nothing is recomputed, rephrased or re-thresholded. ---------------- */
+
+    /* The shipped headline is one long sentence joined by an em dash:
+       "Not enough context to name the cause — keep logging weigh-ins for 9 more
+       days." Splitting it at the dash gives a real headline and a real piece of
+       sub-copy without altering a word, which reads far better than one
+       run-on line and lets the sub-copy carry the actionable half. */
+    const dash=d.headline.indexOf(" — ");
+    const lead=dash===-1?d.headline:d.headline.slice(0,dash).replace(/[.\u2014\s]+$/,"");
+    const sub=dash===-1?"":d.headline.slice(dash+3).replace(/^\s*(.)/,(m,c)=>c.toUpperCase());
+
+    /* In the insufficient-context branch diagnose() puts the SAME sentence in
+       both headline and actions, which is why "Keep logging weigh-ins for 9
+       more days." rendered twice. Drop an action whose text is already carried
+       by the headline; the information is preserved, the repetition is not. */
+    const norm=t=>String(t||"").toLowerCase().replace(/[^a-z0-9]+/g,"");
+    const headNorm=norm(d.headline);
+    const actions=(d.actions||[]).filter(a=>a&&a.text&&headNorm.indexOf(norm(a.text))===-1);
+
+    /* Values arrive as " · "-joined clauses. The clause carrying a number is the
+       one worth scanning, so it leads and the rest becomes a quiet second line —
+       "weigh-ins · 9 more days" reads as "9 more days / weigh-ins". This is a
+       generic rule about which clause is most informative, not a per-label
+       special case, so a new verdict gets the same treatment for free. */
+    const splitValue=v=>{
+      const parts=String(v==null?"":v).split(" · ").map(x=>x.trim()).filter(Boolean);
+      if(parts.length<2)return {head:parts[0]||"—",rest:""};
+      /* A percentage is the summary figure wherever one exists, so it leads;
+         otherwise the first clause carrying a number does. Everything else
+         drops to the quiet second line. Adherence reads "83% weighted" over
+         "Logged: 24 of 28 days" rather than the other way round. */
+      const pctAt=parts.findIndex(x=>x.indexOf("%")!==-1);
+      const numAt=pctAt!==-1?pctAt:parts.findIndex(x=>/\d/.test(x));
+      if(numAt>0){const head=parts[numAt];const rest=parts.filter((_,i)=>i!==numAt);return {head,rest:rest.join(" · ")};}
+      return {head:parts[0],rest:parts.slice(1).join(" · ")};
+    };
+    const absent=v=>{const t=String(v||"").trim();return t===""||t==="—"||/^undetermined$/i.test(t);};
+
+    const rows=evidence.map(e=>{
+      const {head,rest}=splitValue(e.value);
+      const quiet=absent(head)?" is-absent":"";
+      return `<div class="n99-diag-row${quiet}"><span class="n99-diag-label">${esc(e.label)}</span>`
+        +`<span class="n99-diag-value ${esc(e.tone||"")}"><b>${esc(head)}</b>`
+        +`${rest?`<small>${esc(rest)}</small>`:""}</span></div>`;
+    }).join("");
+
+    return `<section class="n99-card n99-review n99-diagnosis ${tone}">
     <div class="n99-eyebrow">Trend</div>
-    <h2>${esc(d.headline)}</h2>
-    <ul>${evidence.map(e=>`<li class="n99-list-row"><span>${esc(e.label)}</span><span class="n99-status ${esc(e.tone)}">${esc(e.value)}</span></li>`).join('')}</ul>
-    <div class="n99-row">${(d.actions||[]).map(a=>`<span class="n99-small n99-status ${esc(a.kind)}">${esc(a.text)}</span>`).join('')}</div>
-    <small class="n99-small">Diagnosis confidence: ${esc(d.confidence)}</small>
+    <h2>${esc(lead)}</h2>
+    ${sub?`<p class="n99-diag-sub">${esc(sub)}</p>`:""}
+    <div class="n99-diag-rows">${rows}</div>
+    ${actions.length?`<div class="n99-diag-actions">${actions.map(a=>`<p class="n99-diag-action ${esc(a.kind)}">${esc(a.text)}</p>`).join("")}</div>`:""}
+    <div class="n99-diag-foot"><span>Confidence</span><b>${esc(d.confidence)}</b></div>
   </section>`;
   }
   function calorieCard() {
@@ -791,6 +840,15 @@ Object.assign(NXT, (()=>{
   function chartHTML() {
     const model=chartModel();N.ui.chart=model;
     const {visible,W,H,left,right,top,bottom}=model;
+    /* Presentation-only change detection. The latest plotted reading is
+       fingerprinted so a genuinely new weigh-in can enter softly, while an
+       ordinary repaint stays still. No stored value is read or written; this
+       compares what was last DRAWN, not what is saved. */
+    const latestKey=visible.length?visible.at(-1).date+':'+visible.at(-1).weight:'';
+    const grew=!!(N.ui.lastPlotted&&latestKey&&latestKey!==N.ui.lastPlotted);
+    N.ui.lastPlotted=latestKey;
+    const animClass=N.ui.chartAnim==='range'?' is-range-change':grew?' is-new-point':'';
+    N.ui.chartAnim=null;
     const ranges=[[14,'2W'],[30,'1M'],[90,'3M'],[0,'All']];
     const goalOn=!!N.cfg().targetConfirmed;
     const controls=`<div class="n99-chart-controls"><div class="n99-segments" role="group" aria-label="Chart date range">${ranges.map(([r,l])=>`<button type="button" aria-pressed="${N.ui.range===r}" class="${N.ui.range===r?'active':''}" onclick="NXT.setRange(${r})">${l}</button>`).join('')}</div>${goalOn?`<label class="n99-check"><input type="checkbox" ${N.ui.showGoal?'checked':''} onchange="NXT.setGoalVisible(this.checked)">Goal band</label>`:''}</div>`;
@@ -805,32 +863,33 @@ Object.assign(NXT, (()=>{
     const today=futureDays?`<line x1="${px(todayX)}" x2="${px(todayX)}" y1="${top}" y2="${baseline}" stroke="${CHART.grid}" stroke-opacity=".09" pointer-events="none"/>`:'';
     const forecastLine=forecast?`<line x1="${px(forecast.mid.x1)}" y1="${px(forecast.mid.y1)}" x2="${px(forecast.mid.x2)}" y2="${px(forecast.mid.y2)}" stroke="${CHART.ink}" stroke-width="${CHART.lineForecast}" stroke-linecap="round" stroke-dasharray="7 6" stroke-opacity=".8" pointer-events="none"/>${forecast.endpoint?`<circle cx="${px(forecast.endpoint.x)}" cy="${px(forecast.endpoint.y)}" r="4" fill="none" stroke="${CHART.ink}" stroke-width="2" pointer-events="none"/>`:''}`:'';
     const anchorDot=anchor?`<circle cx="${px(anchor.x)}" cy="${px(anchor.y)}" r="${CHART.pointActive}" fill="${CHART.ink}" stroke="${CHART.activeRing}" stroke-width="2" pointer-events="none"/>`:'';
-    /* Secondary by construction: thinner, dimmer, hollow, and drawn under the
-       primary dots. Uses CHART.inkSecondary, the existing supporting-series
-       token — no new colour enters the system. */
-    const postRuns=[];let postRun=[];
-    for(const pt of post) {
-      if(postRun.length&&N.dateMs(pt.date)-N.dateMs(postRun.at(-1).date)>7*86400000){postRuns.push(postRun);postRun=[];}
-      postRun.push(pt);
-    }
-    if(postRun.length)postRuns.push(postRun);
-    const postSeries=post.length?`${postRuns.filter(r=>r.length>1).map(r=>`<path d="${smoothPath(r)}" fill="none" stroke="${CHART.inkSecondary}" stroke-width="${CHART.lineForecast}" stroke-opacity=".55" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>`).join('')}${post.map(pt=>`<circle cx="${px(pt.x)}" cy="${px(pt.y)}" r="${CHART.point}" fill="${CHART.bg||'none'}" stroke="${CHART.inkSecondary}" stroke-width="1.6" pointer-events="none"/>`).join('')}`:'';
+    /* Contextual observations, not a series. Deliberately no connecting line:
+       a slope drawn through post-workout readings would invite exactly the
+       inference the maths refuses to make, since these never reach trend(),
+       forecastGoal() or detectPlateau(). Hollow SQUARES separate them from the
+       morning circles by shape, so the two stay distinguishable in greyscale
+       and for colour-blind readers rather than relying on hue. Drawn before the
+       morning dots so the canonical series always sits on top. */
+    const postEdge=CHART.point+.7;
+    const postSeries=post.map(pt=>`<rect x="${px(pt.x-postEdge)}" y="${px(pt.y-postEdge)}" width="${px(postEdge*2)}" height="${px(postEdge*2)}" fill="none" stroke="${CHART.inkSecondary}" stroke-width="1.5" pointer-events="none"/>`).join('');
     const plateauLabel=anchor&&plateau?.plateau?`<text x="${px(Math.min(W-right-52,Math.max(left+52,anchor.x)))}" y="${px(Math.max(top+13,anchor.y-16))}" text-anchor="middle" fill="${CHART.label}" font-size="${CHART.axisSize}" pointer-events="none">Plateau: ${plateau.plateauDays} days</text>`:'';
     return `<section class="n99-card n99-chart"><div class="n99-row"><div><div class="n99-eyebrow">The bigger picture</div><h2>Weight trend</h2></div><span class="n99-unit">kg</span></div>${controls}
       <div class="n99-chart-selected" aria-live="polite"><div><span id="n99-chart-date">${N.shortDate(p.date)}</span><strong id="n99-chart-weight">${p.weight.toFixed(1)}<small> kg</small></strong><small id="n99-chart-timing">${esc(pointTiming(p))}</small></div><div><span>7-day average</span><b id="n99-chart-average">${p.avg===null?'Building data':p.avg.toFixed(2)+' kg'}</b><small id="n99-chart-coverage">${p.coverage} readings in this window</small></div><div class="n99-chart-post" id="n99-chart-post" ${postByDate.has(p.date)?'':'hidden'}><span>Post-workout</span><b id="n99-chart-post-weight">${postByDate.has(p.date)?postByDate.get(p.date).weight.toFixed(1)+' kg':''}</b><small id="n99-chart-post-delta">${esc(postDelta(p,postByDate.get(p.date)))}</small></div></div>
-      <svg id="n99-chart-svg" class="n99-chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="n99-chart-title n99-chart-desc" onpointerdown="NXT.scrub(event)" onpointermove="if(event.buttons)NXT.scrub(event)"><title id="n99-chart-title">Bodyweight and seven-day rolling average${forecast?' with trend forecast':''}</title><desc id="n99-chart-desc">${points.length} weigh-ins. Silver dots are recorded weights. The purple line is a calendar-day average, shown only with at least three readings. The shaded band around it is the spread of readings about that average.${forecast?` A dashed line carries the recent trend on towards your goal, inside a cone whose lower and upper walls reach it at ${forecast.lowWeeks} and ${forecast.highWeeks} weeks.${goalRef===null?'':' The horizontal dashed line marks your goal weight.'}`:''} Use the slider below to inspect exact values.</desc>
+      <svg id="n99-chart-svg" class="n99-chart-svg${animClass}" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="n99-chart-title n99-chart-desc" onpointerdown="NXT.scrub(event)" onpointermove="if(event.buttons)NXT.scrub(event)"><title id="n99-chart-title">Bodyweight and seven-day rolling average${forecast?' with trend forecast':''}</title><desc id="n99-chart-desc">${points.length} weigh-ins. Silver dots are recorded weights. The purple line is a calendar-day average, shown only with at least three readings. The shaded band around it is the spread of readings about that average.${forecast?` A dashed line carries the recent trend on towards your goal, inside a cone whose lower and upper walls reach it at ${forecast.lowWeeks} and ${forecast.highWeeks} weeks.${goalRef===null?'':' The horizontal dashed line marks your goal weight.'}`:''} Use the slider below to inspect exact values.</desc>
       <defs><linearGradient id="n99-chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${CHART.ink}" stop-opacity="${CHART.areaOpacity}"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity="0"/></linearGradient><linearGradient id="n99-chart-cone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".14"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity=".04"/></linearGradient></defs>
-      ${band}${ticks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}"/><text x="${left-10}" y="${t.y+5}" text-anchor="end" fill="${CHART.axisText}" font-size="${CHART.axisSize}">${Number(t.value.toFixed(1))}</text>`).join('')}
+      ${band}<line x1="${left}" x2="${left}" y1="${top}" y2="${baseline}" stroke="${CHART.axisText}" stroke-opacity=".28" pointer-events="none"/>
+      ${ticks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}"/><line x1="${left-5}" x2="${left}" y1="${t.y}" y2="${t.y}" stroke="${CHART.axisText}" stroke-opacity=".5" pointer-events="none"/><text x="${left-10}" y="${t.y+5}" text-anchor="end" fill="${CHART.axisText}" font-size="${CHART.axisSize}">${Number(t.value.toFixed(1))}</text>`).join('')}
       ${goalMark}${today}${cone}${bandFill}
       ${segments.map(seg=>`${seg.length>1?`<path d="${smoothPath(seg)} L ${seg.at(-1).x} ${baseline} L ${seg[0].x} ${baseline} Z" fill="url(#n99-chart-fill)"/>`:''}<path d="${smoothPath(seg)}" fill="none" stroke="${CHART.ink}" stroke-width="${CHART.line}" stroke-linecap="round" stroke-linejoin="round"/>${seg.length===1?`<circle cx="${seg[0].x}" cy="${seg[0].y}" r="${CHART.point}" fill="${CHART.ink}"/>`:''}`).join('')}
       ${forecastLine}
       ${postSeries}
-      ${points.map(pt=>`<circle cx="${pt.x}" cy="${pt.y}" r="${CHART.point}" fill="${CHART.raw}" fill-opacity=".85"/>`).join('')}
+      ${points.map(pt=>`<circle cx="${pt.x}" cy="${pt.y}" r="${CHART.point}" fill="${CHART.ink}" fill-opacity=".58"/>`).join('')}
       <line id="n99-chart-cursor" x1="${p.x}" x2="${p.x}" y1="${top}" y2="${baseline}" stroke="${CHART.cursor}" stroke-opacity=".38" stroke-dasharray="3 4"/><circle id="n99-chart-active" cx="${p.x}" cy="${p.y}" r="${CHART.pointActive}" fill="${CHART.active}" stroke="${CHART.activeRing}" stroke-width="2"/>
       ${anchorDot}${plateauLabel}
       <text x="${left}" y="${H-12}" fill="${CHART.axisText}" font-size="${CHART.axisSize}">${N.shortDate(model.start)}</text><text x="${px(Math.min(W-right,todayX))}" y="${H-12}" text-anchor="${futureDays?'middle':'end'}" fill="${CHART.axisText}" font-size="${CHART.axisSize}">${N.shortDate(state.date)}</text></svg>
       ${points.length>1?`<input class="n99-scrubber" id="n99-chart-slider" type="range" min="0" max="${points.length-1}" value="${idx}" aria-label="Inspect weigh-in by date" aria-valuetext="${N.shortDate(p.date)}, ${p.weight} kilograms" oninput="NXT.selectPoint(Number(this.value))">`:''}
-      <div class="n99-legend"><span><i class="raw"></i>Morning</span>${post.length?'<span><i class="post"></i>Post-workout</span>':''}<span><i></i>7-day trend</span>${forecast?'<span><i class="dash"></i>Forecast</span>':''}<span>Drag to inspect</span></div>
+      <div class="n99-legend"><span><i class="raw"></i>Morning</span>${post.length?'<span><i class="post"></i>Post-workout</span>':''}<span><i></i>7-day average</span>${forecast?'<span><i class="dash"></i>Projection</span>':''}${goalMark?'<span><i class="target"></i>Target</span>':''}</div>
+      ${points.length>1?'<p class="n99-chart-hint">Drag the chart or the slider to inspect a day.</p>':''}
       ${((read)=>read?`<p class="n99-small">${read}</p>`:'')(trendReadText(goalOn?forecastRead:{ok:false,reason:''},plateau))}
       ${N.ui.showGoal&&N.cfg().targetConfirmed?`<p class="n99-small">Your chosen range: ${goalLow()}–${goalHigh()} kg. A weight range alone does not measure leanness.</p>`:''}
     </section>${N.diagnosisCard()}`;
@@ -856,7 +915,11 @@ Object.assign(NXT, (()=>{
     const bounds=svg.getBoundingClientRect(),x=(event.clientX-bounds.left)/bounds.width*m.W;
     const index=m.points.reduce((best,p,i)=>Math.abs(p.x-x)<Math.abs(m.points[best].x-x)?i:best,0);N.selectPoint(index);
   }
-  function setRange(range) {N.ui.range=range;N.ui.selected=null;N.repaint();}
+  /* A repaint happens for many reasons — logging a set, saving a weigh-in,
+     switching tabs. Only a deliberate range change should animate, so it is
+     flagged here and consumed once by chartHTML(). Without this the chart would
+     replay its reveal every time anything on the app changed. */
+  function setRange(range) {N.ui.range=range;N.ui.selected=null;N.ui.chartAnim='range';N.repaint();}
   function setGoalVisible(on) {N.ui.showGoal=on;N.repaint();}
   function setView(view) {N.ui.view=view;N.repaint();}
   function strengthHTML() {
@@ -1254,8 +1317,42 @@ saveEditedSet=function(id){
   if(!row||weight===null||weight<0||weight>1000||reps===null||reps<1||reps>100||!Number.isInteger(reps)||!Number.isFinite(NXT.dateMs(date))||date>state.date||number===null||number<1||!Number.isInteger(number))return toast('Check the weight, reps, set number and date.');
   Object.assign(row,{exercise:val('editSetExercise').trim()||row.exercise,weight,reps,date,setNum:number,notes:val('editSetNotes'),volume:Math.round(weight*reps)});NXT.commit('Set updated');
 };
+/* One sheet language, applied at a single boundary.
+   Two families of sheet exist: NXT.modal()'s `.n99-modal`, which always had a
+   dialog role, a focus trap, Escape and focus restoration — and roughly a dozen
+   legacy call sites that build `<div class="modal"><div class="sheet">` by
+   innerHTML and had none of it. Rather than edit every one of those call sites
+   (and miss the next one), the behaviour is attached here, once, to whatever
+   lands in #modalRoot. Escape, the Tab trap and focus restoration below now
+   query `.modal`, which both families carry. */
+(function(){
+  const root=document.getElementById('modalRoot');
+  if(!root||typeof MutationObserver!=='function')return;
+  let restoreTo=null;
+  new MutationObserver(function(){
+    const modal=root.querySelector('.modal');
+    if(!modal){ const back=restoreTo; restoreTo=null; if(back&&document.contains(back))back.focus?.(); return; }
+    const sheet=modal.querySelector('.sheet');
+    if(!sheet||sheet.dataset.nxtDialog==='1')return;
+    sheet.dataset.nxtDialog='1';
+    if(!sheet.getAttribute('role'))sheet.setAttribute('role','dialog');
+    if(!sheet.getAttribute('aria-modal'))sheet.setAttribute('aria-modal','true');
+    // Remember where focus came from so closing can hand it back. Prefer the
+    // element that actually had focus when the sheet opened; NXT.ui.lastFocus is
+    // only set by NXT.modal(), so for a legacy sheet it is often stale.
+    if(!restoreTo){
+      const live=document.activeElement;
+      restoreTo=(live&&live!==document.body&&!root.contains(live))?live:(NXT.ui.lastFocus||null);
+    }
+    // Move focus into the sheet if the opener did not already do it.
+    if(!sheet.contains(document.activeElement)){
+      const target=sheet.querySelector('.n99-icon,button,input,select,textarea,a[href]');
+      target?.focus?.();
+    }
+  }).observe(root,{childList:true,subtree:false});
+})();
 document.addEventListener('keydown',function(event){
-  const modal=document.querySelector('.n99-modal');if(!modal)return;
+  const modal=document.querySelector('.modal');if(!modal)return;
   if(event.key==='Escape'){event.preventDefault();closeModal();return;}
   if(event.key!=='Tab')return;
   const focusable=[...modal.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea,a[href]')],first=focusable[0],last=focusable.at(-1);

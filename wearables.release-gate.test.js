@@ -438,10 +438,26 @@ test("the workout queue is a sheet over the engine's own plan", function () {
 
 test("Train shows only metadata the engine actually holds", function () {
   const train = ui.slice(ui.indexOf("function training() {"), ui.indexOf("function scheduleConfirmReset"));
-  // No invented anatomy: the reference art shows muscle groups, the data does not.
-  ["muscle", "Chest", "Quads", "Biceps", "primary mover"].forEach(function (word) {
+  /* This guard originally banned the word "muscle" outright, because at the time
+     NXTFRM held no anatomy data and anything on screen would have been invented.
+     Researched per-exercise muscle metadata now ships in train-anatomy.js, so the
+     ban is obsolete — but its INTENT is not. Restated and tightened: Train may
+     display muscles, and may ONLY display ones it looked up. It must never infer
+     anatomy from the exercise name, which is the failure mode the original rule
+     was really protecting against. */
+  ["primary mover", "activation", "EMG", "% of"].forEach(function (word) {
     assert.strictEqual(train.indexOf(word), -1, "Train must not invent " + word);
   });
+  const lib = fs.readFileSync(path.join(ROOT, "train-anatomy.js"), "utf8");
+  assert.ok(ui.indexOf("NXTLIB.musclesFor(ex)") !== -1,
+    "muscle text must come from the stored library lookup");
+  // No name-string heuristics anywhere in the muscle path.
+  const helpers = ui.slice(ui.indexOf("function muscleLine("), ui.indexOf("function exerciseDetails()"));
+  assert.strictEqual(/\.(test|match|includes|indexOf)\(\s*["'\/]/.test(helpers), false,
+    "muscles must be looked up, never parsed out of the exercise name");
+  // An unknown exercise yields nothing rather than a guess.
+  assert.ok(lib.indexOf("{ primary: [], secondary: [] }") !== -1,
+    "an exercise the library does not know returns no muscles");
   // The equipment note is shown only when one was saved.
   assert.ok(train.indexOf("${note?' · '+esc(note):''}") !== -1);
   const detail = ui.slice(ui.indexOf("function exerciseDetails()"));
@@ -465,7 +481,16 @@ test("the session plan is the one source of truth for queue order", function () 
   // Train reads template(), never templateFor(), so the two cannot drift apart
   // in the one screen that edits the queue.
   const train = ui.slice(ui.indexOf("function training() {"), ui.indexOf("function scheduleConfirmReset"));
-  assert.ok(train.indexOf("const list=template();") !== -1);
+  /* Train's queue still comes from template() on a training day. Non-strength
+     days have no session plan at all — Rest and Zone 2 seed an empty or
+     cardio-only plan — so an optional add-on supplies its own list there. That
+     is the ONLY alternative branch permitted; the strength path must still read
+     template() and nothing else. */
+  assert.ok(train.indexOf("template()") !== -1, "the strength queue still resolves through template()");
+  assert.ok(/const list\s*=\s*addOnActive\(\)/.test(train),
+    "the only alternative queue source is an explicit add-on list");
+  assert.strictEqual(/const list\s*=\s*[^;]*templateFor\(/.test(train), false,
+    "Train must not read the base programme for its queue");
   assert.strictEqual(train.indexOf("templateFor()"), -1, "Train must not read the base programme for its queue");
 });
 

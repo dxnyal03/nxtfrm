@@ -3,7 +3,7 @@
 const NXP = (() => {
   const N=NXT;
   const base={home:N.home,training:N.training,more:N.moreView,historyDay:showHistoryDay,exportJSON,logSet:N.logSet};
-  const ui={drafts:new Map(),historyRows:[],restTotal:0,confirmFrom:null,confirmTimer:null,connection:{busy:false,lines:[],summary:'Not tested on this device'}};
+  const ui={drafts:new Map(),historyRows:[],restTotal:0,confirmFrom:null,confirmTimer:null,lastExercise:null,lastIndex:-1,addOnFlash:null,connection:{busy:false,lines:[],summary:'Not tested on this device'}};
   const button=N.button;
   const formatNumber=n=>Number(n).toLocaleString('en-SG');
   function header(title,sub='',action='') {return `<header class="nxp-heading nxp-more-chrome"><div><h1>${esc(title)}</h1>${sub?`<p>${esc(sub)}</p>`:''}</div>${action}</header>`;}
@@ -63,7 +63,6 @@ const NXP = (() => {
       ${N.adherenceHTML()}
       <nav class="nxp-home-secondary" aria-label="Quick actions">${link('+ Weight','apx95OpenQuickWeight()')}${state.dayType==='Zone2'?'':link('Log cardio','showCardioSheet()')}${state.dayType==='Rest'?'':link('Check-in','apx96OpenReadiness()')}</nav>
       <details class="nxp-home-week nxp-disclosure" open><summary><span>Your week</span><small>${N.completedWeek()} lifting days logged</small></summary>${N.weekHTML()}<div class="nxp-card-foot"><span>${cardioMins} / ${cardioTarget} cardio min</span>${link('Edit plan ›',"NXT.more('training')")}</div></details>
-      <details class="nxp-home-trend nxp-disclosure"><summary><span>Weight detail</span><small>${last?last.weight.toFixed(1)+' kg':'No weigh-in yet'}</small></summary><div class="n99-stats">${N.metric('7-day average',s.current.n>=3?s.current.avg.toFixed(1)+'<small> kg</small>':'—',s.current.n>=3?'From '+s.current.n+' weigh-ins':'Needs 3 readings in 7 days')}${N.metric('Weekly change',s.change===null?'—':N.signed(s.change,2)+'<small> kg</small>',s.change===null?'Building a comparison':'Compared with prior 7 days')}</div><div class="nxp-card-foot"><span>${last?'Latest: '+last.weight.toFixed(1)+' kg · '+N.shortDate(last.date):'Your first weigh-in sets the baseline.'}</span>${link('View progress ›',"switchTab('weight')")}</div></details>
     </div>`;
   }
   function linkSignal(label,value,action) {return `<button type="button" class="nxp-home-signal" onclick="${esc(action)}"><small>${esc(label)}</small><strong>${esc(value)}</strong></button>`;}
@@ -176,18 +175,22 @@ const NXP = (() => {
   }
   function trainRest() {
     const w=cardioWeekLine();
-    trainIdle('nxp-train-rest',`<section class="nxp-train-idle-copy"><h2>No lifting session due</h2><p>Recovery is part of the plan. Nothing needs to be made up today.</p></section><p class="nxp-caption nxp-train-idle-metric">${w.mins} / ${w.target} cardio min this week</p><div class="nxp-train-idle-actions">${button('Quick recovery check-in','apx96OpenReadiness()')}${idleSecondary('Log cardio','showCardioSheet()')}</div>`);
+    trainIdle('nxp-train-rest',`<section class="nxp-train-idle-copy"><h2>No lifting session due</h2><p>Recovery is part of the plan. Nothing needs to be made up today.</p></section><p class="nxp-caption nxp-train-idle-metric">${w.mins} / ${w.target} cardio min this week</p><div class="nxp-train-idle-actions">${button('Quick recovery check-in','apx96OpenReadiness()')}${idleSecondary('Log cardio','showCardioSheet()')}</div>${addOnSection()}`);
   }
   function trainZone2() {
     const w=cardioWeekLine();
-    trainIdle('nxp-train-zone2',`<section class="nxp-train-idle-copy"><p>Zone 2 — a conversational effort. No lifting session is due.</p></section><div class="nxp-train-pace"><span class="nxp-caption">This week</span><strong>${w.mins} <em>/ ${w.target} min</em></strong><div class="n99-session-rail" aria-hidden="true"><span style="width:${w.pct}%"></span></div></div><div class="nxp-train-idle-actions">${button('Log cardio','showCardioSheet()')}${idleSecondary('Check-in','apx96OpenReadiness()')}</div>`);
+    trainIdle('nxp-train-zone2',`<section class="nxp-train-idle-copy"><p>Zone 2 — a conversational effort. No lifting session is due.</p></section><div class="nxp-train-pace"><span class="nxp-caption">This week</span><strong>${w.mins} <em>/ ${w.target} min</em></strong><div class="n99-session-rail" aria-hidden="true"><span style="width:${w.pct}%"></span></div></div><div class="nxp-train-idle-actions">${button('Log cardio','showCardioSheet()')}${idleSecondary('Check-in','apx96OpenReadiness()')}</div>${addOnSection()}`);
   }
   function trainFloorball() {
     const recent=(state.floorball||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,3);
     trainIdle('nxp-train-floorball',`<section class="nxp-train-idle-copy"><p>Hard conditioning day. Log duration and effort.</p></section><section class="nxp-train-floorball-log"><div class="nxp-train-floorball-grid"><label>Duration <small>min</small><input id="apx96FbDuration" type="number" min="1" max="600" inputmode="numeric"></label><label>Intensity <small>1–10</small><input id="apx96FbIntensity" type="number" min="1" max="10" inputmode="numeric"></label></div><label class="nxp-train-floorball-notes">Notes<textarea id="apx96FbNotes" rows="2" placeholder="Energy, match load, soreness…"></textarea></label><div class="nxp-train-idle-actions">${button('Save session','apx96SaveFloorball()')}</div></section>${recent.length?`<section class="nxp-train-floorball-history"><h2 class="nxp-caption">Recent</h2>${recent.map(x=>`<div class="nxp-train-recent"><span>${esc(N.shortDate(x.date))}</span><b>${esc(x.duration||'—')} min · RPE ${esc(x.intensity||'—')}</b>${x.notes?`<small>${esc(x.notes)}</small>`:''}</div>`).join('')}</section>`:`<p class="nxp-caption nxp-train-idle-metric">No Floorball sessions logged yet.</p>`}`);
   }
+  /* An add-on eligible day can reach here too (a Cardio day carries no lifting
+     template), and this is the one Train branch that would otherwise offer no
+     way back to the optional block. addOnSection() returns nothing on days that
+     are not eligible, so a strength day with an emptied plan is unchanged. */
   function trainEmpty() {
-    trainIdle('nxp-train-empty',`<section class="nxp-train-idle-copy"><h2>No exercises in this session</h2><p>This session currently has no exercises.</p></section><div class="nxp-train-idle-actions">${button('Add exercise','v88OpenAddModal()')}${idleSecondary('Restore programme','NXT.fullSession()')}</div>`);
+    trainIdle('nxp-train-empty',`<section class="nxp-train-idle-copy"><h2>No exercises in this session</h2><p>This session currently has no exercises.</p></section><div class="nxp-train-idle-actions">${button('Add exercise','v88OpenAddModal()')}${idleSecondary('Restore programme','NXT.fullSession()')}</div>${addOnSection()}`);
   }
   /* ---- Train: shared presentation helpers --------------------------------
      Numbers are rendered, never re-derived: every figure below comes from the
@@ -227,9 +230,20 @@ const NXP = (() => {
   function training() {
     applyAppearance();
     if(state.dayType==='Floorball')return trainFloorball();
-    if(state.dayType==='Rest')return trainRest();
-    if(state.dayType==='Zone2')return trainZone2();
-    const list=template();
+    /* A non-strength day keeps its own screen unless the user has explicitly
+       added an optional exercise AND is currently on it. Falling through then
+       reuses the normal logging controls — it does not change what the day is.
+       dayType is resolved from settings.dayOverrides / weeklyPlan and is never
+       written here or anywhere downstream of an add-on. */
+    if((state.dayType==='Rest'||state.dayType==='Zone2')&&!addOnActive()){
+      return state.dayType==='Rest'?trainRest():trainZone2();
+    }
+    /* On a non-strength day the add-ons ARE the list. Resolved through the same
+       exerciseDefByName() the normal queue uses, so sets/reps/increment come
+       from the usual place and nothing forks the engine. */
+    const list=addOnActive()
+      ? addOns().map(n=>(typeof exerciseDefByName==='function'?exerciseDefByName(n,state.dayType):{name:n,sets:3,reps:[8,12],inc:2.5}))
+      : template();
     if(!list.length)return trainEmpty();
     if(!list.some(e=>e.name===state.exercise))state.exercise=list[0].name;
     const ex=state.exercise,t=N.targetFor(ex),done=N.done(ex),cue=N.cue(ex),draft=ui.drafts.get(draftKey())||{};
@@ -238,6 +252,14 @@ const NXP = (() => {
     const total=list.reduce((a,e)=>a+Number(e.sets),0),count=list.reduce((a,e)=>a+Math.min(N.done(e.name),e.sets),0),finished=N.planDone();
     const weight=draft.weightInput??last?.weight??(cue.weight||'');
     const index=list.findIndex(e=>e.name===ex),lastMove=index===list.length-1;
+    /* Train repaints on every logged set, so an entrance animation declared in
+       CSS alone would replay constantly. The class is only emitted when the
+       exercise genuinely changed, and its direction follows the queue order so
+       the motion says which way you moved. */
+    const exMove=ui.lastExercise&&ui.lastExercise!==ex
+      ? (index>ui.lastIndex?' is-forward':' is-back')
+      : '';
+    ui.lastExercise=ex; ui.lastIndex=index;
     const restLeft=apx96RestRemaining();
     const restPlan=typeof suggestedRestSeconds==='function'?suggestedRestSeconds(ex):90;
     const setType=draft['n99-set-type']==='warmup'?'warmup':'working';
@@ -282,13 +304,20 @@ const NXP = (() => {
           <button type="button" class="nxp-rail-jump" onclick="NXP.queue()">Exercise ${index+1} of ${list.length}<i aria-hidden="true">›</i></button>
           <span>${count} of ${total} sets</span>
         </p>
+        ${sessionFocus(list)}
       </div>
 
       <section class="nxp-ex-head">
         <span class="nxp-ex-bar" aria-hidden="true"></span>
         <div class="nxp-ex-main">
-          <h2>${esc(ex)}</h2>
-          <p class="nxp-ex-meta">${t.sets} sets · ${t.reps[0]}–${t.reps[1]} reps${note?' · '+esc(note):''}</p>
+          <div class="nxp-ex-top${exMove}">
+            <div class="nxp-ex-text">
+              <h2><button type="button" class="nxp-ex-title" onclick="NXP.exerciseDetails()">${esc(ex)}</button></h2>
+              <p class="nxp-ex-muscles">${esc(muscleLine(ex)) || '&nbsp;'}</p>
+              <p class="nxp-ex-meta">${t.sets} sets · ${t.reps[0]}–${t.reps[1]} reps${note?' · '+esc(note):''}</p>
+            </div>
+            ${anatomyStrip(ex)}
+          </div>
           <div class="nxp-ex-actions">
             <button type="button" class="nxp-ex-chip" onclick="NXP.exerciseDetails()">Exercise details<i aria-hidden="true">›</i></button>
             <button type="button" class="nxp-ex-chip" onclick="showSubstituteSheet()">Swap</button>
@@ -347,7 +376,8 @@ const NXP = (() => {
 
       <button type="button" class="nxp-queue-open" onclick="NXP.queue()"><span>Workout queue</span><small>${list.length} exercises</small><i aria-hidden="true">›</i></button>
 
-      <div class="nxp-session-tools">${button('Undo last set','apx96UndoLastSet()',true)}${button('Finish workout','NXT.finish()',true)}</div>
+      ${addOnEligible()?addOnSection():''}
+      <div class="nxp-session-tools">${button('Undo last set','apx96UndoLastSet()',true)}${addOnEligible()?'':button('Finish workout','NXT.finish()',true)}</div>
     </div>`;
     if(justLogged)scheduleConfirmReset();
     setTimeout(apx96TickTimer,0);
@@ -399,7 +429,18 @@ const NXP = (() => {
       btn.setAttribute('aria-pressed',String(!!on));
     });
   }
+  /* The nav is rendered from whatever list training() resolved, so it has to
+     walk that same list. On a non-strength day template() is empty, which left
+     Prev and Next enabled but inert. Add-on days move by name through
+     addOnSelect; strength days still go through the engine's selectExercise. */
   function goExercise(delta) {
+    if(addOnActive()){
+      const names=addOns();
+      const next=names.indexOf(state.exercise)+delta;
+      if(next<0||next>=names.length)return;
+      addOnSelect(names[next]);
+      return;
+    }
     const list=template();
     const index=list.findIndex(e=>e.name===state.exercise);
     const next=index+delta;
@@ -457,17 +498,176 @@ const NXP = (() => {
   /* Only shows what the engine actually holds for this exercise. An exercise
      with no note and no history shows the target block alone rather than empty
      placeholder rows. */
+  /* Session-level focus, derived from THIS session's actual plan — never from
+     the day's label. A custom Push day that is all shoulders says shoulders.
+     Primary anywhere in the session outranks secondary everywhere; that is the
+     whole rule, and it feeds nothing but this line. Text only: the current
+     exercise owns the one graphic on the screen. */
+  function sessionFocus(list) {
+    if (typeof NXTLIB === "undefined" || typeof NXTANAT === "undefined") return "";
+    const f = NXTLIB.focusFor((list || []).map(e => e.name));
+    if (!f.primary.length) return "";
+    const shown = f.primary.slice(0, 4).map(id => NXTANAT.label(id));
+    const more = f.primary.length - shown.length;
+    return `<p class="nxp-session-focus"><span>Today's focus</span>`
+      + `<b>${esc(shown.join(" · "))}${more > 0 ? " +" + more : ""}</b></p>`;
+  }
+
+  /* ---- Optional add-ons on non-strength days ---------------------------
+     Rest stays Rest and Zone 2 stays Zone 2. These are extras logged against
+     the day, never a reclassification of it: dayType is resolved purely from
+     settings.dayOverrides / settings.weeklyPlan, and nothing below writes to
+     either. The store is its own map so Zone 2's scheduled "Zone 2 Cardio"
+     plan is untouched. */
+  const ADDON_MAX = 2;
+  const ADDON_DAYS = { Rest: 1, Zone2: 1, Cardio: 1 };
+
+  function addOnEligible(type) {
+    return !!ADDON_DAYS[type || state.dayType];
+  }
+  function addOnKey() { return sessionKey(); }
+  function addOns() {
+    state.addOns = state.addOns || {};
+    const k = addOnKey();
+    if (!Array.isArray(state.addOns[k])) state.addOns[k] = [];
+    return state.addOns[k];
+  }
+  function addOnAdd(name) {
+    if (!addOnEligible() || !name) return;
+    const list = addOns();
+    if (list.length >= ADDON_MAX) { toast("Two optional exercises is the limit."); return; }
+    if (list.indexOf(name) !== -1) { toast("Already added."); return; }
+    list.push(name);
+    ui.addOnFlash = name;
+    /* Pointing state.exercise at the add-on is what lets the shared logging
+       controls work unchanged. It is only ever set to a name that is in this
+       list, which is also what the logSet guard checks. */
+    state.exercise = name;
+    state.setNum = 1;
+    persist(); render(); toast("Added " + name);
+  }
+  function addOnRemove(name) {
+    const list = addOns();
+    const i = list.indexOf(name);
+    if (i === -1) return;
+    list.splice(i, 1);
+    /* Leaving state.exercise pointing at a removed add-on would strand the
+       logging form on an exercise that is no longer part of the day. */
+    if (state.exercise === name) { state.exercise = list[0] || ""; state.setNum = 1; }
+    if (!list.length) { try { apx96StopRest(); } catch (e) {} }
+    persist(); render(); toast("Removed " + name);
+  }
+  function addOnPick() {
+    const list = addOns();
+    if (list.length >= ADDON_MAX) { toast("Two optional exercises is the limit."); return; }
+    const names = (typeof NXTLIB !== "undefined" ? NXTLIB.names() : [])
+      .filter(n => list.indexOf(n) === -1).sort((a, b) => a.localeCompare(b));
+    N.modal("Add exercise",
+      `<p class="n99-small">Optional. Logged as normal training; today stays a ${esc(N.label(state.dayType))} day.</p>`
+      + `<input class="input nxp-addon-search" type="search" placeholder="Search exercises" `
+      + `oninput="NXP.addOnFilter(this.value)" aria-label="Search exercises">`
+      + `<div class="nxp-addon-list" id="nxp-addon-list">`
+      + names.map(n => `<button type="button" class="n99-list-row nxp-addon-option" data-name="${esc(n).toLowerCase()}" `
+          + `onclick="NXP.addOnAdd('${esc(n).replace(/'/g, "\\'")}')"><span>${esc(n)}</span>`
+          + `<small>${esc(muscleLine(n))}</small></button>`).join("")
+      + `</div>`);
+  }
+  /* Filtering a ~100-row list is the one presentation concession the larger
+     library needs; it changes no identity and no data. */
+  function addOnFilter(q) {
+    const term = String(q || "").trim().toLowerCase();
+    const box = document.getElementById("nxp-addon-list");
+    if (!box) return;
+    for (const el of box.querySelectorAll(".nxp-addon-option")) {
+      const hay = (el.dataset.name || "") + " " + el.textContent.toLowerCase();
+      el.hidden = term ? hay.indexOf(term) === -1 : false;
+    }
+  }
+
+  /* The optional block, rendered under whatever the day actually is. */
+  function addOnSection() {
+    if (!addOnEligible()) return "";
+    const list = addOns();
+    const rows = list.map(name => {
+      const done = N.done(name);
+      /* Consumed as it is read: the reveal plays on the render that follows the
+         add and never again. */
+      const fresh = ui.addOnFlash === name ? " is-new" : "";
+      if (fresh) ui.addOnFlash = null;
+      return `<div class="nxp-addon-row${state.exercise === name ? " is-current" : ""}${fresh}">`
+        + `<button type="button" class="nxp-addon-name" onclick="NXP.addOnSelect('${esc(name).replace(/'/g, "\\'")}')">`
+        + `<b>${esc(name)}</b><small>${esc(muscleLine(name))}${done ? " · " + done + " set" + (done === 1 ? "" : "s") : ""}</small></button>`
+        + `<button type="button" class="nxp-addon-drop" aria-label="Remove ${esc(name)}" `
+        + `onclick="NXP.addOnRemove('${esc(name).replace(/'/g, "\\'")}')">×</button></div>`;
+    }).join("");
+    return `<section class="nxp-addon">`
+      + `<h2 class="nxp-caption">Optional add-on</h2>`
+      + (list.length ? rows : `<p class="n99-small nxp-addon-hint">Add a lift if you feel like doing a little more.</p>`)
+      + (list.length < ADDON_MAX
+          ? `<button type="button" class="nxp-addon-add" onclick="NXP.addOnPick()">+ Add exercise</button>` : "")
+      + `</section>`;
+  }
+  /* True only when the day has add-ons AND the current exercise is one of them.
+     The logging form and the logSet guard both key off this single condition, so
+     they cannot disagree. */
+  function addOnActive() {
+    if (!addOnEligible()) return false;
+    const list = addOns();
+    return list.length > 0 && list.indexOf(state.exercise) !== -1;
+  }
+
+  function addOnSelect(name) {
+    if (addOns().indexOf(name) === -1) return;
+    state.exercise = name; state.setNum = 1; persist(); render();
+  }
+
+  /* ---- Muscle context --------------------------------------------------
+     Text first: the muscle names are the information, the drawing is support.
+     An exercise the library has never seen returns nothing rather than a guess
+     — NXTFRM does not infer anatomy from a name string. */
+  function muscleLine(ex) {
+    if (typeof NXTLIB === "undefined" || typeof NXTANAT === "undefined") return "";
+    const m = NXTLIB.musclesFor(ex);
+    return m.primary.concat(m.secondary).map(id => NXTANAT.label(id)).join(" · ");
+  }
+
+  /* A compact crop of the worked region only. Tapping it opens the same detail
+     sheet as the title, so there is one destination rather than a second modal.
+     The figure is aria-hidden; the line above already names the muscles. */
+  function anatomyStrip(ex) {
+    if (typeof NXTLIB === "undefined" || typeof NXTANAT === "undefined") return "";
+    const m = NXTLIB.musclesFor(ex);
+    if (!m.primary.length) return "";
+    return `<button type="button" class="nxp-ex-anat" onclick="NXP.exerciseDetails()" `
+      + `aria-label="Show exercise details">`
+      + NXTANAT.figure({ primary: m.primary, secondary: m.secondary })
+      + `</button>`;
+  }
+
   function exerciseDetails() {
     const ex=state.exercise,t=N.targetFor(ex),cue=N.cue(ex);
     const note=typeof v88NoteFor==='function'?v88NoteFor(ex):'';
     const sessions=N.sessionRows(ex,state.gym,state.date,100).slice(-5).reverse();
     const rest=typeof suggestedRestSeconds==='function'?suggestedRestSeconds(ex):90;
-    const facts=[['Target',`${t.sets} × ${t.reps[0]}–${t.reps[1]} reps`],['Rest',apx96FormatTimer(rest)],['Increment',`${trimNum(t.inc||2.5)} kg`]]
+    /* Equipment shows only when the library actually knows it — no "Unknown"
+       placeholder, and never inferred from the exercise name. */
+    const equip=typeof NXTLIB!=='undefined'?NXTLIB.equipmentFor(ex):'';
+    const facts=[['Target',`${t.sets} × ${t.reps[0]}–${t.reps[1]} reps`],['Rest',apx96FormatTimer(rest)],['Increment',`${trimNum(t.inc||2.5)} kg`]].concat(equip?[['Equipment',equip]]:[])
       .map(([k,v])=>`<div class="nxp-detail-fact"><span class="nxp-caption">${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
     const history=sessions.length
       ? `<ol class="nxp-detail-history">${sessions.map(s=>`<li><span>${esc(N.shortDate(s.date))}</span><b>${s.sets.map(r=>`${esc(trimNum(r.weight))}×${esc(r.reps)}`).join(' · ')}</b></li>`).join('')}</ol>`
       : `<p class="n99-small">No previous sessions recorded for this exercise at ${esc(state.gym)}.</p>`;
+    /* The full body belongs here, where there is room for it. Same renderer as
+       the Train crop — one anatomy implementation, two sizes. */
+    const m=typeof NXTLIB!=='undefined'?NXTLIB.musclesFor(ex):{primary:[],secondary:[]};
+    const anat=(typeof NXTANAT!=='undefined'&&m.primary.length)
+      ? `<div class="nxp-detail-anat">${NXTANAT.pair(m.primary,m.secondary)}</div>` : '';
+    const muscleBlock=m.primary.length
+      ? `<section class="nxp-detail-block"><h3>Primary</h3><p>${esc(m.primary.map(id=>NXTANAT.label(id)).join(' · '))}</p></section>`
+        + (m.secondary.length?`<section class="nxp-detail-block"><h3>Secondary</h3><p>${esc(m.secondary.map(id=>NXTANAT.label(id)).join(' · '))}</p></section>`:'')
+      : '';
     N.modal(ex,`<div class="nxp-detail">
+      ${anat}${muscleBlock}
       <div class="nxp-detail-facts">${facts}</div>
       ${note?`<section class="nxp-detail-block"><h3>Equipment note</h3><p>${esc(note)}</p></section>`:''}
       <section class="nxp-detail-block"><h3>${esc(cue.label)}</h3><p>${esc(cue.text)}</p></section>
@@ -481,6 +681,12 @@ const NXP = (() => {
      confirmation before the call is what lets the repaint it triggers render
      the success state in place, instead of a modal on top of it. */
   function logSet() {
+    /* NXT.logSet() has no dayType check and reads state.exercise, which can hold
+       a name left over from a previous strength day. On Rest or Zone 2 the only
+       legitimate target is an exercise the user explicitly added, so refuse
+       anything else rather than writing a set the UI never offered. This is a
+       presentation-layer guard; the engine is untouched. */
+    if (addOnEligible() && !addOnActive()) { toast('Add an exercise first.'); return; }
     const key=draftKey(),d=ui.drafts.get(key),before=state.logs.length;
     ui.drafts.delete(key);
     ui.confirmFrom=before;
@@ -649,17 +855,32 @@ const NXP = (() => {
   }
   function bodySummary(waist,scans) {
     const lastW=waist.at(-1),priorW=waist.at(-2),lastS=scans.at(-1);
-    let detail='Waist and Evo scans are optional. Scale weight stays on the Weight tab. Nothing is estimated here.';
-    if(lastW&&lastS){
-      detail=`Latest waist ${lastW.cm.toFixed(1)} cm · ${N.shortDate(lastW.date)}. Latest scan ${N.shortDate(lastS.date)}.`;
-    }else if(lastW){
-      if(waist.length<2)detail=`Latest ${lastW.cm.toFixed(1)} cm · ${N.shortDate(lastW.date)}. A second reading is needed before a comparison.`;
-      else detail=`Latest ${lastW.cm.toFixed(1)} cm · ${N.shortDate(lastW.date)}. Previous ${priorW.cm.toFixed(1)} cm · ${N.shortDate(priorW.date)}. No Evo scans yet.`;
-    }else if(lastS){
-      const bits=scanBits(lastS);
-      detail=`Latest scan ${N.shortDate(lastS.date)}${bits.length?' · '+bits.join(' · '):''}. No waist measurements yet.`;
+    /* Lead with the measurement, not the count. The header already says how many
+       readings exist, so repeating "3 waist measurements" as the headline said
+       the same thing twice and made a tally the loudest thing on a screen whose
+       subject is a number in centimetres. The delta beside it is presentation
+       arithmetic over the two readings already listed below — the same class of
+       display-only figure as the chart's post-workout delta. It is not stored,
+       not fed to any calculation, and no Body semantics change. */
+    if(lastW){
+      const delta=priorW?lastW.cm-priorW.cm:null;
+      const move=delta===null?'':`${delta>0?'+':''}${delta.toFixed(1)} cm vs ${esc(N.shortDate(priorW.date))}`;
+      const meta=[esc(N.shortDate(lastW.date)),move].filter(Boolean).join(' · ');
+      const scanLine=lastS?`<p class="nxp-progress-body-scanline">Latest Evo scan ${esc(N.shortDate(lastS.date))}.</p>`:'';
+      return `<section class="nxp-progress-body-summary"><span class="nxp-caption">Waist</span>`
+        +`<strong>${esc(lastW.cm.toFixed(1))} <em>cm</em></strong>`
+        +`<p>${meta}</p>${waist.length<2?'<p class="nxp-progress-body-scanline">A second reading is needed before a comparison.</p>':''}${scanLine}</section>`;
     }
-    return `<section class="nxp-progress-body-summary"><span class="nxp-caption">Body</span><strong>${esc(bodyTitle(waist,scans))}</strong><p>${esc(detail)}</p></section>`;
+    if(lastS){
+      const bits=scanBits(lastS);
+      return `<section class="nxp-progress-body-summary"><span class="nxp-caption">Evo scan</span>`
+        +`<strong>${esc(bits[0]||'Saved scan')}</strong>`
+        +`<p>${esc(N.shortDate(lastS.date))}${bits.length>1?' · '+esc(bits.slice(1).join(' · ')):''}</p>`
+        +`<p class="nxp-progress-body-scanline">No waist measurements yet.</p></section>`;
+    }
+    return `<section class="nxp-progress-body-summary"><span class="nxp-caption">Body</span>`
+      +`<strong>Nothing measured yet</strong>`
+      +`<p>Waist and Evo scans are optional. Scale weight stays on the Weight tab; nothing here is estimated.</p></section>`;
   }
   function bodyView(waist,scans) {
     const waistRows=waist.slice().reverse().map(r=>`<button type="button" class="n99-list-row nxp-progress-body-row" onclick="NXT.openWaist('${r.date}')"><span>${esc(N.shortDate(r.date))}</span><b>${r.cm.toFixed(1)} cm</b><span>Edit ›</span></button>`).join('');
@@ -667,7 +888,7 @@ const NXP = (() => {
       const bits=scanBits(s);
       return `<div class="nxp-progress-body-scan"><span>${esc(N.shortDate(s.date))}</span><b>${esc(bits[0]||'Evo scan')}</b><small>${esc(bits.slice(1).join(' · ')||'Saved scan')}</small></div>`;
     }).join('');
-    return `<section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Waist</h2>${waist.length?waistRows:`<p class="nxp-progress-body-empty">No waist measurements yet. Optional, about once a week, with the same tape position.</p>`}${row('Log waist','+',"NXT.openWaist()",'Same position and similar conditions')}</section><section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Evo scans</h2>${scans.length?scanRows:`<p class="nxp-progress-body-empty">No scans saved. Compare readings under similar conditions; treat changes as estimates, not proof of fat or muscle loss.</p>`}${row('Open scans','Open',"NXT.more('body')",'Existing scan tools and history')}</section><p class="n99-small nxp-progress-body-note">Body fat and muscle figures only appear from saved Evo scans. They are not calculated from waist or scale weight.</p>`;
+    return `<section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">All readings</h2>${waist.length?waistRows:`<p class="nxp-progress-body-empty">No waist measurements yet. Optional, about once a week, with the same tape position.</p>`}${row('Log waist','+',"NXT.openWaist()",'Same position and similar conditions')}</section><section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Evo scans</h2>${scans.length?scanRows:`<p class="nxp-progress-body-empty">No scans saved. Compare readings under similar conditions; treat changes as estimates, not proof of fat or muscle loss.</p>`}${row('Open scans','Open',"NXT.more('body')",'Existing scan tools and history')}</section><p class="n99-small nxp-progress-body-note">Body fat and muscle figures only appear from saved Evo scans. They are not calculated from waist or scale weight.</p>`;
   }
   function more() {
     applyAppearance();
@@ -701,13 +922,28 @@ const NXP = (() => {
   function saveAppearance() {N.cfg().appearance={text:val('nxp-text')==='large'?'large':'normal',motion:val('nxp-motion')==='reduced'?'reduced':'system'};applyAppearance();N.commit('Appearance saved');}
   function dataView() {
     const settingsHTML=cloudCardHTML().replace(/>Online</g,'>Signed in<').replace(/>Connected</g,'>Signed in<').replace('Supabase Anon Public Key','Supabase publishable / anon key').replace('id="sbKey" class="input"','id="sbKey" type="password" autocomplete="off" class="input"');
-    document.getElementById('morePage').innerHTML=shell(`${header('Data & sync','Your records stay yours.',button('‹ Back',"NXT.more('hub')",true))}<section class="n99-card"><div class="n99-row"><h2>Supabase connection</h2><span class="nxp-tag">Read-only test</span></div><p>${esc(cloudLabel())}</p><div id="nxp-connection-result" aria-live="polite">${connectionHTML()}</div>${button('Test connection','NXP.testConnection()')}<p class="n99-small">Checks your project, sign-in and whether your backup row is visible. It does not upload, load or replace workout data. Write access is not tested.</p><details class="nxp-advanced"><summary>Account & connection settings</summary>${settingsHTML}</details></section>
+    document.getElementById('morePage').innerHTML=shell(`${header('Data & sync','Your records stay yours.',button('‹ Back',"NXT.more('hub')",true))}<section class="n99-card"><div class="n99-row"><h2>Supabase connection</h2><span class="nxp-tag">Read-only test</span></div><p>${esc(cloudLabel())}</p><div id="nxp-connection-result" aria-live="polite">${connectionHTML()}</div><button type="button" id="nxp-connection-test" class="n99-button" onclick="NXP.testConnection()">Test connection</button><p class="n99-small">Checks your project, sign-in and whether your backup row is visible. It does not upload, load or replace workout data. Write access is not tested.</p><details class="nxp-advanced"><summary>Account & connection settings</summary>${settingsHTML}</details></section>
       <section class="n99-card"><h2>Backup & restore</h2><p>Export workouts, weigh-ins, settings and check-ins stored in this browser. Wearable evidence in the on-device wearable store is not included; it remains on this device until you reset the app, and can be rebuilt by a later provider sync.</p><p class="n99-small">Export last requested: ${esc(backupLabel())}. Check your Downloads to confirm the file was saved.</p><div class="n99-stack">${button('Export app backup','exportJSON()')}${button('Export workout CSV','exportCSV()',true)}</div><details class="nxp-advanced"><summary>Restore a backup</summary>${backupRestoreHTML()}</details></section>
       <details class="n99-card"><summary>Local safety copy</summary><p>Recovery copy made before a restore, cloud load or reset. It is not an independent backup.</p><div class="n99-stack">${button('Download safety copy','NXT.exportSafety()',true)}${button('Restore safety copy','NXT.restoreSafety()',true)}</div></details><details class="n99-card"><summary>Advanced cloud setup</summary>${supabaseSQLHelpHTML()}</details>`);
   }
   function exportBackup() {try{base.exportJSON();N.cfg().backupExportRequestedAt=Date.now();persist();toast('Backup download requested — check Downloads');}catch(e){toast('Could not prepare the backup. Try again before changing devices.');}}
   function connectionHTML() {const c=ui.connection;return `<div class="nxp-connection ${c.tone||''}"><b>${esc(c.busy?'Checking connection…':c.summary)}</b>${c.lines.length?`<ul>${c.lines.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}${c.checkedAt?`<small>Checked ${new Date(c.checkedAt).toLocaleTimeString('en-SG',{hour:'2-digit',minute:'2-digit'})} · this browser only</small>`:''}</div>`;}
-  function paintConnection() {const box=document.getElementById('nxp-connection-result');if(box)box.innerHTML=connectionHTML();}
+  function paintConnection() {
+    const box=document.getElementById('nxp-connection-result');if(box)box.innerHTML=connectionHTML();
+    /* The button sits outside #nxp-connection-result, so repainting the box alone
+       left the control looking idle for the whole request. data-loading drives the
+       spinner that already existed in premium-ui.css but had no caller; disabled
+       stops a second request landing mid-flight, and aria-busy says the same thing
+       to assistive tech. testConnection()'s finally{} clears ui.connection.busy and
+       repaints, so both the success and failure paths reset this. */
+    const btn=document.getElementById('nxp-connection-test');
+    if(btn){
+      const busy=!!ui.connection.busy;
+      if(busy)btn.setAttribute('data-loading','true');else btn.removeAttribute('data-loading');
+      btn.disabled=busy;
+      btn.setAttribute('aria-busy',busy?'true':'false');
+    }
+  }
   async function bounded(promise) {let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('timeout')),12000);})]);}finally{clearTimeout(timer);}}
   function validConfig(url,key) {
     let parsed;try{parsed=new URL(url);}catch{return 'Enter a valid Supabase project URL in Account & connection settings.';}
@@ -989,7 +1225,7 @@ const NXP = (() => {
     if(value&&!left&&value.textContent!=='Ready')value.textContent='Ready';
   }
   bindSteppers();
-  return {ui,home,training,progress,more,history,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection};
+  return {ui,home,training,progress,more,history,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;
