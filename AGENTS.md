@@ -48,9 +48,26 @@ Three layers, in load order:
 - Touch unrelated untracked work: `design-v102/`, `design-v103/`, `.claude/`, the PNG at repo root
 - Invent a metric, score or health claim (D9)
 
-## 6. Working agreement
+## 6. Division of verification labour
+
+**Cursor does not run browser automation.** Two delegated runs completed their writes successfully but the CLI stayed alive afterwards, holding a lingering Playwright/MCP child. The summary that never flushed added nothing to review, so the browser work moved to where it was being redone anyway.
+
+| Cursor owns | Claude owns |
+|---|---|
+| Production implementation | Browser verification |
+| Repo-aware wiring | Responsive QA (390 / 375 / 320) |
+| Syntax and static checks (`node --check`, brace balance) | Interaction QA |
+| Deterministic test suites | Visual fidelity |
+| Updating `CURSOR_REPORT.md` | Reduced-motion checks |
+| | Comparison against `design-vnext/` |
+
+Do not add Playwright, Puppeteer or an MCP browser to a delegated run unless a task genuinely cannot be implemented without it — and say so in the report if you do.
+
+Run the deterministic suites and report their real output. That is the verification Cursor is responsible for.
+
+## 6a. Working agreement
 
 - Implement only the scope in `tasks/vnext/CURRENT_TASK.md`. Anything else — including improvements that look obvious — is out of scope; raise it in your report instead.
-- Verify with Playwright at **390 / 375 / 320**: no horizontal overflow, text ≥4.5:1, interactive targets ≥44pt, reduced motion works, and untouched screens still render without console errors.
+- Verify what §6 assigns you: `node --check` on changed JS, balanced braces on changed CSS, and the deterministic suites green. Report their real output. Claude runs the browser, responsive, interaction and reduced-motion checks.
 - **Do not commit or push.** Update `tasks/vnext/CURSOR_REPORT.md` and stop. The design director reviews the working tree and the actual git diff.
 - If the page requests a new `.js`/`.css`, the offline shell in `sw.js` must list it at the current `RELEASE` — otherwise the release gate fails and the PWA breaks offline.

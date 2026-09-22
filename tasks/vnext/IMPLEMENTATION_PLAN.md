@@ -32,7 +32,7 @@ renderMore=NXP.more; renderHistory=NXP.history;
 | **2A** | VNext visual foundation · navigation + page-transition foundation · Today lifting · Today rest · responsive 390/375/320 · reduced motion | ✅ committed `9fd3772` |
 | **2B** | Train: active workout mode, set logging, rest, queue, completion recap | ✅ committed `761f339` |
 | **2C** | Progress → Weight: recent trajectory chart (D2), Journey rail (D3), scrub, ranges | ✅ committed `6563be6` |
-| **2D** | History: calendar-first, selected-date detail | ← **current** |
+| **2D** | History: calendar-first, selected-date detail | ✅ committed `eb713de` |
 | 2E | Settings / More: calm configuration rows | 2D approved |
 | 2F | Progress → Performance | 2E approved |
 | 2G | Body Intelligence + OCR review flow | 2F approved |
@@ -45,6 +45,14 @@ renderMore=NXP.more; renderHistory=NXP.history;
 | X1 | `readiness()` removal | D4 — reference audit must prove it unused |
 | X2 | Legacy renderer removal from `index.html` | D5 — separate audit |
 | X3 | Supabase / schema / RLS | Owner approval, not yet requested |
+
+## Integration checkpoints
+
+After a group of slices lands, an integration checkpoint reviews them **together** rather than opening the next feature. No new features during a checkpoint. It answers one question: *do these experiences feel like one product?* Checkpoint findings go in `CLAUDE_REVIEW.md` and gate the next slice.
+
+| Checkpoint | Covers | Gate |
+|---|---|---|
+| **INT-1** | Today · Train · Progress/Weight · History | ← **current**, gates 2E |
 
 ## Working rules
 
