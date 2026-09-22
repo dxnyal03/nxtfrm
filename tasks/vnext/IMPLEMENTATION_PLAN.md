@@ -29,8 +29,8 @@ renderMore=NXP.more; renderHistory=NXP.history;
 
 | Slice | Scope | Gate |
 |---|---|---|
-| **2A** | VNext visual foundation · navigation + page-transition foundation · Today lifting · Today rest · responsive 390/375/320 · reduced motion | ← **current** |
-| 2B | Train: active workout mode, set logging, rest, queue, completion recap | 2A approved |
+| **2A** | VNext visual foundation · navigation + page-transition foundation · Today lifting · Today rest · responsive 390/375/320 · reduced motion | ✅ committed `9fd3772` |
+| **2B** | Train: active workout mode, set logging, rest, queue, completion recap | ← **current** |
 | 2C | Progress → Weight: recent trajectory chart (D2), Journey rail (D3), scrub, ranges | 2B approved |
 | 2D | History: calendar-first, selected-date detail | 2C approved |
 | 2E | Settings / More: calm configuration rows | 2D approved |
