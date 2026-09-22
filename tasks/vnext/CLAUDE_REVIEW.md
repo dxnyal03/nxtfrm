@@ -758,3 +758,114 @@ everywhere.
 The repeated rose **Delete** in scan history now appears on this surface too, which strengthens
 the case for **P1** in `RELEASE_CHECKS.md`. Owner ruling stands: later polish pass, do not
 reopen for it.
+
+---
+
+# CLAUDE REVIEW — TRAIN COMPLETION + DEEP POLISH
+
+Implemented on `grok-4.7-high-fast`. AI work paused throughout; nothing AI-related added.
+
+## A. WHAT ALREADY MET THE DESIGN — measured before commissioning any work
+
+The audit changed the shape of this pass. Most of Train already met the approved direction:
+
+| | Measured |
+|---|---|
+| **Working loop** | **587px** at 390/393/402/430/375, **662px** at 320; 659–741px with three sets |
+| **Log Set** | in viewport in **all 24** width × set-count combinations at 844px |
+| Input contract | all four ids intact; 26px font (no iOS zoom); inputs 52px |
+| Active mode | nav recedes; 19 handlers wired |
+| Queue | already contextual (`NXP.queue()`), not a persistent block |
+| Previous / target | `Last 30.5kg × 12 · 13 Jul` and `Target 8–12` present |
+| Rest timer | `02:30 · +30s · Skip`, counts down |
+| Completion | real numbers only — **no score, duration or calories invented** |
+| Anatomy | deterministic; **106/107 catalogue, 21/21 templates, 20/20 logged**; unknowns resolve empty |
+
+**The original ~2,200px loop with Log Set below the fold is solved.** The task therefore
+forbade chasing a pixel number or rebuilding what passes.
+
+## B. G1 — KEYBOARD DOCK (the real gap)
+
+Before: at viewport heights of 520/480/420 the focused input stayed visible but **Log Set did
+not**, with a fixed 278px of reps stepper (78) + set type (74) + RIR (78) between them.
+
+Verified after, emulating a soft keyboard by making `visualViewport` shorter than the layout
+viewport — which is the signal the dock actually reads:
+
+| Keyboard | `position` | Log Set bottom | Usable | Reachable | Height |
+|---|---|---|---|---|---|
+| none | `static` | 678 | 844 | yes | 50px |
+| 320px | **`fixed`** | 516 | 524 | **yes** | **50px** |
+| 340px | **`fixed`** | 496 | 504 | **yes** | **50px** |
+
+It docks **only** when a keyboard is present and returns to inline flow otherwise. Nothing was
+shrunk — the control stays 50px in every state, as required.
+
+**Logging was tested, not merely the button's presence.** A set logged with the keyboard open
+produced a byte-identical record at all three heights:
+`{ex:"Incline Dumbbell Press", w:62.5, r:9, t:"working", rir:null, gym:"Gym A"}`. Zero page errors.
+
+Hierarchy and order are unchanged; set type and RIR are still present and visible.
+
+## C. G2 — DATE INPUT OVERLAP (owner-reported)
+
+Root cause was **not** the grid: it was already `minmax(0,1fr)` with `min-width:0`, and inputs
+were `width:100%; max-width:100%!important`, which is why it never reproduced in Chromium. On
+iOS, `input[type="date"]` keeps its native widget and its **`::-webkit-datetime-edit` shadow
+parts enforce an intrinsic minimum width** that outer styling cannot defeat, so it spills its
+~176px cell onto `Weight · kg`.
+
+Fixed once in the shared layer — `appearance:none`, `-webkit-appearance:none`,
+`box-sizing:border-box`, `min-inline-size:0`, `min-height:44px`, plus `min-width:0` on the
+`::-webkit-datetime-edit` parts and on grid children/labels holding a date via `:has()`.
+
+Verified across widths: `appearance:none` applied, `box-sizing:border-box`, **0px overlap**,
+**52px tall** everywhere. At **375 and below the pair now stacks** (349px full width); 390+
+stays two-up at 176–196px.
+
+**Honest limit:** this targets the correct iOS mechanism and is verified applied, but headless
+Chromium cannot reproduce the original spill, so final confirmation needs the owner's device.
+
+## D. VERIFIED, NOT REBUILT
+
+**Add-on never mutates the planned day**, proven across reload:
+
+| Day | After add-on + log + refresh |
+|---|---|
+| Rest | `dayType:Rest, planned:Rest` |
+| Zone2 | `dayType:Zone2, planned:Zone2` |
+| Floorball | `dayType:Floorball, planned:Floorball` |
+
+Floorball exposes no add-on form, which is correct — `ADDON_DAYS` is `{Rest, Zone2, Cardio}`.
+
+**Greyscale (§34):** rendered at `grayscale(1)`, every state stays legible — Working/Warm-up by
+fill, RIR by outline, completed sets by numbered circles, current set by scale and position.
+The anatomy's meaning is carried in text by the muscle line, so it is never colour-only.
+
+## E. RESPONSIVE
+
+**390 / 393 / 402 / 430 / 375 / 320**, mid-workout with sets logged: zero overflow, zero targets
+under 44pt, **zero contrast failures**, zero page errors at every width.
+
+## F. TESTS
+
+16 suites / 458 tests / 0 failing. **All ten verify scripts green** — 2a, 2b, 2b-fold, 2c, 2d,
+2e, 2f (23), 2g (11), 2h (10), train (15). `premium-ui.js` parses; `vnext.css` braces 668/668.
+
+`cut-support.js`, `index.html`, `sw.js`, `manifest.webmanifest`, `wearables.*`, `seed.*` and
+`train-anatomy.js` untouched. `RELEASE`/`CACHE_NAME` at `109`.
+
+## G. PROCESS NOTE
+
+Two of my own errors, recorded because they nearly cost more than the work: I misread a Cursor
+reconnect as a process death and briefly launched a **second concurrent agent** — caught within
+seconds, killed, no partial writes. Root cause was a waiter arming itself via
+`pgrep … | head -1`, which had been matching the long-running Cursor **IDE worker** rather than
+the delegation. Waiters now match the delegation's own prompt text.
+
+## H. REMAINING LIMITATIONS
+
+- The iOS date fix needs owner-device confirmation (§C).
+- Architecture: Train styling still spans `premium-ui.css` (166 rules) and `vnext.css` (139).
+  Legacy `renderTrain` remains in `index.html` and `cut-support.js`, superseded by `NXP.training`
+  at load order. **Documented as cleanup candidates, not touched** — D5 gates removal.

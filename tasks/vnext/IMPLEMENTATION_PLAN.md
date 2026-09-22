@@ -39,7 +39,7 @@ renderMore=NXP.more; renderHistory=NXP.history;
 | **2G** | Progress → Performance | ✅ committed `b137e64` |
 
 | **2H** | Progress → Body analytical integration | ✅ committed `6c1ded8` |
-| **T1** | Train completion + deep polish | ← **current** |
+| **T1** | Train completion + deep polish | ✅ committed |
 | 2I | AI surfaces (Why / Ask / proposal sheets) | **PAUSED by owner** |
 
 ## Separately audited, never inside a feature slice

@@ -652,6 +652,42 @@ body:has(.tabs.vn-recede) .toast{
   box-shadow:inset 0 0 0 1px var(--vn-violet-line);
 }
 
+/* Keyboard: the same Log Set button leaves flow only while weight or reps
+   is focused and the action would sit under the keyboard. Set type and RIR
+   stay in place. No positional transition — reduced motion included. */
+#trainPage .vn-set-form.is-kb{
+  padding-bottom:calc(50px + var(--vn-s3));
+}
+#trainPage .vn-train-active .nxp-train-cta.is-kb{
+  position:fixed;
+  z-index:70;
+  margin:0;
+  width:auto;
+  max-width:none;
+  left:max(var(--vn-gutter), env(safe-area-inset-left, 0px));
+  right:max(var(--vn-gutter), env(safe-area-inset-right, 0px));
+  bottom:var(--nxp-kb-bottom, max(8px, env(safe-area-inset-bottom, 0px)));
+  transition:none;
+  animation:none;
+}
+#trainPage .vn-train-active .nxp-train-cta.is-kb:active{
+  transform:scale(.985);
+}
+@media (prefers-reduced-motion:reduce){
+  #trainPage .vn-train-active .nxp-train-cta.is-kb,
+  #trainPage .vn-train-active .nxp-train-cta.is-kb:active{
+    transition:none;
+    animation:none;
+    transform:none;
+  }
+}
+:root[data-nxp-motion="reduced"] #trainPage .vn-train-active .nxp-train-cta.is-kb,
+:root[data-nxp-motion="reduced"] #trainPage .vn-train-active .nxp-train-cta.is-kb:active{
+  transition:none;
+  animation:none;
+  transform:none;
+}
+
 /* ---- Prev / Queue / Next ---- */
 #trainPage .vn-train-active .nxp-ex-nav{
   display:flex;align-items:center;justify-content:space-between;gap:var(--vn-s3);
@@ -2084,3 +2120,42 @@ body:has(.tabs.vn-recede) .toast{
   #weightPage .vn-perf-spark{animation:none}
 }
 :root[data-nxp-motion="reduced"] #weightPage .vn-perf-spark{animation:none}
+
+/* ==========================================================================
+   Shared date controls
+   Sheets live in #modalRoot, outside any page id, so this is not scoped.
+   iOS keeps the native date widget's intrinsic min-width, which width:100%
+   does not defeat, and the field spills its grid cell onto the neighbour.
+   appearance:none lets the control shrink. The input stays type=date, so
+   the native picker still opens. Text size is unchanged.
+   ========================================================================== */
+
+input[type="date"]{
+  appearance:none;
+  -webkit-appearance:none;
+  box-sizing:border-box;
+  display:block;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  min-inline-size:0;
+  min-height:44px;
+  overflow:hidden;
+}
+input[type="date"]::-webkit-datetime-edit,
+input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+input[type="date"]::-webkit-date-and-time-value{
+  min-width:0;
+  color:inherit;
+}
+:is(.n99-form-grid, .grid2, .bw-safe-row) > :has(input[type="date"]),
+label:has(> input[type="date"]){
+  min-width:0;
+}
+@media (max-width:375px){
+  .n99-form-grid:has(input[type="date"]),
+  .grid2:has(input[type="date"]),
+  .bw-safe-row:has(input[type="date"]){
+    grid-template-columns:1fr !important;
+  }
+}

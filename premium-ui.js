@@ -1660,6 +1660,183 @@ const NXP = (() => {
     if(!hold.btn)return;
     if(Math.abs(event.clientX-hold.x)>HOLD_SLOP||Math.abs(event.clientY-hold.y)>HOLD_SLOP)holdEnd();
   }
+  /* Distance from the layout bottom to the top of the keyboard, plus a gap.
+     A real keyboard (visual viewport shorter than the layout viewport by more
+     than a browser chrome) covers the home indicator, so the safe area and a
+     visible nav are not added again. With no keyboard, clear both. */
+  function keyboardBottom(layoutHeight, viewHeight, viewOffset, safeBottom, navClear) {
+    const layout=Number(layoutHeight)||0;
+    const view=Number(viewHeight)||0;
+    const offset=Number(viewOffset)||0;
+    const overlap=Math.max(0, layout-view-offset);
+    const gap=8;
+    if(overlap>40)return overlap+gap;
+    const safe=Math.max(0, Number(safeBottom)||0);
+    const nav=Math.max(0, Number(navClear)||0);
+    return Math.max(gap, safe)+nav;
+  }
+  function kbField(el) {return !!(el&&(el.id==='weightInput'||el.id==='repsInput'));}
+  function keyboardOverlap() {
+    const vv=window.visualViewport;
+    if(!vv||!window.innerHeight)return 0;
+    return Math.max(0, window.innerHeight-vv.height-(vv.offsetTop||0));
+  }
+  function safeBottomPx() {
+    if(!document.body||typeof document.createElement!=='function')return 0;
+    const probe=document.createElement('div');
+    if(!probe||!probe.style)return 0;
+    probe.style.cssText='position:fixed;visibility:hidden;pointer-events:none;height:env(safe-area-inset-bottom,0px);';
+    document.body.appendChild(probe);
+    const h=probe.offsetHeight||0;
+    probe.remove();
+    return h;
+  }
+  function navClearance() {
+    const tabs=document.querySelector('.tabs');
+    if(!tabs||tabs.classList.contains('vn-recede'))return 0;
+    if(typeof tabs.getBoundingClientRect!=='function')return 0;
+    const r=tabs.getBoundingClientRect();
+    const vv=window.visualViewport;
+    const viewH=vv&&vv.height?vv.height:(window.innerHeight||0);
+    if(!r||r.top>=viewH-1)return 0;
+    return Math.max(0, viewH-r.top);
+  }
+  function fieldCovered(btn) {
+    const overlap=keyboardOverlap();
+    if(!btn||typeof btn.getBoundingClientRect!=='function')return overlap>40;
+    const rect=btn.getBoundingClientRect();
+    if(!rect)return overlap>40;
+    const vv=window.visualViewport;
+    const viewH=vv&&vv.height?vv.height:(window.innerHeight||0);
+    return rect.bottom>viewH-8||rect.top<8;
+  }
+  function scrollByY(dy) {
+    if(!dy)return;
+    const scroller=document.scrollingElement||document.documentElement;
+    if(scroller&&typeof scroller.scrollTop==='number')scroller.scrollTop+=dy;
+    else if(typeof window.scrollBy==='function')window.scrollBy(0, dy);
+  }
+  function undockLog() {
+    const btn=document.getElementById('nxp-log-button');
+    const form=document.getElementById('nxp-set-form');
+    if(btn){
+      btn.classList.remove('is-kb');
+      if(btn.style){
+        btn.style.removeProperty('left');
+        btn.style.removeProperty('width');
+        btn.style.removeProperty('right');
+        btn.style.removeProperty('--nxp-kb-bottom');
+      }
+    }
+    if(form)form.classList.remove('is-kb');
+  }
+  function placeDock(btn, form) {
+    const vv=window.visualViewport;
+    const bottom=keyboardBottom(
+      window.innerHeight||0,
+      vv?vv.height:(window.innerHeight||0),
+      vv?(vv.offsetTop||0):0,
+      safeBottomPx(),
+      navClearance()
+    );
+    if(btn.style)btn.style.setProperty('--nxp-kb-bottom', bottom+'px');
+    if(!form||typeof form.getBoundingClientRect!=='function'||!btn.style)return;
+    const r=form.getBoundingClientRect();
+    if(!r||!r.width)return;
+    const origin=vv?(vv.offsetLeft||0):0;
+    btn.style.setProperty('left', (r.left+origin)+'px');
+    btn.style.setProperty('width', r.width+'px');
+    btn.style.setProperty('right', 'auto');
+  }
+  function keepFieldClear(btn) {
+    const active=document.activeElement;
+    if(!kbField(active)||typeof active.getBoundingClientRect!=='function')return;
+    if(typeof btn.getBoundingClientRect!=='function')return;
+    const br=btn.getBoundingClientRect();
+    const ir=active.getBoundingClientRect();
+    if(!br||!ir)return;
+    if(ir.bottom>br.top-8)scrollByY(ir.bottom-(br.top-8));
+    const again=active.getBoundingClientRect();
+    if(again&&again.top<8)scrollByY(again.top-8);
+  }
+  function keepRestClear(btn) {
+    const rest=document.querySelector('#trainPage .vn-rest.is-active');
+    if(!rest||rest.hidden||typeof rest.getBoundingClientRect!=='function')return;
+    if(typeof btn.getBoundingClientRect!=='function')return;
+    const br=btn.getBoundingClientRect();
+    const rr=rest.getBoundingClientRect();
+    if(!br||!rr)return;
+    const hit=rr.bottom>br.top+1&&rr.top<br.bottom-1&&rr.right>br.left&&rr.left<br.right;
+    if(!hit)return;
+    const active=document.activeElement;
+    const ir=kbField(active)&&typeof active.getBoundingClientRect==='function'?active.getBoundingClientRect():null;
+    const shift=rr.bottom-br.top+8;
+    const room=ir?Math.max(0, ir.top-8):shift;
+    scrollByY(Math.min(shift, room));
+  }
+  let kbTimer=0, kbPointer=false, docking=false;
+  function syncDock() {
+    if(docking)return;
+    docking=true;
+    try{
+      const btn=document.getElementById('nxp-log-button');
+      const active=document.activeElement;
+      if(!btn||!kbField(active)){
+        if(!kbPointer)undockLog();
+        return;
+      }
+      const form=document.getElementById('nxp-set-form');
+      if(!btn.classList.contains('is-kb')&&!fieldCovered(btn)&&keyboardOverlap()<=40)return;
+      btn.classList.add('is-kb');
+      if(form)form.classList.add('is-kb');
+      placeDock(btn, form);
+      keepFieldClear(btn);
+      keepRestClear(btn);
+      placeDock(btn, form);
+    }finally{
+      docking=false;
+    }
+  }
+  function scheduleUndock() {
+    clearTimeout(kbTimer);
+    kbTimer=setTimeout(function(){
+      if(kbPointer){scheduleUndock();return;}
+      if(kbField(document.activeElement))return;
+      undockLog();
+    }, 320);
+  }
+  function bindKeyboardDock() {
+    document.addEventListener('focusin', function(e){
+      if(!kbField(e.target))return;
+      clearTimeout(kbTimer);
+      syncDock();
+    }, true);
+    document.addEventListener('focusout', function(e){
+      if(!kbField(e.target))return;
+      scheduleUndock();
+    }, true);
+    /* A tap on Log Set blurs the field before click. Keeping focus until the
+       click lands means the dock does not jump out from under the finger, and
+       the submit still reads the same inputs. */
+    document.addEventListener('mousedown', function(e){
+      const btn=e.target&&e.target.closest&&e.target.closest('#nxp-log-button');
+      if(btn&&btn.classList.contains('is-kb'))e.preventDefault();
+    }, true);
+    document.addEventListener('pointerdown', function(e){
+      const btn=e.target&&e.target.closest&&e.target.closest('#nxp-log-button');
+      if(btn&&btn.classList.contains('is-kb'))kbPointer=true;
+    }, true);
+    document.addEventListener('pointerup', function(){
+      setTimeout(function(){kbPointer=false;}, 400);
+    }, true);
+    document.addEventListener('pointercancel', function(){kbPointer=false;}, true);
+    const vv=window.visualViewport;
+    if(vv&&typeof vv.addEventListener==='function'){
+      vv.addEventListener('resize', syncDock);
+      vv.addEventListener('scroll', syncDock);
+    }
+    if(typeof window.addEventListener==='function')window.addEventListener('resize', syncDock);
+  }
   function bindSteppers() {
     /* Delegated once. The Train screen replaces its own markup on every engine
        repaint, so per-element listeners would leak on each logged set. */
@@ -1699,7 +1876,8 @@ const NXP = (() => {
     if(value&&!left&&value.textContent!=='Ready')value.textContent='Ready';
   }
   bindSteppers();
-  return {ui,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture};
+  bindKeyboardDock();
+  return {ui,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;
