@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NXTFRM VNext — foundation layer (Phase 2A + 2B + 2C)
+   NXTFRM VNext — foundation layer (Phase 2A + 2B + 2C + 2D)
    Loads AFTER cut-support.css and premium-ui.css.
 
    DIRECTION: INSTRUMENT (tasks/vnext/DECISIONS.md D1)
@@ -14,10 +14,10 @@
      · Today                               (#homePage .vn-*)
      · Train                               (#trainPage .vn-*)   ← Phase 2B
      · Progress / Weight                   (#weightPage .vn-*)  ← Phase 2C
-   History and More are NOT restyled here. Every screen rule is
-   scoped under its page id, and every component class is new (vn-*), so no
-   existing .nxp-* / .n99-* rule is altered at the source — Train/Weight
-   overrides are additive under their page ids.
+     · History                             (#historyPage .vn-*) ← Phase 2D
+   More is NOT restyled here. Every screen rule is scoped under its page id,
+   and every component class is new (vn-*), so no existing .nxp-* / .n99-*
+   rule is altered at the source — overrides are additive under page ids.
    ========================================================================== */
 
 :root{
@@ -974,3 +974,272 @@ body:has(.tabs.vn-recede) .content{
   #weightPage .n99-chart-svg.is-new-point{animation:none}
 }
 :root[data-nxp-motion="reduced"] #weightPage .vn-tog{transition:none}
+
+/* ==========================================================================
+   HISTORY  —  calendar-first audit trail. Scoped to #historyPage.
+   Protagonist: the calendar (native to the canvas — not a floating card).
+   Filters are secondary. Selection updates the day region only (JS).
+   ========================================================================== */
+
+#historyPage{
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(139,92,246,.07), transparent 55%),
+    var(--vn-canvas);
+  color:var(--vn-ink);
+  min-height:100%;
+}
+#historyPage .vn-history,
+#historyPage .nxp-history{
+  padding-inline:var(--vn-gutter);
+  padding-bottom:calc(var(--vn-s8) + 12px);
+  min-width:0;
+}
+
+/* Chrome: title + month summary. Filters sit beneath as a quiet scope. */
+#historyPage .vn-hist-chrome,
+#historyPage .nxp-history-chrome{
+  margin:var(--vn-s2) 0 var(--vn-s3);
+  padding:0;
+}
+#historyPage .vn-hist-chrome h1,
+#historyPage .nxp-history-chrome h1{
+  margin:0;font-size:26px;font-weight:650;letter-spacing:-.03em;
+  color:var(--vn-ink);line-height:1.15;
+}
+#historyPage .vn-hist-chrome p,
+#historyPage .nxp-history-chrome p,
+#historyPage #vn-hist-summary{
+  margin:4px 0 0;font-size:13.5px;font-weight:500;color:var(--vn-ink-3);
+}
+
+/* Filters — secondary. No bordered track competing with the calendar. */
+#historyPage .vn-hist-filters,
+#historyPage .nxp-history-filters{
+  display:flex;flex-wrap:wrap;gap:2px 2px;
+  margin:0 0 var(--vn-s5);padding:0;
+  border:0;border-radius:0;background:none;
+  width:auto;max-width:100%;
+}
+#historyPage .vn-hist-filters button,
+#historyPage .nxp-history-filters button{
+  flex:0 0 auto;min-width:44px;min-height:44px;
+  padding:0 10px;border:0;border-radius:var(--vn-r-control);
+  background:transparent;color:var(--vn-ink-4);
+  font-size:12.5px;font-weight:520;letter-spacing:.01em;
+  transition:color var(--vn-t-state) var(--vn-ease), background var(--vn-t-state) var(--vn-ease);
+}
+#historyPage .vn-hist-filters button.active,
+#historyPage .nxp-history-filters button.active{
+  background:transparent;color:var(--vn-ink-2);font-weight:600;
+  box-shadow:inset 0 -2px 0 var(--vn-violet);
+}
+#historyPage .vn-hist-filters button:focus-visible,
+#historyPage .nxp-history-filters button:focus-visible{
+  outline:2px solid var(--vn-violet-line);outline-offset:2px;
+}
+
+/* Calendar — native to the page. No raised card, no giant panel. */
+#historyPage .vn-hist-calendar,
+#historyPage .nxp-history-calendar{
+  margin:0 0 var(--vn-s6);
+  padding:0;
+  border:0;border-radius:0;
+  background:transparent;box-shadow:none;
+}
+#historyPage .nxp-cal-head{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:var(--vn-s2);margin:0 0 var(--vn-s3);padding:0;
+}
+#historyPage .nxp-cal-month{
+  margin:0;font-size:19px;font-weight:620;letter-spacing:-.02em;
+  color:var(--vn-ink);
+}
+#historyPage .nxp-cal-nav{display:flex;align-items:center;gap:2px}
+#historyPage .nxp-cal-nav button{
+  display:grid;place-items:center;
+  width:44px;height:44px;min-width:44px;min-height:44px;
+  border:0;border-radius:var(--vn-r-control);
+  background:transparent;color:var(--vn-ink-2);
+  font-size:18px;line-height:1;
+  transition:background var(--vn-t-touch) var(--vn-ease), color var(--vn-t-touch) var(--vn-ease);
+}
+#historyPage .nxp-cal-nav button.nxp-cal-today{
+  width:auto;min-width:44px;padding:0 12px;
+  font-size:13px;font-weight:540;
+}
+#historyPage .nxp-cal-nav button:active{background:rgba(255,255,255,.04)}
+#historyPage .nxp-cal-weekdays,
+#historyPage .nxp-cal-grid{
+  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;
+}
+#historyPage .nxp-cal-weekdays span{
+  padding:6px 0;text-align:center;
+  font-size:10.5px;font-weight:600;letter-spacing:.04em;color:var(--vn-ink-4);
+}
+#historyPage .nxp-cal-day{
+  position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;min-height:48px;padding:6px 0 8px;
+  border:0;border-radius:10px;background:transparent;
+  color:var(--vn-ink-2);font-variant-numeric:tabular-nums;
+  transition:background var(--vn-t-state) var(--vn-ease), color var(--vn-t-state) var(--vn-ease),
+    box-shadow var(--vn-t-state) var(--vn-ease);
+  -webkit-tap-highlight-color:transparent;
+}
+#historyPage .nxp-cal-day b{
+  font-size:13.5px;font-weight:520;line-height:1;color:inherit;
+}
+#historyPage .nxp-cal-day.is-outside{color:var(--vn-ink-4);opacity:.45}
+#historyPage .nxp-cal-day.has-lift{background:transparent}
+#historyPage .nxp-cal-day.is-today b{color:var(--vn-ink);font-weight:640}
+#historyPage .nxp-cal-day.is-today:not(.is-selected)::after{
+  content:"";position:absolute;bottom:5px;width:3px;height:3px;
+  border-radius:50%;background:var(--vn-ink-3);
+}
+/* I1 — violet is signal: selected date only. */
+#historyPage .nxp-cal-day.is-selected{
+  background:var(--vn-violet-dim);color:var(--vn-ink);
+  box-shadow:inset 0 0 0 1px var(--vn-violet-line);
+}
+#historyPage .nxp-cal-day.is-selected::after{display:none}
+#historyPage .nxp-cal-day.is-selected b{color:var(--vn-ink);font-weight:620}
+
+/*
+  Four record kinds, four shapes (I6 — never colour alone):
+    lift      — filled disc
+    cardio    — hollow ring
+    floorball — diamond (rotated square)
+    weigh-in  — horizontal bar
+  Compact enough for four marks at 320px; never drop a kind.
+*/
+#historyPage .nxp-cal-marks{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
+  gap:2px;max-width:100%;min-height:5px;height:auto;
+}
+#historyPage .nxp-cal-marks i,
+#historyPage .nxp-cal-legend span::before{
+  display:block;box-sizing:border-box;width:5px;height:5px;flex:none;
+}
+#historyPage .nxp-cal-marks i.lift,
+#historyPage .nxp-cal-legend span.lift::before{
+  border-radius:50%;background:var(--vn-violet);
+}
+#historyPage .nxp-cal-marks i.cond,
+#historyPage .nxp-cal-legend span.cond::before{
+  border-radius:50%;border:1.5px solid var(--vn-ink-3);background:transparent;
+}
+#historyPage .nxp-cal-marks i.floor,
+#historyPage .nxp-cal-legend span.floor::before{
+  width:4.5px;height:4.5px;border-radius:1px;
+  background:var(--vn-ink-2);transform:rotate(45deg);
+}
+#historyPage .nxp-cal-marks i.body,
+#historyPage .nxp-cal-legend span.body::before{
+  width:7px;height:2.5px;border-radius:1px;background:var(--vn-ink-3);
+}
+#historyPage .nxp-cal-legend{
+  display:flex;flex-wrap:wrap;gap:6px 14px;
+  margin:var(--vn-s4) 0 0;padding:0;
+  font-size:11.5px;font-weight:520;color:var(--vn-ink-3);
+}
+#historyPage .nxp-cal-legend span{
+  display:inline-flex;align-items:center;gap:6px;
+}
+#historyPage .nxp-cal-legend span::before{content:""}
+#historyPage .nxp-cal-legend span.floor::before{transform:rotate(45deg)}
+
+/* Day detail — resolves beneath the calendar; state-tier enter. */
+#historyPage .vn-hist-dayhost{min-width:0}
+#historyPage .vn-hist-dayhost.vn-enter .vn-hist-day{
+  animation:vn-hist-day-enter var(--vn-t-state) var(--vn-ease);
+}
+@keyframes vn-hist-day-enter{
+  from{opacity:0;transform:translateY(4px)}
+  to{opacity:1;transform:none}
+}
+#historyPage .vn-hist-day,
+#historyPage .nxp-history-selected{min-width:0;padding-bottom:var(--vn-s4)}
+#historyPage .nxp-history-selected-head{margin:0 0 var(--vn-s3);padding:0}
+#historyPage .nxp-history-weekday{
+  display:block;font-size:11.5px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--vn-ink-3);
+}
+#historyPage .nxp-history-selected-head h2{
+  margin:4px 0 0;font-size:19px;font-weight:620;letter-spacing:-.02em;color:var(--vn-ink);
+}
+#historyPage .nxp-history-selected-summary{
+  margin:6px 0 0;font-size:13.5px;color:var(--vn-ink-3);overflow-wrap:anywhere;
+}
+#historyPage .nxp-history-empty{
+  margin:var(--vn-s4) 0 0;font-size:14.5px;color:var(--vn-ink-3);
+}
+#historyPage .nxp-history-block,
+#historyPage .vn-hist-block{
+  margin-top:var(--vn-s5);padding:var(--vn-s4) 0 0;
+  border-top:1px solid var(--vn-line);
+}
+#historyPage .nxp-history-block-label{
+  display:block;font-size:11.5px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--vn-ink-4);
+}
+#historyPage .nxp-history-block-title{
+  margin:4px 0 0;font-size:15px;font-weight:560;color:var(--vn-ink);overflow-wrap:anywhere;
+}
+#historyPage .nxp-history-ex{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:10px;margin-top:var(--vn-s3);min-width:0;
+}
+#historyPage .nxp-history-ex b{
+  font-size:15px;font-weight:540;color:var(--vn-ink);overflow-wrap:anywhere;
+}
+#historyPage .nxp-history-ex span{
+  flex:0 0 auto;font-size:13px;color:var(--vn-ink-3);font-variant-numeric:tabular-nums;
+}
+#historyPage .nxp-history-sets{
+  display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:3px;
+  font-size:13.5px;color:var(--vn-ink-2);font-variant-numeric:tabular-nums;
+}
+#historyPage .nxp-history-meta{
+  margin:3px 0 0;font-size:12.5px;color:var(--vn-ink-3);overflow-wrap:anywhere;
+}
+#historyPage .nxp-history-edit{
+  display:inline-flex;align-items:center;gap:4px;
+  min-height:44px;margin-top:var(--vn-s2);padding:0;
+  border:0;background:transparent;color:var(--vn-violet-lift);
+  font-size:14px;font-weight:540;
+}
+
+/* Future State Engine lanes — present in the DOM, empty, no persistence. */
+#historyPage .vn-hist-audit{display:contents}
+#historyPage .vn-hist-lane[hidden]{display:none !important}
+
+@media (max-width:359px){
+  #historyPage .vn-history,
+  #historyPage .nxp-history{padding-inline:12px}
+  #historyPage .vn-hist-chrome h1,
+  #historyPage .nxp-history-chrome h1{font-size:23px}
+  #historyPage .nxp-cal-month{font-size:17px}
+  #historyPage .nxp-cal-day{min-height:46px;padding:5px 0 7px;gap:3px}
+  #historyPage .nxp-cal-day b{font-size:12.5px}
+  #historyPage .nxp-cal-marks{gap:1.5px}
+  #historyPage .nxp-cal-marks i,
+  #historyPage .nxp-cal-legend span::before{width:4.5px;height:4.5px}
+  #historyPage .nxp-cal-marks i.body,
+  #historyPage .nxp-cal-legend span.body::before{width:6px;height:2px}
+  #historyPage .nxp-cal-legend{gap:4px 10px;font-size:11px}
+  #historyPage .vn-hist-filters button,
+  #historyPage .nxp-history-filters button{padding:0 8px;font-size:12px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  #historyPage .vn-hist-dayhost.vn-enter .vn-hist-day{animation:none}
+  #historyPage .nxp-cal-day,
+  #historyPage .vn-hist-filters button,
+  #historyPage .nxp-history-filters button,
+  #historyPage .nxp-cal-nav button{transition:none}
+}
+:root[data-nxp-motion="reduced"] #historyPage .vn-hist-dayhost.vn-enter .vn-hist-day{animation:none}
+:root[data-nxp-motion="reduced"] #historyPage .nxp-cal-day,
+:root[data-nxp-motion="reduced"] #historyPage .vn-hist-filters button,
+:root[data-nxp-motion="reduced"] #historyPage .nxp-history-filters button,
+:root[data-nxp-motion="reduced"] #historyPage .nxp-cal-nav button{transition:none}

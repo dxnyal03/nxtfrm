@@ -1,0 +1,490 @@
+{
+  "partialUpdate": {
+    "beforeDate": "2026-08-31",
+    "afterDate": "2026-08-01",
+    "calSurvived": true,
+    "chromeSurvived": true,
+    "filtersSurvived": true,
+    "selectedCell": true,
+    "dayHost": "Saturday1 August 202684.6 kgWeight84.6 kgMorning\n      \n      \n      \n    "
+  },
+  "scrollJump": {
+    "before": 120,
+    "after": 120,
+    "delta": 0
+  },
+  "fourKinds": {
+    "marks": [
+      "lift",
+      "cond",
+      "floor",
+      "body"
+    ],
+    "label": "12 August, lifting, cardio, floorball, weigh-in",
+    "styles": {
+      "lift": {
+        "width": "5px",
+        "height": "5px",
+        "borderRadius": "50%",
+        "borderTopWidth": "0px",
+        "borderStyle": "none",
+        "transform": "none",
+        "background": "rgb(139, 92, 246)"
+      },
+      "cond": {
+        "width": "5px",
+        "height": "5px",
+        "borderRadius": "50%",
+        "borderTopWidth": "1px",
+        "borderStyle": "solid",
+        "transform": "none",
+        "background": "rgba(0, 0, 0, 0)"
+      },
+      "floor": {
+        "width": "4.5px",
+        "height": "4.5px",
+        "borderRadius": "1px",
+        "borderTopWidth": "0px",
+        "borderStyle": "none",
+        "transform": "matrix(0.707107, 0.707107, -0.707107, 0.707107, 0, 0)",
+        "background": "rgb(174, 180, 192)"
+      },
+      "body": {
+        "width": "7px",
+        "height": "2.5px",
+        "borderRadius": "1px",
+        "borderTopWidth": "0px",
+        "borderStyle": "none",
+        "transform": "none",
+        "background": "rgb(139, 146, 160)"
+      }
+    },
+    "hasLift": true,
+    "hasCardio": true,
+    "hasFloor": true,
+    "hasBody": true,
+    "ariaNamesFloorball": true,
+    "ariaNamesCardio": true,
+    "dayHasFloorball": true,
+    "lanes": [
+      "event",
+      "intervention",
+      "annotation"
+    ],
+    "legendHasFloor": true
+  },
+  "shapes": {
+    "styles": {
+      "lift": {
+        "width": "5px",
+        "height": "5px",
+        "borderRadius": "50%",
+        "borderTopWidth": "0px",
+        "borderStyle": "none",
+        "transform": "none",
+        "background": "rgb(139, 92, 246)"
+      },
+      "cond": {
+        "width": "5px",
+        "height": "5px",
+        "borderRadius": "50%",
+        "borderTopWidth": "1px",
+        "borderStyle": "solid",
+        "transform": "none",
+        "background": "rgba(0, 0, 0, 0)"
+      },
+      "floor": {
+        "width": "4.5px",
+        "height": "4.5px",
+        "borderRadius": "1px",
+        "borderTopWidth": "0px",
+        "borderStyle": "none",
+        "transform": "matrix(0.707107, 0.707107, -0.707107, 0.707107, 0, 0)",
+        "background": "rgb(174, 180, 192)"
+      },
+      "body": {
+        "width": "7px",
+        "height": "2.5px",
+        "borderRadius": "1px",
+        "borderTopWidth": "0px",
+        "borderStyle": "none",
+        "transform": "none",
+        "background": "rgb(139, 146, 160)"
+      }
+    },
+    "liftDisc": true,
+    "condRing": true,
+    "floorDiamond": true,
+    "bodyBar": true,
+    "distinctClassNames": true
+  },
+  "integrity": {
+    "sample": [
+      {
+        "date": "2026-08-01",
+        "expected": {
+          "lift": false,
+          "cardio": false,
+          "floorball": false,
+          "body": true
+        },
+        "marks": [
+          "body"
+        ],
+        "matchMarks": true,
+        "contentOk": true,
+        "counts": {
+          "logs": 0,
+          "cardio": 0,
+          "floorball": 0,
+          "bw": 1
+        }
+      },
+      {
+        "date": "2026-08-12",
+        "expected": {
+          "lift": true,
+          "cardio": true,
+          "floorball": true,
+          "body": true
+        },
+        "marks": [
+          "lift",
+          "cond",
+          "floor",
+          "body"
+        ],
+        "matchMarks": true,
+        "contentOk": true,
+        "counts": {
+          "logs": 1,
+          "cardio": 1,
+          "floorball": 1,
+          "bw": 1
+        }
+      },
+      {
+        "date": "2026-08-20",
+        "expected": {
+          "lift": false,
+          "cardio": false,
+          "floorball": false,
+          "body": true
+        },
+        "marks": [
+          "body"
+        ],
+        "matchMarks": true,
+        "contentOk": true,
+        "counts": {
+          "logs": 0,
+          "cardio": 0,
+          "floorball": 0,
+          "bw": 1
+        }
+      },
+      {
+        "date": "2026-07-15",
+        "expected": {
+          "lift": false,
+          "cardio": true,
+          "floorball": true,
+          "body": true
+        },
+        "marks": [
+          "cond",
+          "floor",
+          "body"
+        ],
+        "matchMarks": true,
+        "contentOk": true,
+        "counts": {
+          "logs": 0,
+          "cardio": 1,
+          "floorball": 1,
+          "bw": 1
+        }
+      }
+    ],
+    "noWrite": {
+      "sameLogs": true,
+      "sameCardio": true,
+      "sameFloorball": true,
+      "sameBws": true
+    },
+    "beforeLen": {
+      "logs": 174,
+      "cardio": 15,
+      "floorball": 8,
+      "bws": 83
+    }
+  },
+  "filters": {
+    "all": {
+      "summary": "29 active days",
+      "pressed": [
+        {
+          "t": "All",
+          "pressed": true,
+          "active": true
+        },
+        {
+          "t": "Lifting",
+          "pressed": false,
+          "active": false
+        },
+        {
+          "t": "Cardio",
+          "pressed": false,
+          "active": false
+        },
+        {
+          "t": "Weight",
+          "pressed": false,
+          "active": false
+        }
+      ],
+      "marks": {
+        "lift": 1,
+        "cond": 5,
+        "floor": 1,
+        "body": 38
+      }
+    },
+    "strength": {
+      "summary": "1 lifting day",
+      "pressed": [
+        {
+          "t": "All",
+          "pressed": false,
+          "active": false
+        },
+        {
+          "t": "Lifting",
+          "pressed": true,
+          "active": true
+        },
+        {
+          "t": "Cardio",
+          "pressed": false,
+          "active": false
+        },
+        {
+          "t": "Weight",
+          "pressed": false,
+          "active": false
+        }
+      ],
+      "marks": {
+        "lift": 1,
+        "cond": 0,
+        "floor": 0,
+        "body": 0
+      }
+    },
+    "conditioning": {
+      "summary": "4 cardio days",
+      "pressed": [
+        {
+          "t": "All",
+          "pressed": false,
+          "active": false
+        },
+        {
+          "t": "Lifting",
+          "pressed": false,
+          "active": false
+        },
+        {
+          "t": "Cardio",
+          "pressed": true,
+          "active": true
+        },
+        {
+          "t": "Weight",
+          "pressed": false,
+          "active": false
+        }
+      ],
+      "marks": {
+        "lift": 0,
+        "cond": 5,
+        "floor": 1,
+        "body": 0
+      }
+    },
+    "body": {
+      "summary": "28 weigh-ins",
+      "pressed": [
+        {
+          "t": "All",
+          "pressed": false,
+          "active": false
+        },
+        {
+          "t": "Lifting",
+          "pressed": false,
+          "active": false
+        },
+        {
+          "t": "Cardio",
+          "pressed": false,
+          "active": false
+        },
+        {
+          "t": "Weight",
+          "pressed": true,
+          "active": true
+        }
+      ],
+      "marks": {
+        "lift": 0,
+        "cond": 0,
+        "floor": 0,
+        "body": 38
+      }
+    }
+  },
+  "monthNav": {
+    "titleBefore": "August 2026",
+    "titlePrev": "July 2026",
+    "monthPrev": "2026-07",
+    "titleNext": "September 2026",
+    "titleToday": "September 2026",
+    "todaySelected": false,
+    "outside": 11,
+    "inMonth": 31,
+    "firstDate": "2026-08-01",
+    "lastDate": "2026-08-31",
+    "firstIsOutsideOrAug1": true
+  },
+  "capabilities": {
+    "editPresent": true,
+    "modalOpened": true,
+    "otherReachable": true,
+    "lanes": [
+      "event",
+      "intervention",
+      "annotation"
+    ],
+    "hasEventLane": true,
+    "hasInterventionLane": true,
+    "hasAnnotationLane": true
+  },
+  "widths": {
+    "320": {
+      "overflow": false,
+      "textFails": [],
+      "textFailCount": 0,
+      "targetFails": [],
+      "targetFailCount": 0
+    },
+    "375": {
+      "overflow": false,
+      "textFails": [],
+      "textFailCount": 0,
+      "targetFails": [],
+      "targetFailCount": 0
+    },
+    "390": {
+      "overflow": false,
+      "textFails": [],
+      "textFailCount": 0,
+      "targetFails": [],
+      "targetFailCount": 0
+    }
+  },
+  "reducedMotion": {
+    "survived": true,
+    "monthAfter": "2026-09",
+    "selected": "2026-08-31"
+  },
+  "otherTabs": {
+    "home": {
+      "ok": true,
+      "errors": []
+    },
+    "train": {
+      "ok": true,
+      "errors": []
+    },
+    "weight": {
+      "ok": true,
+      "errors": []
+    },
+    "more": {
+      "ok": true,
+      "errors": []
+    }
+  },
+  "suites": {
+    "wearables.release-gate.test.js": {
+      "status": 0,
+      "pass": true,
+      "tail": "ys\nPASS  the weight hotfix introduces no storage migration\nPASS  morning outranks post-workout in the canonical row, and the one gap is pinned\nPASS  production fixture runtime does not attach docs\nPASS  production host rejects useFixtureProvider({mode:development})\nPASS  production host rejects create({mode:development})\nPASS  localhost fixture runtime still attaches docs\n\nOK  53 passed, 0 failed\n"
+    },
+    "wearables.weight-contract.test.js": {
+      "status": 0,
+      "pass": true,
+      "tail": "aid out, never reworded\nPASS  diagnosis: confidence is shown as-is, with no invented score\nPASS  diagnosis: a repeated action sentence is shown once, not twice\nPASS  diagnosis: the insufficient-context case says it once, not twice\nPASS  diagnosis: the Needed row is derived from diagnose(), never from a fixture\nPASS  diagnosis: no value is wrapped in the old status capsule\n\nOK  31 passed, 0 failed\n"
+    }
+  },
+  "consoleErrors": [],
+  "pass": {
+    "denseMonth": true,
+    "partialUpdate": true,
+    "noScrollJump": true,
+    "fourKinds": true,
+    "shapesNotColourAlone": true,
+    "emptyDay": true,
+    "emptyMonth": true,
+    "sparseMonth": true,
+    "filters": true,
+    "monthNav": true,
+    "capabilities": true,
+    "integrity": true,
+    "a11y390": true,
+    "a11y375": true,
+    "a11y320": true,
+    "reducedMotion": true,
+    "otherTabs": true,
+    "noConsoleErrors": true,
+    "suites": true,
+    "all": true
+  },
+  "seed": {
+    "logs": 174,
+    "cardio": 15,
+    "floorball": 8,
+    "bws": 83
+  },
+  "dense": {
+    "dayCount": 31,
+    "marked": 29,
+    "selected": "2026-08-31",
+    "other": "2026-08-01",
+    "summary": "29 active days",
+    "hasCalendar": true,
+    "hasFilters": true,
+    "hasChrome": true,
+    "legend": [
+      "Lifting",
+      "Cardio",
+      "Floorball",
+      "Weigh-in"
+    ]
+  },
+  "emptyDay": {
+    "date": "2026-08-16",
+    "emptyCopy": true,
+    "markCount": 0
+  },
+  "emptyMonth": {
+    "summary": "No records this month",
+    "marks": 0
+  },
+  "sparse": {
+    "marked": 13,
+    "summary": "6 active days"
+  }
+}

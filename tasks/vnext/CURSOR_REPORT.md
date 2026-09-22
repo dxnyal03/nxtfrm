@@ -8,7 +8,7 @@ Overwrite this file each slice. Keep it factual: Claude reviews the actual git d
 
 ## Slice
 
-`VNext Phase 2C — Progress / Weight`
+`VNext Phase 2D — History` (review round 2 — required fix 1)
 
 ## Status
 
@@ -20,70 +20,70 @@ Overwrite this file each slice. Keep it factual: Claude reviews the actual git d
 
 | File | Added / Modified | What changed |
 |---|---|---|
-| `cut-support.js` | Modified | Presentation only (`chartModel`→`progress`): D2 domain (morning+trend only); D3 Journey rail; forecast/post toggles off by default; full-plot scrub + keyboard; textual trajectory read. UI flags `showPost`/`showForecast`. **No edits to truth functions** (`weights`…`review`). |
-| `premium-ui.js` | Modified | Weight view renders `chartHTML()` as the protagonist surface; retired `arrangeWeightView` hero rearrange; demoted TDEE + weigh-ins below. |
-| `vnext.css` | Modified | `#weightPage .vn-*` Weight surface (header, segments, chart wrap, legend, toggles, Journey, evidence, motion). |
-| `wearables.release-gate.test.js` | Modified | Adapted domain/legend assertions to D2/D8 (post no longer widens Y-domain); `selectPoint` signature slice. |
-| `wearables.weight-contract.test.js` | Modified | Domain = morning+trend; goalRef null (D3); projection/post enabled for render asserts; Journey asserted. Truth numeric pins unchanged. Restored shared-`m.y()` post-workout projection assert (with `showPost` on + non-empty `m.post` guard) alongside D2 domain asserts. |
-| `tasks/vnext/verify-2c.mjs` | Added | Playwright acceptance for §6 |
-| `tasks/vnext/verify-2c-results.json` | Added | Evidence dump |
-| `tasks/vnext/shots/weight-*.png` | Added | 390 + 320 for goal-off/on, post-on, forecast-on |
+| `premium-ui.js` | Modified | History partial selection update; floorball as its own calendar mark; secondary filter chrome IDs; day-detail host; EVENT/INTERVENTION/ANNOTATION structural lanes (empty, no persistence). **Round 2:** restored visible `Conditioning` label on `historyConditioningBlock` (was incorrectly `Cardio`). |
+| `vnext.css` | Modified | New `#historyPage` / `vn-*` History surface: canvas, native calendar (no raised card), secondary filters, four shape marks, day-enter motion + reduced-motion paths. *(unchanged this round)* |
+| `tasks/vnext/verify-2d.mjs` | Added | Playwright acceptance for §6 *(unchanged this round)* |
+| `tasks/vnext/verify-2d-results.json` | Added | Evidence dump (re-run after label fix) |
+| `tasks/vnext/shots/history-*.png` | Added | dense / empty / four-kind at 390 and 320 |
 | `tasks/vnext/CURSOR_REPORT.md` | Modified | This report |
 
-No edits to truth block ~71–263, wearables engines, `train-anatomy.js`, `sw.js` RELEASE/CACHE, Supabase, or unrelated untracked trees.
+No edits to `cut-support.js`, `wearables.*`, `index.html`, `sw.js` RELEASE/CACHE, `premium-ui.css`, Supabase, or unrelated untracked trees (`design-v102/`, `design-v103/`, `.claude/`, root PNG).
+
+**This round only:** one-line label restore in `historyConditioningBlock`. Rows, calendar marks, `aria-label`s, and `data-kind="conditioning"` untouched.
 
 ---
 
 ## B. Behaviour implemented
 
-### D2 — Recent-trajectory Y-domain
+### Defect 1 — Selection no longer rebuilds the page
 
-- Domain values = visible morning readings + trend averages only.
-- **Excluded from domain:** goal band, goal reference, forecast cone/endpoint, confidence-band extremes, post-workout.
-- Measured (seeded fixture, goal confirmed, 30-day range): **83–88 kg (span 5)** with goal band toggled **off and on** — identical.
-- Materially tighter than the live defect (76–86 / 10 kg).
+- `historySelect()` (same month): moves `is-selected` / `aria-pressed` on the affected cells and replaces `#vn-hist-dayhost` only.
+- Calendar (`#vn-hist-calendar`), chrome (`#vn-hist-chrome`) and filters (`#vn-hist-filters`) stay in the DOM.
+- Proven: marker nodes appended inside calendar / chrome / filters survive a date change (`partialUpdate` in results).
+- Scroll position preserved across selection (`delta ≤ 2`).
+- Month shift / filter change still call full `history()` (real content change). `historyThisMonth()` is partial when already on the current month.
 
-### D3 — Cut journey (separate)
+### Defect 2 — Filters secondary
 
-- Non-time-series rail: start → current → goal range (left-to-right), with Down / To goal range metrics.
-- Only place the distant goal appears; chart no longer draws goal band or `goalRef` hairline.
+- Same four scopes (`All / Lifting / Cardio / Weight`) and handlers (`NXP.setHistoryFilter`).
+- Visual: no bordered segment track; quiet text row with an underline on the active scope.
+- Month summary (`#vn-hist-summary`) still reflects the active filter.
 
-### Forecast (I11)
+### Defect 3 — Floorball distinct in the calendar
 
-- Off by default; dashed/faded mark (`stroke-dasharray="2 5"`).
-- Omitted entirely (no toggle, no geometry) when `forecastGoal` lacks evidence / target unconfirmed.
-- Projected Y clamped into the plot so a distant target cannot invent vertical space.
+- `historyMarks()` returns `{lift, cardio, floorball, body}` — cardio and floorball are never folded together.
+- Shapes (I6): filled disc · hollow ring · diamond (rotated square) · horizontal bar.
+- `aria-label` names each kind present, including `floorball`.
+- Legend lists all four.
+- At 320px all four marks measure with positive geometry in-cell (no silent drop).
 
-### Post-workout (D8)
+### Review fix 1 — Conditioning block label
 
-- Off by default; hollow **diamond** marks (shape, not hue).
-- Never enters trend/plateau/forecast maths (unchanged) **and** never enters Y-domain.
-- Toggling post does not change trend-line geometry (verified).
+- Visible label restored to **Conditioning** (was `Cardio`).
+- Block still holds cardio + floorball rows under one heading that does not claim floorball is cardio.
+- `data-kind="conditioning"` unchanged; row `data-kind` values unchanged.
 
-### Scrub
+### Forward structure — EVENT / INTERVENTION / ANNOTATION
 
-- Drag anywhere on `#vn-chart-wrap` (`touch-action: pan-y`); pointer capture.
-- Stable metric header outside the plot (fixed min-heights; no reflow on scrub).
-- Keyboard: ←/→ move, Escape → latest (“Latest morning”).
+- Day view includes `.vn-hist-lane[data-lane=event|intervention|annotation]` inside `.vn-hist-audit`, `hidden`, empty.
+- No new storage keys, record shapes, or writes.
 
-### Interpretation without interaction
+### VNext visual language
 
-- “Recent trajectory” headline from `detectPlateau` weekly rate / status + `trendReadText` on load.
-- Evidence rows (rate, plateau, projection, confidence) below Journey.
-
-### Ranges
-
-- Kept existing **2W / 1M / 3M / All** (14 / 30 / 90 / 0). No change — production functional truth; design-vnext’s 4W/12W/… not adopted. Each range re-domains.
+- Calendar native to the canvas (no raised card / giant panel).
+- Selected day: restrained violet (I1).
+- Day detail enter: state tier 200ms; reduced-motion path clears animation.
 
 ---
 
 ## C. Architecture / state wiring
 
-- Presentation layer only inside the existing Progress IIFE.
-- New UI flags: `N.ui.showPost`, `N.ui.showForecast` (default false). `showGoal` retained for API/tests; does not affect domain or chart goal drawing.
-- New exports: `journeyHTML`, `chartKey`, `setPostVisible`, `setForecastVisible`.
-- `premium-ui` Weight path no longer moves selected metrics into a hero; Strength/Body views untouched structurally.
-- No calculation, storage key, record shape, or morning-canonical rule changes (Q1 untouched).
+- Presentation only in `NXP.history*` helpers inside `premium-ui.js`.
+- Stable region IDs: `vn-hist-chrome`, `vn-hist-filters`, `vn-hist-calhost` / `vn-hist-calendar`, `vn-hist-dayhost`.
+- Cells carry `data-date` for selection patching.
+- `state.historyDate` / `historyMonth` / `historyFilter` remain in-memory UI state — not persisted.
+- History remains read-only on `state.logs` / `cardio` / `floorball` / `bws` (navigation proven same-array reference).
+- Migration seam untouched: `renderHistory=NXP.history`.
 
 ---
 
@@ -91,29 +91,32 @@ No edits to truth block ~71–263, wearables engines, `train-anatomy.js`, `sw.js
 
 | # | Test | Result | Evidence |
 |---|---|---|---|
-| 1 | D2 domain identical goal on/off; span &lt; 8 kg | PASS | `verify-2c-results.json` → `domain` (83–88, span 5, identical) |
-| 2 | D8 post excluded from domain; trend geometry stable | PASS | `postToggle` |
-| 3 | Truth byte-identical across toggles | PASS | `truthUntouched` |
-| 4 | Scrub + header stable + keyboard | PASS | `scrub` |
-| 5 | Interpretation on load | PASS | `interpretation` |
-| 6 | Ranges re-domain | PASS | `ranges` |
-| 7 | Forecast distinct, off by default, omitted when weak | PASS | `forecast` |
-| 8 | Contrast / targets / overflow @390/375/320 | PASS | `a11y` |
-| 9 | Reduced motion | PASS | `reducedMotion` |
-| 10 | Other tabs + `wearables.release-gate.test.js` | PASS | `otherTabs`; **53 passed, 0 failed** |
-| 11 | `wearables.weight-contract.test.js` | PASS | **31 passed, 0 failed** (re-run after restoring post shared-`y` assert) |
+| 1 | Partial update — calendar/chrome/filters nodes survive selection | PASS | `partialUpdate` |
+| 2 | No scroll jump on selection | PASS | `scrollJump` |
+| 3 | Four distinguishable marks; floorball ≠ cardio | PASS | `fourKinds` (seed + in-memory four-kind day) |
+| 4 | Shape/geometry not colour alone | PASS | `shapes` |
+| 5 | Sample dates match `state`; no writes during nav | PASS | `integrity` |
+| 6 | Month prev/next/Today; outside days; Aug 1–31 | PASS | `monthNav` |
+| 7 | Day modal / edit / otherDayDetails / audit lanes | PASS | `capabilities` |
+| 8 | Contrast / targets / overflow @390/375/320 | PASS | `widths` — 0 text fails, 0 target fails, no overflow at each width |
+| 9 | Reduced motion selection + month change | PASS | `reducedMotion` |
+| 10 | Today / Train / Progress / More; both suites | PASS | `otherTabs`; release-gate **53/0**; weight-contract **31/0** |
 
-Screenshots: `tasks/vnext/shots/weight-{goal-off,goal-on,post-on,forecast-on}-{390,320}.png`
+Screenshots: `tasks/vnext/shots/history-{dense,empty,fourkind}-{390,320}.png` (from round 1; label-only change this round).
+
+Seed used for dense/sparse: `?reseed=1` on `localhost` → 174 logs / 15 cardio / 8 floorball / 83 bws. Four-kind day constructed in-memory on `2026-08-12` (no seeded day has all four).
+
+**Re-run after label fix:** `verify-2d.mjs` → `ALL PASS`; `node wearables.release-gate.test.js` → **53/0**; `node wearables.weight-contract.test.js` → **31/0**.
 
 ---
 
 ## E. Responsive verification
 
-| Width | goal-off | goal-on | post-on | forecast-on | range-14 | range-all |
-|---|---|---|---|---|---|---|
-| 390 | PASS | PASS | PASS | PASS | PASS | PASS |
-| 375 | PASS | PASS | PASS | PASS | PASS | PASS |
-| 320 | PASS | PASS | PASS | PASS | PASS | PASS |
+| Width | dense | empty | four-kind | a11y |
+|---|---|---|---|---|
+| 390 | PASS | PASS | PASS | PASS |
+| 375 | — | — | — | PASS |
+| 320 | PASS | PASS | PASS | PASS |
 
 ---
 
@@ -121,25 +124,23 @@ Screenshots: `tasks/vnext/shots/weight-{goal-off,goal-on,post-on,forecast-on}-{3
 
 | Item | Note |
 |---|---|
-| Range set | Kept 2W/1M/3M/All vs design-vnext 4W/12W/6M/1Y — functional truth / task §3.6 |
-| Goal band checkbox | Removed from chart controls; Journey owns the goal. `setGoalVisible` still exists (no domain effect) |
-| Post mark | Diamonds (design-vnext) vs prior hollow squares — still shape-not-hue |
-| Diagnosis / weekly review | Demoted into “Why NXTFRM says this” details — not deleted |
-| TDEE | Demoted under Weight as disclosure (premium-ui) |
-| design-vnext post-in-domain | Prototype pushed post into vals; this slice follows CURRENT_TASK / D2 and excludes it |
-| Q2 verdict language | Not used; headlines stay observation-based from plateau/trendReadText |
+| Calendar cell width @320 | 7-column math cannot guarantee ≥44px width; height ≥44 enforced. Declared in verify audit (same honest constraint as any month grid). Accepted by Claude review — not a defect. |
+| Filter placement | Still under the header (production behaviour); demoted visually (no track), not relocated under the calendar. |
+| design-vnext filters | Prototype has no filters; production four scopes kept (functional truth). |
+| design-vnext “+ Add note” | Not shipped — would invent persistence / write UI. Structural lanes only. |
+| Conditioning day block | One **Conditioning** block still groups cardio + floorball rows (production day-view structure); calendar separates the marks. Label no longer claims floorball is cardio. |
+| Cloud/local banner | Appears under local-only seed (actionable D11 condition); not suppressed in this slice. |
 
 ---
 
 ## G. Open questions / risks
 
-1. Live-data domain numbers will differ from the verify seed (83–88); the invariant to re-measure on device is **identical on/off + materially tighter than 76–86**.
-2. Shipping still needs the normal cache-bust / RELEASE path (out of scope).
-3. Contract/release-gate tests were adapted for legitimate D2/D3/D8 presentation changes — intent preserved; called out above.
-4. Follow-up (test-only): test `7,8` now guards both D2 (domain = morning+trend) **and** shared-scale projection of post points via `m.y()` when `showPost` is on — those are separate guarantees.
+1. Whether filters should eventually move beside the month title (design-vnext has none) is a polish call — behaviour is intact.
+2. Shipping still needs the normal cache-bust / RELEASE path (out of scope; owner checkpoint).
+3. Populating EVENT / INTERVENTION / ANNOTATION is gated on Q5 / State Engine — structure only here.
 
 ---
 
 ## H. Stop
 
-Working tree ready for Claude design/UX review of **Phase 2C Progress / Weight**. Latest delta is test-coverage only (`wearables.weight-contract.test.js`). **No commit. No push.**
+Working tree ready for Claude design/UX review of **Phase 2D History** (required fix 1 addressed). **No commit. No push.**

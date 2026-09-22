@@ -2,72 +2,74 @@
 
 ## Slice
 
-`VNEXT PHASE 2C: PROGRESS / WEIGHT` — final (rounds 1–2)
+`VNEXT PHASE 2D: HISTORY` — final (rounds 1–2)
 
 ## Verdict
 
 **APPROVED — ready for the owner's commit decision.**
 
-D2 and D3 are now production behaviour, and I measured the result rather than reading it from the report.
+Round 1 found one semantic regression; round 2 fixed it. Round 1's findings are kept below for the record.
 
----
+### Round 2 — re-verified by Claude
+- **Conditioning label restored.** Block labels are now `Lifting / Conditioning / Weight`, and the heading above the Floorball row reads **Conditioning**, not Cardio. The floorball row itself is unchanged (`Floorball · 90 min`), and its calendar mark, `data-kind` and `aria-label` are untouched.
+- **All 2D contracts re-verified after the fix:** partial update still real (calendar, header, filters and all 30 cells survived a date change; scroll preserved) · month navigation intact · **86/86 days, zero data mismatches** · training data byte-identical to baseline (174/15/8/83) · 4 marks with 4 distinct geometries at 390/375/320 · contrast 0 failures · no overflow · reduced motion clean · other four tabs unchanged · release gate **53/0** · weight contract **31/0**.
 
-## The headline: D2, measured before and after
+## Process note
 
-I captured the truth-function outputs and the chart domain **before** delegating, so this is a real before/after on identical data:
+Cursor completed the slice at ~14:12 but its CLI **hung without exiting** (0% CPU, 26 min, no writes), so its summary was never flushed. The work product was complete and intact on disk — `premium-ui.js` passes `node --check`, `verify-2d.mjs` is valid ESM, `vnext.css` braces balance 388/388, report has all sections A–H. I verified completeness before terminating the stuck process. Nothing was lost.
 
-| Goal state | Before | After |
-|---|---|---|
-| off | 81–85 (4 kg) | 81–85 (4 kg) |
-| **confirmed** | **76–86 (10 kg)** | **81–85 (4 kg)** |
+## Scope check
 
-**The domain is now identical whether the goal band is toggled on or off** — which is only possible if the goal genuinely no longer touches the scale. The bottom ~40% of dead plot is gone.
+Clean: `premium-ui.js`, `vnext.css`, `CURSOR_REPORT.md` + test artefacts. No `cut-support.js`, no `index.html`, no `wearables.*`, no `RELEASE`/`CACHE_NAME` change. Nothing committed.
 
-Also proven:
-- **Post-workout no longer stretches the domain.** I injected post rows at 95–100 kg against an 81–85 morning domain: the domain did not move.
-- **…but post is still drawn on the shared `m.y()` scale**, so no second axis was introduced. Both properties hold — they are separate guarantees and both were checked.
-- **Forecast does not stretch the domain either**, and when off, `chartModel.forecast` is `null` and `futureDays` is `0` — no future strip is reserved. The `2 5` projection dash appears only when enabled.
-- `goalRef` on the recent chart is `null` (D3).
+## APPROVED — verified by me
 
-## Truth untouched — proven, not asserted
+**All three named defects are fixed:**
 
-All eleven TRUTH functions are **textually unmodified**, and every changed line in `cut-support.js` falls in the geometry region (≥ line 703). The one edit outside it (line 40) is additive UI flags (`showPost`, `showForecast`).
+| Defect | Evidence |
+|---|---|
+| Full-page rebuild on date select | **Proven partial.** Marked real DOM nodes, changed date: calendar node, header and filters **all survived**, and **all 30 calendar cells survived** — selection state moves in place rather than the grid being recreated. Only the day region's contents were replaced. Scroll preserved (0 → 0). |
+| Filters dominated | Now a quiet underlined text row (All / Lifting / Cardio / Weight), clearly subordinate to the calendar. All four scopes still work, with correctly scoped summaries: 6 lifting days · 12 cardio days · 29 weigh-ins · 31 active days. |
+| Floorball indistinguishable | Floorball now has its **own calendar mark**. Four marks, **four genuinely distinct geometries**: filled disc (5×5 round), hollow ring (5×5 bordered), **rotated diamond** (4.5×4.5, rotated), bar (7×2.5). Not colour-dependent. Legend shows all four. `aria-label` reads *"15 September, lifting, cardio, floorball, weigh-in"*. |
 
-Runtime diff against my pre-delegation baseline: `trend` (83 points), `trendConfidence` (77 bands), `trendStats`, `detectPlateau`, `forecastGoal`, `review`, `weights`, `timingRows` — **all byte-identical**. The only apparent difference was `trendStats`, which is the dev seed minting fresh row `id`s per page load; identical once ids are stripped.
+**Also verified:**
+- **Data integrity: 86/86 dated days, zero mismatches** against my pre-delegation baseline — every day's record kinds match `state` exactly, floorball included.
+- **History is read-only.** After navigating every month and selecting every dated day: logs 174, cardio 15, floorball 8, bws 83 — identical to baseline. No `persist()`, no writes.
+- History UI state stayed in-memory; nothing new is persisted.
+- Calendar is native to the page, not in a card. Month nav, Today jump, weekday header, outside-month days, today marker and selected treatment all intact.
+- Capabilities all reachable: day modal (opens with working sets, exercises, logging-span note), per-set editing, other-day details, legend, month nav.
+- A four-kind day renders all four blocks correctly.
+- Contrast: **0 failures** at 390/375/320. No horizontal overflow at any width.
+- Reduced motion: renders, `animationName: none`, no errors.
+- Today, Train, Progress, More unchanged, no console errors. Release gate **53/0**, weight contract **31/0**.
+- `EVENT / INTERVENTION / ANNOTATION` have a structural home (`historyAuditLanes`), layout-only, **no persistence added** — confirmed by reading the diff.
 
-## APPROVED — the rest
+## REQUIRED FIXES
 
-- **Journey exists as a separate non-time-series treatment** (D3): start 87.1 → now 82.5 → goal band 78–80, reading left-to-right, with total change, remaining distance and elapsed days. It is the only place the distant goal appears.
-- **Interpretation readable without interacting**: *"Recent trajectory · Losing 0.44 kg per week · ~4 weeks to goal (range 3–5) · No plateau detected"* is present on load.
-- **Scrub**: drag anywhere on the plot selects the nearest observation; the stable header updates **without reflowing** (measured — identical position before and after). Touch tap works. Keyboard works with a sensible `aria-label`.
-- **Ranges re-domain honestly**: 2W 81.5–84 · 1M 81–85 · 3M 80–90 · All 80–90.
-- **Series distinguishable without colour**: trend line, morning dot, post-workout diamond, dashed projection.
-- **Forecast** off by default and labelled *"Model estimate, not a measurement."*
-- **Edge states degrade honestly**: empty shows first-weigh-in copy; 2 rows renders without throwing.
-- Contrast, targets and overflow: **0 failures** at 390/375/320.
-- Reduced motion clean. Strength and Body views still render, not restructured. Today, Train, History, More unchanged, no console errors.
-- Suites: release gate **53/0**, weight contract **31/0**.
+| # | File | Issue | Required outcome |
+|---|---|---|---|
+| 1 | `premium-ui.js` → `historyConditioningBlock` | **Semantic regression.** The block label was changed from **"Conditioning"** to **"Cardio"**, but the block still contains the Floorball rows. A floorball match now renders under a heading that says *Cardio*, which asserts something untrue about the activity. `nxtfrm-fitness-ux` is explicit that Floorball keeps its own meaning, and this slice's whole third defect was making floorball distinguishable — the calendar now does, while the day view re-merges it under the wrong word. The `data-kind="conditioning"` attribute kept the right semantic; only the visible label regressed. | Restore a label that does not claim floorball is cardio. Simplest correct fix is the previous **"Conditioning"**. Splitting floorball into its own labelled block is also acceptable. Do not change the rows, the marks, or `data-kind`. |
 
-## Test-file changes — reviewed, not rubber-stamped
+## ACCEPTED — not a defect
 
-Both modified test files were checked assertion by assertion.
-
-`wearables.release-gate.test.js` — the old gate asserted post-workout **must** widen the domain. That assertion encoded the very defect D2 removes, so inverting it is correct, and it **kept** the no-second-axis guarantee plus a new domain-contract check. Net stronger.
-
-`wearables.weight-contract.test.js` — mostly D2/D3-mandated. But round 1 dropped the runtime assertion that post-workout points project through the shared `m.y()`. Domain exclusion and shared scale are **different guarantees**; only the first was still guarded. I required it restored — round 2 did so, with an `m.post.length > 0` check so it cannot silently pass on an empty array, and with the flag restored afterwards. Implementation was untouched in that round; the behaviour had been correct all along.
+**Calendar cell width at 320px is 38px** (height 46px), below the 44pt guide. This is the geometry of a seven-column month grid: 320 − 32px gutter = 288 ÷ 7 = 41px maximum. 44px-wide cells are physically impossible without horizontal scroll, which is a worse outcome. Height clears 44, the effective target is 38×46, and this constraint predates the slice. Not caused by fitting four marks.
 
 ## POLISH — non-blocking, carried forward
 
-- Alongside 2B's two open items (save toast covering session identity; two stacked disclosures in active workout).
-- The selected-point marker sits flush against the right plot edge at the latest reading; a hair of inset would read more deliberately.
+Alongside the three existing items (save toast covering session identity; stacked disclosures in active workout; selected chart point flush to the right plot edge):
+- At 320 the month title wraps to two lines. Acceptable, but a slightly smaller title would keep it on one.
 
 ## REGRESSION RISKS
 
-Each checked, each clear: truth functions byte-identical · no second Y-axis · `state.bws` and `timeOfDay` semantics untouched · Q1 canonical rule unchanged · Strength/Body not restructured · other four tabs unchanged · both suites green · `RELEASE`/`CACHE_NAME` untouched at 109 per the owner's deployment checkpoint.
+Each checked, each clear: training data untouched and byte-identical · no new persistence · every stored record still renders (86/86) · engine untouched · other four tabs unchanged · both suites green · `RELEASE` still 109.
 
 ## VERIFICATION RUN BY CLAUDE
 
-Own scripts, own Chromium, independent of `verify-2c.mjs`: pre-delegation truth + domain baseline · post-change truth diff across 9 surfaces · domain with goal on/off · post-workout injected at 95–100 kg vs domain · post-on-shared-scale · forecast domain and `futureDays` when off · scrub by mouse drag, by touch, and by keyboard · header reflow measurement · range re-domaining · state matrix at 390/375/320 · empty and sparse data · reduced motion · Strength/Body views · other-tab non-regression · both test suites.
+Own scripts, own Chromium, independent of `verify-2d.mjs`: partial-update proof via marked DOM nodes (calendar, header, filters, all cells) · scroll-position preservation · month navigation and Today · 86-day data-integrity diff against a pre-delegation baseline · training-data mutation check · four-kind day with computed mark geometry · contrast/targets/overflow at 390/375/320 · filter scoping on a month with real lifting data · day modal and per-set edit reachability · reduced motion · other-tab non-regression · both test suites · truncation check on all changed files.
+
+## NEXT ACTION
+
+Cursor: fix required fix 1 only — restore the conditioning block label. Re-run the 390/375/320 checks and both suites. Do not commit.
 
 ---
 
@@ -78,3 +80,4 @@ Own scripts, own Chromium, independent of `verify-2c.mjs`: pre-delegation truth 
 | 2026-09-22 | 2A Foundation + Today | **APPROVED** | 3 |
 | 2026-09-22 | 2B Train active workout | **APPROVED** | 2 |
 | 2026-09-22 | 2C Progress / Weight | **APPROVED** | 2 |
+| 2026-09-22 | 2D History | **APPROVED** | 2 |

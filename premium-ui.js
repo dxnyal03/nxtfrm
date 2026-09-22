@@ -1183,7 +1183,13 @@ const NXP = (() => {
   }
   function historyMarks(date,scope) {
     const r=historyRecords(date);
-    return {lift:scope.lift&&r.logs.length>0,cond:scope.cond&&(r.cardio.length>0||r.floorball.length>0),body:scope.body&&!!r.bw};
+    /* Four kinds, four shapes — floorball is never folded into cardio. */
+    return {
+      lift:scope.lift&&r.logs.length>0,
+      cardio:scope.cond&&r.cardio.length>0,
+      floorball:scope.cond&&r.floorball.length>0,
+      body:scope.body&&!!r.bw
+    };
   }
   function historyMonthDates(month,scope) {
     const seen=new Set(),add=arr=>(arr||[]).forEach(r=>{const d=r&&r.date;if(typeof d==='string'&&d.startsWith(month)&&Number.isFinite(N.dateMs(d)))seen.add(d);});
@@ -1208,6 +1214,12 @@ const NXP = (() => {
     const dates=historyMonthDates(month,scope);
     return dates.length?dates[dates.length-1]:`${month}-01`;
   }
+  function historyMarkHTML(marks) {
+    return `${marks.lift?'<i class="lift"></i>':''}${marks.cardio?'<i class="cond"></i>':''}${marks.floorball?'<i class="floor"></i>':''}${marks.body?'<i class="body"></i>':''}`;
+  }
+  function historyFiltersHTML(filter) {
+    return `<div class="nxp-history-filters vn-hist-filters" id="vn-hist-filters" role="group" aria-label="Activity type">${HISTORY_TABS.map(([k,t])=>`<button type="button" aria-pressed="${filter===k?'true':'false'}" class="${filter===k?'active':''}" onclick="NXP.setHistoryFilter('${k}')">${t}</button>`).join('')}</div>`;
+  }
   function historyCalendar(month,scope,selected) {
     const [year,monthNum]=month.split('-').map(Number);
     const first=new Date(year,monthNum-1,1,12,0,0);
@@ -1224,11 +1236,11 @@ const NXP = (() => {
       if(key===today)cls.push('is-today');
       if(key===selected)cls.push('is-selected');
       if(marks.lift)cls.push('has-lift');
-      const kinds=[marks.lift?'lifting':'',marks.cond?'cardio':'',marks.body?'weigh-in':''].filter(Boolean);
+      const kinds=[marks.lift?'lifting':'',marks.cardio?'cardio':'',marks.floorball?'floorball':'',marks.body?'weigh-in':''].filter(Boolean);
       const label=new Date(`${key}T12:00:00`).toLocaleDateString('en-SG',{day:'numeric',month:'long'})+(kinds.length?`, ${kinds.join(', ')}`:', no records');
-      cells.push(`<button type="button" class="${cls.join(' ')}" aria-label="${esc(label)}" aria-pressed="${key===selected?'true':'false'}"${key===today?' aria-current="date"':''} onclick="NXP.historySelect('${key}')"><b>${d}</b><span class="nxp-cal-marks" aria-hidden="true">${marks.lift?'<i class="lift"></i>':''}${marks.cond?'<i class="cond"></i>':''}${marks.body?'<i class="body"></i>':''}</span></button>`);
+      cells.push(`<button type="button" class="${cls.join(' ')}" data-date="${key}" aria-label="${esc(label)}" aria-pressed="${key===selected?'true':'false'}"${key===today?' aria-current="date"':''} onclick="NXP.historySelect('${key}')"><b>${d}</b><span class="nxp-cal-marks" aria-hidden="true">${historyMarkHTML(marks)}</span></button>`);
     }
-    return `<section class="nxp-history-calendar"><div class="nxp-cal-head"><h2 class="nxp-cal-month">${esc(title)}</h2><div class="nxp-cal-nav"><button type="button" aria-label="Previous month" onclick="NXP.historyShiftMonth(-1)">‹</button><button type="button" class="nxp-cal-today" aria-label="Jump to current month" onclick="NXP.historyThisMonth()">Today</button><button type="button" aria-label="Next month" onclick="NXP.historyShiftMonth(1)">›</button></div></div><div class="nxp-cal-weekdays" aria-hidden="true">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>`<span>${x}</span>`).join('')}</div><div class="nxp-cal-grid">${cells.join('')}</div><p class="nxp-cal-legend"><span class="lift">Lifting</span><span class="cond">Cardio</span><span class="body">Weigh-in</span></p></section>`;
+    return `<section class="nxp-history-calendar vn-hist-calendar" id="vn-hist-calendar"><div class="nxp-cal-head" id="vn-hist-calhead"><h2 class="nxp-cal-month">${esc(title)}</h2><div class="nxp-cal-nav"><button type="button" aria-label="Previous month" onclick="NXP.historyShiftMonth(-1)">‹</button><button type="button" class="nxp-cal-today" aria-label="Jump to current month" onclick="NXP.historyThisMonth()">Today</button><button type="button" aria-label="Next month" onclick="NXP.historyShiftMonth(1)">›</button></div></div><div class="nxp-cal-weekdays" aria-hidden="true">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>`<span>${x}</span>`).join('')}</div><div class="nxp-cal-grid" id="vn-hist-grid">${cells.join('')}</div><p class="nxp-cal-legend"><span class="lift">Lifting</span><span class="cond">Cardio</span><span class="floor">Floorball</span><span class="body">Weigh-in</span></p></section>`;
   }
   function historyLiftingBlock(date,logs) {
     const order=[],groups=new Map();
@@ -1245,22 +1257,30 @@ const NXP = (() => {
       }).filter(Boolean);
       return `<div class="nxp-history-ex"><b>${esc(name)}</b><span>${esc(historyPlural(sets.length,'set'))}</span></div>${lines.length?`<div class="nxp-history-sets">${lines.map(l=>`<span>${esc(l)}</span>`).join('')}</div>`:''}`;
     }).join('');
-    return `<div class="nxp-history-block"><span class="nxp-history-block-label">Lifting</span>${identity?`<p class="nxp-history-block-title">${esc(identity)}</p>`:''}${rows}<button type="button" class="nxp-history-edit" onclick="NXP.historyDay('${date}')">Edit sets<i aria-hidden="true">›</i></button></div>`;
+    return `<div class="nxp-history-block vn-hist-block" data-kind="lifting"><span class="nxp-history-block-label">Lifting</span>${identity?`<p class="nxp-history-block-title">${esc(identity)}</p>`:''}${rows}<button type="button" class="nxp-history-edit" onclick="NXP.historyDay('${date}')">Edit sets<i aria-hidden="true">›</i></button></div>`;
   }
   function historyConditioningBlock(cardio,floorball) {
     const rows=[];
     cardio.forEach(r=>{
       const mins=historyNum(r.duration||r.minutes),hr=historyNum(r.hr),effort=historyNum(r.intensity),incline=historyNum(r.incline),speed=historyNum(r.speed);
-      rows.push({name:r.type||'Cardio',value:mins?`${mins} min`:'',meta:[hr?`HR ${hr}`:'',effort?`Intensity ${effort}`:'',incline?`Incline ${incline}`:'',speed?`Speed ${speed}`:'',r.gym||''].filter(Boolean)});
+      rows.push({name:r.type||'Cardio',value:mins?`${mins} min`:'',meta:[hr?`HR ${hr}`:'',effort?`Intensity ${effort}`:'',incline?`Incline ${incline}`:'',speed?`Speed ${speed}`:'',r.gym||''].filter(Boolean),kind:'cardio'});
     });
     floorball.forEach(r=>{
       const mins=historyNum(r.duration),effort=historyNum(r.intensity);
-      rows.push({name:'Floorball',value:mins?`${mins} min`:'',meta:[effort?`Intensity ${effort}`:'',r.notes?String(r.notes):''].filter(Boolean)});
+      rows.push({name:'Floorball',value:mins?`${mins} min`:'',meta:[effort?`Intensity ${effort}`:'',r.notes?String(r.notes):''].filter(Boolean),kind:'floorball'});
     });
-    return `<div class="nxp-history-block"><span class="nxp-history-block-label">Cardio</span>${rows.map(r=>`<div class="nxp-history-ex"><b>${esc(r.name)}</b>${r.value?`<span>${esc(r.value)}</span>`:''}</div>${r.meta.length?`<p class="nxp-history-meta">${esc(r.meta.join(' · '))}</p>`:''}`).join('')}</div>`;
+    return `<div class="nxp-history-block vn-hist-block" data-kind="conditioning"><span class="nxp-history-block-label">Conditioning</span>${rows.map(r=>`<div class="nxp-history-ex" data-kind="${r.kind}"><b>${esc(r.name)}</b>${r.value?`<span>${esc(r.value)}</span>`:''}</div>${r.meta.length?`<p class="nxp-history-meta">${esc(r.meta.join(' · '))}</p>`:''}`).join('')}</div>`;
   }
   function historyWeightBlock(bw) {
-    return `<div class="nxp-history-block"><span class="nxp-history-block-label">Weight</span><div class="nxp-history-ex"><b>${esc(historyNum(bw.weight))} kg</b>${bw.timeOfDay?`<span>${esc(bw.timeOfDay)}</span>`:''}</div></div>`;
+    return `<div class="nxp-history-block vn-hist-block" data-kind="weight"><span class="nxp-history-block-label">Weight</span><div class="nxp-history-ex"><b>${esc(historyNum(bw.weight))} kg</b>${bw.timeOfDay?`<span>${esc(bw.timeOfDay)}</span>`:''}</div></div>`;
+  }
+  /* Structural homes for future State Engine record kinds — layout only, no persistence. */
+  function historyAuditLanes() {
+    return `<div class="vn-hist-audit" aria-label="Day audit trail">
+      <section class="vn-hist-lane" data-lane="event" hidden></section>
+      <section class="vn-hist-lane" data-lane="intervention" hidden></section>
+      <section class="vn-hist-lane" data-lane="annotation" hidden></section>
+    </div>`;
   }
   function historyDayView(date,filter,scope) {
     const r=historyRecords(date),when=new Date(`${date}T12:00:00`),blocks=[],parts=[];
@@ -1283,13 +1303,34 @@ const NXP = (() => {
     }
     if(scope.body&&r.bw)parts.push(`${historyNum(r.bw.weight)} kg`);
     const emptyCopy=filter==='strength'?'No lifting logged on this date.':filter==='conditioning'?'No cardio logged on this date.':filter==='body'?'No weigh-in recorded on this date.':'No training or measurements logged.';
-    return `<section class="nxp-history-selected"><header class="nxp-history-selected-head"><span class="nxp-history-weekday">${esc(when.toLocaleDateString('en-SG',{weekday:'long'}))}</span><h2>${esc(when.toLocaleDateString('en-SG',{day:'numeric',month:'long',year:'numeric'}))}</h2>${parts.length?`<p class="nxp-history-selected-summary">${esc(parts.join(' · '))}</p>`:''}</header>${blocks.length?blocks.join(''):`<p class="nxp-history-empty">${esc(emptyCopy)}</p>`}</section>`;
+    return `<section class="nxp-history-selected vn-hist-day"><header class="nxp-history-selected-head"><span class="nxp-history-weekday">${esc(when.toLocaleDateString('en-SG',{weekday:'long'}))}</span><h2>${esc(when.toLocaleDateString('en-SG',{day:'numeric',month:'long',year:'numeric'}))}</h2>${parts.length?`<p class="nxp-history-selected-summary">${esc(parts.join(' · '))}</p>`:''}</header>${blocks.length?blocks.join(''):`<p class="nxp-history-empty">${esc(emptyCopy)}</p>`}${historyAuditLanes()}</section>`;
+  }
+  function historyPaintDay(date) {
+    const host=document.getElementById('vn-hist-dayhost');
+    if(!host)return false;
+    const filter=state.historyFilter||'all',scope=historyScope(filter);
+    host.innerHTML=historyDayView(date,filter,scope);
+    host.classList.remove('vn-enter');
+    void host.offsetWidth;
+    host.classList.add('vn-enter');
+    return true;
+  }
+  function historyMoveSelection(from,to) {
+    const root=document.getElementById('vn-hist-calendar')||document.getElementById('historyPage');
+    if(!root)return;
+    if(from&&from!==to){
+      const prev=root.querySelector(`.nxp-cal-day[data-date="${from}"]`);
+      if(prev){prev.classList.remove('is-selected');prev.setAttribute('aria-pressed','false');}
+    }
+    const next=root.querySelector(`.nxp-cal-day[data-date="${to}"]`);
+    if(next){next.classList.add('is-selected');next.setAttribute('aria-pressed','true');}
   }
   function history() {
     applyAppearance();
     syncTrainNav(false);
     const month=calendarMonthState(),filter=state.historyFilter||'all',scope=historyScope(filter),selected=historySelectedDate(month,scope);
-    document.getElementById('historyPage').innerHTML=`<div class="n99 nxp nxp-history"><header class="nxp-heading nxp-history-chrome"><div><h1>History</h1><p>${esc(historyMonthSummary(month,filter,scope))}</p></div></header><div class="nxp-history-filters" role="group" aria-label="Activity type">${HISTORY_TABS.map(([k,t])=>`<button type="button" aria-pressed="${filter===k?'true':'false'}" class="${filter===k?'active':''}" onclick="NXP.setHistoryFilter('${k}')">${t}</button>`).join('')}</div>${historyCalendar(month,scope,selected)}${historyDayView(selected,filter,scope)}</div>`;
+    state.historyDate=selected;
+    document.getElementById('historyPage').innerHTML=`<div class="n99 nxp nxp-history vn-history"><header class="nxp-heading nxp-history-chrome vn-hist-chrome" id="vn-hist-chrome"><div><h1>History</h1><p id="vn-hist-summary">${esc(historyMonthSummary(month,filter,scope))}</p></div></header>${historyFiltersHTML(filter)}<div id="vn-hist-calhost">${historyCalendar(month,scope,selected)}</div><div id="vn-hist-dayhost" class="vn-hist-dayhost">${historyDayView(selected,filter,scope)}</div></div>`;
   }
   function setHistoryFilter(filter) {
     state.historyFilter=filter;
@@ -1298,10 +1339,23 @@ const NXP = (() => {
   }
   function historySelect(date) {
     if(!Number.isFinite(N.dateMs(date)))return;
+    const prev=state.historyDate;
     state.historyDate=date;
     const month=date.slice(0,7);
-    if(month!==calendarMonthState())state.historyMonth=month;
-    history();
+    if(month!==calendarMonthState()){
+      state.historyMonth=month;
+      history();
+      return;
+    }
+    /* Same month: move selection on cells and refresh the day region only.
+       Calendar, header and filters stay in the DOM — no full-page rebuild. */
+    const page=document.getElementById('historyPage');
+    if(!page||!page.querySelector('#vn-hist-calendar')||!page.querySelector('#vn-hist-dayhost')){
+      history();
+      return;
+    }
+    historyMoveSelection(prev,date);
+    historyPaintDay(date);
   }
   function historyShiftMonth(delta) {
     const [y,m]=calendarMonthState().split('-').map(Number),d=new Date(y,m-1+delta,1,12,0,0);
@@ -1309,8 +1363,21 @@ const NXP = (() => {
     history();
   }
   function historyThisMonth() {
-    state.historyDate=localToday();
-    state.historyMonth=state.historyDate.slice(0,7);
+    const today=localToday(),month=today.slice(0,7);
+    const prev=state.historyDate;
+    state.historyDate=today;
+    if(month!==calendarMonthState()){
+      state.historyMonth=month;
+      history();
+      return;
+    }
+    state.historyMonth=month;
+    const page=document.getElementById('historyPage');
+    if(page&&page.querySelector('#vn-hist-calendar')&&page.querySelector('#vn-hist-dayhost')){
+      historyMoveSelection(prev,today);
+      historyPaintDay(today);
+      return;
+    }
     history();
   }
   function historyDay(date) {
