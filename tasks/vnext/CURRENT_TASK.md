@@ -1,147 +1,173 @@
-# CURRENT TASK — PROGRESS → BODY ANALYTICAL INTEGRATION
+# CURRENT TASK — TRAIN COMPLETION + DEEP POLISH
 
 **Owner:** Cursor (implementation) · **Reviewer:** Claude (audit, measurement, browser QA)
 **Status:** READY TO START
-**Read first:** `AGENTS.md` · `tasks/vnext/DECISIONS.md` (D9, D14–D17 binding) · `design-vnext/DESIGN-BRIEF.md` §S · `.claude/skills/nxtfrm-data-viz/SKILL.md`
-**Previous:** 2F `ba33fa8` · 2G `b137e64` · INT-2 `08e56bd`
+**Read first:** `AGENTS.md` · `DECISIONS.md` (binding) · `design-vnext/` · the four NXTFRM skills
+**Previous:** 2G `b137e64` · INT-2 `08e56bd` · Body `6c1ded8`
+
+**AI work is PAUSED.** Do not add an AI coach, chat, generated advice, generated muscle
+mapping or any model call. This is a deterministic core-product completion task.
 
 ---
 
-## 1. Objective
+## 0. I audited the live build first. Most of Train already meets the direction.
 
-Make Body Intelligence **properly reachable from Progress**, and remove the stale scan-entry
-path — **without changing the 2F data or OCR contract**.
+Measured today, so you do **not** rebuild these:
 
-The design brief §S is the direction:
-
-> *Body gets analytical presence under Progress → Body while capture stays under Settings.*
-
-So the split is:
-
-| Surface | Owns |
+| Area | Measured state |
 |---|---|
-| **Progress → Body** | the **analysis** — composition, per-metric trends, what changed, scan history and scan detail, waist |
-| **Settings → Body & scans** | the **capture** — new scan, OCR review and correction, manual entry |
+| **Working loop** | **587px** at 390/393/402/430/375 (0 sets), 659–673px at 3 sets. **662–741px at 320.** |
+| **Log Set reachability** | **In viewport in all 24 width × set-count combinations** at 844px height |
+| Input contract | `weightInput` `repsInput` present, 26px font, 52px tall, `inputmode` set. `n99-set-type` and `n99-rir` are hidden inputs behind segmented controls — contract preserved |
+| Active mode | Nav recedes (`.tabs.vn-recede`). 19 handlers incl. leave, details, swap, undo, session menu, finish, queue, adjust/skip rest, set type, RIR |
+| Prev / target | `Last 30.5kg × 8 · 13 Jul` and `Target 8–12 reps` both render |
+| Queue | Already **contextual** (`NXP.queue()` sheet), not a persistent block |
+| Rest timer | Appears on log: `02:30 · +30s · Skip`, counts down, Log Set stays present |
+| Completion | "Workout saved · 3 working sets · Progressed 1 / Maintained 0 / Below recent 0 · Next Full Body B tomorrow". Nav restored. **No invented score, duration or calories** |
+| Anatomy | Deterministic `NXTLIB`. **106/107 catalogue, 21/21 templates, 20/20 logged history.** Unknown names resolve to empty, never guessed |
+| iOS zoom | No risk — inputs are 26px |
 
-Today, Progress → Body ends in a dead-end link (`NXT.more('body')`, labelled *Open scans*)
-that throws the user into Settings to look at their own data. That is the stale path to remove.
-
----
-
-## 2. Current state — the baseline nothing may lose
-
-Rendered by `NXP.progress()` (`premium-ui.js:934`), the V100 path. `N.bodyHTML()`
-(`cut-support.js:1106`) still exists for the legacy renderer and is **not** what the live screen
-uses.
-
-**Handlers (6):** `NXT.setView('overview')` · `NXT.setView('strength')` · `NXT.setView('body')`
-· `NXT.openWaist()` · `NXT.more('body')` ← **the stale one** · `apx95OpenQuickWeight()`
-
-**Capabilities:** waist logging (`NXT.openWaist`, `saveWaist`, `deleteWaist`), the full waist
-reading list with per-row edit, the Evo scans section, and the copy that scale weight lives on
-the Weight tab and nothing here is estimated.
-
-0 surfaces, 0 page errors.
+**The original ~2,200px loop problem is solved.** Do not chase a pixel number. Do not
+restructure what already works. This task is the two real gaps below plus disciplined polish.
 
 ---
 
-## 3. Required work
+## 1. G1 — PRIMARY: Log Set is unreachable once the keyboard opens
 
-### 3.1 Bring the analysis to Progress → Body
+Measured at 390px wide, emulating the viewport a keyboard leaves behind:
 
-Surface the EvoScan **analysis** here: latest scan, the supported metrics with change vs the
-previous scan, the composition visual, per-metric trends, What Changed, scan history, and scan
-detail.
+| Viewport height | Input visible | **Log Set visible** |
+|---|---|---|
+| 844 (no keyboard) | yes | **yes** |
+| 520 | yes | **no** |
+| 480 | yes | **no** |
+| 420 | yes | **no** |
 
-**Do not duplicate the rendering logic.** 2F built these pieces once. Reuse them — extract or
-share the existing helpers rather than writing a second implementation that will drift. Two
-renderers for the same data is exactly the "duplicate render ownership" INT-2 checked for.
+The span from the focused input's bottom to Log Set's top is a fixed **278px**:
 
-### 3.2 Remove the stale path, honestly
+```
+ 78px  .nxp-stepper      Reps
+ 74px  .nxp-seg-type     Set type · Working / Warm-up
+ 78px  .nxp-seg-rir      Reps left · — 0 1 2 3 4+
+~48px  spacing
+```
 
-`NXT.more('body')` as *Open scans* must go from this screen. But **capture must stay reachable**
-— from Progress → Body the user should be able to get to "add a scan", and that action belongs
-to Settings' capture flow. A single clear entry is fine; a dead-end tour is not.
+The **order is correct** — it matches the approved hierarchy (load/reps → RIR → Log Set), so do
+not reorder it. The problem is purely that with ~320px of keyboard, that 164px control tail
+pushes the primary action off-screen during the exact moment the user is entering a set.
 
-Removing a reachable capability without a replacement is silent feature loss. Removing a
-**redundant navigation hop** while keeping the capability is the goal.
+**Fix it so Log Set is reachable while a numeric field is focused.** The expected approach is a
+**keyboard-aware docked Log Set** — when `weightInput` or `repsInput` has focus, the primary
+action stays reachable above the keyboard — returning to normal flow on blur.
 
-### 3.3 Waist stays here
+Constraints:
+- **Do not shrink any control below comfortable touch size to make room** (explicitly forbidden).
+- Do not reorder the hierarchy, and do not hide Set type or RIR.
+- Do not break the input contract: `weightInput`, `repsInput`, `n99-set-type`, `n99-rir` keep
+  their ids and their values must still be read by the engine at log time.
+- Use `visualViewport` where available; degrade safely where it is not.
+- The docked state must not collide with the rest timer, the safe-area inset, or the receded nav.
+- Reduced motion: no positional animation.
 
-Waist is a Progress → Body capability today and remains one. `openWaist` / `saveWaist` /
-`deleteWaist`, the reading list and per-row edit all survive unchanged.
+**Test actual logging with the keyboard open**, not DOM presence. A set logged from the docked
+control must produce exactly the same record as one logged from the inline control.
 
-### 3.4 The 2F contract is frozen
+## 2. G2 — Date inputs overlap their neighbour on iOS
 
-**Do not change:** the OCR pipeline or any stage of the D16 contract · `NOT FOUND` versus
-`CHECK` · confidence derivation · validation · provenance (`OCR_EXTRACTED` / `USER_CORRECTED`
-/ `MANUAL_ENTRY`) · the `apm_evo_scans` key · the scan record shape · `weighInId` linking ·
-delete semantics · `cleanRows` and D14.
+**Owner-reported, with a screenshot.** In *Log bodyweight*, the `Date` field visibly overlaps
+`Weight · kg`.
 
-This slice is **presentation and navigation only**. If it appears to need a data change, stop
-and report instead.
+It does **not** reproduce in headless Chromium at 390/393/402/430/375/320 — the grid is
+`minmax(0,1fr)` with `min-width:0` and the inputs are `width:100%; max-width:100%!important`.
+So the cause is iOS-specific: **`input[type="date"]` keeps its native widget, which enforces an
+intrinsic minimum width that `width:100%` does not defeat**, so it spills its ~176px grid cell.
 
-### 3.5 Honesty rules carry over
+Confirmed: **no `appearance:none` is set for date inputs anywhere** in `cut-support.css`,
+`premium-ui.css` or `vnext.css`.
 
-`MEASURED` and `ESTIMATED` stay visually distinct. Per-metric trends on **separate scales**,
-never one multi-scale chart. No radar, no Body Score, no invented composite (D9). The EvoScan
-series stays clearly distinct from the Morning body-weight trend (D15), and nothing here may
-imply a scan weight is the canonical morning weight (D14).
+This is systemic — the same pattern appears in at least seven places:
+`apx95WeightDate` · `apx95EditDate` · `n99-waist-date` · `n99-edit-weight-date` ·
+`n99-move-date` · `editSetDate` · `bwDate` · `scanDate`.
 
-### 3.6 Empty states
+Fix it **once, in the shared layer**, so every sheet inherits it:
+- `appearance:none; -webkit-appearance:none;` on `input[type="date"]`
+- `box-sizing:border-box`, and make sure the control can actually shrink inside a grid cell
+- keep the field ≥44pt tall and legible; **do not** shrink text to fit
+- the date must remain readable and tappable, and the native picker must still open
 
-No scans and no waist · scans but no waist · waist but no scans · exactly one scan (nothing to
-compare against).
+If, after that, `Date` + `Weight` still cannot sit side by side at 375 and below without
+crowding, **stack them** — a two-up row is not worth a collision.
 
----
+Verify every listed sheet, at all six widths.
 
-## 4. Files
+## 3. Everything else — verify, do not rebuild
+
+Confirm these still hold and report the evidence. Fix only what is genuinely wrong:
+
+Set logging · warm-up vs working · load · reps · RIR · previous performance · current target ·
+session queue · rest timer (start, countdown, +30s, skip, exercise change, reload) · edit ·
+undo · swap/substitution · session completion · local persistence · refresh/reload ·
+**add-on lifting must never mutate `state.dayType`** · history · Gym A/B separation ·
+planned day logic.
+
+**Add-on is a required semantic test:** Rest → add exercise → log → refresh → `state.dayType`
+is still `Rest`. Same for Zone2 and Floorball where supported.
+
+## 4. Greyscale (§34)
+
+Current, completed, warm-up, working, selected and disabled must stay distinguishable without
+hue — through shape, type, position, icon or copy. Verify by rendering with
+`filter:grayscale(1)`.
+
+## 5. Anatomy — already passes its gate; hold the line
+
+Deterministic, complete coverage, graceful empty. **Do not** enlarge it, animate it, add pulse
+or glow, or let it grow the working loop. It stays secondary to the current set. If you touch
+it at all, it is to keep it quiet.
+
+## 6. Files
 
 | File | Permitted |
 |---|---|
-| `premium-ui.js` | yes — the Progress `body` view and shared scan-analysis helpers |
-| `vnext.css` | yes — `#weightPage` Body section, following the scoping contract |
-| `index.html` | **only** if a 2F scan-analysis helper must be shared rather than duplicated, and only to export or relocate it **without changing its behaviour**. Say so in the report. |
+| `premium-ui.js` | yes — Train renderer and helpers |
+| `vnext.css` | yes — `#trainPage` rules and the shared date-input fix |
+| `premium-ui.css` | only if the date fix genuinely belongs there rather than `vnext.css` |
 
-**Do not edit:** `cut-support.js` · `sw.js` · `manifest.webmanifest` · `wearables.*` ·
-`seed.*` · `train-anatomy.js`. **`RELEASE`/`CACHE_NAME` stay at `109`.**
+**Do not edit:** `cut-support.js` · `index.html` · `sw.js` · `manifest.webmanifest` ·
+`wearables.*` · `seed.*` · `train-anatomy.js`. **`RELEASE`/`CACHE_NAME` stay at `109`.**
 
-Use the shared `--vn-action` token (D12) and the corrected `--vn-ink-4` (INT-2).
+Do not create another duplicate Train renderer or a new specificity layer. Existing VNext
+tokens and shared primitives only. **Document** architecture cleanup candidates in the report;
+do not delete legacy code in this task.
 
-## 5. Responsive
+## 7. Responsive
 
-**390 · 393 · 402 · 430 · 375 · 320.** Zero overflow, targets ≥44pt, charts legible at 320,
-contrast ≥4.5:1 for normal text, reduced motion clean.
+**390 · 393 · 402 · 430 · 375 · 320**, plus reduced viewport heights for the keyboard case.
+Zero horizontal overflow, zero clipping, no nav or keyboard collision, ≥44pt on important
+targets, 320 a genuine layout rather than a shrink.
 
-## 6. Tests
+## 8. Tests
 
-Add `tasks/vnext/verify-2h.mjs`. **Synthetic fixtures only — never a real scan image.**
+Add `tasks/vnext/verify-train.mjs`. Use realistic fixtures, not only the default seed: first /
+middle / last set · warm-up and working · RIR present and absent · exercise with and without
+history · multiple completed sets · active timer · queued exercises · add-on workout · Gym A
+and Gym B · mapped and unmapped anatomy.
 
-Note the seed carries **zero scans and no waist readings**, so the populated state must be
-driven by injected fixtures or it will never be exercised — the same trap 2F and 2G hit.
+Run **all sixteen** suites **and every existing verify script** (`2a`…`2h`). INT-2 proved a
+slice can break an earlier slice's assertions. Baseline **16 / 458 / 0 failing**.
 
-Cover: every baseline capability still reachable · the stale `NXT.more('body')` dead-end is
-gone while capture remains reachable · the analysis renders from the same data as Settings with
-**no second source of truth** · waist logging, listing and per-row edit intact · per-metric
-separate scales · `MEASURED`/`ESTIMATED` distinction · a scan weight is never presented as the
-canonical morning weight · all four empty states · no writes to `state.scans`, `state.bws` or
-the waist store while viewing.
+**Do not weaken a test to make the suite green.**
 
-Run **all sixteen** suites plus **every** existing verify script (`2a` … `2g`) — INT-2 proved a
-slice can break an earlier slice's assertions. Baseline **16 / 458 / 0 failing**, all verify
-scripts green.
+## 9. Definition of done
 
-## 7. Definition of done
-
-- [ ] Progress → Body carries the analysis, not a link to somewhere else
-- [ ] No duplicated rendering logic; one source of truth for scan analysis
-- [ ] The stale `NXT.more('body')` *Open scans* dead-end is gone, capture still reachable
-- [ ] Waist logging, list and per-row edit unchanged
-- [ ] 2F data/OCR contract untouched; `cleanRows`/D14 untouched
-- [ ] MEASURED vs ESTIMATED distinct; separate scales; no composite metric
-- [ ] Scan weight never implied to be the canonical morning weight
-- [ ] All four empty states designed
-- [ ] 390/393/402/430/375/320 clean; ≥44pt; contrast; reduced motion
-- [ ] All 16 suites and all verify scripts green
-- [ ] `CURSOR_REPORT.md` updated (A–H)
+- [ ] Log Set reachable while a numeric input is focused, at reduced viewport heights
+- [ ] No control shrunk below comfortable touch size to achieve it
+- [ ] Input contract intact; a set logged from the docked control is identical
+- [ ] Date inputs no longer overlap; fixed once in the shared layer; all 7+ sheets verified
+- [ ] Add-on never mutates `state.dayType`, proven across refresh
+- [ ] Greyscale states distinguishable
+- [ ] Anatomy unchanged in prominence
+- [ ] 390/393/402/430/375/320 clean; reduced heights clean
+- [ ] 16 suites + all verify scripts green
+- [ ] `CURSOR_REPORT.md` (A–H) incl. architecture cleanup candidates
 - [ ] **Do not commit. Do not push.**
