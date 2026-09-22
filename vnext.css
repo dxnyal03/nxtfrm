@@ -1,0 +1,364 @@
+/* ==========================================================================
+   NXTFRM VNext — foundation layer (Phase 2A)
+   Loads AFTER cut-support.css and premium-ui.css.
+
+   DIRECTION: INSTRUMENT (tasks/vnext/DECISIONS.md D1)
+   A surface is a claim of primacy. One protagonist surface per screen, plus
+   transient sheets. Everything else sits on the canvas, organised by type,
+   space and hairlines.
+
+   SCOPE DISCIPLINE — Phase 2A owns:
+     · the --vn-* token set                (new names; collide with nothing)
+     · the page-transition timing          (.content, shared foundation)
+     · the tab bar                         (.tabs)
+     · Today                               (#homePage .vn-*)
+   Train, Progress, History and More are NOT restyled here. Every Today rule is
+   scoped under #homePage, and every component class is new (vn-*), so no
+   existing .nxp-* / .n99-* rule is altered.
+   ========================================================================== */
+
+:root{
+  /* Canvas — layered graphite. Never jet black. */
+  --vn-canvas:#0E1014;
+  --vn-zone:#12151B;
+  --vn-surface:#171B22;
+  --vn-surface-2:#1E232C;
+  --vn-surface-3:#262C37;
+
+  --vn-line:rgba(255,255,255,.06);
+  --vn-line-2:rgba(255,255,255,.10);
+  --vn-line-3:rgba(255,255,255,.16);
+
+  /* Ink — every step carries text somewhere, so every step clears WCAG AA
+     (4.5:1) against --vn-canvas. Verified computationally, not by eye. */
+  --vn-ink:#F1F3F7;
+  --vn-ink-2:#AEB4C0;
+  --vn-ink-3:#8B92A0;
+  --vn-ink-4:#787F8D;
+
+  /* Violet = SIGNAL (I1). Never wallpaper. */
+  --vn-violet:#8B5CF6;
+  --vn-violet-lift:#A78BFA;
+  --vn-violet-dim:rgba(139,92,246,.16);
+  --vn-violet-line:rgba(139,92,246,.42);
+
+  /* Status trio — validated. ALWAYS paired with a word + shape (I2). */
+  --vn-ok:#8B5CF6;
+  --vn-review:#B8842A;
+  --vn-review-lift:#D5A448;
+  --vn-concern:#DC5A76;
+
+  /* Radii deliberately differentiated (I7) */
+  --vn-r-surface:20px;
+  --vn-r-control:12px;
+  --vn-r-input:10px;
+
+  --vn-s1:4px; --vn-s2:8px; --vn-s3:12px; --vn-s4:16px;
+  --vn-s5:20px; --vn-s6:24px; --vn-s7:32px; --vn-s8:40px;
+  --vn-gutter:20px;
+
+  /* Motion tiers (I8) */
+  --vn-t-touch:120ms;
+  --vn-t-state:200ms;
+  --vn-t-move:280ms;
+  --vn-ease:cubic-bezier(.32,.72,0,1);
+}
+
+/* ---- PAGE TRANSITION (shared foundation) --------------------------------
+   Retimes the existing route enter to the VNext spatial tier. The trigger is
+   unchanged: render() toggles display, which restarts the animation. Nothing
+   here defers render() or runs while an input is focused, so the V86 render
+   input lock (index.html:2919) is untouched.
+   No fill-mode: the element is left with no transform once the animation ends,
+   so it never becomes a containing block for descendants. */
+@keyframes vn-route-enter{
+  from{opacity:0;transform:translateY(6px)}
+  to  {opacity:1;transform:none}
+}
+.content:not(.hide){
+  animation:vn-route-enter var(--vn-t-move) var(--vn-ease);
+}
+
+/* ---- TAB BAR -------------------------------------------------------------
+   The bar already had the right structure (flat, violet active, short top
+   rule). This aligns its palette to the VNext canvas and nothing else. */
+.tabs{
+  background:rgba(14,16,20,.86) !important;
+  backdrop-filter:blur(20px) saturate(1.4) !important;
+  -webkit-backdrop-filter:blur(20px) saturate(1.4) !important;
+  border-top:1px solid var(--vn-line) !important;
+}
+.tabs .tab:not(.active){color:var(--vn-ink-4) !important}
+.tabs .tab.active{color:var(--vn-violet-lift) !important}
+.tabs .tab.active::before{background:var(--vn-violet)}
+/* D6 groundwork: the bar can recede for a focused mode. Phase 2A ships the
+   mechanism only — nothing sets this class yet; Train (2B) will. */
+.tabs.vn-recede{
+  transform:translateX(-50%) translateY(100%) !important;
+  opacity:0;
+  pointer-events:none;
+  transition:transform var(--vn-t-move) var(--vn-ease), opacity var(--vn-t-move) var(--vn-ease);
+}
+
+/* ==========================================================================
+   TODAY  —  everything below is scoped to #homePage
+   ========================================================================== */
+
+#homePage{
+  /* The VNext canvas is painted by the page itself so the rest of the app
+     keeps its current background exactly. */
+  background:
+    radial-gradient(120% 45% at 50% 0%, rgba(139,92,246,.10), transparent 60%),
+    var(--vn-canvas);
+  background-attachment:fixed;
+  min-height:100dvh;
+  padding-left:0 !important;
+  padding-right:0 !important;
+}
+
+#homePage .vn-today{
+  padding-bottom:var(--vn-s8);
+  color:var(--vn-ink);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;
+  font-size:15px;
+  line-height:1.45;
+  text-align:left;
+}
+#homePage .vn-pad{padding-inline:var(--vn-gutter)}
+#homePage .vn-head{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:var(--vn-s3);padding-block:var(--vn-s3) var(--vn-s5);
+}
+#homePage .vn-hstack{display:flex;align-items:center;gap:var(--vn-s5);flex-wrap:wrap}
+#homePage .vn-mt1{margin-top:var(--vn-s1)}
+#homePage .vn-mt2{margin-top:var(--vn-s2)}
+#homePage .vn-mt3{margin-top:var(--vn-s3)}
+#homePage .vn-mt4{margin-top:var(--vn-s4)}
+#homePage .vn-mt5{margin-top:var(--vn-s5)}
+#homePage .vn-evid{
+  font-size:11.5px;font-weight:500;color:var(--vn-ink-4);
+}
+#homePage .vn-evid b{
+  color:var(--vn-ink-2);font-weight:600;margin-left:5px;
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;
+}
+
+/* Tabular numerals wherever a value can change — stops digit jitter */
+#homePage .vn-num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+/* ---- type ---- */
+#homePage .vn-h1{
+  font-size:26px;line-height:1.14;font-weight:640;letter-spacing:-.022em;
+  margin:0;color:var(--vn-ink);
+}
+#homePage .vn-h2{font-size:21px;font-weight:600;letter-spacing:-.016em;margin:0;color:var(--vn-ink)}
+#homePage .vn-h3{font-size:20px;font-weight:600;letter-spacing:-.014em;margin:0;color:var(--vn-ink)}
+#homePage .vn-sect-t{font-size:13px;font-weight:600;letter-spacing:.01em;color:var(--vn-ink-2);margin:0}
+#homePage .vn-eyebrow{
+  font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--vn-ink-3);margin:0;
+}
+#homePage .vn-body{font-size:15px;font-weight:420;line-height:1.5;color:var(--vn-ink-2);margin:0}
+#homePage .vn-meta{font-size:12.5px;font-weight:500;color:var(--vn-ink-3);margin:0}
+#homePage .vn-tiny{font-size:11.5px;font-weight:500;color:var(--vn-ink-4);margin:0}
+
+/* ---- section rhythm: no boxes ---- */
+#homePage .vn-sect{padding-block:var(--vn-s6)}
+#homePage .vn-sect + .vn-sect{border-top:1px solid var(--vn-line)}
+#homePage .vn-sect-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:var(--vn-s3);margin-bottom:var(--vn-s4);
+}
+
+/* ---- THE protagonist surface (exactly one on this screen) ---- */
+#homePage .vn-surface{
+  position:relative;
+  background:linear-gradient(180deg,var(--vn-surface) 0%,#14171E 100%);
+  border-radius:var(--vn-r-surface);
+  padding:var(--vn-s5);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.055),
+    0 1px 2px rgba(0,0,0,.4),
+    0 12px 28px -12px rgba(0,0,0,.6);
+}
+#homePage .vn-surface.vn-focal::before{
+  content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(120% 90% at 12% 0%, rgba(139,92,246,.17), transparent 58%);
+}
+#homePage .vn-surface.vn-focal{
+  box-shadow:
+    inset 0 1px 0 rgba(167,139,250,.28),
+    inset 0 0 0 1px rgba(139,92,246,.16),
+    0 1px 2px rgba(0,0,0,.4),
+    0 16px 36px -18px rgba(76,29,149,.45);
+}
+/* A "watch" decision carries amber, still word-first */
+#homePage .vn-surface.vn-focal.vn-tone-watch{
+  box-shadow:
+    inset 0 1px 0 rgba(213,164,72,.26),
+    inset 0 0 0 1px rgba(184,132,42,.18),
+    0 1px 2px rgba(0,0,0,.4),
+    0 16px 36px -18px rgba(120,80,15,.4);
+}
+#homePage .vn-surface.vn-focal.vn-tone-watch::before{
+  background:radial-gradient(120% 90% at 12% 0%, rgba(184,132,42,.15), transparent 58%);
+}
+#homePage .vn-surface > *{position:relative}
+
+/* ---- data row: the workhorse that replaces cards ---- */
+#homePage .vn-rows{display:flex;flex-direction:column}
+#homePage .vn-row{
+  display:flex;align-items:center;gap:var(--vn-s4);
+  min-height:52px;padding-block:var(--vn-s3);
+  border:0;background:none;width:100%;text-align:left;color:inherit;
+  font:inherit;font-size:15px;
+  -webkit-tap-highlight-color:transparent;
+}
+#homePage .vn-row + .vn-row{border-top:1px solid var(--vn-line)}
+#homePage .vn-row-l{flex:1;min-width:0}
+#homePage .vn-row-t{font-size:15px;font-weight:500;color:var(--vn-ink);display:block}
+#homePage .vn-row-s{font-size:12.5px;color:var(--vn-ink-3);display:block;margin-top:1px}
+#homePage .vn-row-v{font-size:15px;font-weight:600;color:var(--vn-ink);text-align:right;white-space:nowrap}
+#homePage .vn-row-v small{color:var(--vn-ink-3);font-weight:500;font-size:13px}
+#homePage button.vn-row{cursor:pointer}
+#homePage button.vn-row:active{background:rgba(255,255,255,.028)}
+#homePage .vn-chev{color:var(--vn-ink-4);font-size:17px;margin-left:-6px;font-style:normal}
+
+/* ---- status: word first, colour second, shape third (I2/I6) ---- */
+#homePage .vn-status{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:580}
+#homePage .vn-status i{width:7px;height:7px;border-radius:50%;flex:none;display:block}
+#homePage .vn-status.is-ok{color:var(--vn-violet-lift)}
+#homePage .vn-status.is-ok i{background:var(--vn-violet)}
+#homePage .vn-status.is-watch{color:var(--vn-review-lift)}
+#homePage .vn-status.is-watch i{background:var(--vn-review);border-radius:1px;transform:rotate(45deg)}
+#homePage .vn-status.is-concern{color:var(--vn-concern)}
+#homePage .vn-status.is-concern i{background:var(--vn-concern);border-radius:1px}
+#homePage .vn-status.is-neutral{color:var(--vn-ink-3)}
+#homePage .vn-status.is-neutral i{background:var(--vn-ink-4)}
+
+/* ---- actions: a box only when the action earns one ---- */
+#homePage .vn-act{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;min-height:50px;padding:0 var(--vn-s5);
+  border:0;border-radius:var(--vn-r-control);
+  background:linear-gradient(180deg,#9B71F8,var(--vn-violet));
+  color:#fff;font:inherit;font-size:16px;font-weight:580;letter-spacing:-.005em;
+  box-shadow:0 1px 0 rgba(255,255,255,.15) inset, 0 6px 16px -10px rgba(139,92,246,.45);
+  transition:transform var(--vn-t-touch) var(--vn-ease), filter var(--vn-t-touch) var(--vn-ease);
+  -webkit-tap-highlight-color:transparent;cursor:pointer;
+}
+#homePage .vn-act:active{transform:scale(.982);filter:brightness(.94)}
+/* secondary = text + chevron, no box. 44pt target without loosening rhythm (I5) */
+#homePage .vn-text{
+  border:0;background:none;padding:6px 0;color:var(--vn-violet-lift);
+  font:inherit;font-size:14.5px;font-weight:540;cursor:pointer;
+  display:inline-flex;align-items:center;gap:4px;
+  min-height:44px;margin-block:-5px;
+  -webkit-tap-highlight-color:transparent;
+}
+#homePage .vn-text:active{opacity:.6}
+#homePage .vn-text.is-mute{color:var(--vn-ink-2)}
+
+/* ---- week strip ---- */
+#homePage .vn-week{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+#homePage .vn-week-c{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  min-height:56px;border-radius:10px;padding:6px 0;
+  border:0;background:none;width:100%;color:inherit;font:inherit;
+  -webkit-tap-highlight-color:transparent;cursor:pointer;
+}
+#homePage button.vn-week-c:active{background:rgba(255,255,255,.028)}
+#homePage .vn-week-c.is-today{background:var(--vn-violet-dim);box-shadow:inset 0 0 0 1px var(--vn-violet-line)}
+#homePage .vn-week-c.is-today .vn-week-d{color:var(--vn-violet-lift)}
+#homePage .vn-week-c.is-today .vn-week-t{color:var(--vn-ink);font-weight:640}
+#homePage .vn-week-d{font-size:10px;font-weight:600;color:var(--vn-ink-4);letter-spacing:.04em}
+#homePage .vn-week-t{font-size:12.5px;font-weight:500;color:var(--vn-ink-3);font-variant-numeric:tabular-nums}
+#homePage .vn-week-c.is-lift .vn-week-t{font-weight:640;color:var(--vn-ink)}
+#homePage .vn-week-m{height:4px;display:flex;align-items:center;gap:2.5px}
+#homePage .vn-week-m i{width:4px;height:4px;border-radius:50%;background:var(--vn-violet);display:block}
+
+/* ---- disclosure for demoted detail (kept in product, not on the fold) ---- */
+#homePage .vn-more{border-top:1px solid var(--vn-line)}
+#homePage .vn-more > summary{
+  list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;
+  gap:var(--vn-s3);min-height:52px;padding-block:var(--vn-s3);
+  font-size:15px;font-weight:500;color:var(--vn-ink);
+  -webkit-tap-highlight-color:transparent;
+}
+#homePage .vn-more > summary::-webkit-details-marker{display:none}
+#homePage .vn-more > summary::after{content:"›";color:var(--vn-ink-4);font-size:17px;transition:transform var(--vn-t-state) var(--vn-ease)}
+#homePage .vn-more[open] > summary::after{transform:rotate(90deg)}
+#homePage .vn-more-body{padding-bottom:var(--vn-s5)}
+
+/* Demoted engine-owned blocks keep working; they are only quietened so they
+   cannot compete with the decision. Nothing about them is removed. */
+#homePage .vn-more-body .n99-card,
+#homePage .vn-more-body .nxp-home-adherence,
+#homePage .vn-more-body .nxp-home-recovery,
+#homePage .vn-more-body .nxp-home-kcal{
+  background:transparent;border:0;box-shadow:none;padding-left:0;padding-right:0;
+  border-radius:0;margin:0;
+}
+#homePage .vn-more-body .nxp-home-recovery,
+#homePage .vn-more-body .nxp-home-kcal{
+  width:100%;text-align:left;color:inherit;font:inherit;
+  border-top:1px solid var(--vn-line);min-height:52px;padding-block:var(--vn-s3);
+}
+#homePage .vn-more-body .nxp-home-adherence{margin-top:var(--vn-s3)}
+#homePage .vn-more-body .n99-quick{
+  display:flex;flex-wrap:wrap;gap:var(--vn-s2);margin:0;
+}
+#homePage .vn-more-body .nxp-home-adherence .n99-button,
+#homePage .vn-more-body .n99-quick .n99-button,
+#homePage .vn-more-body .n99-button.secondary{
+  background:var(--vn-surface-2) !important;
+  color:var(--vn-ink) !important;
+  border:1px solid var(--vn-line-2) !important;
+  box-shadow:none !important;
+  min-height:44px;
+}
+#homePage .vn-more-body .n99-button.secondary:active,
+#homePage .vn-more-body .n99-quick .n99-button:active{
+  background:var(--vn-surface-3) !important;
+}
+#homePage .vn-quick{
+  display:flex;flex-wrap:wrap;align-items:center;gap:var(--vn-s2) var(--vn-s6);
+  padding-block:var(--vn-s5);
+}
+
+/* ---- visible focus ---- */
+#homePage :where(button,a,summary,[tabindex]):focus-visible{
+  outline:2px solid var(--vn-violet-lift);outline-offset:2px;border-radius:6px;
+}
+
+/* ---- 320 IS A DESIGN STATE, NOT A SHRINK ---- */
+@media (max-width:359px){
+  :root{--vn-gutter:16px;--vn-r-surface:18px}
+  #homePage .vn-h1{font-size:23px}
+  #homePage .vn-h2{font-size:19px}
+  #homePage .vn-h3{font-size:18px}
+  #homePage .vn-row{gap:var(--vn-s3)}
+  #homePage .vn-row-v{font-size:14.5px}
+  /* Week strip goes edge-to-edge so each day clears 44pt width at 320. */
+  #homePage .vn-sect .vn-week{
+    width:calc(100% + 2 * var(--vn-gutter));
+    margin-inline:calc(-1 * var(--vn-gutter));
+    gap:0;
+  }
+  #homePage .vn-week-c{min-height:52px;min-width:44px;border-radius:0}
+  #homePage .vn-week-t{font-size:11.5px}
+  /* the day label + gym control stack rather than crushing either */
+  #homePage .vn-head{flex-wrap:wrap}
+}
+
+/* ---- REDUCED MOTION (I8) ----
+   premium-ui.css already zeroes durations globally for the media query and for
+   [data-nxp-motion="reduced"]; this removes the positional component too, so
+   the route change is a state swap rather than a fast movement. */
+@media (prefers-reduced-motion:reduce){
+  @keyframes vn-route-enter{from{opacity:0;transform:none}to{opacity:1;transform:none}}
+  .content:not(.hide){animation:none}
+  #homePage .vn-act:active{transform:none}
+}
+:root[data-nxp-motion="reduced"] .content:not(.hide){animation:none}
+:root[data-nxp-motion="reduced"] #homePage .vn-act:active{transform:none}

@@ -25,44 +25,156 @@ const NXP = (() => {
   function home() {
     applyAppearance();
     const list=template(),logs=N.sessionLogs(),lift=!['Rest','Zone2','Floorball'].includes(state.dayType),finished=N.planDone();
-    const s=N.trendStats(),last=N.weights().at(-1),r=N.review(),cal=N.finite(N.cfg().calories);
+    const s=N.trendStats(),r=N.review(),cal=N.finite(N.cfg().calories);
     const action=lift?"startWorkoutNow()":state.dayType==='Zone2'?"showCardioSheet()":state.dayType==='Floorball'?"startWorkoutNow()":"apx96OpenReadiness()";
     const title=finished?'Review workout':lift?(logs.length?'Resume workout':'Start workout'):state.dayType==='Zone2'?'Log cardio':state.dayType==='Floorball'?'Open session':'Recovery check-in';
-    const context=lift?`${list.length} exercises · ${list.reduce((a,e)=>a+Number(e.sets),0)} working sets`:state.dayType==='Rest'?'A planned day to recharge.':state.dayType==='Zone2'?'An easy, conversational effort.':'Your activity and recovery, together.';
-    const weekly=s.change===null?'Building':N.signed(s.change,2)+' kg';
-    const link=(label,fn)=>`<button type="button" class="n99-text" onclick="${esc(fn)}">${label}</button>`;
     const dayMs=N.dateMs(state.date);
-    const dayLabel=Number.isFinite(dayMs)?new Date(dayMs).toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'short',timeZone:'UTC'}):N.shortDate(state.date);
-    const rec=N.cfg().recovery[state.date];
-    const recLogged=!!(rec&&[rec.sleep,rec.energy,rec.soreness].some(v=>v!==''&&v!==undefined&&v!==null));
-    const recEnergy=rec?N.finite(rec.energy):null,recSore=rec?N.finite(rec.soreness):null;
-    const recLabel=!recLogged?'Not logged':(recEnergy!==null&&recEnergy<=2)||(recSore!==null&&recSore>=4)?'Review':recEnergy!==null&&recEnergy>=4?'Good':'Okay';
-    void recLabel;
+    const weekday=Number.isFinite(dayMs)?new Date(dayMs).toLocaleDateString('en-SG',{weekday:'long',timeZone:'UTC'}):'';
+    const dateLine=Number.isFinite(dayMs)?new Date(dayMs).toLocaleDateString('en-SG',{day:'numeric',month:'long',timeZone:'UTC'}):N.shortDate(state.date);
     const cardioMins=N.cardioWeek(),cardioTarget=Number(settings.zone2WeeklyTarget)||90;
     const lifts=N.strengthItems();
     const liftReview=lifts.filter(x=>x.status==='Review').length;
-    const perfLabel=!lifts.length?'Building':liftReview>=2?'Review':lifts.some(x=>x.status==='Improving')?'Improving':lifts.some(x=>x.status==='Holding steady')?'Holding':lifts.some(x=>x.status==='Watch')?'Watch':'Building';
-    let weightNote=s.change===null?'Needs two weeks of readings':'Compared with prior 7 days';
-    if(s.change!==null&&N.cfg().targetConfirmed&&s.current.avg!==null){
-      const lo=goalLow(),hi=goalHigh();
-      if(s.current.avg>=lo&&s.current.avg<=hi)weightNote='In goal range';
-    }
+    const perfLabel=!lifts.length?'Building':liftReview>=2?'Review':lifts.some(x=>x.status==='Improving')?'Improving':lifts.some(x=>x.status==='Holding steady')?'Holding':lifts.some(x=>x.status==='Watch')?'Watch':lifts.some(x=>x.status==='Older history')?'Older history':'Building';
+    // Older history / Building map to is-neutral deliberately — do not promote to is-ok.
+    const perfTone=perfLabel==='Review'||perfLabel==='Watch'?'is-watch':perfLabel==='Improving'||perfLabel==='Holding'?'is-ok':'is-neutral';
+    const lastPerfDate=lifts.map(x=>x.latestDate).filter(Boolean).sort().at(-1);
+    const perfSub=perfLabel==='Older history'
+      ?(lastPerfDate?`${lifts.length} lifts · last logged ${N.shortDate(lastPerfDate)}`:'No recent comparable sessions')
+      :`${lifts.length} lifts with recent history`;
+    const mean=s.current.avg===null?'—':s.current.avg.toFixed(2);
+    const weekly=s.change===null?'Building':N.signed(s.change,2);
     const work=N.workRows();
     const lastLift=[...new Set(work.map(row=>row.date))].sort().at(-1);
     const lastLiftRow=lastLift?work.find(row=>row.date===lastLift):null;
-    const lastLiftLine=lastLiftRow?(lastLift===state.date?(finished?'Logged today':'In progress today'):`${N.label(lastLiftRow.dayType||'Workout')} · ${N.shortDate(lastLift)}`):'';
+    const lastLiftLine=lastLiftRow?(lastLift===state.date?(finished?'Logged today':'In progress today'):`${N.label(lastLiftRow.dayType||state.dayType)} · ${N.shortDate(lastLift)}`):'';
+    const plateau=N.detectPlateau();
+    const trendEv=plateau.weeklyRate===null?(s.change===null?'—':N.signed(s.change)+' kg/wk'):N.signed(plateau.weeklyRate)+' kg/wk';
+    const confEv=!plateau.confidence||plateau.confidence==='none'?'—':plateau.confidence;
+    const toneClass=r.tone==='watch'?' vn-tone-watch':'';
+    const support=r.message||r.reason||'';
+    const morning=N.timingRows('Morning').find(row=>row.date===state.date)||null;
+    const sets=list.reduce((a,e)=>a+Number(e.sets),0);
+    const nextDate=N.dateAdd(state.date,1);
+    const nextLine=`Next session · ${N.label(N.typeFor(nextDate))} tomorrow`;
+    const weekLogged=N.completedWeek();
+    const weekStart=N.weekStart();
+    const weekShort={FullA:'A',FullB:'B',FullC:'C',Zone2:'Walk',Rest:'Rest',Floorball:'FB'};
+    const weekStrip=`<div class="vn-week" role="list">${Array.from({length:7},(_,i)=>{
+      const d=N.dateAdd(weekStart,i),t=N.typeFor(d),complete=work.some(row=>row.date===d),isToday=d===state.date;
+      const short=weekShort[t]||String(t).slice(0,3);
+      const day=Number.isFinite(N.dateMs(d))?new Date(N.dateMs(d)).toLocaleDateString('en-SG',{weekday:'narrow',timeZone:'UTC'}):['M','T','W','T','F','S','S'][i];
+      return `<button type="button" class="vn-week-c${isToday?' is-today':''}${liftDays(t)?' is-lift':''}" role="listitem" onclick="NXT.openDay('${d}')" aria-label="${esc(N.shortDate(d)+' · '+N.label(t))}" ${isToday?'aria-current="date"':''}><span class="vn-week-d">${esc(day)}</span><span class="vn-week-t">${esc(short)}</span><span class="vn-week-m" aria-hidden="true">${complete?'<i></i>':''}</span></button>`;
+    }).join('')}</div>`;
+    function liftDays(t){return !['Rest','Zone2','Floorball'].includes(t);}
+    const textAct=(label,fn,mute)=>`<button type="button" class="vn-text${mute?' is-mute':''}" onclick="${esc(fn)}">${label}</button>`;
+    const trainBlock=lift?`
+      <div class="vn-pad vn-sect">
+        <div class="vn-sect-head">
+          <p class="vn-sect-t">${finished?'Workout saved':'Today’s training'}</p>
+          ${textAct('Change','showSessionSheet()',true)}
+        </div>
+        <h2 class="vn-h2">${esc(N.label(state.dayType))}</h2>
+        <p class="vn-meta vn-mt1">${list.length} exercises · ${sets} working sets · ${esc(state.gym||'Gym')}</p>
+        <button type="button" class="vn-act vn-mt4" onclick="${esc(finished?"switchTab('train')":action)}">${esc(title)}</button>
+        ${lastLiftLine?`<p class="vn-meta vn-mt5">${esc(lastLiftLine)}</p>`:''}
+      </div>`:`
+      <div class="vn-pad vn-sect">
+        <div class="vn-sect-head">
+          <p class="vn-sect-t">Today</p>
+          ${textAct('Change','showSessionSheet()',true)}
+        </div>
+        <h2 class="vn-h2">${esc(N.label(state.dayType))}</h2>
+        <p class="vn-body vn-mt2">${state.dayType==='Rest'?'A planned recovery day. Nothing is scheduled.':state.dayType==='Zone2'?'An easy, conversational effort. No lifting session is due.':'Hard conditioning day. Log duration and effort.'}</p>
+        ${state.dayType==='Rest'?'':`<button type="button" class="vn-act vn-mt4" onclick="${esc(action)}">${esc(title)}</button>`}
+        <div class="vn-rows vn-mt4">
+          <button type="button" class="vn-row" onclick="apx95OpenQuickWeight()">
+            <span class="vn-row-l"><span class="vn-row-t">Morning weight</span>
+            <span class="vn-row-s">${morning?`Logged · ${morning.weight.toFixed(1)} kg`:'Not logged yet'}</span></span>
+            ${morning?'':`<span class="vn-row-v" style="color:var(--vn-violet-lift);font-weight:540">Log</span>`}
+            <i class="vn-chev" aria-hidden="true">›</i>
+          </button>
+          ${addOnEligible()?`<button type="button" class="vn-row" onclick="NXP.addOnPick()">
+            <span class="vn-row-l"><span class="vn-row-t">Add optional lifting</span>
+            <span class="vn-row-s">Kept as an add-on — today’s plan is unchanged</span></span>
+            <i class="vn-chev" aria-hidden="true">›</i>
+          </button>`:''}
+        </div>
+        <p class="vn-meta vn-mt5">${esc(nextLine)}</p>
+      </div>`;
     N.logSuggestion({kind:"review",subject:null,payload:{title:r.title,action:r.action,tone:r.tone,reason:r.reason}});
-    document.getElementById('homePage').innerHTML=`<div class="n99 nxp nxp-home">
-      <header class="nxp-heading nxp-home-chrome"><div><h1>Today</h1><p>${esc(dayLabel)}</p></div>${button(esc(state.gym),'cycleGym()',true)}</header>
-      <button type="button" class="nxp-home-decision ${esc(r.tone)}" onclick="NXT.openReview()"><span class="nxp-caption">NXTFRM Decision</span><b>${esc(r.title)}</b>${r.message?`<p>${esc(r.message)}</p>`:r.reason?`<p>${esc(r.reason)}</p>`:''}<span class="nxp-home-review">View evidence →</span></button>
-      <section class="nxp-home-card nxp-home-today"><div class="n99-row"><span class="nxp-caption">${finished?'Workout saved':'Today’s training'}</span>${link('Change','showSessionSheet()')}</div><h2>${esc(N.label(state.dayType))}</h2><p>${esc(context)}</p><button type="button" class="n99-button nxp-home-cta" onclick="${esc(finished?"switchTab('train')":action)}">${esc(title)}</button>${lastLiftLine?`<p class="nxp-home-last"><span class="nxp-caption">Last lift</span><span>${esc(lastLiftLine)}</span></p>`:''}</section>
-      <section class="nxp-home-card nxp-home-weight"><span class="nxp-caption">Bodyweight</span><strong>${last?esc(last.weight.toFixed(1))+' <em>kg</em>':'—'}</strong><p>${esc(weekly)}${s.change===null?'':' / week'}</p><small>${esc(weightNote)}</small>${link('View progress ›',"switchTab('weight')")}</section>
-      ${recoveryHomeCard()}
-      <div class="nxp-home-signals" role="group" aria-label="Cardio and performance">${linkSignal('Cardio',cardioMins+' / '+cardioTarget+' min','showCardioSheet()')}${linkSignal('Performance',perfLabel,"NXT.ui.view='strength';switchTab('weight')")}</div>
-      <button type="button" class="nxp-home-kcal" onclick="NXT.openCalories()"><span><small>Calorie guide</small><strong>${cal?formatNumber(cal)+' <em>kcal</em>':'Set target'}</strong></span><span>${cal?'Edit':'Set up'}</span></button>
-      ${N.adherenceHTML()}
-      <nav class="nxp-home-secondary" aria-label="Quick actions">${link('+ Weight','apx95OpenQuickWeight()')}${state.dayType==='Zone2'?'':link('Log cardio','showCardioSheet()')}${state.dayType==='Rest'?'':link('Check-in','apx96OpenReadiness()')}</nav>
-      <details class="nxp-home-week nxp-disclosure" open><summary><span>Your week</span><small>${N.completedWeek()} lifting days logged</small></summary>${N.weekHTML()}<div class="nxp-card-foot"><span>${cardioMins} / ${cardioTarget} cardio min</span>${link('Edit plan ›',"NXT.more('training')")}</div></details>
+    document.getElementById('homePage').innerHTML=`<div class="vn-today">
+      <div class="vn-pad">
+        <div class="vn-head">
+          <div>
+            <p class="vn-eyebrow">${esc(weekday)}</p>
+            <h1 class="vn-h1 vn-mt1">${esc(dateLine)}</h1>
+          </div>
+          ${lift?textAct(esc(state.gym||'Gym')+' ›','cycleGym()',true):''}
+        </div>
+        <section class="vn-surface vn-focal${toneClass}" aria-labelledby="vn-dec-h">
+          <p class="vn-eyebrow">NXTFRM decision</p>
+          <h2 class="vn-h3 vn-mt2" id="vn-dec-h">${esc(r.title)}</h2>
+          ${support?`<p class="vn-body vn-mt2">${esc(support)}</p>`:''}
+          <div class="vn-hstack vn-mt4">
+            <span class="vn-evid">Trend<b class="vn-num">${esc(trendEv)}</b></span>
+            <span class="vn-evid">Confidence<b>${esc(confEv)}</b></span>
+          </div>
+          <div class="vn-mt3">${textAct('Why this call ›','NXT.openReview()')}</div>
+        </section>
+      </div>
+
+      ${trainBlock}
+
+      <div class="vn-pad vn-sect">
+        <p class="vn-sect-t" style="margin-bottom:var(--vn-s3)">Current state</p>
+        <div class="vn-rows">
+          <button type="button" class="vn-row" onclick="switchTab('weight')">
+            <span class="vn-row-l"><span class="vn-row-t">Weight</span>
+              <span class="vn-row-s">7-day mean ${esc(mean)} kg</span></span>
+            <span class="vn-row-v vn-num">${esc(weekly)}${s.change===null?'':` <small>kg/wk</small>`}</span>
+            <i class="vn-chev" aria-hidden="true">›</i>
+          </button>
+          <button type="button" class="vn-row" onclick="NXT.ui.view='strength';switchTab('weight')">
+            <span class="vn-row-l"><span class="vn-row-t">Performance</span>
+              <span class="vn-row-s">${esc(perfSub)}</span></span>
+            <span class="vn-row-v"><span class="vn-status ${perfTone}"><i aria-hidden="true"></i>${esc(perfLabel)}</span></span>
+            <i class="vn-chev" aria-hidden="true">›</i>
+          </button>
+          <button type="button" class="vn-row" onclick="showCardioSheet()">
+            <span class="vn-row-l"><span class="vn-row-t">Cardio</span>
+              <span class="vn-row-s">This week</span></span>
+            <span class="vn-row-v vn-num">${cardioMins} <small>/ ${cardioTarget} min</small></span>
+            <i class="vn-chev" aria-hidden="true">›</i>
+          </button>
+        </div>
+      </div>
+
+      <div class="vn-pad vn-sect">
+        <div class="vn-sect-head">
+          <p class="vn-sect-t">Your week</p>
+          <span class="vn-tiny">${weekLogged} lifting ${weekLogged===1?'day':'days'} logged</span>
+        </div>
+        ${weekStrip}
+        <div class="vn-sect-head" style="margin-top:var(--vn-s3);margin-bottom:0">
+          <span class="vn-tiny">${cardioMins} / ${cardioTarget} cardio min</span>
+          ${textAct('Edit plan ›',"NXT.more('training')",true)}
+        </div>
+      </div>
+
+      <nav class="vn-pad vn-quick" aria-label="Quick actions">
+        ${textAct('+ Weight','apx95OpenQuickWeight()')}
+        ${state.dayType==='Zone2'?'':textAct('Log cardio','showCardioSheet()')}
+        ${textAct('Check-in','apx96OpenReadiness()')}
+      </nav>
+
+      <details class="vn-more vn-pad">
+        <summary>More for today</summary>
+        <div class="vn-more-body">
+          ${recoveryHomeCard()}
+          <button type="button" class="nxp-home-kcal" onclick="NXT.openCalories()"><span><small>Calorie guide</small><strong>${cal?formatNumber(cal)+' <em>kcal</em>':'Set target'}</strong></span><span>${cal?'Edit':'Set up'}</span></button>
+          ${N.adherenceHTML()}
+        </div>
+      </details>
     </div>`;
   }
   function linkSignal(label,value,action) {return `<button type="button" class="nxp-home-signal" onclick="${esc(action)}"><small>${esc(label)}</small><strong>${esc(value)}</strong></button>`;}

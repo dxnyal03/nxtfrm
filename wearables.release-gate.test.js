@@ -80,7 +80,12 @@ test("workout queue empty state is explicit", function () {
 });
 
 test("Your Week is visible on Home without a hidden disclosure", function () {
-  assert.ok(ui.indexOf('details class="nxp-home-week nxp-disclosure" open') !== -1);
+  // VNext Phase 2A: week is an always-visible strip on Today (not a closed disclosure).
+  // Legacy markup kept as an alternate so this gate still covers pre-2A trees.
+  assert.ok(
+    ui.indexOf('class="vn-week"') !== -1 ||
+    ui.indexOf('details class="nxp-home-week nxp-disclosure" open') !== -1
+  );
 });
 
 test("dayType resolves through one shared resolver everywhere", function () {

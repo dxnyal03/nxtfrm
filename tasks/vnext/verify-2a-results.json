@@ -1,0 +1,153 @@
+{
+  "widths": {
+    "320": {
+      "lift": {
+        "overflow": false,
+        "scrollWidth": 320,
+        "clientWidth": 320,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "hasVnToday": true,
+        "hasDecision": true,
+        "hasPrimary": true,
+        "dayType": "Push",
+        "fold": null
+      },
+      "rest": {
+        "overflow": false,
+        "scrollWidth": 320,
+        "clientWidth": 320,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "hasVnToday": true,
+        "hasDecision": true,
+        "hasPrimary": false,
+        "dayType": "Rest"
+      },
+      "consoleErrors": []
+    },
+    "375": {
+      "lift": {
+        "overflow": false,
+        "scrollWidth": 375,
+        "clientWidth": 375,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "hasVnToday": true,
+        "hasDecision": true,
+        "hasPrimary": true,
+        "dayType": "Push",
+        "fold": null
+      },
+      "rest": {
+        "overflow": false,
+        "scrollWidth": 375,
+        "clientWidth": 375,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "hasVnToday": true,
+        "hasDecision": true,
+        "hasPrimary": false,
+        "dayType": "Rest"
+      },
+      "consoleErrors": []
+    },
+    "390": {
+      "lift": {
+        "overflow": false,
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "hasVnToday": true,
+        "hasDecision": true,
+        "hasPrimary": true,
+        "dayType": "Push",
+        "fold": {
+          "decisionAbove": true,
+          "ctaAbove": true,
+          "dBottom": 298.171875,
+          "cBottom": 486.734375
+        }
+      },
+      "rest": {
+        "overflow": false,
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "hasVnToday": true,
+        "hasDecision": true,
+        "hasPrimary": false,
+        "dayType": "Rest"
+      },
+      "consoleErrors": []
+    }
+  },
+  "reducedMotion": {
+    "animationName": "none",
+    "animationDuration": "1e-06s",
+    "hasVn": true
+  },
+  "otherTabs": {
+    "train": {
+      "ok": true,
+      "errors": []
+    },
+    "weight": {
+      "ok": true,
+      "errors": []
+    },
+    "history": {
+      "ok": true,
+      "errors": []
+    },
+    "more": {
+      "ok": true,
+      "errors": []
+    }
+  },
+  "entryPoints": {
+    "missing": [],
+    "wired": {
+      "openReview": true,
+      "cycleGym": false,
+      "showSessionSheet": true,
+      "apx95OpenQuickWeight": true,
+      "showCardioSheet": true,
+      "apx96OpenReadiness": true,
+      "openCalories": true,
+      "openRecovery": true,
+      "moreTraining": true,
+      "addOnPick": true,
+      "startOrResume": false
+    },
+    "checks": {
+      "startWorkoutNow": true,
+      "showCardioSheet": true,
+      "apx96OpenReadiness": true,
+      "showSessionSheet": true,
+      "cycleGym": true,
+      "apx95OpenQuickWeight": true,
+      "NXT.openReview": true,
+      "NXT.openCalories": true,
+      "NXT.more": true,
+      "NXP.openRecovery": true,
+      "switchTab": true,
+      "NXP.addOnPick": true
+    }
+  },
+  "consoleErrors": []
+}

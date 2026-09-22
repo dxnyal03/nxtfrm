@@ -1550,14 +1550,26 @@ function updateCloudSyncStatus(){
   }
   updateCloudLocalBanner();
 }
-let cloudBannerDismissed=false;
 function updateCloudLocalBanner(){
   const el=document.getElementById('cloudLocalBanner');
   if(!el)return;
-  const show=cloudSessionChecked&&!cloudUser&&!hasStoredSbAuthToken()&&!cloudBannerDismissed;
+  // D11: show only on a genuine actionable condition; never flash before session is known.
+  if(!cloudSessionChecked){el.setAttribute('hidden','');return;}
+  let dismissed=false,configured=false;
+  try{dismissed=localStorage.getItem('nxtfrm_cloud_banner_dismissed')==='1';}catch(e){}
+  try{configured=!!((localStorage.getItem('apm_sb_url')||'').trim()&&(localStorage.getItem('apm_sb_key')||'').trim());}catch(e){}
+  const signedOut=!cloudUser&&!hasStoredSbAuthToken();
+  const syncFail=!!lastCloudError; // A — always actionable
+  const cloudButSignedOut=configured&&signedOut; // B — always actionable
+  const hasData=(Array.isArray(state.logs)&&state.logs.length>0)||(Array.isArray(state.bws)&&state.bws.length>0);
+  const unsyncedAtRisk=signedOut&&hasData&&!lastCloudSyncAt&&!dismissed; // C — dismissible
+  const show=syncFail||cloudButSignedOut||unsyncedAtRisk;
   if(show)el.removeAttribute('hidden');else el.setAttribute('hidden','');
 }
-function dismissCloudLocalBanner(){cloudBannerDismissed=true;updateCloudLocalBanner();}
+function dismissCloudLocalBanner(){
+  try{localStorage.setItem('nxtfrm_cloud_banner_dismissed','1');}catch(e){}
+  updateCloudLocalBanner();
+}
 function openCloudLoginFromBanner(){switchTab('more');NXT.more('data');}
 window.dismissCloudLocalBanner=dismissCloudLocalBanner;
 window.openCloudLoginFromBanner=openCloudLoginFromBanner;

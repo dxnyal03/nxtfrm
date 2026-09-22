@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "cases": {
+    "C_shows_when_local_data": true,
+    "C_hidden_after_dismiss": true,
+    "C_dismiss_key": "1",
+    "C_stays_hidden_after_reload": true,
+    "B_shows_despite_dismiss": true,
+    "A_shows_despite_dismiss": true
+  },
+  "tabs": {
+    "train": { "ok": true, "errors": [] },
+    "weight": { "ok": true, "errors": [] },
+    "history": { "ok": true, "errors": [] },
+    "more": { "ok": true, "errors": [] },
+    "home": { "ok": true, "errors": [] }
+  },
+  "notes": "Verified via Playwright MCP with cut-support.js cache bypass (index.html still requests cut-support.js?v=109)."
+}

@@ -10,6 +10,7 @@ const VERSIONED = [
   'train-anatomy.js',
   'premium-ui.js',
   'premium-ui.css',
+  'vnext.css',
   'wearables.js',
   'wearables.adapters.js',
   'wearables.ingest.js',
