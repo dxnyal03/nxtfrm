@@ -65,6 +65,20 @@ Do not add Playwright, Puppeteer or an MCP browser to a delegated run unless a t
 
 Run the deterministic suites and report their real output. That is the verification Cursor is responsible for.
 
+## 6b. Delegation model
+
+Delegated runs pin an explicit model rather than using Auto, so slice quality is reproducible and not a lottery:
+
+```
+agent -p "<task>" --model claude-opus-5-thinking-high-fast --output-format text -f --trust
+```
+
+Auto was in use for slices 2A–2D and INT-1. It selects per request, so two slices held to the same standard could be written by different models at different reasoning levels, which makes a regression impossible to attribute. Pinning removes that variable.
+
+Chosen for the failure modes this project actually hits. The defects found in review were not hard coding problems — they were adherence and care problems: a label narrowed from *Conditioning* to *Cardio* while the block still held floorball rows; the anatomy strip demoted out of the exercise head against the approved design; a stylesheet linked at `?v=110` against a `RELEASE` of `109`. Those come from working off a partial view of a long constraint list and large files. So: **high reasoning** for constraint adherence, **1M context** because `index.html` alone is ~305KB and a slice routinely spans it plus `premium-ui.js` and `cut-support.js`, and **fast** per the owner's preference.
+
+Set per delegation via `--model`; the interactive Cursor config is left alone.
+
 ## 6a. Working agreement
 
 - Implement only the scope in `tasks/vnext/CURRENT_TASK.md`. Anything else — including improvements that look obvious — is out of scope; raise it in your report instead.

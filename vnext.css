@@ -78,6 +78,11 @@
   from{opacity:0;transform:translateY(6px)}
   to  {opacity:1;transform:none}
 }
+/* Cover both specificity levels: render() never strips `.hide` on non-home
+   destinations, so `.content:not(.hide)` alone only ever matched #homePage.
+   Matching `.content` as well lets vn-route-enter win over index.html's
+   legacy `.content{animation:v94-enter}` for Train / Progress / History / More. */
+.content,
 .content:not(.hide){
   animation:vn-route-enter var(--vn-t-move) var(--vn-ease);
 }
@@ -367,6 +372,7 @@ body:has(.tabs.vn-recede) .content{
    the route change is a state swap rather than a fast movement. */
 @media (prefers-reduced-motion:reduce){
   @keyframes vn-route-enter{from{opacity:0;transform:none}to{opacity:1;transform:none}}
+  .content,
   .content:not(.hide){animation:none}
   #homePage .vn-act:active{transform:none}
   #trainPage .nxp-set-row.is-fresh{animation:none;background:transparent}
@@ -374,6 +380,7 @@ body:has(.tabs.vn-recede) .content{
   #trainPage .nxp-ex-top.is-back .nxp-ex-text{animation:none;transform:none}
   .tabs,.tabs.vn-recede{transition:none}
 }
+:root[data-nxp-motion="reduced"] .content,
 :root[data-nxp-motion="reduced"] .content:not(.hide){animation:none}
 :root[data-nxp-motion="reduced"] #homePage .vn-act:active{transform:none}
 :root[data-nxp-motion="reduced"] #trainPage .nxp-set-row.is-fresh{animation:none;background:transparent}
@@ -404,7 +411,7 @@ body:has(.tabs.vn-recede) .content{
 }
 #trainPage .vn-num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 
-/* ---- Mode bar (leave · identity · finish) ---- */
+/* ---- Mode bar (leave · identity · tools · finish) ---- */
 #trainPage .vn-train-top{
   display:flex;align-items:center;gap:var(--vn-s3);
   padding:var(--vn-s1) 0 var(--vn-s2);
@@ -427,6 +434,35 @@ body:has(.tabs.vn-recede) .content{
 #trainPage .vn-train-count{
   margin:2px 0 0;font-size:12px;font-weight:500;color:var(--vn-ink-3);
   font-variant-numeric:tabular-nums;
+}
+#trainPage .vn-train-end{
+  display:flex;align-items:center;gap:var(--vn-s2);flex:none;
+}
+#trainPage .vn-train-tools{position:relative}
+#trainPage .vn-train-tools > summary{
+  list-style:none;display:grid;place-items:center;
+}
+#trainPage .vn-train-tools > summary::-webkit-details-marker{display:none}
+#trainPage .vn-train-tools-panel{
+  position:absolute;top:calc(100% + 6px);right:0;z-index:20;
+  width:min(300px,calc(100vw - 40px));
+  padding:var(--vn-s3);
+  border-radius:var(--vn-r-surface);
+  background:var(--vn-surface-2);
+  box-shadow:inset 0 0 0 1px var(--vn-line-2), 0 12px 32px rgba(0,0,0,.45);
+}
+#trainPage .vn-train-tools-panel .nxp-session-focus{margin:0 0 var(--vn-s3)}
+#trainPage .vn-train-tools-panel .nxp-ex-actions{margin:0 0 var(--vn-s3)}
+#trainPage .vn-train-tools-panel .nxp-session-tools{
+  display:flex;flex-direction:column;gap:var(--vn-s2);margin-top:var(--vn-s3);
+}
+#trainPage .vn-train-tools-panel .nxp-session-tools .n99-button{
+  width:100%;min-height:44px;border-radius:var(--vn-r-control);
+}
+
+/* Focused Train: keep the save toast clear of the mode-bar identity. */
+body:has(.tabs.vn-recede) .toast{
+  top:calc(58px + env(safe-area-inset-top,0px) + var(--nxt-safe-top,0px)) !important;
 }
 
 #trainPage .vn-train-active .nxp-ex-rail > p[hidden],
@@ -471,6 +507,14 @@ body:has(.tabs.vn-recede) .content{
 }
 #trainPage .vn-train-active .nxp-ex-muscles{
   margin:2px 0 0;font-size:12.5px;color:var(--vn-ink-3);
+}
+/* Anatomy sits inline beside the name (design-vnext). Compact so the head
+   gains no vertical height vs text-only. */
+#trainPage .vn-train-active .nxp-ex-anat{
+  margin:0;max-width:72px;
+}
+#trainPage .vn-train-active .nxp-ex-anat .nxa{
+  height:64px;max-width:72px;
 }
 
 /* ---- Aim strip: typography instruments, wrap at 320 ---- */
@@ -619,17 +663,30 @@ body:has(.tabs.vn-recede) .content{
 }
 #trainPage .vn-train-more > summary::-webkit-details-marker{display:none}
 
-/* ---- Idle strength overview ---- */
+/* ---- Idle strength overview + Rest / Zone2 / Floorball (C2) ----
+   One protagonist surface (Ready / Start). Plan and guidance sit on the
+   canvas. Radii 20/12/10. Section titles 13px sentence case. */
+#trainPage .vn-sect{
+  margin:0 0 var(--vn-s3);
+  font-size:13px;font-weight:600;letter-spacing:.01em;
+  color:var(--vn-ink-2);text-transform:none;
+}
 #trainPage .vn-train-ready{
   background:linear-gradient(180deg,var(--vn-surface) 0%,#14171E 100%);
   border-radius:var(--vn-r-surface);padding:var(--vn-s5);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.055), 0 1px 2px rgba(0,0,0,.4);
   margin-bottom:var(--vn-s6);
 }
+#trainPage .vn-train-ready .vn-sect{margin-bottom:0;color:var(--vn-ink-3);font-weight:560}
 #trainPage .vn-train-ready-meta{
   margin:var(--vn-s2) 0 var(--vn-s4);font-size:14.5px;color:var(--vn-ink);
 }
-#trainPage .vn-train-ready .n99-button{width:100%;min-height:50px}
+#trainPage .vn-train-ready .n99-button{
+  width:100%;min-height:50px;border-radius:var(--vn-r-control);
+  background:linear-gradient(180deg,#9B71F8,var(--vn-violet));
+  color:#fff;font-size:16px;font-weight:580;
+  box-shadow:0 1px 0 rgba(255,255,255,.15) inset, 0 6px 16px -10px rgba(139,92,246,.45);
+}
 #trainPage .vn-train-plan{margin-bottom:var(--vn-s5)}
 #trainPage .vn-train-plan-row{
   display:flex;align-items:center;min-height:52px;padding-block:var(--vn-s3);
@@ -637,6 +694,61 @@ body:has(.tabs.vn-recede) .content{
 #trainPage .vn-train-plan-row + .vn-train-plan-row{border-top:1px solid var(--vn-line)}
 #trainPage .vn-train-plan-t{display:block;font-size:15px;font-weight:500;color:var(--vn-ink)}
 #trainPage .vn-train-plan-s{display:block;font-size:12.5px;color:var(--vn-ink-3);margin-top:1px}
+
+/* Idle chrome + controls: kill V102 pill/card leftovers under #trainPage. */
+#trainPage .nxp-train-idle.vn-train{
+  color:var(--vn-ink);
+}
+#trainPage .nxp-train-idle.vn-train .nxp-train-chrome{
+  margin:var(--vn-s2) 0 var(--vn-s4);
+}
+#trainPage .nxp-train-idle.vn-train .nxp-train-chrome h1{
+  color:var(--vn-ink);font-size:22px;font-weight:650;letter-spacing:-.03em;
+}
+#trainPage .nxp-train-idle.vn-train .nxp-train-chrome p{color:var(--vn-ink-3)}
+#trainPage .nxp-train-idle.vn-train .nxp-train-chrome .n99-button{
+  border-radius:var(--vn-r-control);min-height:44px;
+  background:transparent;border:0;box-shadow:none;
+  color:var(--vn-ink-2);font-size:13px !important;font-weight:540;
+  width:auto;padding:8px 10px;
+}
+#trainPage .nxp-train-idle.vn-train .nxp-train-idle-copy h2{
+  color:var(--vn-ink);font-size:18px;font-weight:600;letter-spacing:-.02em;
+  text-transform:none;
+}
+#trainPage .nxp-train-idle.vn-train .nxp-train-idle-copy p{color:var(--vn-ink-2)}
+#trainPage .nxp-train-idle.vn-train .nxp-train-idle-actions .n99-button,
+#trainPage .nxp-train-idle.vn-train .nxp-session-tools .n99-button{
+  border-radius:var(--vn-r-control);
+  background:linear-gradient(180deg,#9B71F8,var(--vn-violet));
+  color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.15) inset, 0 6px 16px -10px rgba(139,92,246,.45);
+}
+#trainPage .nxp-train-idle.vn-train .nxp-session-tools .n99-button.secondary,
+#trainPage .nxp-train-idle.vn-train .n99-button.secondary{
+  background:var(--vn-surface-2);color:var(--vn-ink);
+  box-shadow:inset 0 0 0 1px var(--vn-line-2);
+}
+#trainPage .nxp-train-idle.vn-train .nxp-train-rec{
+  background:transparent;border:0;border-radius:0;padding:0 0 var(--vn-s3);
+  box-shadow:none;margin:0 0 var(--vn-s4);
+  border-bottom:1px solid var(--vn-line);
+}
+#trainPage .nxp-train-idle.vn-train .nxp-train-rec .nxp-caption,
+#trainPage .nxp-train-idle.vn-train .nxp-addon > h2.nxp-caption,
+#trainPage .nxp-train-idle.vn-train .nxp-train-floorball-history > .nxp-caption,
+#trainPage .nxp-train-idle.vn-train .nxp-train-pace .nxp-caption{
+  font-size:13px;font-weight:600;letter-spacing:.01em;
+  text-transform:none;color:var(--vn-ink-2);
+}
+#trainPage .nxp-train-idle.vn-train .nxp-train-floorball-log input,
+#trainPage .nxp-train-idle.vn-train .nxp-train-floorball-log textarea{
+  border-radius:var(--vn-r-input);
+  background:rgba(255,255,255,.035);border:1px solid var(--vn-line-2);color:var(--vn-ink);
+}
+#trainPage .nxp-train-idle.vn-train .n99-session-rail{
+  border-radius:2px;height:3px;background:rgba(255,255,255,.09);
+}
+#trainPage .nxp-train-idle.vn-train .n99-session-rail span{background:var(--vn-violet)}
 
 /* ---- Finished recap ---- */
 #trainPage .vn-train-done{
@@ -654,11 +766,6 @@ body:has(.tabs.vn-recede) .content{
 #trainPage .vn-train-outcome-row + .vn-train-outcome-row{border-top:1px solid var(--vn-line)}
 #trainPage .vn-train-outcome-next{margin:var(--vn-s4) 0}
 
-/* ---- Idle Rest / Zone2 / Floorball: light canvas alignment ---- */
-#trainPage .nxp-train-idle.vn-train .nxp-train-chrome h1{color:var(--vn-ink)}
-#trainPage .nxp-train-idle.vn-train .nxp-train-idle-copy h2{color:var(--vn-ink)}
-#trainPage .nxp-train-idle.vn-train .nxp-train-idle-copy p{color:var(--vn-ink-2)}
-
 /* ---- 320: aim wraps rather than crushing ---- */
 @media (max-width:359px){
   #trainPage .vn-train-active .nxp-ex-title{font-size:22px}
@@ -668,6 +775,7 @@ body:has(.tabs.vn-recede) .content{
   #trainPage .vn-aim{flex-wrap:wrap;gap:var(--vn-s4)}
   #trainPage .vn-aim.wrap3 .nxp-aim-cell{flex:1 1 44%}
   #trainPage .vn-aim b{font-size:16px}
+  #trainPage .vn-train-active .nxp-ex-anat .nxa{height:56px;max-width:64px}
 }
 
 /* ==========================================================================
@@ -790,9 +898,12 @@ body:has(.tabs.vn-recede) .content{
   box-shadow:inset 0 0 0 1px var(--vn-line-2);
 }
 
-/* Chart frame — full-plot scrub; pan-y so vertical scroll still works */
+/* Chart frame — full-plot scrub; pan-y so vertical scroll still works.
+   Hair of horizontal inset so the latest selected point is not flush to the
+   SVG edge (cut-support right pad stays untouched). */
 #weightPage .vn-chart-wrap{
   position:relative;margin-top:var(--vn-s3);
+  padding-inline:6px;
   touch-action:pan-y;user-select:none;-webkit-user-select:none;
   outline:none;
 }
@@ -1053,6 +1164,8 @@ body:has(.tabs.vn-recede) .content{
 #historyPage .nxp-cal-month{
   margin:0;font-size:19px;font-weight:620;letter-spacing:-.02em;
   color:var(--vn-ink);
+  /* Beat premium-ui `.nxp-cal-month { overflow-wrap:anywhere }` so the title stays one line. */
+  white-space:nowrap;overflow-wrap:normal;min-width:0;
 }
 #historyPage .nxp-cal-nav{display:flex;align-items:center;gap:2px}
 #historyPage .nxp-cal-nav button{
@@ -1218,7 +1331,7 @@ body:has(.tabs.vn-recede) .content{
   #historyPage .nxp-history{padding-inline:12px}
   #historyPage .vn-hist-chrome h1,
   #historyPage .nxp-history-chrome h1{font-size:23px}
-  #historyPage .nxp-cal-month{font-size:17px}
+  #historyPage .nxp-cal-month{font-size:15px;white-space:nowrap;overflow-wrap:normal}
   #historyPage .nxp-cal-day{min-height:46px;padding:5px 0 7px;gap:3px}
   #historyPage .nxp-cal-day b{font-size:12.5px}
   #historyPage .nxp-cal-marks{gap:1.5px}

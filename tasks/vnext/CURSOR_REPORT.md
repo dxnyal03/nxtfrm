@@ -8,7 +8,7 @@ Overwrite this file each slice. Keep it factual: Claude reviews the actual git d
 
 ## Slice
 
-`VNext Phase 2D — History` (review round 2 — required fix 1)
+`INT-1 polish P4` — History calendar month title one line at 320px
 
 ## Status
 
@@ -20,127 +20,97 @@ Overwrite this file each slice. Keep it factual: Claude reviews the actual git d
 
 | File | Added / Modified | What changed |
 |---|---|---|
-| `premium-ui.js` | Modified | History partial selection update; floorball as its own calendar mark; secondary filter chrome IDs; day-detail host; EVENT/INTERVENTION/ANNOTATION structural lanes (empty, no persistence). **Round 2:** restored visible `Conditioning` label on `historyConditioningBlock` (was incorrectly `Cardio`). |
-| `vnext.css` | Modified | New `#historyPage` / `vn-*` History surface: canvas, native calendar (no raised card), secondary filters, four shape marks, day-enter motion + reduced-motion paths. *(unchanged this round)* |
-| `tasks/vnext/verify-2d.mjs` | Added | Playwright acceptance for §6 *(unchanged this round)* |
-| `tasks/vnext/verify-2d-results.json` | Added | Evidence dump (re-run after label fix) |
-| `tasks/vnext/shots/history-*.png` | Added | dense / empty / four-kind at 390 and 320 |
+| `premium-ui.js` | Modified | `historyCalendar` uses `month:'short'` when `matchMedia('(max-width:359px)')` matches (en-SG → `Sept 2026`) |
+| `vnext.css` | Modified | `#historyPage .nxp-cal-month`: `white-space:nowrap; overflow-wrap:normal` (overrides premium-ui `overflow-wrap:anywhere`); kept 15px at ≤359px |
 | `tasks/vnext/CURSOR_REPORT.md` | Modified | This report |
 
-No edits to `cut-support.js`, `wearables.*`, `index.html`, `sw.js` RELEASE/CACHE, `premium-ui.css`, Supabase, or unrelated untracked trees (`design-v102/`, `design-v103/`, `.claude/`, root PNG).
-
-**This round only:** one-line label restore in `historyConditioningBlock`. Rows, calendar marks, `aria-label`s, and `data-kind="conditioning"` untouched.
+No other files. Calendar grid, marks, day view, other screens untouched. No RELEASE / CACHE bump. Not committed.
 
 ---
 
 ## B. Behaviour implemented
 
-### Defect 1 — Selection no longer rebuilds the page
+P4 was not achieved by the prior 15px step-down alone: nav (prev / Today / next at 44pt) left too little room, and premium-ui’s `overflow-wrap:anywhere` + `min-width:0` let the title wrap.
 
-- `historySelect()` (same month): moves `is-selected` / `aria-pressed` on the affected cells and replaces `#vn-hist-dayhost` only.
-- Calendar (`#vn-hist-calendar`), chrome (`#vn-hist-chrome`) and filters (`#vn-hist-filters`) stay in the DOM.
-- Proven: marker nodes appended inside calendar / chrome / filters survive a date change (`partialUpdate` in results).
-- Scroll position preserved across selection (`delta ≤ 2`).
-- Month shift / filter change still call full `history()` (real content change). `historyThisMonth()` is partial when already on the current month.
+Fix (both of the allowed options):
+1. Abbreviate month at ≤359px via locale `short`.
+2. Force single-line title CSS so wrap-anywhere cannot reintroduce two lines.
 
-### Defect 2 — Filters secondary
-
-- Same four scopes (`All / Lifting / Cardio / Weight`) and handlers (`NXP.setHistoryFilter`).
-- Visual: no bordered segment track; quiet text row with an underline on the active scope.
-- Month summary (`#vn-hist-summary`) still reflects the active filter.
-
-### Defect 3 — Floorball distinct in the calendar
-
-- `historyMarks()` returns `{lift, cardio, floorball, body}` — cardio and floorball are never folded together.
-- Shapes (I6): filled disc · hollow ring · diamond (rotated square) · horizontal bar.
-- `aria-label` names each kind present, including `floorball`.
-- Legend lists all four.
-- At 320px all four marks measure with positive geometry in-cell (no silent drop).
-
-### Review fix 1 — Conditioning block label
-
-- Visible label restored to **Conditioning** (was `Cardio`).
-- Block still holds cardio + floorball rows under one heading that does not claim floorball is cardio.
-- `data-kind="conditioning"` unchanged; row `data-kind` values unchanged.
-
-### Forward structure — EVENT / INTERVENTION / ANNOTATION
-
-- Day view includes `.vn-hist-lane[data-lane=event|intervention|annotation]` inside `.vn-hist-audit`, `hidden`, empty.
-- No new storage keys, record shapes, or writes.
-
-### VNext visual language
-
-- Calendar native to the canvas (no raised card / giant panel).
-- Selected day: restrained violet (I1).
-- Day detail enter: state tier 200ms; reduced-motion path clears animation.
+Nav control sizes unchanged (still `min-width/min-height: 44px`).
 
 ---
 
 ## C. Architecture / state wiring
 
-- Presentation only in `NXP.history*` helpers inside `premium-ui.js`.
-- Stable region IDs: `vn-hist-chrome`, `vn-hist-filters`, `vn-hist-calhost` / `vn-hist-calendar`, `vn-hist-dayhost`.
-- Cells carry `data-date` for selection patching.
-- `state.historyDate` / `historyMonth` / `historyFilter` remain in-memory UI state — not persisted.
-- History remains read-only on `state.logs` / `cardio` / `floorball` / `bws` (navigation proven same-array reference).
-- Migration seam untouched: `renderHistory=NXP.history`.
+Presentation only. No calculation, storage, or record-shape changes. `historyMonth` / filters / partial update path untouched.
 
 ---
 
-## D. Tests performed
+## D. Verification (Cursor §6)
 
-| # | Test | Result | Evidence |
-|---|---|---|---|
-| 1 | Partial update — calendar/chrome/filters nodes survive selection | PASS | `partialUpdate` |
-| 2 | No scroll jump on selection | PASS | `scrollJump` |
-| 3 | Four distinguishable marks; floorball ≠ cardio | PASS | `fourKinds` (seed + in-memory four-kind day) |
-| 4 | Shape/geometry not colour alone | PASS | `shapes` |
-| 5 | Sample dates match `state`; no writes during nav | PASS | `integrity` |
-| 6 | Month prev/next/Today; outside days; Aug 1–31 | PASS | `monthNav` |
-| 7 | Day modal / edit / otherDayDetails / audit lanes | PASS | `capabilities` |
-| 8 | Contrast / targets / overflow @390/375/320 | PASS | `widths` — 0 text fails, 0 target fails, no overflow at each width |
-| 9 | Reduced motion selection + month change | PASS | `reducedMotion` |
-| 10 | Today / Train / Progress / More; both suites | PASS | `otherTabs`; release-gate **53/0**; weight-contract **31/0** |
+### Syntax / static
+- `node --check premium-ui.js` — exit 0
+- `vnext.css` brace balance: `{` 416 / `}` 416
 
-Screenshots: `tasks/vnext/shots/history-{dense,empty,fourkind}-{390,320}.png` (from round 1; label-only change this round).
+### Measured at 320px (live `#historyPage`, September 2026)
 
-Seed used for dense/sparse: `?reseed=1` on `localhost` → 174 logs / 15 cardio / 8 floorball / 83 bws. Four-kind day constructed in-memory on `2026-08-12` (no seeded day has all four).
-
-**Re-run after label fix:** `verify-2d.mjs` → `ALL PASS`; `node wearables.release-gate.test.js` → **53/0**; `node wearables.weight-contract.test.js` → **31/0**.
-
----
-
-## E. Responsive verification
-
-| Width | dense | empty | four-kind | a11y |
-|---|---|---|---|---|
-| 390 | PASS | PASS | PASS | PASS |
-| 375 | — | — | — | PASS |
-| 320 | PASS | PASS | PASS | PASS |
-
----
-
-## F. Known deviations
-
-| Item | Note |
+| Metric | Value |
 |---|---|
-| Calendar cell width @320 | 7-column math cannot guarantee ≥44px width; height ≥44 enforced. Declared in verify audit (same honest constraint as any month grid). Accepted by Claude review — not a defect. |
-| Filter placement | Still under the header (production behaviour); demoted visually (no track), not relocated under the calendar. |
-| design-vnext filters | Prototype has no filters; production four scopes kept (functional truth). |
-| design-vnext “+ Add note” | Not shipped — would invent persistence / write UI. Structural lanes only. |
-| Conditioning day block | One **Conditioning** block still groups cardio + floorball rows (production day-view structure); calendar separates the marks. Label no longer claims floorball is cardio. |
-| Cloud/local banner | Appears under local-only seed (actionable D11 condition); not suppressed in this slice. |
+| Viewport | 320 |
+| Title text | `Sept 2026` |
+| `font-size` | 15px |
+| `line-height` | 18.75px |
+| Element height | 18.75px |
+| height / line-height | **1.000** (one line) |
+| Prev / Today / Next | 44×44 / 61.41×44 / 44×44 (≥44pt) |
+
+(Prior failure: `September 2026` at 15px, height 38px ≈ 2 lines.)
+
+### All 15 wearables suites (real final lines)
+
+| Suite | Result |
+|---|---|
+| `wearables.adapters.test.js` | OK  32 passed, 0 failed |
+| `wearables.canonical.test.js` | OK  24 passed, 0 failed |
+| `wearables.days.test.js` | OK  16 passed, 0 failed |
+| `wearables.ingest.test.js` | OK  32 passed, 0 failed |
+| `wearables.provider-garmin.test.js` | OK  3 passed, 0 failed |
+| `wearables.recovery-integration.test.js` | OK  32 passed, 0 failed |
+| `wearables.recovery.test.js` | OK  28 passed, 0 failed |
+| `wearables.release-gate.test.js` | OK  53 passed, 0 failed |
+| `wearables.resolution.test.js` | OK  19 passed, 0 failed |
+| `wearables.snapshots.test.js` | OK  26 passed, 0 failed |
+| `wearables.store.test.js` | OK  34 passed, 0 failed |
+| `wearables.sync.test.js` | OK  47 passed, 0 failed |
+| `wearables.train-enrichment.test.js` | OK  34 passed, 0 failed |
+| `wearables.training-readiness.test.js` | OK  29 passed, 0 failed |
+| `wearables.weight-contract.test.js` | OK  31 passed, 0 failed |
+
+Browser / responsive / interaction / reduced-motion / design-vnext fidelity beyond this title measure: **owner (Claude)**.
 
 ---
 
-## G. Open questions / risks
+## E. Fold budget note
 
-1. Whether filters should eventually move beside the month title (design-vnext has none) is a polish call — behaviour is intact.
-2. Shipping still needs the normal cache-bust / RELEASE path (out of scope; owner checkpoint).
-3. Populating EVENT / INTERVENTION / ANNOTATION is gated on Q5 / State Engine — structure only here.
+N/A — title-only polish.
+
+---
+
+## F. Known deviations / out of scope
+
+- en-SG short month is `Sept` (not `Sep`). Still one line with margin.
+- Title abbreviation applies only when History (re)renders while viewport ≤359px; a pure resize without remount keeps the form chosen at last render. CSS nowrap still prevents wrap if long form is present.
+- No commit / push.
+
+---
+
+## G. Risks for review
+
+- Confirm `Sept 2026` reads acceptably vs full month at 390+.
+- Confirm month nav still feels ≥44pt on device.
 
 ---
 
 ## H. Stop
 
-Working tree ready for Claude design/UX review of **Phase 2D History** (required fix 1 addressed). **No commit. No push.**
+Working tree ready for design-director review. No commit / push.

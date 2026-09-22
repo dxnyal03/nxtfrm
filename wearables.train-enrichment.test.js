@@ -170,8 +170,12 @@ test("train: muscle text and anatomy come from the library, together", function 
   assert.ok(ui.indexOf("nxp-ex-muscles") !== -1, "muscles are named in text");
   assert.ok(ui.indexOf("anatomyStrip(ex)") !== -1, "the crop is rendered from the same exercise");
   /* Both read the same `ex`, so a Prev/Next change cannot update one and not
-     the other. */
-  const head = ui.slice(ui.indexOf('<section class="nxp-ex-head">'), ui.indexOf("nxp-ex-actions"));
+     the other. Scope to the exercise head section — Session tools (and its
+     nxp-ex-actions) now live in the mode bar, so that class is no longer a
+     reliable end delimiter after the head. */
+  const headStart = ui.indexOf('<section class="nxp-ex-head">');
+  assert.ok(headStart !== -1, "exercise head is present");
+  const head = ui.slice(headStart, ui.indexOf("</section>", headStart));
   assert.ok(head.indexOf("muscleLine(ex)") !== -1 && head.indexOf("anatomyStrip(ex)") !== -1);
 });
 

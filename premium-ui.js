@@ -358,11 +358,11 @@ const NXP = (() => {
       ${trainChrome()}
       ${trainGuidanceHTML()}
       <section class="vn-train-ready">
-        <p class="nxp-caption">${working.length?'In progress':'Ready'}</p>
+        <p class="vn-sect">${working.length?'In progress':'Ready'}</p>
         <p class="vn-train-ready-meta">${list.length} exercises · ${sets} working sets${working.length?` · ${working.length} logged`:''}</p>
         <button type="button" class="n99-button" onclick="NXP.enterTrain()">${esc(title)}</button>
       </section>
-      <section class="vn-train-plan"><h2 class="nxp-caption">Session plan</h2>${plan}</section>
+      <section class="vn-train-plan"><h2 class="vn-sect">Session plan</h2>${plan}</section>
       <div class="nxp-session-tools">${button('Session options','NXP.sessionMenu()',true)}</div>
     </div>`;
   }
@@ -514,7 +514,21 @@ const NXP = (() => {
           <p class="nxp-caption">${esc(N.label(state.dayType))} · ${esc(state.gym||'Gym')}</p>
           <p class="vn-train-count">${count} of ${total} working sets</p>
         </div>
-        <button type="button" class="vn-train-icon" onclick="NXT.finish()" aria-label="Finish workout">✓</button>
+        <div class="vn-train-end">
+          <details class="vn-train-tools">
+            <summary class="vn-train-icon" aria-label="Session tools">⋯</summary>
+            <div class="vn-train-tools-panel">
+              ${sessionFocus(list)}
+              <div class="nxp-ex-actions">
+                <button type="button" class="nxp-ex-chip" onclick="NXP.exerciseDetails()">Exercise details<i aria-hidden="true">›</i></button>
+                <button type="button" class="nxp-ex-chip" onclick="showSubstituteSheet()">Swap</button>
+              </div>
+              ${addOnEligible()?addOnSection():''}
+              <div class="nxp-session-tools">${button('Undo last set','apx96UndoLastSet()',true)}${button('Session options','NXP.sessionMenu()',true)}</div>
+            </div>
+          </details>
+          <button type="button" class="vn-train-icon" onclick="NXT.finish()" aria-label="Finish workout">✓</button>
+        </div>
       </header>
 
       ${trainAlertHTML()}
@@ -541,6 +555,7 @@ const NXP = (() => {
               <p class="nxp-ex-muscles">${esc(muscleLine(ex)) || '&nbsp;'}</p>
               <p class="nxp-ex-meta" hidden>${t.sets} sets · ${t.reps[0]}–${t.reps[1]} reps${note?' · '+esc(note):''}</p>
             </div>
+            ${anatomyStrip(ex)}
           </div>
         </div>
       </section>
@@ -591,16 +606,6 @@ const NXP = (() => {
       <details class="nxp-coach nxp-disclosure vn-train-more"><summary>${esc(cue.label)}</summary><p>${esc(cue.text)}</p></details>
 
       <div class="nxp-set-dots" aria-label="${done} working sets logged, ${t.sets} planned" hidden>${Array.from({length:t.sets},(_,i)=>`<span class="${i<done?'done'+(justLogged&&loggedEntry&&loggedEntry.setType!=='warmup'&&loggedEntry.exercise===ex&&i===done-1?' is-new':''):i===done?'next':''}">${i<done?'✓':i+1}</span>`).join('')}<small>Set ${Math.min(done+1,t.sets)} of ${t.sets}</small></div>
-
-      <details class="vn-train-more"><summary>Session tools</summary>
-        ${sessionFocus(list)}
-        <div class="nxp-ex-actions">
-          <button type="button" class="nxp-ex-chip" onclick="NXP.exerciseDetails()">Exercise details<i aria-hidden="true">›</i></button>
-          <button type="button" class="nxp-ex-chip" onclick="showSubstituteSheet()">Swap</button>
-        </div>
-        ${addOnEligible()?addOnSection():''}
-        <div class="nxp-session-tools">${button('Undo last set','apx96UndoLastSet()',true)}${button('Session options','NXP.sessionMenu()',true)}</div>
-      </details>
     </div>`;
     if(justLogged)scheduleConfirmReset();
     setTimeout(apx96TickTimer,0);
@@ -1223,7 +1228,9 @@ const NXP = (() => {
   function historyCalendar(month,scope,selected) {
     const [year,monthNum]=month.split('-').map(Number);
     const first=new Date(year,monthNum-1,1,12,0,0);
-    const title=first.toLocaleDateString('en-SG',{month:'long',year:'numeric'});
+    /* ≤359px: long "September 2026" + 44pt nav controls wrap the title. Short month stays one line. */
+    const narrow=typeof matchMedia==='function'&&matchMedia('(max-width:359px)').matches;
+    const title=first.toLocaleDateString('en-SG',{month:narrow?'short':'long',year:'numeric'});
     const firstDow=(first.getDay()+6)%7,days=new Date(year,monthNum,0).getDate(),prevDays=new Date(year,monthNum-1,0).getDate();
     const total=Math.ceil((firstDow+days)/7)*7,today=localToday(),cells=[];
     for(let i=0;i<total;i++){

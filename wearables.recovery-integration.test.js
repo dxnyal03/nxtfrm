@@ -479,9 +479,13 @@ test("35-36. Existing readiness() and check-in persistence files are unchanged b
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
   const cut = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8");
   const ui = fs.readFileSync(path.join(ROOT, "premium-ui.js"), "utf8");
+  /* Intent: readiness and check-in persistence are unchanged — not that a
+     dead local (recLabel) survives. readiness() stays in index.html; the
+     check-in entry point stays reachable from premium-ui; persistence stays
+     in cut-support. */
   assert.ok(html.indexOf("function readiness(){") !== -1);
   assert.ok(cut.indexOf("N.cfg().recovery[state.date]=r") !== -1);
-  assert.ok(ui.indexOf("recLabel=!recLogged?'Not logged'") !== -1);
+  assert.ok(ui.indexOf("apx96OpenReadiness()") !== -1);
   const r2 = fs.readFileSync(path.join(ROOT, "wearables.recovery-integration.js"), "utf8");
   assert.ok(r2.indexOf("cutSupport") === -1);
   assert.ok(r2.indexOf("apm_current_read") === -1);
