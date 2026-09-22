@@ -65,6 +65,12 @@ Do not add Playwright, Puppeteer or an MCP browser to a delegated run unless a t
 
 Run the deterministic suites and report their real output. That is the verification Cursor is responsible for.
 
+**Run all sixteen.** Enumerate them with `wearables*.test.js` — note there is no dot after `wearables`. The glob `wearables.*.test.js` silently skips `wearables.test.js`, which is how a suite went unrun for five slices. The full run is 16 suites / 458 tests at INT-1:
+
+```
+for f in wearables*.test.js; do node "$f" || echo "FAIL $f"; done
+```
+
 ## 6b. Delegation model
 
 Delegated runs pin an explicit model rather than using Auto, so slice quality is reproducible and not a lottery:

@@ -33,7 +33,7 @@ renderMore=NXP.more; renderHistory=NXP.history;
 | **2B** | Train: active workout mode, set logging, rest, queue, completion recap | ✅ committed `761f339` |
 | **2C** | Progress → Weight: recent trajectory chart (D2), Journey rail (D3), scrub, ranges | ✅ committed `6563be6` |
 | **2D** | History: calendar-first, selected-date detail | ✅ committed `eb713de` |
-| 2E | Settings / More: calm configuration rows | 2D approved |
+| **2E** | Settings / More: calm configuration rows | ← **current**, INT-1 approved |
 | 2F | Progress → Performance | 2E approved |
 | 2G | Body Intelligence + OCR review flow | 2F approved |
 | 2H | AI surfaces (Why / Ask / proposal sheets) | 2G approved |
@@ -52,7 +52,7 @@ After a group of slices lands, an integration checkpoint reviews them **together
 
 | Checkpoint | Covers | Gate |
 |---|---|---|
-| **INT-1** | Today · Train · Progress/Weight · History | ← **current**, gates 2E |
+| **INT-1** | Today · Train · Progress/Weight · History | ✅ passed, committed `2cc4a5c` |
 
 ## Working rules
 
