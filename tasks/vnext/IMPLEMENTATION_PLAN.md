@@ -38,7 +38,8 @@ renderMore=NXP.more; renderHistory=NXP.history;
 | **2F** | EvoScan flagship: OCR reliability + body-composition workspace | ✅ committed `ba33fa8` |
 | **2G** | Progress → Performance | ✅ committed `b137e64` |
 
-| 2H | AI surfaces (Why / Ask / proposal sheets) | 2G approved |
+| **2H** | Progress → Body analytical integration | ← **current** |
+| 2I | AI surfaces (Why / Ask / proposal sheets) | 2H approved |
 
 ## Separately audited, never inside a feature slice
 
