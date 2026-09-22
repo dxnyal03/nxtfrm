@@ -34,9 +34,10 @@ renderMore=NXP.more; renderHistory=NXP.history;
 | **2C** | Progress → Weight: recent trajectory chart (D2), Journey rail (D3), scrub, ranges | ✅ committed `6563be6` |
 | **2D** | History: calendar-first, selected-date detail | ✅ committed `eb713de` |
 | **2E** | Settings / More: calm configuration rows | ✅ committed `1499653` |
-| **D12** | Shared primary-button + destructive contrast patch | ← **current**, cross-screen |
-| 2F | Progress → Performance | D12 complete |
-| 2G | Body Intelligence + OCR review flow | 2F approved |
+| **D12** | Shared primary-button + destructive contrast patch | ✅ committed `0f54aa6` |
+| **2F** | **EvoScan flagship: OCR reliability + body-composition workspace** | ← **current** |
+| 2G | Progress → Performance | 2F approved |
+
 | 2H | AI surfaces (Why / Ask / proposal sheets) | 2G approved |
 
 ## Separately audited, never inside a feature slice
