@@ -100,20 +100,33 @@ Note the same gap exists for rows actually labelled `Post-workout` — `cleanRow
 priority but falls back to *any* non-morning row. That is deferred question **Q1**, and this is
 the same defect reaching the trend through a second door.
 
-**This is the same class as deferred question Q1, and Q1 is deferred.** Therefore:
+**RESOLVED BY OWNER DECISION D14 — the freeze is lifted and this must now be fixed.**
 
-> **Do not change the selection rule in this slice.** Do not change `cleanRows`, `timeOfDay`
-> semantics, or which reading is canonical. Document the behaviour, make it *visible and
-> honest* in the UI, and raise a recommendation in your report. Changing it needs owner
-> approval.
+> **Only a Morning weigh-in is eligible for the canonical body-weight trend.**
+> Post-workout and EvoScan weights are contextual only. **When a date has no morning
+> weigh-in, the canonical trend point is absent. There is no fallback to either.**
 
-**Recommended fix, for the owner to decide — do not implement unasked:** exclude EvoScan
-weights from canonical selection the way D8 intends for post-workout, so a scan informs body
-composition without moving the weight trend. That is a Q1/D8 decision, not a 2F decision.
+This is a **truth-layer change** and the one place this slice may touch `cut-support.js`.
+Change `cleanRows()` selection only. Do not redesign the weight model beyond enforcing this.
 
-What you **may** do: make the consequence legible — e.g. state plainly at review time that the
-scan weight will also be recorded as a weigh-in for that date, and let the user decline that
-specific side-effect if — and only if — doing so introduces no new storage semantics.
+I verified the target behaviour before writing this:
+
+| Date | Current rule | Under D14 |
+|---|---|---|
+| no morning, has Post-workout 99.1 | 99.1 becomes canonical | **absent** |
+| no morning, has EvoScan 99.9 | 99.9 becomes canonical | **absent** |
+
+Canonical count on the dev seed went 83 → 81 with two injected gaps.
+
+**The dev seed is 100% Morning (83/83), so this change is a no-op on seed data and the
+trend output is byte-identical.** It therefore *cannot* be proven with the seed alone —
+your fixtures must inject Post-workout and EvoScan rows or the change is untested.
+
+The weights stay fully preserved in the EvoScan record, scan detail, scan history,
+scan-to-scan comparison and body-composition analysis. Nothing is deleted; only canonical
+*eligibility* changes.
+
+Document ownership clearly in the report: which surface owns each metric.
 
 ### 1.5 Deleting a scan orphans its weigh-in
 
@@ -211,8 +224,12 @@ scan to compare against · a scan with only some metrics present.
 | `vnext.css` | yes — a new `#morePage` EvoScan section, following the scoping contract |
 | `premium-ui.js` | yes, only if the scan surface needs an `NXP`-side renderer |
 
-**Do not edit:** `cut-support.js` · `sw.js` · `manifest.webmanifest` · any `wearables.*` ·
-`seed.*` · `train-anatomy.js`. **`RELEASE`/`CACHE_NAME` stay at `109`.**
+| `cut-support.js` | **narrowly** — `cleanRows()` canonical selection only, to enforce D14. Nothing else in the engine. |
+
+**Do not edit:** `sw.js` · `manifest.webmanifest` · any `wearables.*` · `seed.*` ·
+`train-anatomy.js`. **`RELEASE`/`CACHE_NAME` stay at `109`.** No other engine function may
+change — not `ewmaTrend`, `trend`, `trendConfidence`, `forecastGoal`, `plateauWindow`,
+`detectPlateau`, `trendStats` or `review`.
 
 If the page requests a new `.js`/`.css`, `sw.js` must list it at the current `RELEASE` — which
 means introducing a new file requires owner approval first. Prefer not to.
@@ -257,3 +274,187 @@ Baseline **16 / 458 / 0 failing**.
 - [ ] 16 suites / 458 tests green; `RELEASE`/`CACHE_NAME` at 109
 - [ ] `CURSOR_REPORT.md` updated (A–H), including the OCR audit
 - [ ] **Do not commit. Do not push.**
+
+---
+
+# ADDENDUM — product & data semantics (owner, folded in)
+
+Binding. Where this addendum and §1–§7 differ, the addendum wins.
+
+## A1. OCR bug must be fixed at the owning layer
+
+Do **not** special-case `BODY FAT` and `TOTAL DAILY ENERGY`. Separate the two concerns:
+
+- **Label normalisation** — `BODY FAT` stays searchable as `BODY FAT`.
+- **Numeric normalisation** — `8O.4` may become `80.4` **only inside an expected numeric
+  context**.
+
+**Never globally mutate the OCR text.**
+
+## A2. Staged extraction architecture
+
+```
+image → preprocessing → OCR → line/token representation → label detection
+      → nearby-value extraction → numeric/unit normalisation → plausibility validation
+      → confidence assessment → human review
+```
+
+Prefer local label→value association over a bag of greedy regexes run across destructively
+normalised text. Keep the original OCR text internally for provenance and debugging; do not
+render it prominently in the normal flow.
+
+## A3. Confidence — OCR confidence is not product confidence
+
+Retaining Tesseract confidence/token/line data is required; treating it *alone* as the answer
+is wrong. Derive the user-facing status from a combination of: OCR confidence · expected label
+found · unit consistency · plausible range · ambiguity · competing values · parser confidence.
+
+User-facing states stay exactly three: `HIGH CONFIDENCE` · `CHECK` · `NOT FOUND`.
+**Avoid fake numerical certainty** — do not print a percentage that implies precision you
+do not have.
+
+## A4. Field-aware validation
+
+| Field | Rules |
+|---|---|
+| Weight | kg where applicable · reject implausible values · **no greedy fallback to the first arbitrary `kg`** · `818` must not be read as `81.8` without evidence |
+| Body fat | percentage semantics · plausible range · **never confused with fat mass** |
+| Muscle mass | mass semantics · distinguish from percentages |
+| Fat mass | mass semantics · **generic kg fallback must not steal it as body weight** |
+| BMR / TDEE | calorie-scale · **BMR distinguished from total daily energy** |
+
+When several candidate values compete, mark **CHECK** — never guess.
+
+## A5. Image preparation
+
+Implement what genuinely helps: EXIF/orientation correction · sensible resizing · greyscale ·
+contrast normalisation · mild sharpening · thresholding where useful · safe crop/margin
+handling.
+
+**Never permanently alter the original upload.** If you try multiple preprocessing variants,
+select by extraction quality rather than always applying the strongest. Do not build an
+unnecessarily complex CV pipeline.
+
+## A6. Review before save — the shape
+
+```
+EVOSCAN REVIEW
+[ scan preview ]
+Weight        82.4 kg     HIGH CONFIDENCE
+Body fat      23.1 %      HIGH CONFIDENCE
+Muscle mass   36.9 kg     CHECK
+Fat mass      19.0 kg     HIGH CONFIDENCE
+BMR           1,820 kcal
+TDEE          2,460 kcal
+```
+
+Every value editable. `NOT FOUND` fields stay **visibly absent**, never silently synthesised.
+
+## A7. Provenance — the scan is evidence
+
+Preserve the original scan where the storage model permits. A record should distinguish
+`OCR_EXTRACTED` · `USER_CORRECTED` · `MANUAL_ENTRY`. For a corrected value, **retain the
+original OCR interpretation internally** rather than overwriting provenance.
+
+Additive optional fields only — every existing scan must still render when they are absent.
+
+## A8. Delete semantics
+
+Audit the real relationship between the scan record, weight/body observations and Body
+history, then choose coherent behaviour. At minimum: explain what will be deleted · explain
+what will remain · require explicit confirmation.
+
+**Never silently cascade-delete a canonical Morning record.** Never silently orphan
+scan-derived contextual values without explanation.
+
+## A9. Visual north star
+
+EvoScan becomes a flagship mobile surface: **body-composition intelligence**, not an OCR
+upload tool. Charcoal not pure black · premium violet accents · strong typography · controlled
+depth · subtle borders and highlights · excellent spacing · minimal green · no generic SaaS
+card grid · no cheap glassmorphism · no giant marketing hero.
+
+**EvoScan should read as more visually analytical than Train.**
+
+## A10. Dashboard hierarchy (phone)
+
+```
+EVOSCAN · Body composition
+Latest scan · 22 Sep
+
+WEIGHT       82.4 kg   context: EvoScan / post-workout
+BODY FAT     23.1 %    ↓ 0.8 pp vs previous scan
+MUSCLE MASS  36.9 kg   ↑ 0.3 kg
+FAT MASS     19.0 kg   ↓ 1.1 kg
+
+[ BODY COMPOSITION VISUAL ]
+[ TREND ]
+WHAT CHANGED
+SCAN HISTORY
+[ + NEW SCAN ]
+```
+
+**Never imply the EvoScan weight is the canonical morning weight.** Label the context.
+
+## A11. Composition visualisation
+
+Better than generic metric cards, driven by actually supported data: a composition bar, a
+layered breakdown, a clean lean-vs-fat representation, or another compact high-quality visual.
+Avoid decorative donuts unless they genuinely aid understanding. **Never infer a metric the
+scan does not provide.**
+
+## A12. Trending
+
+EvoScan has its **own scan-to-scan series** — scan weight, body fat %, muscle mass, fat mass.
+This is **not** the Morning body-weight trend; keep the two concepts distinct and clearly
+labelled. Per-metric separate scales (§S), never one multi-scale chart.
+
+## A13. What changed
+
+Compare latest against the immediately previous EvoScan:
+
+```
+SINCE 12 SEP
+Weight       82.4 → 81.8 kg   −0.6 kg
+Body fat     23.1 → 22.5 %    −0.6 percentage points
+Muscle mass  36.9 → 37.1 kg   +0.2 kg
+Fat mass     19.0 → 18.4 kg   −0.6 kg
+```
+
+Correct units and **percentage-point semantics** (pp, not %). **Do not turn tiny fluctuations
+into dramatic coaching statements** (D9, and the fitness-ux copy rules).
+
+## A14. History and detail
+
+History rows carry a compact snapshot — date, weight, body fat %, muscle mass — plus a
+meaningful delta against the prior scan where appropriate. Tap opens scan detail.
+
+Detail may include the original report · all extracted metrics · OCR/corrected state · notes ·
+comparison to previous · measurement context · provenance. Keep the default clean; use
+progressive disclosure for depth.
+
+## A15. Processing experience
+
+Real stages, not a dead spinner: `Preparing scan` → `Reading report` → `Finding metrics` →
+`Checking values`. **No fake percentages.** The UI stays responsive throughout.
+
+## A16. Manual entry is not a failure state
+
+It is part of a robust OCR workflow. If a field cannot be identified, allow clean manual
+entry. **Never force the user to restart the scan unnecessarily.**
+
+## A17. Mobile
+
+Primary device is iPhone. Optimise **390 · 393 · 402 · 430**; also verify **375 · 320**.
+Attend specifically to: scan-image zoom · editing numeric values · keyboard opening · save CTA
+visibility · safe-area bottom inset · chart labels · history rows · touch targets · long
+values · landscape only if the app already supports it.
+
+**Do not design around a desktop screenshot.**
+
+## A18. Acceptance — both must be true
+
+**A.** OCR is materially safer and more reliable.
+**B.** EvoScan stands beside the new Train experience as a flagship NXTFRM feature.
+
+Neither may be sacrificed for the other.
