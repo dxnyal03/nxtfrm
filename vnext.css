@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NXTFRM VNext — foundation layer (Phase 2A + 2B)
+   NXTFRM VNext — foundation layer (Phase 2A + 2B + 2C)
    Loads AFTER cut-support.css and premium-ui.css.
 
    DIRECTION: INSTRUMENT (tasks/vnext/DECISIONS.md D1)
@@ -13,10 +13,11 @@
      · the tab bar                         (.tabs) + D6 recede
      · Today                               (#homePage .vn-*)
      · Train                               (#trainPage .vn-*)   ← Phase 2B
-   Progress, History and More are NOT restyled here. Every screen rule is
+     · Progress / Weight                   (#weightPage .vn-*)  ← Phase 2C
+   History and More are NOT restyled here. Every screen rule is
    scoped under its page id, and every component class is new (vn-*), so no
-   existing .nxp-* / .n99-* rule is altered at the source — Train overrides
-   are additive under #trainPage.
+   existing .nxp-* / .n99-* rule is altered at the source — Train/Weight
+   overrides are additive under their page ids.
    ========================================================================== */
 
 :root{
@@ -668,3 +669,308 @@ body:has(.tabs.vn-recede) .content{
   #trainPage .vn-aim.wrap3 .nxp-aim-cell{flex:1 1 44%}
   #trainPage .vn-aim b{font-size:16px}
 }
+
+/* ==========================================================================
+   Phase 2C — Progress / Weight (#weightPage)
+   Flagship analytical surface. Recent trajectory + separate Cut journey.
+   ========================================================================== */
+
+#weightPage{
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(139,92,246,.07), transparent 55%),
+    var(--vn-canvas);
+  color:var(--vn-ink);
+}
+#weightPage .vn-progress{
+  padding-bottom:var(--vn-s8);
+  color:var(--vn-ink);
+}
+#weightPage .vn-progress-chrome,
+#weightPage .nxp-progress-chrome{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:var(--vn-s3);padding:var(--vn-s3) 0 var(--vn-s4);
+}
+#weightPage .vn-progress-chrome h1,
+#weightPage .nxp-progress-chrome h1{
+  margin:0;font-size:26px;font-weight:640;letter-spacing:-.022em;color:var(--vn-ink);
+}
+#weightPage .vn-progress-chrome p,
+#weightPage .nxp-progress-chrome p{
+  margin:4px 0 0;font-size:12.5px;color:var(--vn-ink-3);
+}
+#weightPage .vn-progress-tabs,
+#weightPage .nxp-progress-tabs{
+  display:flex;gap:4px;margin:0 0 var(--vn-s5);
+  padding:3px;border-radius:var(--vn-r-control);
+  background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--vn-line);
+}
+#weightPage .vn-progress-tabs button,
+#weightPage .nxp-progress-tabs button{
+  flex:1;min-height:44px;border:0;border-radius:10px;
+  background:transparent;color:var(--vn-ink-3);
+  font:inherit;font-size:13.5px;font-weight:560;cursor:pointer;
+}
+#weightPage .vn-progress-tabs button.active,
+#weightPage .vn-progress-tabs button[aria-pressed="true"],
+#weightPage .nxp-progress-tabs button.active,
+#weightPage .nxp-progress-tabs button[aria-pressed="true"]{
+  background:var(--vn-violet-dim);color:var(--vn-violet-lift);
+  box-shadow:inset 0 0 0 1px var(--vn-violet-line);
+}
+
+#weightPage .vn-weight{
+  display:block;padding:0;margin:0;background:none;border:0;box-shadow:none;
+}
+#weightPage .vn-h-sect{
+  font-size:13px;font-weight:600;letter-spacing:.01em;color:var(--vn-ink-2);margin:0;
+}
+#weightPage .vn-h-sub{
+  font-size:19px;font-weight:600;letter-spacing:-.012em;margin:0;color:var(--vn-ink);
+}
+#weightPage .vn-meta{font-size:12.5px;font-weight:500;color:var(--vn-ink-3);margin:0;line-height:1.45}
+#weightPage .vn-tiny{font-size:11.5px;font-weight:500;color:var(--vn-ink-4);margin:0}
+#weightPage .vn-mt2{margin-top:var(--vn-s2)}
+#weightPage .vn-mt3{margin-top:var(--vn-s3)}
+#weightPage .vn-mt4{margin-top:var(--vn-s4)}
+#weightPage .vn-num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+#weightPage .vn-ink-3{color:var(--vn-ink-3);font-weight:500}
+
+#weightPage .vn-read{padding-bottom:var(--vn-s4)}
+#weightPage .vn-read .vn-h-sub{margin-top:var(--vn-s2)}
+
+/* Stable metric header — fixed slots, no reflow on scrub */
+#weightPage .vn-mhead{
+  min-height:72px;padding-block:var(--vn-s3);
+  border-top:1px solid var(--vn-line);
+}
+#weightPage .vn-mhead-row{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:var(--vn-s4);
+}
+#weightPage .vn-mhead-cell{min-width:0;flex:1}
+#weightPage .vn-mhead-right{text-align:right}
+#weightPage .vn-metric-l{
+  display:block;font-size:11px;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--vn-ink-3);
+}
+#weightPage .vn-metric-v{
+  font-size:34px;font-weight:660;letter-spacing:-.03em;line-height:1.02;
+  color:var(--vn-ink);margin-top:4px;min-height:1.1em;
+}
+#weightPage .vn-metric-v em,
+#weightPage .vn-trend-val em{
+  font-style:normal;font-size:.44em;font-weight:560;color:var(--vn-ink-3);margin-left:3px;
+}
+#weightPage .vn-trend-val{
+  font-size:19px;font-weight:600;color:var(--vn-violet-lift);margin-top:4px;min-height:1.2em;
+}
+#weightPage .vn-mhead-post{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px;
+  margin-top:var(--vn-s3);min-height:28px;
+}
+#weightPage .vn-mhead-post[hidden]{display:none}
+#weightPage .vn-mhead-post b{font-size:14px;color:var(--vn-ink)}
+
+/* Range segments */
+#weightPage .vn-seg,
+#weightPage .n99-segments{
+  display:flex;gap:3px;padding:3px;border-radius:var(--vn-r-control);
+  background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--vn-line);
+}
+#weightPage .vn-seg button,
+#weightPage .n99-segments button{
+  flex:1;min-height:44px;border:0;border-radius:10px;
+  background:transparent;color:var(--vn-ink-3);
+  font:inherit;font-size:13px;font-weight:560;cursor:pointer;
+}
+#weightPage .vn-seg button.active,
+#weightPage .vn-seg button[aria-pressed="true"],
+#weightPage .n99-segments button.active,
+#weightPage .n99-segments button[aria-pressed="true"]{
+  background:var(--vn-surface-2);color:var(--vn-ink);
+  box-shadow:inset 0 0 0 1px var(--vn-line-2);
+}
+
+/* Chart frame — full-plot scrub; pan-y so vertical scroll still works */
+#weightPage .vn-chart-wrap{
+  position:relative;margin-top:var(--vn-s3);
+  touch-action:pan-y;user-select:none;-webkit-user-select:none;
+  outline:none;
+}
+#weightPage .vn-chart-wrap:focus-visible{
+  outline:2px solid var(--vn-violet-lift);outline-offset:2px;border-radius:8px;
+}
+#weightPage .vn-chart-svg,
+#weightPage .n99-chart-svg{
+  display:block;width:100%;height:auto;overflow:hidden;
+}
+#weightPage .vn-chart-empty{
+  padding:var(--vn-s6) var(--vn-s4);text-align:center;color:var(--vn-ink-2);
+}
+
+#weightPage .vn-legend,
+#weightPage .n99-legend{
+  display:flex;flex-wrap:wrap;gap:var(--vn-s4);margin-top:var(--vn-s3);
+}
+#weightPage .vn-legend span,
+#weightPage .n99-legend span{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11.5px;color:var(--vn-ink-3);font-weight:520;
+}
+#weightPage .vn-key-trend,
+#weightPage .vn-key-raw,
+#weightPage .vn-key-post,
+#weightPage .vn-key-proj,
+#weightPage .n99-legend i{
+  display:inline-block;width:14px;height:8px;flex:none;
+}
+#weightPage .vn-key-trend,
+#weightPage .n99-legend i:not(.raw):not(.post):not(.dash):not(.target){
+  background:linear-gradient(90deg,transparent 0,var(--vn-violet) 0);
+  height:2.25px;border-radius:1px;align-self:center;
+}
+#weightPage .vn-key-raw,
+#weightPage .n99-legend i.raw{
+  width:6px;height:6px;border-radius:50%;background:#79818F;align-self:center;
+}
+#weightPage .vn-key-post,
+#weightPage .n99-legend i.post{
+  width:8px;height:8px;background:none;
+  box-shadow:inset 0 0 0 1.4px #79818F;
+  transform:rotate(45deg);align-self:center;
+}
+#weightPage .vn-key-proj,
+#weightPage .n99-legend i.dash{
+  height:0;border-top:2px dashed rgba(139,92,246,.55);background:none;align-self:center;
+}
+
+/* Series toggles */
+#weightPage .vn-togs{
+  display:flex;flex-wrap:wrap;gap:var(--vn-s2);margin-top:var(--vn-s4);
+}
+#weightPage .vn-tog{
+  display:inline-flex;align-items:center;gap:8px;min-height:44px;
+  padding:0 12px 0 10px;border:0;border-radius:var(--vn-r-control);
+  background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--vn-line-2);
+  color:var(--vn-ink-2);font:inherit;font-size:13.5px;font-weight:540;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:background var(--vn-t-state) var(--vn-ease), color var(--vn-t-state) var(--vn-ease);
+}
+#weightPage .vn-tog-box{
+  width:16px;height:16px;border-radius:5px;flex:none;display:grid;place-items:center;
+  box-shadow:inset 0 0 0 1.5px var(--vn-ink-4);font-size:10px;color:transparent;
+}
+#weightPage .vn-tog[aria-pressed="true"]{
+  background:var(--vn-violet-dim);color:var(--vn-ink);box-shadow:inset 0 0 0 1px var(--vn-violet-line);
+}
+#weightPage .vn-tog[aria-pressed="true"] .vn-tog-box{
+  background:var(--vn-violet);box-shadow:none;color:#fff;
+}
+#weightPage .vn-tog[aria-pressed="true"] .vn-tog-box::after{
+  content:"";width:8px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;
+  transform:rotate(-45deg) translate(1px,-1px);
+}
+#weightPage .vn-tog-key{margin-left:2px;opacity:.9}
+
+/* Journey rail — not a time series */
+#weightPage .vn-journey{
+  margin-top:var(--vn-s7);padding-top:var(--vn-s6);
+  border-top:1px solid var(--vn-line);
+}
+#weightPage .vn-sect-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:var(--vn-s3);margin-bottom:var(--vn-s4);
+}
+#weightPage .vn-journey-metrics{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:var(--vn-s4);
+}
+#weightPage .vn-journey-remain{text-align:right}
+#weightPage .vn-journey-remain .vn-h-sub{color:var(--vn-ink-2);margin-top:4px}
+#weightPage .vn-journey-rail{
+  position:relative;height:34px;margin-top:var(--vn-s4);
+}
+#weightPage .vn-journey-track{
+  position:absolute;top:13px;left:0;right:0;height:4px;border-radius:2px;
+  background:rgba(255,255,255,.07);
+}
+#weightPage .vn-journey-band{
+  position:absolute;top:8px;height:14px;border-radius:3px;
+  background:var(--vn-violet-dim);box-shadow:inset 0 0 0 1px var(--vn-violet-line);
+}
+#weightPage .vn-journey-travel{
+  position:absolute;top:13px;height:4px;border-radius:2px;background:#79818F;
+}
+#weightPage .vn-journey-now{
+  position:absolute;top:8px;width:14px;height:14px;border-radius:50%;
+  background:var(--vn-violet);box-shadow:0 0 0 3px var(--vn-canvas);
+  transform:translateX(-50%);
+}
+#weightPage .vn-journey-labels{
+  display:flex;justify-content:space-between;gap:var(--vn-s2);margin-top:var(--vn-s2);
+}
+#weightPage .vn-journey-now-l{color:var(--vn-violet-lift)}
+
+/* Evidence rows */
+#weightPage .vn-evidence{
+  margin-top:var(--vn-s7);padding-top:var(--vn-s6);
+  border-top:1px solid var(--vn-line);
+}
+#weightPage .vn-evidence > .vn-h-sect{margin-bottom:var(--vn-s3)}
+#weightPage .vn-rows{display:flex;flex-direction:column}
+#weightPage .vn-row{
+  display:flex;align-items:center;gap:var(--vn-s4);
+  min-height:52px;padding-block:var(--vn-s3);
+  width:100%;border:0;background:none;text-align:left;color:inherit;font:inherit;
+}
+#weightPage .vn-row + .vn-row{border-top:1px solid var(--vn-line)}
+#weightPage .vn-row-l{flex:1;min-width:0}
+#weightPage .vn-row-t{font-size:15px;font-weight:500;color:var(--vn-ink);display:block}
+#weightPage .vn-row-s{font-size:12.5px;color:var(--vn-ink-3);display:block;margin-top:1px}
+#weightPage .vn-row-v{font-size:15px;font-weight:600;color:var(--vn-ink);text-align:right;white-space:nowrap}
+#weightPage .vn-chev{color:var(--vn-ink-4);font-size:17px}
+#weightPage .vn-weighins{margin-top:var(--vn-s5);padding-inline:0;cursor:pointer}
+#weightPage .vn-weighins:active{background:rgba(255,255,255,.028)}
+
+#weightPage .vn-status{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:580}
+#weightPage .vn-status i{width:7px;height:7px;border-radius:50%;flex:none;display:block;background:var(--vn-ink-4)}
+#weightPage .vn-status.is-ok{color:var(--vn-violet-lift)}
+#weightPage .vn-status.is-ok i{background:var(--vn-violet)}
+#weightPage .vn-status.is-watch{color:var(--vn-review-lift)}
+#weightPage .vn-status.is-watch i{background:var(--vn-review);border-radius:1px;transform:rotate(45deg)}
+#weightPage .vn-status.is-neutral{color:var(--vn-ink-3)}
+
+#weightPage .vn-more-block{
+  margin-top:var(--vn-s5);border-top:1px solid var(--vn-line);
+}
+#weightPage .vn-more-block > summary{
+  list-style:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:space-between;
+  min-height:52px;padding-block:var(--vn-s3);
+  font-size:15px;font-weight:500;color:var(--vn-ink);
+}
+#weightPage .vn-more-block > summary::-webkit-details-marker{display:none}
+#weightPage .vn-more-block > summary::after{content:"›";color:var(--vn-ink-4);font-size:17px}
+#weightPage .vn-more-block[open] > summary::after{transform:rotate(90deg)}
+#weightPage .vn-more-block .n99-card,
+#weightPage .vn-more-block .n99-review{
+  background:var(--vn-surface);border-radius:var(--vn-r-surface);
+  padding:var(--vn-s5);margin:0 0 var(--vn-s3);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+}
+#weightPage .nxp-progress-tdee{margin-top:var(--vn-s5)}
+
+@media (max-width:359px){
+  #weightPage .vn-progress-chrome h1,
+  #weightPage .nxp-progress-chrome h1{font-size:23px}
+  #weightPage .vn-metric-v{font-size:30px}
+  #weightPage .vn-h-sub{font-size:17px}
+  #weightPage .vn-row{gap:var(--vn-s3)}
+  #weightPage .vn-seg button,
+  #weightPage .n99-segments button{font-size:12px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  #weightPage .vn-tog{transition:none}
+  #weightPage .n99-chart-svg.is-range-change,
+  #weightPage .n99-chart-svg.is-new-point{animation:none}
+}
+:root[data-nxp-motion="reduced"] #weightPage .vn-tog{transition:none}

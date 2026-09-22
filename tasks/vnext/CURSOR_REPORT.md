@@ -8,7 +8,7 @@ Overwrite this file each slice. Keep it factual: Claude reviews the actual git d
 
 ## Slice
 
-`VNext Phase 2B — Train: active workout mode` — **fix round for CLAUDE_REVIEW required items 1a + 1b only**
+`VNext Phase 2C — Progress / Weight`
 
 ## Status
 
@@ -20,50 +20,70 @@ Overwrite this file each slice. Keep it factual: Claude reviews the actual git d
 
 | File | Added / Modified | What changed |
 |---|---|---|
-| `premium-ui.js` | Modified | **1a:** `syncTrainNav` hides `#cloudLocalBanner` while mode is engaged and restores via `updateCloudLocalBanner` on leave; wrap of `updateCloudLocalBanner` so post-`render` D11 updates cannot re-show mid-set. **1b:** rest strip markup is a single row (timer · rail · +30s · Skip); set history moved below Log Set so row growth cannot push the CTA. |
-| `vnext.css` | Modified | **1a:** CSS belt-and-suspenders hide banner + undo banner-driven content inset while `.tabs.vn-recede`. **1b:** compact horizontal rest strip (15px timer); set-history margin adjusted for below-CTA placement. |
-| `tasks/vnext/verify-2b.mjs` | Unchanged this round | Re-run green |
-| `tasks/vnext/verify-2b-results.json` | Modified | Fresh evidence dump |
-| `tasks/vnext/verify-2b-fold.mjs` | Added | Fold table 0/1/2 × 390/320 + banner restore matrix |
-| `tasks/vnext/verify-2b-fold-results.json` | Added | Fold/banner numbers |
-| `tasks/vnext/shots/train-*.png` | Modified | Re-shot from verify-2b |
+| `cut-support.js` | Modified | Presentation only (`chartModel`→`progress`): D2 domain (morning+trend only); D3 Journey rail; forecast/post toggles off by default; full-plot scrub + keyboard; textual trajectory read. UI flags `showPost`/`showForecast`. **No edits to truth functions** (`weights`…`review`). |
+| `premium-ui.js` | Modified | Weight view renders `chartHTML()` as the protagonist surface; retired `arrangeWeightView` hero rearrange; demoted TDEE + weigh-ins below. |
+| `vnext.css` | Modified | `#weightPage .vn-*` Weight surface (header, segments, chart wrap, legend, toggles, Journey, evidence, motion). |
+| `wearables.release-gate.test.js` | Modified | Adapted domain/legend assertions to D2/D8 (post no longer widens Y-domain); `selectPoint` signature slice. |
+| `wearables.weight-contract.test.js` | Modified | Domain = morning+trend; goalRef null (D3); projection/post enabled for render asserts; Journey asserted. Truth numeric pins unchanged. Restored shared-`m.y()` post-workout projection assert (with `showPost` on + non-empty `m.post` guard) alongside D2 domain asserts. |
+| `tasks/vnext/verify-2c.mjs` | Added | Playwright acceptance for §6 |
+| `tasks/vnext/verify-2c-results.json` | Added | Evidence dump |
+| `tasks/vnext/shots/weight-*.png` | Added | 390 + 320 for goal-off/on, post-on, forecast-on |
 | `tasks/vnext/CURSOR_REPORT.md` | Modified | This report |
 
-No edits to `cut-support.js` (D11 targeting untouched), wearables engines, `train-anatomy.js`, `sw.js` RELEASE/CACHE, Supabase, or unrelated untracked trees.
+No edits to truth block ~71–263, wearables engines, `train-anatomy.js`, `sw.js` RELEASE/CACHE, Supabase, or unrelated untracked trees.
 
 ---
 
-## B. Behaviour implemented (this fix)
+## B. Behaviour implemented
 
-### 1a — Banner suppressed in active workout mode (D6 chrome)
+### D2 — Recent-trajectory Y-domain
 
-- While `.tabs.vn-recede` is on, the cloud/local banner is forced `hidden` (and CSS `display:none` + zero content `padding-top`).
-- On leave and on finish, `syncTrainNav(false)` / non-receded paint restores via the existing `updateCloudLocalBanner` D11 path — **no change to when the banner is warranted**.
-- Verified: hidden in active mode; visible again after leave and after finish; visible on Today / Progress / History / More / Train idle when D11 says show.
+- Domain values = visible morning readings + trend averages only.
+- **Excluded from domain:** goal band, goal reference, forecast cone/endpoint, confidence-band extremes, post-workout.
+- Measured (seeded fixture, goal confirmed, 30-day range): **83–88 kg (span 5)** with goal band toggled **off and on** — identical.
+- Materially tighter than the live defect (76–86 / 10 kg).
 
-### 1b — Rest strip + set history no longer push Log Set past the fold
+### D3 — Cut journey (separate)
 
-- Rest strip: one 44px-tall instrument row; timer figure 15px (calmer, cheaper).
-- Set history: still fully visible and editable; placed **below** Log Set (before Prev/Queue/Next) so 1→2 logged sets do not move the CTA.
-- Touch targets stay ≥44pt; type scale not dropped below the design system.
+- Non-time-series rail: start → current → goal range (left-to-right), with Down / To goal range metrics.
+- Only place the distant goal appears; chart no longer draws goal band or `goalRef` hairline.
 
-### Fold table (Log Set bottom edge vs 844)
+### Forecast (I11)
 
-| Sets logged | 390px | 320px |
-|---|---|---|
-| 0 | **678** ok | **753** ok |
-| 1 | **750** ok | **825** ok |
-| 2 | **750** ok | **825** ok |
+- Off by default; dashed/faded mark (`stroke-dasharray="2 5"`).
+- Omitted entirely (no toggle, no geometry) when `forecastGoal` lacks evidence / target unconfirmed.
+- Projected Y clamped into the plot so a distant target cannot invent vertical space.
 
-(1 and 2 match because history sits below the CTA; rest strip height measured 44px when active.) Source: `tasks/vnext/verify-2b-fold-results.json`.
+### Post-workout (D8)
+
+- Off by default; hollow **diamond** marks (shape, not hue).
+- Never enters trend/plateau/forecast maths (unchanged) **and** never enters Y-domain.
+- Toggling post does not change trend-line geometry (verified).
+
+### Scrub
+
+- Drag anywhere on `#vn-chart-wrap` (`touch-action: pan-y`); pointer capture.
+- Stable metric header outside the plot (fixed min-heights; no reflow on scrub).
+- Keyboard: ←/→ move, Escape → latest (“Latest morning”).
+
+### Interpretation without interaction
+
+- “Recent trajectory” headline from `detectPlateau` weekly rate / status + `trendReadText` on load.
+- Evidence rows (rate, plateau, projection, confidence) below Journey.
+
+### Ranges
+
+- Kept existing **2W / 1M / 3M / All** (14 / 30 / 90 / 0). No change — production functional truth; design-vnext’s 4W/12W/… not adopted. Each range re-domains.
 
 ---
 
 ## C. Architecture / state wiring
 
-- Presentation only. D11 conditions in `updateCloudLocalBanner` unchanged; mode gate is a wrapper + `syncTrainNav` + CSS.
-- Input ids unchanged. Rest timer still updated by `paintRest` / `#apx96TimerValue` / `.nxp-rest-rail` without full repaint.
-- No calculation, storage key, record shape, or training-semantic changes.
+- Presentation layer only inside the existing Progress IIFE.
+- New UI flags: `N.ui.showPost`, `N.ui.showForecast` (default false). `showGoal` retained for API/tests; does not affect domain or chart goal drawing.
+- New exports: `journeyHTML`, `chartKey`, `setPostVisible`, `setForecastVisible`.
+- `premium-ui` Weight path no longer moves selected metrics into a hero; Strength/Body views untouched structurally.
+- No calculation, storage key, record shape, or morning-canonical rule changes (Q1 untouched).
 
 ---
 
@@ -71,28 +91,29 @@ No edits to `cut-support.js` (D11 targeting untouched), wearables engines, `trai
 
 | # | Test | Result | Evidence |
 |---|---|---|---|
-| 1 | Contrast ≥4.5:1 — lifting-idle, lifting-active, mid, resting, Rest, Zone2, Floorball × 390/375/320 | PASS | `verify-2b-results.json` `textFailCount:0`; idle audited separately |
-| 2 | Touch targets ≥44pt — same matrix | PASS | `targetFailCount:0` |
-| 3 | No horizontal overflow — same matrix | PASS | `overflow:false` |
-| 4 | Fold table 0/1/2 @390 and 320 | PASS | table above; all ≤844 including 320×2 |
-| 5 | Banner hidden in active; restored leave/finish; correct on other surfaces | PASS | `verify-2b-fold-results.json` → `banner` |
-| 6 | Input contract + simulated log | PASS | types + record ok |
-| 7 | Draft survival | PASS | `77.5` |
-| 8 | Rest tick without full repaint | PASS | probe survived; +30s worked |
-| 9 | Add-on dayType safety | PASS | Rest→Rest |
-| 10 | Nav recede/restore | PASS | |
-| 11 | Other four tabs | PASS | no console errors |
-| 12 | `node wearables.release-gate.test.js` | PASS | **53 passed, 0 failed** |
+| 1 | D2 domain identical goal on/off; span &lt; 8 kg | PASS | `verify-2c-results.json` → `domain` (83–88, span 5, identical) |
+| 2 | D8 post excluded from domain; trend geometry stable | PASS | `postToggle` |
+| 3 | Truth byte-identical across toggles | PASS | `truthUntouched` |
+| 4 | Scrub + header stable + keyboard | PASS | `scrub` |
+| 5 | Interpretation on load | PASS | `interpretation` |
+| 6 | Ranges re-domain | PASS | `ranges` |
+| 7 | Forecast distinct, off by default, omitted when weak | PASS | `forecast` |
+| 8 | Contrast / targets / overflow @390/375/320 | PASS | `a11y` |
+| 9 | Reduced motion | PASS | `reducedMotion` |
+| 10 | Other tabs + `wearables.release-gate.test.js` | PASS | `otherTabs`; **53 passed, 0 failed** |
+| 11 | `wearables.weight-contract.test.js` | PASS | **31 passed, 0 failed** (re-run after restoring post shared-`y` assert) |
+
+Screenshots: `tasks/vnext/shots/weight-{goal-off,goal-on,post-on,forecast-on}-{390,320}.png`
 
 ---
 
 ## E. Responsive verification
 
-| Width | Idle | Active | Mid | Resting | Rest | Zone2 | Floorball |
-|---|---|---|---|---|---|---|---|
-| 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| 375 | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| 320 | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| Width | goal-off | goal-on | post-on | forecast-on | range-14 | range-all |
+|---|---|---|---|---|---|---|
+| 390 | PASS | PASS | PASS | PASS | PASS | PASS |
+| 375 | PASS | PASS | PASS | PASS | PASS | PASS |
+| 320 | PASS | PASS | PASS | PASS | PASS | PASS |
 
 ---
 
@@ -100,19 +121,25 @@ No edits to `cut-support.js` (D11 targeting untouched), wearables engines, `trai
 
 | Item | Note |
 |---|---|
-| Set history position | Below Log Set (was above). Required for fold; history + Edit survive. |
-| Rest strip layout | Single horizontal row vs stacked column; controls unchanged. |
-| Coach / set-dots / Session tools / etc. | Unchanged demotions from the original 2B pass. |
+| Range set | Kept 2W/1M/3M/All vs design-vnext 4W/12W/6M/1Y — functional truth / task §3.6 |
+| Goal band checkbox | Removed from chart controls; Journey owns the goal. `setGoalVisible` still exists (no domain effect) |
+| Post mark | Diamonds (design-vnext) vs prior hollow squares — still shape-not-hue |
+| Diagnosis / weekly review | Demoted into “Why NXTFRM says this” details — not deleted |
+| TDEE | Demoted under Weight as disclosure (premium-ui) |
+| design-vnext post-in-domain | Prototype pushed post into vals; this slice follows CURRENT_TASK / D2 and excludes it |
+| Q2 verdict language | Not used; headlines stay observation-based from plateau/trendReadText |
 
 ---
 
 ## G. Open questions / risks
 
-1. Original open question about long set-history pushing Log Set is addressed by placing history below the CTA.
+1. Live-data domain numbers will differ from the verify seed (83–88); the invariant to re-measure on device is **identical on/off + materially tighter than 76–86**.
 2. Shipping still needs the normal cache-bust / RELEASE path (out of scope).
+3. Contract/release-gate tests were adapted for legitimate D2/D3/D8 presentation changes — intent preserved; called out above.
+4. Follow-up (test-only): test `7,8` now guards both D2 (domain = morning+trend) **and** shared-scale projection of post points via `m.y()` when `showPost` is on — those are separate guarantees.
 
 ---
 
 ## H. Stop
 
-Working tree ready for Claude design/UX review of **1a + 1b only**. **No commit. No push.**
+Working tree ready for Claude design/UX review of **Phase 2C Progress / Weight**. Latest delta is test-coverage only (`wearables.weight-contract.test.js`). **No commit. No push.**

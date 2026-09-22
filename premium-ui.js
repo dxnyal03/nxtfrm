@@ -923,10 +923,10 @@ const NXP = (() => {
   function progress() {
     applyAppearance();
     syncTrainNav(false);
-    const s=N.trendStats(),v=N.ui.view,r=N.ui.range;
+    const v=N.ui.view,r=N.ui.range;
     const period=r===14?'Last 2 weeks':r===30?'Last month':r===90?'Last 3 months':'All recorded weigh-ins';
-    const tabs=`<div class="n99-progress-tabs nxp-progress-tabs" role="group" aria-label="Progress view">${[['overview','Weight'],['strength','Performance'],['body','Body']].map(([key,title])=>`<button type="button" class="${v===key?'active':''}" aria-pressed="${v===key}" onclick="NXT.setView('${key}')">${title}</button>`).join('')}</div>`;
-    const chrome=`<header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(period)}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>`;
+    const tabs=`<div class="n99-progress-tabs nxp-progress-tabs vn-progress-tabs" role="group" aria-label="Progress view">${[['overview','Weight'],['strength','Performance'],['body','Body']].map(([key,title])=>`<button type="button" class="${v===key?'active':''}" aria-pressed="${v===key}" onclick="NXT.setView('${key}')">${title}</button>`).join('')}</div>`;
+    const chrome=`<header class="nxp-heading nxp-progress-chrome vn-progress-chrome"><div><h1>Progress</h1><p>${esc(period)}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>`;
     if(v==='body'){
       const waist=N.cleanRows(N.cfg().waist,'cm'),scans=bodyScans();
       document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-body"><header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(bodyTitle(waist,scans))}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${bodySummary(waist,scans)}${bodyView(waist,scans)}</div>`;
@@ -938,9 +938,9 @@ const NXP = (() => {
       arrangeStrengthView(items);
       return;
     }
-    const vsPrior=s.change===null?'Latest 7-day mean vs previous 7 days is still building — each week needs 3 weigh-ins.':`Latest 7-day mean vs previous 7 days: ${N.signed(s.change)} kg`;
-    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight">${chrome}<section class="nxp-progress-hero" id="nxp-progress-hero"></section>${tabs}<div class="nxp-progress-overview">${N.chartHTML()}<details class="nxp-progress-tdee nxp-disclosure"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details>${row('Weigh-in history',N.weights().length+' days','NXT.openWeightHistory()')}</div></div>`;
-    arrangeWeightView(vsPrior);
+    /* Phase 2C — Weight owns its layout inside chartHTML (trajectory + journey).
+       TDEE and weigh-in history are demoted below, not deleted. */
+    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${N.chartHTML()}<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details><button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${N.weights().length} readings</span></span><span class="vn-chev">›</span></button></div>`;
   }
   function syncLatestControl() {
     const btn=document.getElementById('nxp-progress-latest');
@@ -950,56 +950,9 @@ const NXP = (() => {
     const away=!!(last&&N.ui.selected&&N.ui.selected!==last.date);
     btn.hidden=!away;
   }
-  function arrangeWeightView(vsPrior) {
-    const root=document.querySelector('.nxp-progress-weight');
-    if(!root)return;
-    const hero=document.getElementById('nxp-progress-hero');
-    const overview=root.querySelector('.nxp-progress-overview');
-    const chart=root.querySelector('.n99-chart');
-    const selected=root.querySelector('.n99-chart-selected');
-    const controls=root.querySelector('.n99-chart-controls');
-    const insight=root.querySelector('.n99-review');
-    if(hero){
-      if(selected)hero.appendChild(selected);
-      else hero.innerHTML=`<div class="n99-chart-selected"><div><span id="n99-chart-date">—</span><strong id="n99-chart-weight">—<small> kg</small></strong></div><div><span>7-day average</span><b id="n99-chart-average">—</b><small id="n99-chart-coverage">No weigh-in in this view</small></div></div>`;
-      const note=document.createElement('p');
-      note.className='nxp-progress-compare';
-      note.textContent=vsPrior;
-      hero.appendChild(note);
-      if(selected||hero.querySelector('#n99-chart-weight')){
-        const latest=document.createElement('button');
-        latest.type='button';
-        latest.id='nxp-progress-latest';
-        latest.className='n99-text nxp-progress-latest';
-        latest.textContent='Show latest';
-        latest.setAttribute('aria-label','Return to the latest weigh-in in this range');
-        latest.hidden=true;
-        latest.addEventListener('click',()=>{N.ui.selected=null;N.repaint();});
-        const dateEl=hero.querySelector('#n99-chart-date');
-        const primary=dateEl&&dateEl.parentElement;
-        if(primary){
-          primary.classList.add('nxp-progress-hero-primary');
-          dateEl.insertAdjacentElement('afterend',latest);
-        }else hero.appendChild(latest);
-        syncLatestControl();
-      }
-    }
-    if(overview&&controls)overview.insertBefore(controls,overview.firstChild);
-    if(overview&&insight){
-      insight.classList.add('nxp-progress-insight');
-      const tdee=overview.querySelector('.nxp-progress-tdee');
-      overview.insertBefore(insight,tdee||null);
-    }
-    if(chart){
-      const title=chart.querySelector(':scope > .n99-row');
-      if(title)title.hidden=true;
-      chart.querySelectorAll(':scope > .n99-small').forEach(el=>{
-        const keep=el.textContent.split(' · ').map(s=>s.trim()).filter(Boolean)
-          .filter(part=>!/^No plateau detected$/i.test(part)&&!/^Plateau:/i.test(part)&&!/^Trend is gaining$/i.test(part));
-        if(!keep.length)el.hidden=true;
-        else el.textContent=keep.join(' · ');
-      });
-    }
+  function arrangeWeightView() {
+    /* Retired for 2C: chartHTML owns the Weight surface. Kept as a no-op so
+       any stray caller does not throw. */
   }
   function performanceSubtitle(items) {
     const last=items.map(x=>x.latestDate).filter(Boolean).sort().at(-1);
@@ -1466,9 +1419,13 @@ const NXP = (() => {
   const orig=NXT.selectPoint;
   NXT.selectPoint=function(index){
     orig(index);
+    /* 2C metric header uses .vn-metric-v > em; keep that shape if present. */
     const el=document.getElementById('n99-chart-weight');
     const p=NXT.ui.chart?.points?.[index];
-    if(el&&p)el.innerHTML=`${p.weight.toFixed(1)}<small> kg</small>`;
+    if(el&&p){
+      if(el.querySelector('em'))el.innerHTML=`${p.weight.toFixed(1)}<em>kg</em>`;
+      else el.innerHTML=`${p.weight.toFixed(1)}<small> kg</small>`;
+    }
     const btn=document.getElementById('nxp-progress-latest');
     if(!btn)return;
     const pts=NXT.ui.chart?.points||[];

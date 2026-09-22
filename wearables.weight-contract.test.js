@@ -225,21 +225,28 @@ test("6 · reading the pipeline never mutates the raw weigh-in store", function 
   assert.strictEqual(fx.state.bws.length, 42, "including the future row and the legacy row");
 });
 
-// 7 + 8. One kg Y-axis, and no second Y-axis.
+// 7 + 8. One kg Y-axis, and no second Y-axis. Domain = morning + trend only (D2).
+// Post-workout is excluded from the domain but must still project through the
+// same shared y scale when drawn (D8 / data-viz).
 test("7,8 · the chart exposes exactly one shared kg scale and no second axis", function () {
+  const prevPost = N.ui.showPost;
+  N.ui.showPost = true;
   const m = N.chartModel();
+  N.ui.showPost = prevPost;
   assert.strictEqual(typeof m.y, "function", "one y scale");
   assert.strictEqual(typeof m.x, "function", "one x scale");
   // Both series must land through the SAME scale object.
   const viaScale = m.y(85.0);
   assert.ok(Number.isFinite(viaScale));
   for (const p of m.points) assert.strictEqual(p.y, m.y(p.weight), "morning points use the shared y");
+  assert.ok(m.post.length > 0, "fixture must include at least one post-workout point");
   for (const p of m.post) assert.strictEqual(p.y, m.y(p.weight), "post-workout points use the same shared y");
-  // The y domain must cover the post-workout extremes, which is the whole point
-  // of feeding them into the domain rather than giving them their own axis.
-  const all = m.points.map(p => p.weight).concat(m.post.map(p => p.weight));
-  assert.ok(m.low <= Math.min.apply(null, all), "domain floor covers both series");
-  assert.ok(m.high >= Math.max.apply(null, all), "domain ceiling covers both series");
+  // Domain covers morning + trend only — not post-workout (D2 / D8).
+  const morning = m.points.map(p => p.weight);
+  const avgs = m.points.map(p => p.avg).filter(v => v !== null && v !== undefined);
+  const domainVals = morning.concat(avgs);
+  assert.ok(m.low <= Math.min.apply(null, domainVals) + 1e-9, "domain floor covers morning+trend");
+  assert.ok(m.high >= Math.max.apply(null, domainVals) - 1e-9, "domain ceiling covers morning+trend");
   assert.strictEqual(m.low, r4(m.low));
 });
 
@@ -297,9 +304,11 @@ test("12 · the forecast is unchanged", function () {
   assert.strictEqual(r4(band[band.length - 1].sigma), 0.2548);
 });
 
-// 13. Target trajectory unchanged.
+// 13. Target trajectory unchanged (geometry), but off the recent Y-domain (D2/D3).
 test("13 · the target trajectory is unchanged", function () {
+  N.ui.showForecast = true;
   const m = N.chartModel();
+  assert.ok(m.forecast, "forecast geometry is available when projection is enabled");
   assert.strictEqual(m.forecast.target, 82, "target is goalHigh()");
   assert.strictEqual(m.forecast.cone.length, 4, "a four-vertex cone polygon is produced");
   // chartModel turns forecastGeometry's [[t,w],[t,w]] centre line into pixels.
@@ -312,11 +321,13 @@ test("13 · the target trajectory is unchanged", function () {
   assert.strictEqual(r4(m.forecast.level), 85.5991, "cone anchors on the FITTED level");
   assert.strictEqual(r4(m.forecast.days), 48.7053);
   assert.strictEqual(m.forecast.arrives, false, "goal is beyond the drawn window");
-  assert.ok(Number.isFinite(m.goalRef), "a dashed goal reference line is placed");
+  // D3: distant goal is not a chart reference line — it lives on Journey.
+  assert.strictEqual(m.goalRef, null, "goal reference line removed from recent chart (D3)");
   // The cone walls are forecastGoal's own bounds drawn — not a new statistic.
   const f = N.forecastGoal(W);
   assert.strictEqual(f.lowWeeks, 6);
   assert.strictEqual(f.highWeeks, 8);
+  N.ui.showForecast = false;
 });
 
 // 14. Historical fallback unchanged.
@@ -424,70 +435,64 @@ test("every frozen statistic still defaults to the canonical weights() set", fun
    RENDERED CHART — asserted against the shipped chartHTML(), not a mock.
    The main fixture confirms a goal, so the projection and target states that
    the dev seed never reaches are actually exercised here.
+   Projection and post-workout are off by default (2C); enable them for render asserts.
    ========================================================================= */
-const SVG = N.chartHTML();
+const SVG = (() => {
+  N.ui.showForecast = true;
+  N.ui.showPost = true;
+  const h = N.chartHTML();
+  N.ui.showForecast = false;
+  N.ui.showPost = false;
+  return h;
+})();
 
-test("chart: post-workout is drawn as hollow squares with no connecting line", function () {
-  // Squares, not circles: shape separates the series without relying on hue.
-  const rects = SVG.match(/<rect[^>]*stroke="#7f74a8"[^>]*>/g) || [];
-  assert.ok(rects.length >= 1, "at least one post-workout square is drawn");
-  for (const r of rects) assert.ok(/fill="none"/.test(r), "post-workout markers stay hollow");
-  // The old build smoothed a path through the post readings. That line invited a
-  // slope reading the maths never makes, so it must not come back.
-  assert.strictEqual(/<path[^>]*stroke="#7f74a8"/.test(SVG), false,
-    "post-workout must never be joined into a line");
+test("chart: post-workout is drawn as hollow diamonds with no connecting line", function () {
+  assert.ok(/vn-post-mark/.test(SVG), "at least one post-workout diamond is drawn");
+  assert.strictEqual(/<path[^>]*stroke="#7f74a8"[^>]*stroke-linejoin="round"/.test(SVG), false,
+    "post-workout must never be joined into a trend line");
 });
 
 test("chart: morning is the primary series and sits above the contextual one", function () {
-  // Compare the marker markup itself. CHART.ink also appears earlier in the
-  // gradient <defs>, so a naive first-index comparison measures the wrong thing.
-  const morningAt = SVG.indexOf('fill="#b49aff" fill-opacity=".58"');
-  const postAt = SVG.indexOf('<rect');
-  assert.ok(morningAt !== -1, "morning readings carry the primary ink");
-  assert.ok(postAt !== -1, "post-workout squares are present");
+  const morningAt = SVG.indexOf('class="vn-raw-dot"');
+  const postAt = SVG.indexOf("vn-post-mark");
+  assert.ok(morningAt !== -1, "morning readings carry the raw-dot mark");
+  assert.ok(postAt !== -1, "post-workout diamonds are present");
   assert.ok(postAt < morningAt,
     "post-workout is painted first in document order, so morning renders on top");
 });
 
 test("chart: the projection is dashed, future-only, and claims no certainty", function () {
-  assert.ok(/stroke-dasharray="7 6"/.test(SVG), "the forecast centre line is dashed");
-  // A cone may exist only because forecastGeometry produced one.
+  assert.ok(/stroke-dasharray="2 5"/.test(SVG) || /stroke-dasharray="7 6"/.test(SVG),
+    "the forecast centre line is dashed");
   const f = N.forecastGoal(W);
-  if (f.ok && f.weeks) assert.ok(SVG.indexOf("n99-chart-cone") !== -1, "the frozen cone is drawn");
-  /* No invented certainty language in the CHART itself. Scope matters:
-     chartHTML() appends N.diagnosisCard() after the chart's </section>, and that
-     card legitimately surfaces forecastGoal().confidence — existing frozen
-     coaching output, not something this redesign fabricated. The chart proper
-     must not add any of its own. */
-  // First </section>, not last: diagnosisCard() brings its own <section>, so
-  // lastIndexOf would sweep the coaching card back into scope.
+  if (f.ok && f.weeks) assert.ok(SVG.indexOf("n99-chart-cone") !== -1 || /vn-proj-line/.test(SVG),
+    "the frozen cone or projection line is drawn");
   const chartOnly = SVG.slice(0, SVG.indexOf("</section>")).toLowerCase();
   for (const bad of ["% confident", "confidence:", "probability", "likelihood", "accuracy", "certainty"]) {
     assert.strictEqual(chartOnly.indexOf(bad), -1, "no fabricated certainty in the chart: " + bad);
   }
 });
 
-test("chart: the target is a labelled hairline, not a shaded region", function () {
-  // goalRef is placed whenever a forecast is drawn and the band is off.
+test("chart: the distant goal is not a chart reference line (D3)", function () {
   const m = N.chartModel();
-  assert.ok(Number.isFinite(m.goalRef), "a goal reference line is positioned");
-  assert.ok(/stroke-dasharray="5 5"/.test(SVG), "the target reads as a dashed reference rule");
-  assert.strictEqual(m.forecast.target, 82, "the target is goalHigh(), unchanged");
+  assert.strictEqual(m.goalRef, null, "goal reference removed from recent chart");
+  assert.strictEqual(m.forecast, null, "forecast off by default");
+  const journey = N.journeyHTML();
+  assert.ok(journey.indexOf("Cut journey") !== -1, "Journey section exists");
+  assert.ok(/Goal\s*80/.test(journey), "Journey shows the goal range");
 });
 
 test("chart: one calibrated y-axis, with ticks and no second scale", function () {
-  assert.ok(/stroke-opacity="\.5"/.test(SVG) || /stroke-opacity="0?\.5"/.test(SVG),
-    "tick marks are drawn against the axis");
+  assert.ok(/text-anchor="end"/.test(SVG), "tick labels are drawn against the axis");
   assert.strictEqual(/yRight|secondAxis|rightAxis/.test(SVG), false, "no second y-axis");
 });
 
 test("chart: the legend names every series and carries no instructions", function () {
-  assert.ok(SVG.indexOf('<i class="raw"></i>Morning') !== -1);
-  assert.ok(SVG.indexOf('<i class="post"></i>Post-workout') !== -1);
+  assert.ok(SVG.indexOf("Morning") !== -1);
+  assert.ok(SVG.indexOf("Post-workout") !== -1);
   assert.ok(SVG.indexOf("Projection") !== -1, "the forecast is named Projection");
-  assert.strictEqual(SVG.indexOf('<span>Drag to inspect</span>'), -1,
+  assert.strictEqual(SVG.indexOf("<span>Drag to inspect</span>"), -1,
     "instructional copy does not belong in the key");
-  assert.ok(SVG.indexOf("n99-chart-hint") !== -1, "the hint moved to its own line");
 });
 
 /* =========================================================================

@@ -1,0 +1,445 @@
+{
+  "domain": {
+    "goalOff": {
+      "low": 83,
+      "high": 88,
+      "span": 5,
+      "pointCount": 30,
+      "hasForecast": false,
+      "goalRef": null,
+      "canForecast": true
+    },
+    "goalOn": {
+      "low": 83,
+      "high": 88,
+      "span": 5,
+      "pointCount": 30,
+      "hasForecast": false,
+      "goalRef": null,
+      "canForecast": true
+    },
+    "identical": true,
+    "materiallyTighterThan10": true,
+    "legacyWas": "76–86 (10 kg) with goal confirmed"
+  },
+  "truth": {
+    "before": {
+      "trendTail": [
+        [
+          "2026-09-20",
+          84.8,
+          85.3039,
+          7
+        ],
+        [
+          "2026-09-21",
+          84.6,
+          85.2375,
+          7
+        ],
+        [
+          "2026-09-22",
+          84.4,
+          85.1586,
+          7
+        ]
+      ],
+      "trendLen": 36,
+      "stats": {
+        "change": -0.4857,
+        "percent": -0.5701,
+        "current": 84.7143,
+        "previous": 85.2
+      },
+      "plateau": {
+        "ok": true,
+        "status": "losing",
+        "weeklyRate": -0.4843,
+        "confidence": "high",
+        "plateauDays": null
+      },
+      "forecast": {
+        "ok": true,
+        "weeks": 9,
+        "lowWeeks": 9,
+        "highWeeks": 10,
+        "confidence": "high",
+        "slope": -0.0704,
+        "fittedLevel": 84.5009
+      },
+      "confLen": 30,
+      "confTail": [
+        [
+          "2026-09-21",
+          0.1059,
+          85.1316,
+          85.3434
+        ],
+        [
+          "2026-09-22",
+          0.105,
+          85.0535,
+          85.2636
+        ]
+      ]
+    },
+    "after": {
+      "trendTail": [
+        [
+          "2026-09-20",
+          84.8,
+          85.3039,
+          7
+        ],
+        [
+          "2026-09-21",
+          84.6,
+          85.2375,
+          7
+        ],
+        [
+          "2026-09-22",
+          84.4,
+          85.1586,
+          7
+        ]
+      ],
+      "trendLen": 36,
+      "stats": {
+        "change": -0.4857,
+        "percent": -0.5701,
+        "current": 84.7143,
+        "previous": 85.2
+      },
+      "plateau": {
+        "ok": true,
+        "status": "losing",
+        "weeklyRate": -0.4843,
+        "confidence": "high",
+        "plateauDays": null
+      },
+      "forecast": {
+        "ok": true,
+        "weeks": 9,
+        "lowWeeks": 9,
+        "highWeeks": 10,
+        "confidence": "high",
+        "slope": -0.0704,
+        "fittedLevel": 84.5009
+      },
+      "confLen": 30,
+      "confTail": [
+        [
+          "2026-09-21",
+          0.1059,
+          85.1316,
+          85.3434
+        ],
+        [
+          "2026-09-22",
+          0.105,
+          85.0535,
+          85.2636
+        ]
+      ]
+    }
+  },
+  "postToggle": {
+    "domainOff": {
+      "low": 83,
+      "high": 88,
+      "span": 5,
+      "pointCount": 30,
+      "hasForecast": false,
+      "goalRef": null,
+      "canForecast": true
+    },
+    "domainOn": {
+      "low": 83,
+      "high": 88,
+      "span": 5,
+      "pointCount": 30,
+      "hasForecast": false,
+      "goalRef": null,
+      "canForecast": true
+    },
+    "domainIdentical": true,
+    "geometryIdentical": true,
+    "postMarks": 6
+  },
+  "scrub": {
+    "ok": true,
+    "before": {
+      "h": 106.890625,
+      "top": 350.421875,
+      "date": "Latest morning",
+      "weight": "84.4kg"
+    },
+    "mid": {
+      "date": "18 Sept",
+      "weight": "84.8kg",
+      "h": 106.890625,
+      "top": 350.421875,
+      "selected": "2026-09-18"
+    },
+    "afterKey": {
+      "selected": "2026-09-17",
+      "date": "17 Sept"
+    },
+    "afterEsc": {
+      "selected": "2026-09-22",
+      "date": "Latest morning"
+    },
+    "touchAction": "pan-y",
+    "headerStable": true,
+    "scrubChanged": true,
+    "escapeClears": true
+  },
+  "forecast": {
+    "defaultHas": false,
+    "whenOn": {
+      "hasLine": true,
+      "model": true,
+      "label": true
+    },
+    "weak": {
+      "canForecast": false,
+      "drawn": false,
+      "tog": false
+    }
+  },
+  "ranges": {
+    "0": {
+      "low": 83,
+      "high": 88,
+      "span": 5,
+      "pointCount": 36,
+      "hasForecast": false,
+      "goalRef": null,
+      "canForecast": true
+    },
+    "14": {
+      "low": 84,
+      "high": 86.5,
+      "span": 2.5,
+      "pointCount": 14,
+      "hasForecast": false,
+      "goalRef": null,
+      "canForecast": true
+    },
+    "30": {
+      "low": 83,
+      "high": 88,
+      "span": 5,
+      "pointCount": 30,
+      "hasForecast": false,
+      "goalRef": null,
+      "canForecast": true
+    },
+    "90": {
+      "low": 83,
+      "high": 88,
+      "span": 5,
+      "pointCount": 36,
+      "hasForecast": false,
+      "goalRef": null,
+      "canForecast": true
+    }
+  },
+  "widths": {
+    "320": {
+      "goal-off": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      },
+      "goal-on": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      },
+      "post-on": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      },
+      "forecast-on": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      },
+      "range-14": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      },
+      "range-all": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      }
+    },
+    "375": {
+      "goal-off": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      },
+      "goal-on": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      },
+      "post-on": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      },
+      "forecast-on": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      },
+      "range-14": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      },
+      "range-all": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      }
+    },
+    "390": {
+      "goal-off": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      },
+      "goal-on": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      },
+      "post-on": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      },
+      "forecast-on": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      },
+      "range-14": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      },
+      "range-all": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0
+      }
+    }
+  },
+  "otherTabs": {
+    "home": {
+      "present": true,
+      "overflow": false
+    },
+    "train": {
+      "present": true,
+      "overflow": false
+    },
+    "history": {
+      "present": true,
+      "overflow": false
+    },
+    "more": {
+      "present": true,
+      "overflow": false
+    }
+  },
+  "reducedMotion": {
+    "overflow": false,
+    "textFails": [],
+    "textFailCount": 0,
+    "targetFails": [],
+    "targetFailCount": 0
+  },
+  "consoleErrors": [],
+  "pass": {
+    "d2Domain": true,
+    "journey": true,
+    "interpretation": true,
+    "forecastDefaultOff": true,
+    "forecastDistinct": true,
+    "forecastOmittedWeak": true,
+    "d8Post": true,
+    "truthUntouched": true,
+    "scrub": true,
+    "ranges": true,
+    "sparseHonest": true,
+    "empty": true,
+    "otherTabs": true,
+    "noConsole": true,
+    "a11y": true,
+    "all": true
+  },
+  "journey": {
+    "present": true,
+    "text": "\n      Cut journey\n        18 Aug → now\n      \n        Down1.9kg\n        To goal range\n          5.2 kg\n      \n      \n        \n        \n        \n        \n      \n      \n        Start 87.1\n        Now 8"
+  },
+  "read": {
+    "headline": "Losing 0.48 kg per week",
+    "body": "~9 weeks to goal (range 9–10) · No plateau detected",
+    "mhead": "\n        \n          \n            Latest morning\n            84.4kg\n            Morning\n          \n          \n            Trend\n            85.16kg\n            7 readings in this window\n          \n        \n        \n          Post-workout\n          \n          \n        \n      "
+  },
+  "sparse": {
+    "points": 2,
+    "emptyMsg": false,
+    "headline": "Building your baseline"
+  },
+  "empty": {
+    "empty": true,
+    "points": 0
+  }
+}

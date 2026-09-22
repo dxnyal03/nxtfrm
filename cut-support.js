@@ -37,7 +37,7 @@ const NXT = (() => {
   const split = {0:"Rest",1:"FullA",2:"Zone2",3:"FullB",4:"Zone2",5:"FullC",6:"Zone2"};
   const names = {FullA:"Full Body A",FullB:"Full Body B",FullC:"Full Body C",Push:"Push",Pull:"Pull",Pump:"Legs & Core",Legs:"Legs",Zone2:"Easy cardio",Rest:"Rest",Floorball:"Floorball"};
   const typeNames = () => Object.keys(names);
-  const ui = {view:"overview", range:30, showGoal:false, selected:null, draft:null, lastFocus:null};
+  const ui = {view:"overview", range:30, showGoal:false, showPost:false, showForecast:false, selected:null, draft:null, lastFocus:null};
   function cfg() {
     if(!settings.cutSupport || typeof settings.cutSupport!=="object" || Array.isArray(settings.cutSupport))settings.cutSupport={};
     const c=settings.cutSupport;
@@ -700,8 +700,8 @@ Object.assign(NXT, (()=>{
   // resets the EWMA (and so breaks the band into runs) and the level spread forecastGoal falls back
   // on when no band exists. Changing either there means changing it here.
   const BAND_GAP_DAYS=3,CONE_SIGMA_FALLBACK=.5,FUTURE_MAX_DAYS=42,FUTURE_SHARE=.4;
-  // Forecast geometry in data space: day offsets from the last trend reading, weights in kg. It runs
-  // before the scales exist because its extremes have to widen the y-domain to stay on the canvas.
+  // Forecast geometry in data space: day offsets from the last trend reading, weights in kg.
+  // Presentation only — its extremes must NEVER enter the recent-trajectory Y-domain (D2).
   function forecastGeometry(f,start,bandRows) {
     const target=N.finite(goalHigh()),level=N.finite(f.fittedLevel),slope=N.finite(f.slope);
     if(!f.ok||!f.weeks||target===null||level===null||slope===null||!(slope<0))return null;
@@ -753,35 +753,29 @@ Object.assign(NXT, (()=>{
   }
   function chartModel(rows=N.weights(),range=N.ui.range,showGoal=N.ui.showGoal) {
     const series=N.trend(rows),start=range?N.dateAdd(state.date,1-range):rows[0]?.date||N.dateAdd(state.date,-29);
-    const visible=series.filter(r=>r.date>=start),W=420,H=290,left=48,right=16,top=22,bottom=44;
-    if(!visible.length)return {visible,start,W,H,left,right,top,bottom};
+    const visible=series.filter(r=>r.date>=start),W=420,H=240,left=40,right=12,top=14,bottom=32;
+    if(!visible.length)return {visible,start,W,H,left,right,top,bottom,low:null,high:null,step:null};
+    /* D2 — Y-domain from visible morning readings + trend ONLY.
+       Goal band, target reference, forecast cone/endpoint, confidence band
+       extremes and post-workout must never stretch the recent-trajectory scale. */
     const values=visible.flatMap(r=>r.avg===null?[r.weight]:[r.weight,r.avg]);
-    /* Post-workout is contextual only: it never enters trend(), trendConfidence(),
-       forecastGoal() or detectPlateau() above. It is pulled in here solely so the
-       shared kg domain covers it — a post-workout reading is usually the lowest
-       point of the day and would otherwise be drawn outside the plot. */
-    const postRows=N.timingRows('Post-workout').filter(r=>r.date>=start&&r.date<=state.date);
-    for(const r of postRows)values.push(r.weight);
-    const bandShown=showGoal&&N.cfg().targetConfirmed;
-    if(bandShown)values.push(goalLow(),goalHigh());
-    // Both layers stretch the y-domain, so they are read before the scales are built.
+    /* Post-workout is contextual only (D8): never enters trend/plateau/forecast
+       maths, and also never enters this domain. Drawn through the same scale
+       when toggled on; readings outside the plot simply clip. */
+    const postRows=N.ui.showPost?N.timingRows('Post-workout').filter(r=>r.date>=start&&r.date<=state.date):[];
+    // showGoal is accepted for API compatibility but must not affect the domain (D2/D3).
+    void showGoal;
     const bandRows=(N.trendConfidence(rows)||[]).filter(r=>r.date>=start&&r.date<=state.date);
-    for(const b of bandRows)values.push(b.lower,b.upper);
-    const forecastRead=N.forecastGoal(rows),fc=N.cfg().targetConfirmed?forecastGeometry(forecastRead,start,bandRows):null;
-    // A clipped cone stops short of the goal, so the target has to be forced into the domain: the
-    // reference line marking it would otherwise be drawn outside the plot, and the svg does not clip.
-    if(fc)values.push(...fc.cone.map(c=>c[1]),fc.mid[1][1],fc.target);
-    // Where the floor comes from is carried as a flag rather than re-tested against goalHigh() later:
-    // the goal is the one value in the domain that is not a reading, and the pad below exists only to
-    // keep readings off the frame. Padding under the goal line would spend 2 kg of range on nothing.
-    const dataLow=Math.min(...values),rawHigh=Math.max(...values),targetFloor=fc?fc.target:null;
-    const lowIsTarget=targetFloor!==null&&targetFloor<=dataLow,rawLow=lowIsTarget?targetFloor:dataLow;
-    const span=Math.max(1,rawHigh-rawLow);
+    const forecastRead=N.forecastGoal(rows);
+    /* Projection is off by default. Omit entirely when forecastGoal reports
+       insufficient evidence (!ok) rather than drawing a weak estimate (I11). */
+    const canForecast=!!(N.cfg().targetConfirmed&&forecastRead.ok&&forecastRead.weeks!==null&&forecastRead.confidence!=='none');
+    const fc=N.ui.showForecast&&canForecast?forecastGeometry(forecastRead,start,bandRows):null;
+    const dataLow=Math.min(...values),rawHigh=Math.max(...values);
+    const span=Math.max(1,rawHigh-dataLow);
     const step=span<=2?.5:span<=4?1:span<=10?2:Math.ceil(span/20)*5;
-    // Headroom above the highest reading is unchanged.
-    const low=Math.floor((lowIsTarget?rawLow:rawLow-step*.45)/step)*step,high=Math.ceil((rawHigh+step*.45)/step)*step;
-    // One uniform time axis over past and future: the forecast strip is real days at the same
-    // pixels-per-day as the record, so nothing has to be read at two different speeds.
+    const low=Math.floor((dataLow-step*.45)/step)*step,high=Math.ceil((rawHigh+step*.45)/step)*step;
+    // Future strip only when a projection is actually drawn — still same px/day.
     const futureDays=fc?fc.futureDays:0;
     const first=N.dateMs(start),end=Math.max(N.dateMs(state.date),first+86400000)+futureDays*86400000;
     const xMs=ms=>left+(ms-first)/(end-first)*(W-left-right),x=d=>xMs(N.dateMs(d)),y=v=>top+(high-v)/(high-low)*(H-top-bottom);
@@ -809,19 +803,18 @@ Object.assign(NXT, (()=>{
     let forecast=null;
     if(fc) {
       const fx=d=>xMs(N.dateMs(fc.lastDate)+d*86400000),tMid=fc.mid[1][0],wMid=fc.mid[1][1];
-      forecast={...fc,cone:fc.cone.map(([t,w])=>[fx(t),y(w)]),
-        mid:{x1:fx(0),y1:y(fc.level),x2:fx(tMid),y2:y(wMid)},
-        endpoint:fc.arrives?{x:fx(tMid),y:y(wMid)}:null};
+      // Clamp projected y into the plot so a distant goal cannot invent vertical space.
+      const cy=v=>Math.min(H-bottom,Math.max(top,y(v)));
+      forecast={...fc,cone:fc.cone.map(([t,w])=>[fx(t),cy(w)]),
+        mid:{x1:fx(0),y1:cy(fc.level),x2:fx(tMid),y2:cy(wMid)},
+        endpoint:fc.arrives?{x:fx(tMid),y:cy(wMid)}:null};
     }
-    // The bright marker sits on the forecast's own anchor when there is one, so the dashed line
-    // starts where the dot is. With no forecast it falls back to the end of the trend line.
     const tail=segments.at(-1)?.at(-1)||null;
     const anchor=forecast?{x:forecast.mid.x1,y:forecast.mid.y1,fitted:true}:tail?{x:tail.x,y:tail.y,fitted:false}:null;
-    // A cone terminating at an unmarked height points at nothing, so the goal keeps one dashed
-    // reference line whenever a forecast is drawn. Only the shaded band answers to the checkbox.
-    return {visible,start,W,H,left,right,top,bottom,low,high,points,post,postByDate,segments,ticks,x,y,
-      todayX:x(state.date),futureDays,bands,forecast,anchor,forecastRead,plateau:N.detectPlateau(rows),
-      goalRef:forecast&&!bandShown?y(forecast.target):null};
+    // Distant goal lives on Journey (D3) — never as a chart reference line.
+    return {visible,start,W,H,left,right,top,bottom,low,high,step,points,post,postByDate,segments,ticks,x,y,
+      todayX:x(state.date),futureDays,bands,forecast,anchor,forecastRead,canForecast,
+      plateau:N.detectPlateau(rows),goalRef:null};
   }
   /* The primary series is the canonical per-date row, which prefers Morning but
      falls back to whatever timing exists on days with no morning reading. That
@@ -837,71 +830,226 @@ Object.assign(NXT, (()=>{
     const d=postRow.weight-p.weight;
     return (d>0?'+':'')+d.toFixed(1)+' kg vs '+(/^morning$/i.test(String(p.timeOfDay||''))?'morning':'the day\u2019s other reading');
   }
+  function trajectoryHeadline(plateau) {
+    const rate=N.finite(plateau&&plateau.weeklyRate);
+    if(!plateau||!plateau.ok||rate===null)return 'Building your baseline';
+    if(plateau.status==='losing')return `Losing ${Math.abs(rate).toFixed(2)} kg per week`;
+    if(plateau.status==='flat')return plateau.plateauDays?`Trend is flat · ${plateau.plateauDays} days`:'Trend is flat';
+    if(plateau.status==='gaining')return 'Trend is gaining';
+    return 'Direction still settling';
+  }
+  /* D3 — long-term goal as a separate non-time-series rail: start → current → target. */
+  function journeyHTML() {
+    if(!N.cfg().targetConfirmed)return '';
+    const rows=N.weights();
+    const startW=N.finite(typeof START_WEIGHT!=='undefined'?START_WEIGHT:null);
+    const seed=startW!==null?startW:(rows[0]?rows[0].weight:null);
+    const lo=goalLow(),hi=goalHigh();
+    const plateau=N.detectPlateau(rows);
+    const cur=N.finite(plateau.lastAvg)!==null?plateau.lastAvg:(rows.at(-1)?rows.at(-1).weight:null);
+    if(seed===null||cur===null||!Number.isFinite(lo)||!Number.isFinite(hi))return '';
+    const max=Math.max(seed,cur,hi)+0.6,min=Math.min(lo,cur)-1.2,span=Math.max(0.8,max-min);
+    const pct=v=>Math.max(0,Math.min(100,((max-v)/span)*100));
+    const done=seed-cur,remain=Math.max(0,cur-hi);
+    const first=rows[0]?.date;
+    const elapsed=first?Math.round((N.dateMs(state.date)-N.dateMs(first))/86400000):0;
+    const leftTrav=Math.min(pct(seed),pct(cur)),widthTrav=Math.abs(pct(cur)-pct(seed));
+    const leftBand=Math.min(pct(lo),pct(hi)),widthBand=Math.abs(pct(lo)-pct(hi));
+    return `<section class="vn-journey" aria-label="Cut journey">
+      <div class="vn-sect-head"><p class="vn-h-sect">Cut journey</p>
+        <span class="vn-tiny">${first?esc(N.shortDate(first)):'Start'} → now</span></div>
+      <div class="vn-journey-metrics">
+        <div><span class="vn-metric-l">Down</span><div class="vn-metric-v vn-num">${done.toFixed(1)}<em>kg</em></div></div>
+        <div class="vn-journey-remain"><span class="vn-metric-l">To goal range</span>
+          <div class="vn-h-sub vn-num">${remain.toFixed(1)} kg</div></div>
+      </div>
+      <div class="vn-journey-rail" role="img" aria-label="Start ${seed.toFixed(1)} kilograms, now ${cur.toFixed(1)}, goal ${lo} to ${hi}">
+        <div class="vn-journey-track"></div>
+        <div class="vn-journey-band" style="left:${leftBand}%;width:${Math.max(2,widthBand)}%"></div>
+        <div class="vn-journey-travel" style="left:${leftTrav}%;width:${Math.max(0,widthTrav)}%"></div>
+        <div class="vn-journey-now" style="left:${pct(cur)}%"></div>
+      </div>
+      <div class="vn-journey-labels">
+        <span class="vn-tiny">Start ${seed.toFixed(1)}</span>
+        <span class="vn-tiny vn-journey-now-l">Now ${cur.toFixed(1)}</span>
+        <span class="vn-tiny">Goal ${lo}–${hi}</span>
+      </div>
+      <p class="vn-tiny vn-mt3">Elapsed ${elapsed} days. A weight range alone does not measure leanness.</p>
+    </section>`;
+  }
+  function evidenceHTML(plateau,forecastRead) {
+    const rate=N.finite(plateau&&plateau.weeklyRate);
+    const rateTxt=rate===null?'—':`${signed(rate)} kg`;
+    const band=rate!==null&&N.finite(plateau.lower)!==null&&N.finite(plateau.upper)!==null
+      ?`28-day window · 95% range ${signed(plateau.upper)} to ${signed(plateau.lower)}`:'28-day window';
+    let plateauStatus='—',plateauTone='is-neutral';
+    if(plateau&&plateau.ok){
+      if(plateau.status==='flat'&&plateau.plateau){plateauStatus=`${plateau.plateauDays} days`;plateauTone='is-watch';}
+      else if(plateau.status==='losing'){plateauStatus='None';plateauTone='is-ok';}
+      else if(plateau.status==='gaining'){plateauStatus='Gaining';plateauTone='is-watch';}
+      else {plateauStatus='Settling';plateauTone='is-neutral';}
+    }
+    const proj=forecastRead&&forecastRead.ok&&forecastRead.weeks!==null
+      ?`${forecastRead.weeks} wk <span class="vn-ink-3">(${forecastRead.lowWeeks}–${forecastRead.highWeeks})</span>`
+      :'Unavailable';
+    const conf=plateau&&plateau.confidence&&plateau.confidence!=='none'
+      ?plateau.confidence.charAt(0).toUpperCase()+plateau.confidence.slice(1):'—';
+    return `<section class="vn-evidence">
+      <p class="vn-h-sect">Evidence</p>
+      <div class="vn-rows">
+        <div class="vn-row"><span class="vn-row-l"><span class="vn-row-t">Weekly rate</span>
+          <span class="vn-row-s">${esc(band)}</span></span>
+          <span class="vn-row-v vn-num">${rateTxt}</span></div>
+        <div class="vn-row"><span class="vn-row-l"><span class="vn-row-t">Plateau</span>
+          <span class="vn-row-s">${esc(plateau&&plateau.reason||'')}</span></span>
+          <span class="vn-row-v"><span class="vn-status ${plateauTone}"><i></i>${esc(plateauStatus)}</span></span></div>
+        <div class="vn-row"><span class="vn-row-l"><span class="vn-row-t">Projection</span>
+          <span class="vn-row-s">Model estimate, not a measurement</span></span>
+          <span class="vn-row-v vn-num">${proj}</span></div>
+        <div class="vn-row"><span class="vn-row-l"><span class="vn-row-t">Confidence</span>
+          <span class="vn-row-s">Reading coverage and consistency</span></span>
+          <span class="vn-row-v">${esc(conf)}</span></div>
+      </div>
+    </section>`;
+  }
   function chartHTML() {
     const model=chartModel();N.ui.chart=model;
     const {visible,W,H,left,right,top,bottom}=model;
-    /* Presentation-only change detection. The latest plotted reading is
-       fingerprinted so a genuinely new weigh-in can enter softly, while an
-       ordinary repaint stays still. No stored value is read or written; this
-       compares what was last DRAWN, not what is saved. */
     const latestKey=visible.length?visible.at(-1).date+':'+visible.at(-1).weight:'';
     const grew=!!(N.ui.lastPlotted&&latestKey&&latestKey!==N.ui.lastPlotted);
     N.ui.lastPlotted=latestKey;
     const animClass=N.ui.chartAnim==='range'?' is-range-change':grew?' is-new-point':'';
     N.ui.chartAnim=null;
     const ranges=[[14,'2W'],[30,'1M'],[90,'3M'],[0,'All']];
-    const goalOn=!!N.cfg().targetConfirmed;
-    const controls=`<div class="n99-chart-controls"><div class="n99-segments" role="group" aria-label="Chart date range">${ranges.map(([r,l])=>`<button type="button" aria-pressed="${N.ui.range===r}" class="${N.ui.range===r?'active':''}" onclick="NXT.setRange(${r})">${l}</button>`).join('')}</div>${goalOn?`<label class="n99-check"><input type="checkbox" ${N.ui.showGoal?'checked':''} onchange="NXT.setGoalVisible(this.checked)">Goal band</label>`:''}</div>`;
-    if(!visible.length)return `<section class="n99-card n99-chart"><div class="n99-row"><h2>Weight trend</h2><span class="n99-unit">kg</span></div>${controls}<div class="n99-chart-empty"><div class="n99-empty-number">—<small> kg</small></div><h3>${N.weights().length?'No weigh-ins in this period':'Your first weigh-in starts here'}</h3><p>${N.weights().length?'Choose All to see older entries, or log a current weight.':'Your actual readings will appear as dots. A trend line starts when a seven-day window has three readings.'}</p>${N.button('+ Log weight','apx95OpenQuickWeight()')}</div></section>${N.diagnosisCard()}`;
-    const {points,post,postByDate,segments,ticks,y,bands,forecast,anchor,plateau,forecastRead,goalRef,futureDays,todayX}=model,selected=Math.max(0,points.findIndex(p=>p.date===N.ui.selected)),idx=N.ui.selected&&selected>=0?selected:points.length-1;
-    const p=points[idx],baseline=H-bottom;
-    const band=N.ui.showGoal&&N.cfg().targetConfirmed?`<rect x="${left}" y="${y(goalHigh())}" width="${W-left-right}" height="${y(goalLow())-y(goalHigh())}" fill="${CHART.ink}" fill-opacity=".065"/><line x1="${left}" x2="${W-right}" y1="${y(goalHigh())}" y2="${y(goalHigh())}" stroke="${CHART.ink}" stroke-opacity=".4" stroke-dasharray="5 5"/>`:'';
+    const rangeBtns=`<div class="vn-seg n99-segments" role="group" aria-label="Chart date range">${ranges.map(([r,l])=>{
+      const active=N.ui.range===r;
+      return `<button type="button" aria-pressed="${active}" class="${active?'active':''}" onclick="NXT.setRange(${r})">${l}</button>`;
+    }).join('')}</div>`;
+    if(!visible.length){
+      const emptyTitle=N.weights().length?'No weigh-ins in this period':'Your first weigh-in starts here';
+      const emptyBody=N.weights().length?'Choose All to see older entries, or log a current weight.':'Your actual readings will appear as dots. A trend line starts when a seven-day window has three readings.';
+      return `<section class="vn-weight n99-chart" id="vn-weight">
+        <p class="vn-h-sect">Recent trajectory</p>
+        <h2 class="vn-h-sub">Building your baseline</h2>
+        <div class="vn-mt4">${rangeBtns}</div>
+        <div class="vn-chart-empty n99-chart-empty"><div class="n99-empty-number">—<small> kg</small></div>
+          <h3>${emptyTitle}</h3><p>${emptyBody}</p>${N.button('+ Log weight','apx95OpenQuickWeight()')}</div>
+        ${journeyHTML()}
+        <details class="vn-more-block"><summary>Why NXTFRM says this</summary>${N.diagnosisCard()}</details>
+      </section>`;
+    }
+    const {points,post,postByDate,segments,ticks,y,bands,forecast,anchor,plateau,forecastRead,canForecast,futureDays,todayX,low,high}=model;
+    const selected=Math.max(0,points.findIndex(p=>p.date===N.ui.selected));
+    const idx=N.ui.selected&&selected>=0?selected:points.length-1;
+    const p=points[idx],baseline=H-bottom,isLatest=!N.ui.selected||N.ui.selected===points.at(-1).date;
     const px=v=>v.toFixed(2);
+    const headline=trajectoryHeadline(plateau);
+    const readLine=trendReadText(N.cfg().targetConfirmed?forecastRead:{ok:false,reason:''},plateau);
+    const narrowTicks=ticks.length>5?ticks.filter((_,i)=>i%2===0||i===ticks.length-1):ticks;
+    const bandFill=bands.map(run=>`<path d="M ${run.map(b=>`${px(b.x)} ${px(b.upper)}`).join(' L ')} L ${[...run].reverse().map(b=>`${px(b.x)} ${px(b.lower)}`).join(' L ')} Z" fill="${CHART.ink}" fill-opacity=".06" pointer-events="none"/>`).join('');
+    const today=futureDays?`<line x1="${px(todayX)}" x2="${px(todayX)}" y1="${top}" y2="${baseline}" stroke="${CHART.grid}" stroke-opacity=".12" pointer-events="none"/>`:'';
     const cone=forecast?`<polygon points="${forecast.cone.map(([cx,cy])=>`${px(cx)},${px(cy)}`).join(' ')}" fill="url(#n99-chart-cone)" pointer-events="none"/>`:'';
-    const bandFill=bands.map(run=>`<path d="M ${run.map(b=>`${px(b.x)} ${px(b.upper)}`).join(' L ')} L ${[...run].reverse().map(b=>`${px(b.x)} ${px(b.lower)}`).join(' L ')} Z" fill="${CHART.ink}" fill-opacity="${CHART.bandOpacity}" pointer-events="none"/>`).join('');
-    const goalMark=goalRef===null?'':`<line x1="${left}" x2="${W-right}" y1="${px(goalRef)}" y2="${px(goalRef)}" stroke="${CHART.ink}" stroke-opacity=".35" stroke-dasharray="5 5" pointer-events="none"/>`;
-    const today=futureDays?`<line x1="${px(todayX)}" x2="${px(todayX)}" y1="${top}" y2="${baseline}" stroke="${CHART.grid}" stroke-opacity=".09" pointer-events="none"/>`:'';
-    const forecastLine=forecast?`<line x1="${px(forecast.mid.x1)}" y1="${px(forecast.mid.y1)}" x2="${px(forecast.mid.x2)}" y2="${px(forecast.mid.y2)}" stroke="${CHART.ink}" stroke-width="${CHART.lineForecast}" stroke-linecap="round" stroke-dasharray="7 6" stroke-opacity=".8" pointer-events="none"/>${forecast.endpoint?`<circle cx="${px(forecast.endpoint.x)}" cy="${px(forecast.endpoint.y)}" r="4" fill="none" stroke="${CHART.ink}" stroke-width="2" pointer-events="none"/>`:''}`:'';
-    const anchorDot=anchor?`<circle cx="${px(anchor.x)}" cy="${px(anchor.y)}" r="${CHART.pointActive}" fill="${CHART.ink}" stroke="${CHART.activeRing}" stroke-width="2" pointer-events="none"/>`:'';
-    /* Contextual observations, not a series. Deliberately no connecting line:
-       a slope drawn through post-workout readings would invite exactly the
-       inference the maths refuses to make, since these never reach trend(),
-       forecastGoal() or detectPlateau(). Hollow SQUARES separate them from the
-       morning circles by shape, so the two stay distinguishable in greyscale
-       and for colour-blind readers rather than relying on hue. Drawn before the
-       morning dots so the canonical series always sits on top. */
-    const postEdge=CHART.point+.7;
-    const postSeries=post.map(pt=>`<rect x="${px(pt.x-postEdge)}" y="${px(pt.y-postEdge)}" width="${px(postEdge*2)}" height="${px(postEdge*2)}" fill="none" stroke="${CHART.inkSecondary}" stroke-width="1.5" pointer-events="none"/>`).join('');
-    const plateauLabel=anchor&&plateau?.plateau?`<text x="${px(Math.min(W-right-52,Math.max(left+52,anchor.x)))}" y="${px(Math.max(top+13,anchor.y-16))}" text-anchor="middle" fill="${CHART.label}" font-size="${CHART.axisSize}" pointer-events="none">Plateau: ${plateau.plateauDays} days</text>`:'';
-    return `<section class="n99-card n99-chart"><div class="n99-row"><div><div class="n99-eyebrow">The bigger picture</div><h2>Weight trend</h2></div><span class="n99-unit">kg</span></div>${controls}
-      <div class="n99-chart-selected" aria-live="polite"><div><span id="n99-chart-date">${N.shortDate(p.date)}</span><strong id="n99-chart-weight">${p.weight.toFixed(1)}<small> kg</small></strong><small id="n99-chart-timing">${esc(pointTiming(p))}</small></div><div><span>7-day average</span><b id="n99-chart-average">${p.avg===null?'Building data':p.avg.toFixed(2)+' kg'}</b><small id="n99-chart-coverage">${p.coverage} readings in this window</small></div><div class="n99-chart-post" id="n99-chart-post" ${postByDate.has(p.date)?'':'hidden'}><span>Post-workout</span><b id="n99-chart-post-weight">${postByDate.has(p.date)?postByDate.get(p.date).weight.toFixed(1)+' kg':''}</b><small id="n99-chart-post-delta">${esc(postDelta(p,postByDate.get(p.date)))}</small></div></div>
-      <svg id="n99-chart-svg" class="n99-chart-svg${animClass}" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="n99-chart-title n99-chart-desc" onpointerdown="NXT.scrub(event)" onpointermove="if(event.buttons)NXT.scrub(event)"><title id="n99-chart-title">Bodyweight and seven-day rolling average${forecast?' with trend forecast':''}</title><desc id="n99-chart-desc">${points.length} weigh-ins. Silver dots are recorded weights. The purple line is a calendar-day average, shown only with at least three readings. The shaded band around it is the spread of readings about that average.${forecast?` A dashed line carries the recent trend on towards your goal, inside a cone whose lower and upper walls reach it at ${forecast.lowWeeks} and ${forecast.highWeeks} weeks.${goalRef===null?'':' The horizontal dashed line marks your goal weight.'}`:''} Use the slider below to inspect exact values.</desc>
-      <defs><linearGradient id="n99-chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${CHART.ink}" stop-opacity="${CHART.areaOpacity}"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity="0"/></linearGradient><linearGradient id="n99-chart-cone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".14"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity=".04"/></linearGradient></defs>
-      ${band}<line x1="${left}" x2="${left}" y1="${top}" y2="${baseline}" stroke="${CHART.axisText}" stroke-opacity=".28" pointer-events="none"/>
-      ${ticks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}"/><line x1="${left-5}" x2="${left}" y1="${t.y}" y2="${t.y}" stroke="${CHART.axisText}" stroke-opacity=".5" pointer-events="none"/><text x="${left-10}" y="${t.y+5}" text-anchor="end" fill="${CHART.axisText}" font-size="${CHART.axisSize}">${Number(t.value.toFixed(1))}</text>`).join('')}
-      ${goalMark}${today}${cone}${bandFill}
-      ${segments.map(seg=>`${seg.length>1?`<path d="${smoothPath(seg)} L ${seg.at(-1).x} ${baseline} L ${seg[0].x} ${baseline} Z" fill="url(#n99-chart-fill)"/>`:''}<path d="${smoothPath(seg)}" fill="none" stroke="${CHART.ink}" stroke-width="${CHART.line}" stroke-linecap="round" stroke-linejoin="round"/>${seg.length===1?`<circle cx="${seg[0].x}" cy="${seg[0].y}" r="${CHART.point}" fill="${CHART.ink}"/>`:''}`).join('')}
-      ${forecastLine}
-      ${postSeries}
-      ${points.map(pt=>`<circle cx="${pt.x}" cy="${pt.y}" r="${CHART.point}" fill="${CHART.ink}" fill-opacity=".58"/>`).join('')}
-      <line id="n99-chart-cursor" x1="${p.x}" x2="${p.x}" y1="${top}" y2="${baseline}" stroke="${CHART.cursor}" stroke-opacity=".38" stroke-dasharray="3 4"/><circle id="n99-chart-active" cx="${p.x}" cy="${p.y}" r="${CHART.pointActive}" fill="${CHART.active}" stroke="${CHART.activeRing}" stroke-width="2"/>
-      ${anchorDot}${plateauLabel}
-      <text x="${left}" y="${H-12}" fill="${CHART.axisText}" font-size="${CHART.axisSize}">${N.shortDate(model.start)}</text><text x="${px(Math.min(W-right,todayX))}" y="${H-12}" text-anchor="${futureDays?'middle':'end'}" fill="${CHART.axisText}" font-size="${CHART.axisSize}">${N.shortDate(state.date)}</text></svg>
-      ${points.length>1?`<input class="n99-scrubber" id="n99-chart-slider" type="range" min="0" max="${points.length-1}" value="${idx}" aria-label="Inspect weigh-in by date" aria-valuetext="${N.shortDate(p.date)}, ${p.weight} kilograms" oninput="NXT.selectPoint(Number(this.value))">`:''}
-      <div class="n99-legend"><span><i class="raw"></i>Morning</span>${post.length?'<span><i class="post"></i>Post-workout</span>':''}<span><i></i>7-day average</span>${forecast?'<span><i class="dash"></i>Projection</span>':''}${goalMark?'<span><i class="target"></i>Target</span>':''}</div>
-      ${points.length>1?'<p class="n99-chart-hint">Drag the chart or the slider to inspect a day.</p>':''}
-      ${((read)=>read?`<p class="n99-small">${read}</p>`:'')(trendReadText(goalOn?forecastRead:{ok:false,reason:''},plateau))}
-      ${N.ui.showGoal&&N.cfg().targetConfirmed?`<p class="n99-small">Your chosen range: ${goalLow()}–${goalHigh()} kg. A weight range alone does not measure leanness.</p>`:''}
-    </section>${N.diagnosisCard()}`;
+    const forecastLine=forecast?`<line class="vn-proj-line" x1="${px(forecast.mid.x1)}" y1="${px(forecast.mid.y1)}" x2="${px(forecast.mid.x2)}" y2="${px(forecast.mid.y2)}" stroke="${CHART.ink}" stroke-width="${CHART.lineForecast}" stroke-linecap="round" stroke-dasharray="2 5" stroke-opacity=".55" pointer-events="none"/>${forecast.endpoint?`<circle cx="${px(forecast.endpoint.x)}" cy="${px(forecast.endpoint.y)}" r="3.5" fill="none" stroke="${CHART.ink}" stroke-width="1.5" stroke-opacity=".7" pointer-events="none"/>`:''}`:'';
+    /* Diamonds, not circles: shape separates post-workout from morning without hue (I6). */
+    const postSeries=post.map(pt=>{
+      const s=3.4;
+      return `<path class="vn-post-mark" d="M${px(pt.x)} ${px(pt.y-s)}L${px(pt.x+s)} ${px(pt.y)}L${px(pt.x)} ${px(pt.y+s)}L${px(pt.x-s)} ${px(pt.y)}Z" fill="none" stroke="${CHART.inkSecondary}" stroke-width="1.5" pointer-events="none"/>`;
+    }).join('');
+    const trendPaths=segments.map(seg=>`${seg.length>1?`<path d="${smoothPath(seg)} L ${seg.at(-1).x} ${baseline} L ${seg[0].x} ${baseline} Z" fill="url(#n99-chart-fill)" pointer-events="none"/>`:''}<path class="vn-trend-line" d="${smoothPath(seg)}" fill="none" stroke="${CHART.ink}" stroke-width="${CHART.line}" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>${seg.length===1?`<circle cx="${seg[0].x}" cy="${seg[0].y}" r="${CHART.point}" fill="${CHART.ink}" pointer-events="none"/>`:''}`).join('');
+    const dateLabel=isLatest?'Latest morning':N.shortDate(p.date);
+    const postRow=postByDate.get(p.date);
+    const xLabs=(()=>{
+      const n=points.length<3?points.length:3;
+      if(!n)return '';
+      const idxs=n===1?[0]:n===2?[0,points.length-1]:[0,Math.round((points.length-1)/2),points.length-1];
+      return [...new Set(idxs)].map((i,k)=>{
+        const pt=points[i],anchor=k===0?'start':k===idxs.length-1?'end':'middle';
+        return `<text x="${px(pt.x)}" y="${H-8}" text-anchor="${anchor}" fill="${CHART.axisText}" font-size="11" pointer-events="none">${N.shortDate(pt.date)}</text>`;
+      }).join('');
+    })();
+    const togPost=`<button type="button" class="vn-tog" data-tog="post" aria-pressed="${!!N.ui.showPost}" onclick="NXT.setPostVisible(!NXT.ui.showPost)">
+      <span class="vn-tog-box" aria-hidden="true"></span>Post-workout
+      <svg class="vn-tog-key" width="10" height="10" aria-hidden="true"><path d="M5 1.2L8.8 5L5 8.8L1.2 5Z" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></button>`;
+    const togProj=canForecast?`<button type="button" class="vn-tog" data-tog="proj" aria-pressed="${!!N.ui.showForecast}" onclick="NXT.setForecastVisible(!NXT.ui.showForecast)">
+      <span class="vn-tog-box" aria-hidden="true"></span>Projection
+      <svg class="vn-tog-key" width="14" height="10" aria-hidden="true"><line x1="0" y1="5" x2="14" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="2 4" stroke-linecap="round"/></svg></button>`:'';
+    const summary=`${points.length} readings from ${N.shortDate(model.start)} to ${N.shortDate(state.date)}. Domain ${Number(low.toFixed(1))}–${Number(high.toFixed(1))} kg.`
+      +(forecast?' Projection is a model estimate, shown dashed — not a measurement.':'');
+    return `<section class="vn-weight n99-chart" id="vn-weight">
+      <div class="vn-read">
+        <p class="vn-h-sect">Recent trajectory</p>
+        <h2 class="vn-h-sub" id="vn-traj-headline">${esc(headline)}</h2>
+        <p class="vn-meta vn-mt2" id="vn-traj-read">${esc(readLine||(plateau.reason||''))}</p>
+      </div>
+      <div class="vn-mhead" id="vn-mhead" aria-live="polite">
+        <div class="vn-mhead-row">
+          <div class="vn-mhead-cell">
+            <span class="vn-metric-l" id="n99-chart-date">${esc(dateLabel)}</span>
+            <div class="vn-metric-v vn-num" id="n99-chart-weight">${p.weight.toFixed(1)}<em>kg</em></div>
+            <small class="vn-tiny" id="n99-chart-timing">${esc(pointTiming(p))}</small>
+          </div>
+          <div class="vn-mhead-cell vn-mhead-right">
+            <span class="vn-metric-l">Trend</span>
+            <div class="vn-h-sub vn-num vn-trend-val" id="n99-chart-average">${p.avg===null?'—':p.avg.toFixed(2)}<em>kg</em></div>
+            <small class="vn-tiny" id="n99-chart-coverage">${p.coverage} readings in this window</small>
+          </div>
+        </div>
+        <div class="vn-mhead-post" id="n99-chart-post" ${postRow?'':'hidden'}>
+          <span class="vn-metric-l">Post-workout</span>
+          <b class="vn-num" id="n99-chart-post-weight">${postRow?postRow.weight.toFixed(1)+' kg':''}</b>
+          <small class="vn-tiny" id="n99-chart-post-delta">${esc(postDelta(p,postRow))}</small>
+        </div>
+      </div>
+      <div class="vn-mt4">${rangeBtns}</div>
+      <div class="vn-chart-wrap" id="vn-chart-wrap" tabindex="0" role="application"
+        aria-label="Weight trend chart. Drag to inspect a day. Use left and right arrow keys; Escape returns to latest."
+        onpointerdown="NXT.scrub(event)" onpointermove="if(event.buttons)NXT.scrub(event)"
+        onkeydown="NXT.chartKey(event)">
+        <svg id="n99-chart-svg" class="n99-chart-svg vn-chart-svg${animClass}" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="n99-chart-title n99-chart-desc">
+          <title id="n99-chart-title">Morning weight and smoothed trend${forecast?' with model projection':''}</title>
+          <desc id="n99-chart-desc">${points.length} weigh-ins. Circles are morning readings. The solid line is the smoothed trend. Diamonds are post-workout when enabled. ${forecast?'A dashed faded line is a model projection, not a measurement. ':''}Y-axis covers recent readings only — the long-term goal is on Cut journey below.</desc>
+          <defs>
+            <clipPath id="vn-chart-clip"><rect x="${left}" y="${top}" width="${W-left-right}" height="${H-top-bottom}"/></clipPath>
+            <linearGradient id="n99-chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".12"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity="0"/></linearGradient>
+            <linearGradient id="n99-chart-cone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".10"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity=".02"/></linearGradient>
+          </defs>
+          ${narrowTicks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}" pointer-events="none"/><text x="${left-8}" y="${t.y+3.5}" text-anchor="end" fill="${CHART.axisText}" font-size="11" pointer-events="none">${Number(t.value.toFixed(1))}</text>`).join('')}
+          <g clip-path="url(#vn-chart-clip)" pointer-events="none">
+            ${today}${cone}${bandFill}${trendPaths}${forecastLine}${postSeries}
+            ${points.map(pt=>`<circle class="vn-raw-dot" cx="${pt.x}" cy="${pt.y}" r="2.1" fill="${CHART.raw}" fill-opacity=".85"/>`).join('')}
+            <line id="n99-chart-cursor" x1="${p.x}" x2="${p.x}" y1="${top}" y2="${baseline}" stroke="${CHART.cursor}" stroke-opacity=".38" stroke-dasharray="3 4"/>
+            <circle id="n99-chart-active" cx="${p.x}" cy="${p.y}" r="${CHART.pointActive}" fill="${CHART.active}" stroke="${CHART.activeRing}" stroke-width="2"/>
+            ${anchor&&forecast?`<circle cx="${px(anchor.x)}" cy="${px(anchor.y)}" r="4" fill="${CHART.ink}" stroke="${CHART.activeRing}" stroke-width="2"/>`:''}
+          </g>
+          ${xLabs}
+        </svg>
+      </div>
+      <div class="vn-legend n99-legend" id="vn-legend">
+        <span><i class="vn-key-trend"></i>Trend</span>
+        <span><i class="vn-key-raw raw"></i>Morning</span>
+        ${N.ui.showPost?'<span><i class="vn-key-post post"></i>Post-workout</span>':''}
+        ${forecast?'<span><i class="vn-key-proj dash"></i>Projection</span>':''}
+      </div>
+      <p class="vn-tiny vn-mt3" id="vn-csum">${esc(summary)}</p>
+      <div class="vn-togs">${togPost}${togProj}</div>
+      ${journeyHTML()}
+      ${evidenceHTML(plateau,forecastRead)}
+      <details class="vn-more-block"><summary>Why NXTFRM says this</summary>${N.diagnosisCard()}${N.reviewCard()}</details>
+      <input type="hidden" id="n99-chart-slider" value="${idx}" aria-hidden="true">
+    </section>`;
   }
-  function selectPoint(index) {
+  function selectPoint(index, opts) {
     const m=N.ui.chart,p=m?.points?.[index];if(!p)return;
-    N.ui.selected=p.date;
+    if(opts&&opts.clear)N.ui.selected=null;
+    else N.ui.selected=p.date;
+    const isLatest=!N.ui.selected||N.ui.selected===m.points.at(-1).date;
     const text=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-    text('n99-chart-date',N.shortDate(p.date));text('n99-chart-weight',p.weight.toFixed(1)+' kg');text('n99-chart-average',p.avg===null?'Building data':p.avg.toFixed(2)+' kg');text('n99-chart-coverage',p.coverage+' readings in this window');
+    const html=(id,v)=>{const el=document.getElementById(id);if(el)el.innerHTML=v;};
+    text('n99-chart-date',isLatest?'Latest morning':N.shortDate(p.date));
+    html('n99-chart-weight',p.weight.toFixed(1)+'<em>kg</em>');
+    html('n99-chart-average',p.avg===null?'—<em>kg</em>':p.avg.toFixed(2)+'<em>kg</em>');
+    text('n99-chart-coverage',p.coverage+' readings in this window');
     text('n99-chart-timing',pointTiming(p));
-    /* A missing post-workout reading hides the block rather than showing 0 or
-       borrowing the morning value. */
     const postRow=m.postByDate?m.postByDate.get(p.date):null,postBox=document.getElementById('n99-chart-post');
     if(postBox)postBox.hidden=!postRow;
     text('n99-chart-post-weight',postRow?postRow.weight.toFixed(1)+' kg':'');
@@ -911,16 +1059,32 @@ Object.assign(NXT, (()=>{
     if(slider){slider.value=index;slider.setAttribute('aria-valuetext',N.shortDate(p.date)+', '+p.weight+' kilograms');}
   }
   function scrub(event) {
-    const m=N.ui.chart,svg=document.getElementById('n99-chart-svg');if(!m?.points?.length||!svg)return;
+    const m=N.ui.chart,wrap=document.getElementById('vn-chart-wrap'),svg=document.getElementById('n99-chart-svg');
+    if(!m?.points?.length||!svg)return;
+    if(event.type==='pointerdown'&&wrap?.setPointerCapture){
+      try{wrap.setPointerCapture(event.pointerId);}catch(_){}
+    }
     const bounds=svg.getBoundingClientRect(),x=(event.clientX-bounds.left)/bounds.width*m.W;
-    const index=m.points.reduce((best,p,i)=>Math.abs(p.x-x)<Math.abs(m.points[best].x-x)?i:best,0);N.selectPoint(index);
+    const index=m.points.reduce((best,p,i)=>Math.abs(p.x-x)<Math.abs(m.points[best].x-x)?i:best,0);
+    N.selectPoint(index);
+  }
+  function chartKey(event) {
+    const m=N.ui.chart;if(!m?.points?.length)return;
+    const n=m.points.length;
+    let idx=Math.max(0,m.points.findIndex(p=>p.date===N.ui.selected));
+    if(!N.ui.selected||idx<0)idx=n-1;
+    if(event.key==='ArrowRight'){N.selectPoint(Math.min(n-1,idx+1));event.preventDefault();}
+    else if(event.key==='ArrowLeft'){N.selectPoint(Math.max(0,idx-1));event.preventDefault();}
+    else if(event.key==='Escape'){N.selectPoint(n-1,{clear:true});event.preventDefault();}
   }
   /* A repaint happens for many reasons — logging a set, saving a weigh-in,
      switching tabs. Only a deliberate range change should animate, so it is
      flagged here and consumed once by chartHTML(). Without this the chart would
      replay its reveal every time anything on the app changed. */
   function setRange(range) {N.ui.range=range;N.ui.selected=null;N.ui.chartAnim='range';N.repaint();}
-  function setGoalVisible(on) {N.ui.showGoal=on;N.repaint();}
+  function setGoalVisible(on) {N.ui.showGoal=!!on;N.repaint();}
+  function setPostVisible(on) {N.ui.showPost=!!on;N.repaint();}
+  function setForecastVisible(on) {N.ui.showForecast=!!on;N.repaint();}
   function setView(view) {N.ui.view=view;N.repaint();}
   function strengthHTML() {
     const items=N.strengthItems();
@@ -935,8 +1099,8 @@ Object.assign(NXT, (()=>{
     return N.card('Waist measurement',`<p>Optional, once a week. Use the same tape position and similar conditions.</p><div class="n99-stats">${N.metric('Latest',last?last.cm.toFixed(1)+' cm':'—',last?N.shortDate(last.date):'No measurement yet')}${N.metric('Previous change',last&&prior?signed(last.cm-prior.cm,1)+' cm':'—')}</div>${N.button('+ Log waist','NXT.openWaist()')}${rows.length?`<div class="n99-measurements">${rows.slice(-8).reverse().map(r=>`<button class="n99-list-row" onclick="NXT.openWaist('${r.date}')"><span>${N.shortDate(r.date)}</span><b>${r.cm.toFixed(1)} cm</b><span>Edit ›</span></button>`).join('')}</div>`:''}`)+N.card('Evo scans',`<p>Your existing scans are still available. Compare readings under similar conditions; treat changes as estimates, not proof of fat or muscle loss.</p>${N.button('Open scans','NXT.more(\'body\')',true)}`);
   }
   function progress() {
-    const rows=N.weights(),s=N.trendStats(rows),v=N.ui.view;
-    document.getElementById('weightPage').innerHTML=`<div class="n99">${N.heading('YOUR RESULTS, IN CONTEXT','Progress.',N.button('+ Log','apx95OpenQuickWeight()',true))}<div class="n99-progress-tabs" role="group" aria-label="Progress view">${[['overview','Overview'],['strength','Strength'],['body','Body']].map(([key,text])=>`<button class="${v===key?'active':''}" aria-pressed="${v===key}" onclick="NXT.setView('${key}')">${text}</button>`).join('')}</div>${v==='strength'?strengthHTML():v==='body'?bodyHTML():`${chartHTML()}<div class="n99-stats">${N.metric('Weekly average',s.current.n>=3?s.current.avg.toFixed(2)+'<small> kg</small>':'—',s.current.n+' readings this week')}${N.metric('Weekly change',signed(s.change)+'<small> kg</small>',s.change===null?'Needs two weeks of readings':'Compared with last week')}</div>${N.reviewCard()}<div class="n99-quick">${N.button('Strength trends',"NXT.setView('strength')",true)}${N.button('Waist & scans',"NXT.setView('body')",true)}</div><details class="n99-card"><summary>Weigh-in history</summary>${typeof apx95WeightLogHTML==='function'?apx95WeightLogHTML(rows):rows.slice(-30).reverse().map(r=>`<div class="n99-list-row"><span>${N.shortDate(r.date)}</span><b>${r.weight.toFixed(1)} kg</b></div>`).join('')}${N.button('Manage all weight entries',"NXT.openWeightHistory()",true)}</details>`}</div>`;
+    const rows=N.weights(),v=N.ui.view;
+    document.getElementById('weightPage').innerHTML=`<div class="n99 vn-progress">${N.heading('YOUR RESULTS, IN CONTEXT','Progress.',N.button('+ Log','apx95OpenQuickWeight()',true))}<div class="n99-progress-tabs vn-progress-tabs" role="group" aria-label="Progress view">${[['overview','Weight'],['strength','Performance'],['body','Body']].map(([key,text])=>`<button class="${v===key?'active':''}" aria-pressed="${v===key}" onclick="NXT.setView('${key}')">${text}</button>`).join('')}</div>${v==='strength'?strengthHTML():v==='body'?bodyHTML():`${chartHTML()}<details class="vn-more-block"><summary>Weigh-in history · ${rows.length}</summary>${typeof apx95WeightLogHTML==='function'?apx95WeightLogHTML(rows):rows.slice(-30).reverse().map(r=>`<div class="n99-list-row"><span>${N.shortDate(r.date)}</span><b>${r.weight.toFixed(1)} kg</b></div>`).join('')}${N.button('Manage all weight entries',"NXT.openWeightHistory()",true)}</details>`}</div>`;
   }
   function openWaist(date=state.date) {
     const row=N.cfg().waist.find(r=>r.date===date);
@@ -965,7 +1129,7 @@ Object.assign(NXT, (()=>{
     r.date=date;r.weight=weight;r.ts=Date.now();N.commit('Weigh-in corrected');
   }
   function deleteWeight() {const r=findEditWeight();if(!r||!confirm('Delete this weigh-in?'))return;state.bws=state.bws.filter(x=>x!==r);N.commit('Weigh-in deleted');}
-  return {signed,smoothPath,trendReadText,chartModel,chartHTML,selectPoint,scrub,setRange,setGoalVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
+  return {signed,smoothPath,trendReadText,chartModel,chartHTML,journeyHTML,selectPoint,scrub,chartKey,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
 })());
 
 Object.assign(NXT, (()=>{

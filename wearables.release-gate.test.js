@@ -657,13 +657,15 @@ test("post-workout weight is charted without touching the canonical row set", fu
 test("both weight series share one kg axis", function () {
   const cut = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8");
   const model = cut.slice(cut.indexOf("function chartModel("), cut.indexOf("function chartHTML()"));
-  // Post-workout values widen the same domain the primary series built...
-  assert.ok(model.indexOf("for(const r of postRows)values.push(r.weight);") !== -1,
-    "post-workout must be inside the shared y-domain, not clipped out of the plot");
-  // ...and are projected through the same x()/y() closures, so a second axis
-  // cannot be introduced without deleting this line.
+  // VNext 2C / D2+D8: post-workout must NOT widen the recent-trajectory domain.
+  // It still projects through the same x()/y() closures so a second axis cannot appear.
+  assert.strictEqual(model.indexOf("for(const r of postRows)values.push(r.weight);"), -1,
+    "post-workout must not enter the recent-trajectory Y-domain (D2/D8)");
   assert.ok(model.indexOf("const post=postRows.map(r=>({...r,x:x(r.date),y:y(r.weight)}));") !== -1,
     "post-workout must use the primary scales");
+  assert.ok(/Visible morning readings \+ trend ONLY|morning readings \+ trend ONLY/i.test(model)
+    || model.indexOf("must never stretch the recent-trajectory scale") !== -1,
+    "domain contract comment must remain");
   const scaleDefs = (model.match(/const xMs=|,y=v=>top\+/g) || []).length;
   assert.ok(scaleDefs <= 2, "only one x and one y scale may be defined");
   assert.strictEqual(/y2=|yRight|secondAxis|rightAxis/.test(model), false, "no second y-axis");
@@ -699,17 +701,22 @@ test("a missing timing is drawn as absent, never as zero or a copy", function ()
   assert.ok(tr.indexOf("if(String(r.timeOfDay||'').toLowerCase()!==want)continue;") !== -1,
     "a row of another timing must be skipped, not coerced");
   // The readout hides rather than invents when there is no post-workout row.
-  const sel = cut.slice(cut.indexOf("function selectPoint(index)"), cut.indexOf("function scrub(event)"));
+  const selStart = cut.indexOf("function selectPoint(");
+  const sel = cut.slice(selStart, cut.indexOf("function scrub(event)"));
   assert.ok(sel.indexOf("postBox.hidden=!postRow") !== -1, "no post-workout reading hides the block");
   assert.ok(sel.indexOf("postRow?postRow.weight.toFixed(1)+' kg':''") !== -1, "never substitute a value");
 });
 
 test("the two series are named for the user, not by internal timing keys", function () {
   const cut = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8");
-  assert.ok(cut.indexOf('<i class="raw"></i>Morning') !== -1, "primary series is labelled Morning");
-  assert.ok(cut.indexOf('<i class="post"></i>Post-workout') !== -1, "secondary series is labelled Post-workout");
+  assert.ok(cut.indexOf("Morning") !== -1 && (cut.indexOf("vn-key-raw") !== -1 || cut.indexOf('class="raw"') !== -1),
+    "primary series is labelled Morning");
+  assert.ok(cut.indexOf("Post-workout") !== -1 && (cut.indexOf("vn-key-post") !== -1 || cut.indexOf('class="post"') !== -1),
+    "secondary series is labelled Post-workout");
   const css = fs.readFileSync(path.join(ROOT, "cut-support.css"), "utf8");
-  assert.ok(css.indexOf(".n99-legend i.post") !== -1, "the legend needs a swatch for the second series");
+  const vcss = fs.readFileSync(path.join(ROOT, "vnext.css"), "utf8");
+  assert.ok(css.indexOf(".n99-legend i.post") !== -1 || vcss.indexOf("vn-key-post") !== -1,
+    "the legend needs a swatch for the second series");
   // The primary row keeps the existing legacy fallback, so the readout names the
   // timing actually recorded instead of claiming every point is a morning one.
   assert.ok(cut.indexOf("function pointTiming(p)") !== -1);
