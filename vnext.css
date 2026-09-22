@@ -14,6 +14,7 @@
      · Today                               (#homePage .vn-*)
      · Train                               (#trainPage .vn-*)   ← Phase 2B
      · Progress / Weight                   (#weightPage .vn-*)  ← Phase 2C
+     · Progress / Performance              (#weightPage .vn-perf) ← Phase 2G
      · History                             (#historyPage .vn-*) ← Phase 2D
      · Settings                            (#morePage .vn-*)    ← Phase 2E
      · EvoScan                             (#morePage .vn-evo)  ← Phase 2F
@@ -1946,3 +1947,124 @@ body:has(.tabs.vn-recede) .toast{
   #morePage .vn-evo-switch button{transform:none;transition:none}
 }
 :root[data-nxp-motion="reduced"] #morePage .vn-evo-act:active{transform:none;filter:none}
+
+/* ==========================================================================
+   Phase 2G — Progress / Performance (#weightPage)
+   One list of comparisons. Rows and hairlines, not a card grid.
+   Status is a word, then a colour, then a shape. Each spark is its own scale.
+   ========================================================================== */
+
+#weightPage .vn-perf{
+  margin:0;padding:0;background:none;border:0;box-shadow:none;min-width:0;
+}
+#weightPage .vn-perf-lead{margin:0 0 var(--vn-s2);min-width:0}
+#weightPage .vn-perf-kicker{
+  margin:0;font-size:11.5px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--vn-ink-4);
+}
+#weightPage .vn-perf-intro{
+  margin:6px 0 0;font-size:14.5px;font-weight:450;line-height:1.45;
+  color:var(--vn-ink-2);overflow-wrap:anywhere;
+}
+#weightPage .vn-perf-rows{
+  list-style:none;margin:var(--vn-s3) 0 0;padding:0;min-width:0;
+}
+#weightPage .vn-perf-row{
+  display:grid;grid-template-columns:minmax(0,1fr) 96px;
+  column-gap:12px;align-items:start;
+  padding:14px 0;border-top:1px solid var(--vn-line);min-width:0;
+}
+#weightPage .vn-perf-main{min-width:0}
+#weightPage .vn-perf-name{
+  margin:0;font-size:15px;font-weight:560;line-height:1.3;
+  letter-spacing:-.01em;color:var(--vn-ink);overflow-wrap:anywhere;
+}
+#weightPage .vn-perf-meta{
+  margin:3px 0 0;font-size:12.5px;font-weight:450;line-height:1.4;
+  color:var(--vn-ink-3);overflow-wrap:anywhere;
+}
+#weightPage .vn-perf-statusline{
+  display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:6px 0 0;
+}
+#weightPage .vn-perf-read{
+  margin:2px 0 0;font-size:12.5px;font-weight:450;line-height:1.35;color:var(--vn-ink-3);
+}
+#weightPage .vn-perf-delta{
+  font-size:13px;font-weight:600;color:var(--vn-ink);
+  font-variant-numeric:tabular-nums;
+}
+/* Word, then colour, then shape. Six shapes so greyscale still separates them. */
+#weightPage .vn-perf-flag{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:13px;font-weight:600;line-height:1.3;color:var(--vn-ink-2);
+}
+#weightPage .vn-perf-flag i{
+  width:8px;height:8px;flex:none;display:block;
+}
+#weightPage .vn-perf-flag.is-improving{color:var(--vn-violet-lift)}
+#weightPage .vn-perf-flag.is-improving i{background:var(--vn-violet);border-radius:50%}
+#weightPage .vn-perf-flag.is-holding{color:var(--vn-violet-lift)}
+#weightPage .vn-perf-flag.is-holding i{background:var(--vn-violet);border-radius:1px}
+#weightPage .vn-perf-flag.is-review{color:var(--vn-review-lift)}
+#weightPage .vn-perf-flag.is-review i{
+  background:var(--vn-review);border-radius:1px;transform:rotate(45deg);
+}
+#weightPage .vn-perf-flag.is-watch{color:var(--vn-ink-2)}
+#weightPage .vn-perf-flag.is-watch i{
+  background:transparent;border-radius:1px;transform:rotate(45deg);
+  box-shadow:inset 0 0 0 1.5px var(--vn-ink-2);
+}
+#weightPage .vn-perf-flag.is-older{color:var(--vn-ink-2)}
+#weightPage .vn-perf-flag.is-older i{
+  width:10px;height:2px;border-radius:1px;background:var(--vn-ink-3);align-self:center;
+}
+#weightPage .vn-perf-flag.is-building{color:var(--vn-ink-2)}
+#weightPage .vn-perf-flag.is-building i{
+  background:transparent;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--vn-ink-2);
+}
+#weightPage .vn-perf-plot{position:relative;width:96px;min-width:0;margin-top:2px}
+#weightPage .vn-perf-spark{
+  display:block;width:100%;height:36px;max-width:none;flex:none;overflow:visible;
+}
+#weightPage .vn-perf-grid{stroke:var(--vn-line-3);stroke-width:1}
+#weightPage .vn-perf-line{fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+/* Line colour follows the engine tone. is-neutral is last on purpose: the
+   Watch status also carries is-watch for its hollow diamond, and that must
+   not turn the line amber. Amber is the Review tone. */
+#weightPage .vn-perf-line.is-good{stroke:var(--vn-violet)}
+#weightPage .vn-perf-line.is-watch{stroke:var(--vn-review)}
+#weightPage .vn-perf-line.is-neutral{stroke:var(--vn-ink-3)}
+#weightPage .vn-perf-line.is-older{stroke-dasharray:2.5 2.2}
+#weightPage .vn-perf-mark.is-improving{fill:var(--vn-violet)}
+#weightPage .vn-perf-mark.is-holding{fill:var(--vn-violet)}
+#weightPage .vn-perf-mark.is-review{fill:var(--vn-review)}
+#weightPage .vn-perf-mark.is-watch{fill:none;stroke:var(--vn-ink-2);stroke-width:1.4}
+#weightPage .vn-perf-mark.is-older{stroke:var(--vn-ink-3);stroke-width:2;stroke-linecap:round}
+#weightPage .vn-perf-mark.is-building{fill:none;stroke:var(--vn-ink-3);stroke-width:1.4}
+/* Text equivalent for the spark. Clipped, not removed, so it stays in the
+   accessibility tree and cannot widen the row. */
+#weightPage .vn-perf-eq{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;
+}
+#weightPage .vn-perf-note{
+  margin:var(--vn-s5) 0 0;padding-top:var(--vn-s4);
+  border-top:1px solid var(--vn-line);
+  font-size:12.5px;font-weight:450;line-height:1.45;color:var(--vn-ink-3);
+  overflow-wrap:anywhere;
+}
+#weightPage .nxp-progress-strength :where(button,a):focus-visible{
+  outline:2px solid var(--vn-violet-line);outline-offset:2px;border-radius:8px;
+}
+
+@media (max-width:359px){
+  #weightPage .vn-perf-row{grid-template-columns:minmax(0,1fr) 72px;column-gap:8px;padding:12px 0}
+  #weightPage .vn-perf-plot{width:72px}
+  #weightPage .vn-perf-spark{height:30px}
+  #weightPage .vn-perf-name{font-size:15px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  #weightPage .vn-perf-spark{animation:none}
+}
+:root[data-nxp-motion="reduced"] #weightPage .vn-perf-spark{animation:none}

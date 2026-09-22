@@ -937,9 +937,11 @@ const NXP = (() => {
       return;
     }
     if(v==='strength'){
+      /* 2G seam: the engine still owns strengthHTML for the legacy progress
+         renderer. This screen paints its own list from strengthItems(), which
+         remains the only source of status and e1RM. */
       const items=N.strengthItems();
-      document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-strength"><header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(performanceSubtitle(items))}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${performanceSummary(items)}<div class="nxp-progress-strength-body">${N.strengthHTML()}</div></div>`;
-      arrangeStrengthView(items);
+      document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-strength vn-progress"><header class="nxp-heading nxp-progress-chrome vn-progress-chrome"><div><h1>Progress</h1><p>${esc(performanceSubtitle(items))}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${performanceView(items)}</div>`;
       return;
     }
     /* Phase 2C — Weight owns its layout inside chartHTML (trajectory + journey).
@@ -958,65 +960,121 @@ const NXP = (() => {
     /* Retired for 2C: chartHTML owns the Weight surface. Kept as a no-op so
        any stray caller does not throw. */
   }
+  /* Engine vocabulary only (I12). The word is the status; colour and shape follow it. */
+  const PERF_NOTE='Estimated 1RM is a comparison aid, not a tested maximum or proof of muscle retention. Technique, effort and equipment setup affect it.';
+  function fmtLoad(v) {
+    const n=N.finite(v);
+    if(n===null)return '';
+    const r=Math.round(n*10)/10;
+    return Number.isInteger(r)?String(r):r.toFixed(1);
+  }
+  function statusFlag(status) {
+    return {
+      'Improving':'is-improving',
+      'Holding steady':'is-holding',
+      'Watch':'is-watch',
+      'Review':'is-review',
+      'Older history':'is-older',
+      'Building data':'is-building'
+    }[status]||'is-building';
+  }
+  function statusRead(status) {
+    switch(status){
+      case 'Older history': return 'Too old to compare';
+      case 'Building data': return 'Not enough yet';
+      case 'Review': return 'Down on both of the latest two sessions';
+      case 'Watch': return 'Down on this comparison, not repeated yet';
+      case 'Improving': return 'Up across the last four sessions';
+      case 'Holding steady': return 'Within the steady band';
+      default: return '';
+    }
+  }
+  /* A missing delta is not zero. Only a real engine delta is printed, at one decimal. */
+  function deltaText(item) {
+    if(item.delta===null||item.delta===undefined||!Number.isFinite(Number(item.delta)))return '';
+    return N.signed(item.delta,1)+'%';
+  }
+  /* Each exercise is scaled from its own last eight sessions. Padding matches the
+     engine spark so a flat series still has a line, and a pulldown is not drawn
+     on a fly's axis. */
+  function sparkModel(history) {
+    const series=(history||[]).slice(-8);
+    const values=series.map(x=>x.value);
+    if(!values.length||values.some(v=>!Number.isFinite(v)))return null;
+    const min=Math.min(...values)-1,max=Math.max(...values)+1,span=max-min||1;
+    const points=values.map((v,i)=>({x:4+i/Math.max(1,values.length-1)*102,y:35-(v-min)/span*28}));
+    return {series,values,min,max,points,d:N.smoothPath(points)};
+  }
+  function sparkText(item, model) {
+    const bits=model.series.map(s=>N.shortDate(s.date)+' '+fmtLoad(s.value));
+    return item.name+' at '+item.gym+'. Estimated 1RM, own scale '+fmtLoad(model.min)+' to '+fmtLoad(model.max)+': '+bits.join(', ')+'.';
+  }
+  function endMark(point, status) {
+    const x=point.x,y=point.y,f=n=>Number(n).toFixed(2);
+    if(status==='Holding steady')return `<rect class="vn-perf-mark is-holding" x="${f(x-2.6)}" y="${f(y-2.6)}" width="5.2" height="5.2"/>`;
+    if(status==='Review'||status==='Watch'){
+      const r=3.4,pts=`${f(x)},${f(y-r)} ${f(x+r)},${f(y)} ${f(x)},${f(y+r)} ${f(x-r)},${f(y)}`;
+      const cls=status==='Review'?'is-review':'is-watch';
+      return `<polygon class="vn-perf-mark ${cls}" points="${pts}"${status==='Watch'?' fill="none"':''}/>`;
+    }
+    if(status==='Older history')return `<line class="vn-perf-mark is-older" x1="${f(x-4)}" y1="${f(y)}" x2="${f(x+4)}" y2="${f(y)}"/>`;
+    if(status==='Building data')return `<circle class="vn-perf-mark is-building" cx="${f(x)}" cy="${f(y)}" r="3.2" fill="none"/>`;
+    return `<circle class="vn-perf-mark is-improving" cx="${f(x)}" cy="${f(y)}" r="3.2"/>`;
+  }
+  function performanceMeta(item) {
+    const bits=[item.gym,item.sessions===1?'1 session':item.sessions+' sessions'];
+    if(item.latestDate)bits.push(N.shortDate(item.latestDate));
+    const last=item.history.at(-1),set=last?.sets?.at(-1);
+    const load=set?N.finite(set.weight):null,reps=set?N.finite(set.reps):null;
+    if(load!==null&&reps!==null&&reps>0)bits.push(fmtLoad(load)+' kg × '+reps);
+    if(item.latestE1rm)bits.push('Est. 1RM '+fmtLoad(item.latestE1rm));
+    return bits.join(' · ');
+  }
+  function performanceRow(item, i) {
+    const flag=statusFlag(item.status);
+    const delta=deltaText(item);
+    const model=sparkModel(item.history);
+    const title=item.name+' at '+item.gym+', estimated 1RM';
+    const eq=model?sparkText(item, model):item.name+' at '+item.gym+'. No sessions to plot.';
+    const lineTone=item.tone==='good'?'is-good':item.tone==='watch'?'is-watch':'is-neutral';
+    const lastPt=model?.points.at(-1);
+    const plot=model?`<div class="vn-perf-plot"><svg class="n99-spark vn-perf-spark" viewBox="0 0 110 40" role="img" aria-label="${esc(title)}" aria-labelledby="vn-perf-t-${i}" aria-describedby="vn-perf-eq-${i}" data-min="${model.min}" data-max="${model.max}"><title id="vn-perf-t-${i}">${esc(title)}</title><line class="vn-perf-grid" x1="4" y1="21" x2="106" y2="21"/><path class="vn-perf-line ${lineTone} ${flag}" d="${model.d}" fill="none"/>${lastPt?endMark(lastPt, item.status):''}</svg><p class="vn-perf-eq" id="vn-perf-eq-${i}">${esc(eq)}</p></div>`:'';
+    return `<li class="vn-perf-row" data-status="${esc(item.status)}" data-gym="${esc(item.gym)}" data-e1rm="${Number(item.latestE1rm)||0}"><div class="vn-perf-main"><h3 class="vn-perf-name">${esc(item.name)}</h3><p class="vn-perf-meta">${esc(performanceMeta(item))}</p><p class="vn-perf-statusline"><span class="vn-perf-flag ${flag}">${esc(item.status)}<i aria-hidden="true"></i></span>${delta?`<span class="vn-perf-delta">${esc(delta)}</span>`:''}</p><p class="vn-perf-read">${esc(statusRead(item.status))}</p></div>${plot}</li>`;
+  }
   function performanceSubtitle(items) {
     const last=items.map(x=>x.latestDate).filter(Boolean).sort().at(-1);
     if(!items.length)return 'No lifting history yet';
-    if(items.every(x=>x.status==='Older history'))return 'Older history';
-    return last?'Last comparable lift '+N.shortDate(last):items.length+' exercises tracked';
+    if(items.every(x=>x.status==='Older history'))return 'Too old to compare';
+    if(items.every(x=>x.status==='Building data'))return 'Not enough yet';
+    return last?'Last lift '+N.shortDate(last):items.length+' exercises tracked';
+  }
+  function performanceIntro(items) {
+    const last=items.map(x=>x.latestDate).filter(Boolean).sort().at(-1);
+    if(!items.length)return 'Log the same exercise at the same gym to start a comparison.';
+    if(items.every(x=>x.status==='Older history')){
+      return 'Too old to compare. '+(last?'Last session '+N.shortDate(last)+'. ':'')+'None of these exercises is inside the 21-day window, so no change is shown.';
+    }
+    if(items.every(x=>x.status==='Building data')){
+      return 'Not enough yet. Four sessions of the same exercise at the same gym are needed before a change is shown.';
+    }
+    const order=['Review','Watch','Improving','Holding steady','Building data','Older history'];
+    const bits=order.map(status=>{
+      const n=items.filter(x=>x.status===status).length;
+      return n?n+' '+status:'';
+    }).filter(Boolean);
+    return bits.join(' · ')+(last?'. Latest session '+N.shortDate(last)+'.':'.');
   }
   function performanceSummary(items) {
-    const last=items.map(x=>x.latestDate).filter(Boolean).sort().at(-1);
-    const older=items.filter(x=>x.status==='Older history').length;
-    const holding=items.filter(x=>x.tone==='good').length;
-    const review=items.filter(x=>x.status==='Review').length;
-    const building=items.filter(x=>x.status==='Building data').length;
-    const watch=items.filter(x=>x.status==='Watch').length;
-    let title='No lifts yet';
-    let detail='Log the same exercise at the same gym to start a comparison.';
-    if(items.length&&older===items.length){
-      title='Older history';
-      detail=last?`Last comparable lift ${N.shortDate(last)}. None of the ${items.length} tracked exercises is recent enough for a current comparison.`:`${items.length} exercises tracked, none recent enough to compare.`;
-    }else if(items.length){
-      title=review?`${holding} holding / improving · ${review} to review`:holding||watch?`${holding} holding / improving`:`${items.length} exercises`;
-      const bits=[older?older+' older history':'',building?building+' still building':'',watch?watch+' watch':''].filter(Boolean);
-      detail=(last?'Last comparable lift '+N.shortDate(last)+'. ':'')+(bits.length?bits.join(' · ')+'.':'Comparable sessions are available.');
-    }
-    return `<section class="nxp-progress-strength-summary"><span class="nxp-caption">Performance history</span><strong>${esc(title)}</strong><p>${esc(detail)}</p></section>`;
+    return `<header class="vn-perf-lead"><p class="vn-perf-kicker">Performance</p><p class="vn-perf-intro">${esc(performanceIntro(items))}</p></header>`;
   }
-  function arrangeStrengthView(items) {
-    const root=document.querySelector('.nxp-progress-strength');
-    if(!root)return;
-    const cards=[...root.querySelectorAll('.nxp-progress-strength-body > .n99-card')];
-    const intro=cards[0],list=cards[1];
-    if(intro){
-      intro.classList.add('nxp-progress-strength-note');
-      const heading=intro.querySelector('h2'),stats=intro.querySelector('.n99-stats');
-      if(heading)heading.hidden=true;
-      if(stats)stats.hidden=true;
-      if(list)list.insertAdjacentElement('afterend',intro);
-    }
-    if(list){
-      list.classList.add('nxp-progress-strength-list');
-      const heading=list.querySelector('h2');
-      if(heading){
-        heading.className='nxp-caption nxp-progress-strength-heading';
-        heading.textContent=items.length?'Exercise trends · '+items.length:'Exercise trends';
-      }
-    }
-    const rows=[...root.querySelectorAll('.n99-strength-row')];
-    items.forEach((item,i)=>{
-      const row=rows[i];if(!row)return;
-      const meta=row.querySelector('p');
-      const last=item.history.at(-1),set=last?.sets?.at(-1);
-      const bits=[item.gym,item.sessions+(item.sessions===1?' session':' sessions')];
-      if(item.latestDate)bits.push(N.shortDate(item.latestDate));
-      const load=set?N.finite(set.weight):null,reps=set?N.finite(set.reps):null;
-      if(load!==null&&reps!==null&&reps>0)bits.push((Number.isInteger(load)?load:load.toFixed(1))+' kg × '+reps);
-      else if(item.latestE1rm)bits.push('Est. 1RM '+Math.round(item.latestE1rm));
-      if(meta)meta.textContent=bits.join(' · ');
-      const status=row.querySelector('.n99-status');
-      if(status&&item.status==='Older history')status.classList.add('nxp-progress-status-quiet');
-    });
+  function performanceView(items) {
+    const note=`<p class="vn-perf-note">${esc(PERF_NOTE)}</p>`;
+    if(!items.length)return `<section class="vn-perf">${performanceSummary(items)}${note}</section>`;
+    return `<section class="vn-perf" aria-label="Exercise comparisons">${performanceSummary(items)}<ol class="vn-perf-rows">${items.map(performanceRow).join('')}</ol>${note}</section>`;
+  }
+  function arrangeStrengthView() {
+    /* 2G paints the comparison list in performanceView(). The V99 cards this
+       used to reorder are no longer injected. Kept so a stray caller does not throw. */
   }
   function bodyScans() {
     return [...(state.scans||[])].filter(s=>s&&Number.isFinite(N.dateMs(s.date))&&s.date<=state.date)

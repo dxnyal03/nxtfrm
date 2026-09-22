@@ -504,3 +504,98 @@ scans injected at runtime, and D14 is proven by the contract fixture and `verify
 rather than by the seed. On real data the visible effect of D14 depends on how many
 skipped-morning days exist; that dataset is in the owner's browser, not the repo, so the
 magnitude there is unmeasured.
+
+---
+
+# CLAUDE REVIEW — VNEXT PHASE 2G: PROGRESS → PERFORMANCE
+
+Implemented on `grok-4.7-high-fast`.
+
+## A. SCOPE — PASS
+
+`premium-ui.js` and `vnext.css` only. **`cut-support.js` and `index.html` are untouched**, so
+the strength engine — the e1RM formula, the 21/56-day windows, the ±2/−5 thresholds, the
+`sustained` rule and the 24-item cap — is exactly as shipped. `sw.js`,
+`manifest.webmanifest`, `seed.*`, `train-anatomy.js` and every wearables suite clean.
+`RELEASE`/`CACHE_NAME` at `109`.
+
+`N.strengthHTML()` remains in place for the legacy renderer; the live screen is painted from
+`strengthItems()` in `premium-ui.js`. Same migration seam as every prior slice.
+
+## B. ALL SIX STATUSES RENDER — the thing the seed could not test
+
+The seed yields 20 exercises **all classed `Older history`**, so it exercises one of six
+states. I injected synthetic lifting history and confirmed the engine classifies, and the UI
+renders, every one:
+
+| Engine classification | Delta | Rendered |
+|---|---|---|
+| `Improving` — Bench Press · Gym A | +11.25% | yes |
+| `Holding steady` — Back Squat · Gym A | 0.00% | yes |
+| `Watch` — Overhead Press · Gym A | −10.83% | yes |
+| `Review` — Deadlift · Gym A | −15.00% | yes |
+| `Building data` — Cable Fly · Gym A | null | yes |
+| `Older history` — Leg Press · Gym A | null | yes |
+| `Improving` — Bench Press · **Gym B** | +7.14% | yes — two gyms, two comparisons |
+
+## C. NOT COLOUR-ALONE — proven in greyscale (I2 / I6)
+
+Rendered with `grayscale(1)` applied. Every status stays distinguishable:
+
+| Status | Glyph | Plain-language line |
+|---|---|---|
+| Building data | ○ hollow circle | "Not enough yet" |
+| Improving | ● filled circle | "Up across the last four sessions" |
+| Holding steady | ■ square | "Within the steady band" |
+| Watch | ◇ hollow diamond | "Down on this comparison, not repeated yet" |
+| Review | ◆ filled diamond | "Down on both of the latest two sessions" |
+| Older history | — dash | "Too old to compare" |
+
+The `Older history` sparkline is additionally **dashed**, marking stale data without relying
+on colour.
+
+## D. CHARTS — per-exercise scales, with text equivalents
+
+Each spark is on its **own** scale, as the data-viz skill requires — loads differ by an order
+of magnitude across the list. Proven by the text equivalents:
+
+```
+Cable Fly  … own scale 30.7 to 32.7
+Back Squat … own scale 125.7 to 127.7
+Leg Press  … own scale 252.3 to 254.3
+```
+
+**7 of 7 sparks carry an accessible name**, and each states exercise, gym, that the value is an
+estimated 1RM, its own scale, and the dated points. A sparkline that only sighted users can
+read would have failed; these do not.
+
+## E. HONESTY — PASS
+
+`Older history` reads "Too old to compare", not as a gap to fill. `Building data` reads "Not
+enough yet", not as zero progress. Statuses are engine vocabulary only (I12) — no score, no
+composite, no "muscle preserved" (D9).
+
+The disclaimer survives verbatim: *"Estimated 1RM is a comparison aid, not a tested maximum or
+proof of muscle retention. Technique, effort and equipment setup affect it."*
+
+**A null delta never renders a percentage** — verified per row against the engine rather than
+by scanning page text. Note a *real* 0.00% delta (Back Squat, flat across four sessions)
+correctly renders as `0.0%`; that is a true value, not a null one. My first pass flagged it as
+a failure, which was a false positive in my harness, not a defect.
+
+## F. BROWSER QA — PASS
+
+**390 / 393 / 402 / 430 / 375 / 320**: zero horizontal overflow, zero targets under 44pt, zero
+page errors at every width. **Zero contrast failures** on the Performance surface.
+
+All four baseline handlers present at every width (`setView` ×3, `apx95OpenQuickWeight`). All
+five destinations render byte-identical markup (7449 / 1201 / 16730 / 11258 / 3613), 0 errors.
+
+16 suites / 458 tests / 0 failing. `verify-2g.mjs`: 11 passed, on injected fixtures.
+`node --check` clean; `vnext.css` braces 653/653.
+
+## G. NOTED, NOT IN SCOPE
+
+**Progress → Body** still links out to the old scan entry via `NXT.more('body')`, which 2F
+replaced with the EvoScan workspace. Design brief §S wants Body to gain analytical presence
+under Progress while capture stays in Settings. Carried forward; deliberately untouched here.

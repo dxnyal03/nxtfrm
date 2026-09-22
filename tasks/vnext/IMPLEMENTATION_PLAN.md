@@ -36,7 +36,7 @@ renderMore=NXP.more; renderHistory=NXP.history;
 | **2E** | Settings / More: calm configuration rows | ✅ committed `1499653` |
 | **D12** | Shared primary-button + destructive contrast patch | ✅ committed `0f54aa6` |
 | **2F** | EvoScan flagship: OCR reliability + body-composition workspace | ✅ committed `ba33fa8` |
-| **2G** | Progress → Performance | ← **current** |
+| **2G** | Progress → Performance | ✅ committed |
 
 | 2H | AI surfaces (Why / Ask / proposal sheets) | 2G approved |
 
