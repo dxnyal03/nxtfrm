@@ -92,4 +92,5 @@ Set per delegation via `--model`; the interactive Cursor config is left alone.
 - Implement only the scope in `tasks/vnext/CURRENT_TASK.md`. Anything else — including improvements that look obvious — is out of scope; raise it in your report instead.
 - Verify what §6 assigns you: `node --check` on changed JS, balanced braces on changed CSS, and the deterministic suites green. Report their real output. Claude runs the browser, responsive, interaction and reduced-motion checks.
 - **Do not commit or push.** Update `tasks/vnext/CURSOR_REPORT.md` and stop. The design director reviews the working tree and the actual git diff.
+- Pre-deployment items live in `tasks/vnext/RELEASE_CHECKS.md`. They gate the `RELEASE` bump, not individual slice commits.
 - If the page requests a new `.js`/`.css`, the offline shell in `sw.js` must list it at the current `RELEASE` — otherwise the release gate fails and the PWA breaks offline.
