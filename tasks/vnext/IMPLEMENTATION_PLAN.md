@@ -31,8 +31,8 @@ renderMore=NXP.more; renderHistory=NXP.history;
 |---|---|---|
 | **2A** | VNext visual foundation · navigation + page-transition foundation · Today lifting · Today rest · responsive 390/375/320 · reduced motion | ✅ committed `9fd3772` |
 | **2B** | Train: active workout mode, set logging, rest, queue, completion recap | ✅ committed `761f339` |
-| **2C** | Progress → Weight: recent trajectory chart (D2), Journey rail (D3), scrub, ranges | ← **current** |
-| 2D | History: calendar-first, selected-date detail | 2C approved |
+| **2C** | Progress → Weight: recent trajectory chart (D2), Journey rail (D3), scrub, ranges | ✅ committed `6563be6` |
+| **2D** | History: calendar-first, selected-date detail | ← **current** |
 | 2E | Settings / More: calm configuration rows | 2D approved |
 | 2F | Progress → Performance | 2E approved |
 | 2G | Body Intelligence + OCR review flow | 2F approved |

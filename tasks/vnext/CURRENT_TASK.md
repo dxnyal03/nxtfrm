@@ -1,143 +1,125 @@
-# CURRENT TASK — VNEXT PHASE 2C: PROGRESS / WEIGHT
+# CURRENT TASK — VNEXT PHASE 2D: HISTORY
 
 **Owner:** Cursor (implementation) · **Reviewer:** Claude (design/UX acceptance)
 **Status:** READY TO START
-**Read first:** `AGENTS.md` · `tasks/vnext/DECISIONS.md` (binding) · `.claude/skills/nxtfrm-data-viz/SKILL.md` (binding) · `design-vnext/`
-**Previous slices:** 2A `9fd3772` · design-vnext `a0c9203` · 2B `761f339`
-
-> **Next highest-scrutiny slice.** This is where **D2 and D3 move from approved design decisions into production behaviour**. The weight chart is NXTFRM's flagship analytical surface and currently its weakest. Expect the same review standard as 2B.
+**Read first:** `AGENTS.md` · `tasks/vnext/DECISIONS.md` (binding) · `design-vnext/`
+**Previous slices:** 2A `9fd3772` · design-vnext `a0c9203` · 2B `761f339` · 2C `6563be6`
 
 ---
 
 ## 1. Objective
 
-Rebuild Progress → Weight around one rule: **one chart answers one analytical question.**
+History stays **calendar-first**. The calendar is the protagonist; the selected day's record resolves beneath it.
 
-Today a single plot carries seven layers at near-equal weight — raw morning, trend, confidence band, forecast line, forecast cone, goal band, target reference — and the goal is allowed to set the Y-domain. Measured on live data:
+History is **not** a feed, and must not become one.
 
-| State | Y-domain | Consequence |
-|---|---|---|
-| goal off | 81–85 (**4 kg**) | readable |
-| goal confirmed | 76–86 (**10 kg**) | the bottom ~40% of the plot holds **no data at all** |
+Much of the current implementation is already sound — the calendar has real marks, month navigation, a Today jump, correct `aria-label`s naming each record kind, and **shape-based marks that do not rely on colour**. **Preserve all of that.** This slice is about three specific defects plus the VNext visual language.
 
-A month of morning readings spanning ~2.5 kg gets compressed into the top third to reserve space for a goal weeks away. **That is the defect this slice exists to fix.**
+### The three defects
+
+1. **Selecting a date rebuilds the entire page.** `historySelect()` → `history()` → full `innerHTML` replace of `#historyPage`. Month shift and filter change do the same. The calendar, header and filters are all destroyed and recreated to change the day beneath them. This is the harsh rerender to remove.
+2. **The filters dominate.** Four equal pills (`All / Lifting / Cardio / Weight`) sit directly under the header, competing with the calendar for primacy. Filters are secondary.
+3. **Floorball is not distinguishable in the calendar.** `historyMarks()` folds cardio and floorball into one `cond` mark, so a match and a Zone 2 walk are indistinguishable at month level. The day view already separates them; the calendar must too.
 
 ---
 
-## 2. The scoping line — read before touching `cut-support.js`
+## 2. Files / areas likely affected
 
-Progress lives in `cut-support.js`, so this slice **must** edit that file. The line is not the file, it is the function:
+| File | Expected change |
+|---|---|
+| `premium-ui.js` | `history()` and its helpers (`historyCalendar`, `historyMarks`, `historyDayView`, `historySelect`, `setHistoryFilter`, `historyShiftMonth`, `historyThisMonth`, `historyScope`, `historyMonthSummary`, `historyRecords`) |
+| `vnext.css` | New `#historyPage` / `vn-*` section. Keep the existing scoping contract. |
 
-### ❌ TRUTH — must not change (lines ~71–263)
-`weights` · `timingRows` · `windowStats` · `ewmaTrend` · `trend` · `trendConfidence` · `forecastGoal` · `plateauWindow` · `detectPlateau` · `trendStats` · `review`
+**Do not edit:** `cut-support.js`, any `wearables.*`, `train-anatomy.js`, `seed.*`, `index.html`, `manifest.webmanifest`. **Never bump `RELEASE`/`CACHE_NAME`** — the owner is holding that as a deployment checkpoint.
 
-These compute what the numbers **mean**. No edits, no "small improvements", no changed thresholds, constants, windows or return shapes. If one looks wrong, report it — do not fix it.
-
-### ✅ GEOMETRY / PRESENTATION — this slice may change (lines ~686–960)
-`smoothPath` · `forecastGeometry` · `trendReadText` · `chartModel` · `chartHTML` · `selectPoint` · `scrub` · `setRange` · `setGoalVisible` · `setView` · `progress`
-
-These decide how truth is **drawn**. The domain fix lives in `chartModel()` (the offending pushes are at ~`:763-764`, `:766`, `:773`).
-
-Also in scope: `vnext.css` (new `#weightPage` / `vn-*` section, same scoping contract), and `premium-ui.js` only if Progress is reached through it.
-
-**Do not edit:** any `wearables.*`, `train-anatomy.js`, `seed.*`, `manifest.webmanifest`, `index.html` (unless a new asset is genuinely required). `sw.js` only to register a new asset at the existing `RELEASE` — **never bump `RELEASE`/`CACHE_NAME`** (owner is holding that as a deployment checkpoint).
+Tests may be adapted only where they assert on History markup this slice legitimately changed; preserve every assertion's intent and declare it.
 
 ---
 
 ## 3. Required behaviours
 
-### 3.1 Recent trajectory — the primary chart
-**Question: "Which way is my weight actually going, right now?"**
+### 3.1 Calendar is the protagonist
+- The calendar sits **native to the page** — not wrapped in a giant card. Tonal zoning, spacing and hairlines, per INSTRUMENT (D1).
+- Month title, previous/next and the **Today** jump all survive.
+- Weekday header row, outside-month days, today marker and selected-day treatment all survive. Selected day uses the restrained violet treatment (I1).
 
-| Contract | Requirement |
-|---|---|
-| Primary | Smoothed trend — the most prominent mark |
-| Context | Raw morning readings — visibly recessive |
-| Y-domain | **Visible morning readings + trend only.** The goal band, goal reference line, forecast cone and forecast endpoint must **never** stretch it (D2) |
-| Hidden by default | Post-workout, forecast/projection |
-| Range change | Each range takes its own honest domain, re-domained correctly |
-| Without colour | Trend, morning, post-workout and projection must each be distinguishable by **mark** — line vs dot vs distinct shape vs dash — not hue alone |
-| Textual conclusion | A plain-language read stays visible **without scrubbing** |
+### 3.2 Selecting a date updates smoothly
+- Selecting a day **must not rebuild the calendar, the header or the filters.** Update the day-detail region, and move the selection state on the affected cells only.
+- No scroll jump, no flash, no full-page repaint.
+- Month navigation may rebuild the grid — that is a genuine content change — but must not feel harsh.
+- The detail region may transition in (state tier, 200ms) with a reduced-motion path.
 
-### 3.2 Morning canonical, post-workout contextual (D7, D8)
-- Morning weight is the canonical series.
-- Post-workout is **contextual and visually secondary**: off by default, a distinct mark, never competing with morning values, and it must **never** enter the trend, plateau, forecast or confidence maths. It is currently excluded from those — keep it excluded, and **also remove it from the Y-domain** it is currently pushed into (`:763-764`).
-- Do **not** change which reading is canonical on a skipped-morning day (Q1, deferred).
+### 3.3 Filters are secondary
+Keep all four scopes and their behaviour, but they must not read as the screen's primary control. A compact secondary control — not four equal pills under the header. The month summary line should still reflect the active scope.
 
-### 3.3 Journey — the long-term goal, separately (D3)
-The distant target gets its **own representation**, not a layer on the recent chart. Start → current → target range, reading left-to-right to match its labels, showing total change and remaining distance. **Not a time-series.** This is the only place the distant goal appears — which is precisely what lets the chart above keep an honest domain.
+### 3.4 Record kinds stay distinguishable — and not by colour
+Lifting · cardio · **floorball** · weigh-in must each be identifiable in the calendar.
 
-### 3.4 Forecast — visually distinct, no false precision
-- Measured history and projected future must be **unmistakably different marks** (dashed/faded projection).
-- Off by default, explicitly labelled as a model estimate rather than a measurement.
-- Show the engine's existing confidence/range; invent nothing. If `forecastGoal()` reports insufficient evidence, **omit the forecast entirely** rather than drawing a weak one.
-- Never imply a precision the engine did not produce.
+- **Floorball gets its own mark**, separate from cardio.
+- Marks are differentiated by **shape** as well as colour — the current set already does this (filled dot / hollow ring / bar). Extend that principle; do not regress it.
+- Keep every cell's `aria-label` naming the kinds present, and keep a legend.
+- At 320px four marks in a cell is tight. Solve it honestly — a compact arrangement is fine, dropping a kind silently is not.
 
-### 3.5 Scrub — touch-friendly
-- Dragging **anywhere across the plot** activates the nearest valid observation. No 5px tap target.
-- The selected point is obvious; a **stable metric header outside the plot** updates without moving or reflowing.
-- Preserve orientation while scrubbing; keep `touch-action` correct so a horizontal scrub does not fight vertical page scroll.
-- Keyboard equivalent (arrows to move, Escape to clear) and a sensible `aria-label`.
-- **Critical interpretation must be readable without interacting at all.**
+### 3.5 No silent loss
+Everything History can do today must still be reachable: the day-detail modal (`historyDay`), per-set editing (`editHistorySet` → `openEditSet`), `otherDayDetails`, the lifting / conditioning / weight blocks, the month summary, and the logging-span note. Anything demoted must be listed under *Known deviations*.
 
-### 3.6 Ranges
-Keep the existing range set unless there is a reason to change it, and report the reasoning. A range with insufficient history should say so rather than drawing a misleading near-empty plot. Range changes must re-domain and transition coherently — axes must not jump distractingly.
+### 3.6 Forward design — EVENT / INTERVENTION / ANNOTATION
+Structure the day view so these three future record kinds have an obvious home:
+- **EVENT** — something happened
+- **INTERVENTION** — the user deliberately changed the system
+- **ANNOTATION** — additional context
 
-### 3.7 Chart quality
-Thin marks, hairline recessive grid, no heavy gridlines, no giant gradients, no neon glow, no decorative trace animation, no dual Y-axis ever. The confidence band must not outweigh the data it describes.
+**Do not invent persistence semantics in this slice.** No new storage keys, no new record shapes, no writes. Layout and structure only; if you want to show the shape of it, drive it from data that already exists.
 
 ---
 
 ## 4. Must remain unchanged
 
-- Every TRUTH function in §2, and the meaning of every number they return.
-- `state.bws` shape, `timeOfDay` semantics, all `apm_*` keys, `persist()`, backup/restore.
-- Weight editing, weigh-in history, waist, scans, and the Strength/Body views — this slice owns **Weight**. Strength and Body may inherit foundation styling but must not be restructured.
+- `state.logs`, `state.cardio`, `state.floorball`, `state.bws` — read only. **History never writes training data.**
+- All `apm_*` keys, `persist()`, backup/restore.
+- `state.historyDate` / `historyMonth` / `historyFilter` remain in-memory UI state; **do not start persisting them.**
+- Every existing stored record must remain visible. A record that renders today must render after this slice.
 - The V86 render input lock.
-- Today, Train, History, More.
-
-Anything on Progress → Weight with no home in the new layout: **demote, do not delete**, and list it under *Known deviations*.
-
----
+- Today, Train, Progress, More.
 
 ## 5. Responsive acceptance
 
-390 / 375 / 320, all readable, zero horizontal overflow. At 320 the chart is a **real design state** — fewer axis labels is correct; shrinking type or touch targets to fit is not. The scrub target stays full-plot at every width.
+390 / 375 / 320, all usable, zero horizontal overflow. Calendar cells keep a sensible touch target at every width — do not shrink them below usability to fit four marks. 320 is a real design state.
 
 ## 6. Test requirements
 
-Add `verify-2c.mjs`. Cover: goal off · goal confirmed · each range · post-workout on/off · forecast on/off · insufficient-data/empty · a range with sparse history.
+Add `verify-2d.mjs`. Cover: a month with dense records · a sparse month · an empty month · a day with all four kinds · a day with none · each filter · month boundaries (first/last day, leading/trailing outside days).
 
-1. **D2 — the domain fix, measured.** Assert the Y-domain with the goal **confirmed** is materially tighter than today's, and that it is **identical** whether the goal band is toggled on or off. Report the numbers. This is the headline test.
-2. **D8 — post-workout excluded from the domain**, and toggling it does not alter the trend line's geometry.
-3. **Truth untouched** — `trend()`, `trendStats()`, `detectPlateau()`, `forecastGoal()`, `trendConfidence()` return identical values before and after this slice on the same data.
-4. **Scrub** — a drag across the plot selects the nearest observation and updates the header without layout shift; works via touch; keyboard equivalent works.
-5. **Interpretation without interaction** — the textual read is present on load.
-6. **Ranges** — each re-domains; an insufficient range degrades honestly.
-7. **Forecast** — distinct mark, off by default, omitted when evidence is insufficient.
-8. Contrast ≥4.5:1, targets ≥44pt, no overflow, at 390/375/320 across all states.
-9. Reduced motion.
-10. Non-regression: Today, Train, History, More; `node wearables.release-gate.test.js` green.
+1. **Partial update** — selecting a date must **not** replace the calendar node. Mark a DOM node inside the calendar, select another date, assert the marked node survived. Same for the header and filters.
+2. **No scroll jump** — scroll position is preserved across a date selection.
+3. **Record kinds** — a day with lifting, cardio, floorball and a weigh-in shows four distinguishable marks; floorball is distinct from cardio.
+4. **Not colour alone** — marks differ in shape/geometry, not just fill.
+5. **Data integrity** — for a sample of dates, the records rendered match `state` exactly; nothing is dropped. No writes to `state.logs`/`cardio`/`floorball`/`bws` during navigation.
+6. **Month navigation** — prev/next/Today work; outside-month days render correctly at boundaries.
+7. **Capability reachability** — day modal, per-set edit and other-day details all still reachable.
+8. Contrast ≥4.5:1, targets ≥44pt, no overflow, at 390/375/320.
+9. Reduced motion — selection and month change work with no positional animation.
+10. Non-regression: Today, Train, Progress, More; `node wearables.release-gate.test.js` and `node wearables.weight-contract.test.js` stay green.
 
-Screenshots of each major state at 390 and 320 into `tasks/vnext/shots/`.
+Screenshots of dense month, empty month and a fully-populated selected day at 390 and 320 into `tasks/vnext/shots/`.
 
 ## 7. Explicitly out of scope
 
-Progress → Performance (2F) · Body Intelligence / OCR (2G) · History (2D) · Settings (2E) · AI (2H) · Supabase/schema/RLS · `readiness()` removal (D4/X1) · legacy renderer removal (D5/X2) · Q1 canonical-weight rule · `RELEASE`/`CACHE_NAME` bump · any change to a TRUTH function.
+Progress → Performance (2F) · Body Intelligence / OCR (2G) · Settings (2E) · AI (2H) · Supabase/schema/RLS · `readiness()` removal (D4/X1) · legacy renderer removal (D5/X2) · **any new persistence for events/interventions/annotations** · `RELEASE`/`CACHE_NAME` bump · any change to stored data or training semantics.
 
 ---
 
 ## 8. Definition of done
 
-- [ ] Recent-trajectory domain excludes goal, target line, forecast cone and post-workout — proven by measurement
-- [ ] Domain is identical with the goal toggled on and off
-- [ ] Journey exists as a separate non-time-series treatment
-- [ ] Forecast visually distinct, off by default, omitted on weak evidence
-- [ ] Scrub works anywhere on the plot, by touch, with a stable header and a keyboard path
-- [ ] Interpretation readable without interacting
-- [ ] Series distinguishable without colour
-- [ ] All TRUTH functions return identical values — proven by test
+- [ ] Calendar is the protagonist, native to the page, not in a giant card
+- [ ] Selecting a date updates the detail region only — proven by a surviving DOM node
+- [ ] No scroll jump on selection
+- [ ] Filters present and functional but visually secondary
+- [ ] Lifting, cardio, floorball and weigh-in each distinguishable, by shape as well as colour
+- [ ] Month navigation and Today preserved
+- [ ] Every existing record still renders; no writes to training data
+- [ ] EVENT / INTERVENTION / ANNOTATION have a structural home, with no new persistence
 - [ ] 390/375/320 clean; contrast, targets, overflow all pass
-- [ ] Other tabs unchanged; release gate green
+- [ ] Other tabs unchanged; both suites green
 - [ ] `CURSOR_REPORT.md` completed (A–H)
 - [ ] **Do not commit.** Claude reviews the working tree first.
