@@ -6,83 +6,72 @@
 
 ## Slice
 
-`VNEXT PHASE 2G — PROGRESS → PERFORMANCE`
+`VNEXT PHASE 2H — PROGRESS → BODY ANALYTICAL INTEGRATION`
 
 Implementing model: **Grok 4.7** (this session). The pinned Opus model was not used.
 
 ## Status
 
-`READY FOR REVIEW` — Performance is a list of engine comparisons. Cursor-owned checks are green. Rendered contrast, responsive, interaction, reduced-motion and visual fidelity are Claude's (AGENTS.md §6). No browser was used.
+`READY FOR REVIEW` — Progress → Body renders the shared EvoScan analysis. The *Open scans* hop is gone. Capture still opens the Settings form. Cursor-owned checks are green. Rendered contrast, responsive, interaction, reduced-motion and visual fidelity are Claude's (AGENTS.md §6). No browser was used. `RELEASE` and `CACHE_NAME` stay `109`.
 
 ---
 
-## A. Seam
+## A. Shared analysis
 
-`NXP.progress()` no longer injects `N.strengthHTML()`. The Performance tab is painted in `premium-ui.js` from `N.strengthItems()` only.
+Progress → Body no longer keeps its own scan list. The latest reading, measured/estimated rows, composition bar, per-metric trend, What Changed, history and detail are `evoAnalysisHTML` and `evoDetailHTML`.
 
-`strengthHTML()` is still in `cut-support.js` and the legacy `NXT.progress()` still calls it. That function was not deleted (D5). The live screen is `renderWeight = NXP.progress`, so the page does not go through it. `arrangeStrengthView()` is a no-op: there are no V99 cards left to reorder. Same pattern as `arrangeWeightView()` after 2C.
+`evoAnalysisHTML` was extracted from `evoBoardHTML` in `index.html`. The Settings board now calls that function and still wraps it with the Settings back control and the capture actions (New scan, Enter numbers manually, Use latest TDEE). The empty Settings board string is unchanged. `class="vn-evo-hero"` exists once, inside the helper. `premium-ui.js` does not rebuild the hero, the composition bar, or the trend buttons.
 
-`strengthItems()` and `sessionRows()` were not edited. The e1RM formula, the 15-rep and warm-up exclusions, the 4-session / 21-day / 56-day rules, the six status words, the tones, and the 24-item cap are the engine's.
+Progress reads scans through `evoOrdered()`, the same list Settings uses. `bodyScans()` remains only as the fallback when that function is absent (the Performance vm does not load `index.html`). On the live page the two surfaces cannot disagree about which scan is latest. A future-dated or undated scan that `bodyScans()` used to hide is now visible here, because Settings already showed it. No record is rewritten.
 
----
-
-## B. Status language
-
-The six words are the engine's, printed as text inside `.vn-perf-flag`, then a colour, then a shape:
-
-| Status | Colour | Shape |
-|---|---|---|
-| Improving | violet | filled circle |
-| Holding steady | violet | filled square |
-| Review | amber | filled diamond |
-| Watch | ink | hollow diamond |
-| Older history | ink | dash |
-| Building data | ink | hollow circle |
-
-Watch and Review share a diamond so the engine's "down" idea stays one family. Fill versus stroke is what separates them once the colour is gone. Improving and Holding steady share violet and differ by circle versus square. Older history and Building data share ink and differ by dash versus hollow circle.
-
-A null delta renders no percent. Older history says "Too old to compare". Building data says "Not enough yet". A real zero (Holding steady, identical sessions) renders `0.0%`, which is the engine delta, not a stand-in for null.
-
-The lead line is a count of those words (`1 Review · 1 Watch · …`). It is not a score, and the old "holding / improving" blend is gone. Nothing says "muscle preserved". There is no strength score and no composite.
-
-The disclaimer is the engine sentence, kept whole: "Estimated 1RM is a comparison aid, not a tested maximum or proof of muscle retention. Technique, effort and equipment setup affect it."
+`state.evoUi` is still the one mode object. A trend switch or an opened scan re-renders through `evoSetTrend` / `evoOpenScan` / `evoCloseDetail`. While the tab is Progress, `render()` paints Progress again. The capture form is the exception: if Settings left `mode` on `form`, Progress still paints the analysis, not the form.
 
 ---
 
-## C. Sparklines
+## B. The stale path
 
-Each spark is the last eight session e1RMs for that exercise at that gym, scaled with the same padding the engine spark used (`min - 1`, `max + 1`). A Lat Pulldown and a Reverse Fly do not share an axis. One horizontal gridline, one line, one end mark. The mark repeats the status shape. Older history is dashed so the line itself is not only a colour.
+`NXT.more('body')` labelled *Open scans* is gone from this screen. `premium-ui.js` still contains that call once, on the Settings hub row *Body & scans*.
 
-The accessible name is `"{exercise} at {gym}, estimated 1RM"` (`aria-label` and `<title>`). The text equivalent is `.vn-perf-eq`: the own-scale bounds and each plotted session. It is clipped so twenty rows do not each grow a paragraph, and it stays in the accessibility tree via `aria-describedby`. `data-min` and `data-max` are that spark's own domain.
+Capture from Progress is `NXP.openBodyCapture()`. It sets the existing form mode, then `NXT.more('body')`, so the next paint is the Settings review form (`scanFile`, date, the six metrics, notes, Read scan, Save). It does not paint that form on Progress, and it does not drop the user on the analysis board to go looking.
 
-`svg.n99-spark` is still on the element, with `vn-perf-spark`, so a count of `svg.n99-spark` still finds every spark. `.n99-strength-row` and `.n99-card` are gone from this tab. The row is `.vn-perf-row`.
+The six baseline handlers are still in the Body markup: `NXT.setView('overview')`, `NXT.setView('strength')`, `NXT.setView('body')`, `NXT.openWaist()`, `apx95OpenQuickWeight()`, and `NXP.openBodyCapture()` in place of the dead-end.
 
----
+History and detail are the shared helpers, so their existing Delete control and, on detail, *Use this TDEE as maintenance* come with them. `evoDeleteScan` was not edited. Delete semantics are the ones 2F shipped.
 
-## D. Layout
-
-One list on the canvas. Hairlines, not cards. The page header and the three tabs are the chrome from Weight. The list is the protagonist (D1).
-
-Rows are not buttons. Drill-down is Q4 and was not added. The interactive targets are the tabs and `+ Weight`, both already at least 44px tall. `+ Weight` stays the secondary header button shared with Weight and Body (`apx95OpenQuickWeight()`). No new primary button was added, so no local fill was introduced and `--vn-action` was not given a second gradient. Tabs stay on `--vn-violet`, which is the signal colour, not the action fill.
-
-Names wrap (`overflow-wrap: anywhere`) and stay at 15px, including at 320. The spark column is 96px, 72px below 360px. The text equivalent cannot widen the row.
+The legacy `bodyHTML()` in `cut-support.js` still has an *Open scans* button. The live screen is `renderWeight = NXP.progress`. That function was not edited (D5).
 
 ---
 
-## E. Fixtures
+## C. Waist
 
-The dev seed was not replayed here. The task's measurement stands: 20 exercises, all Older history, because lifting ends 2026-07-14 and `state.date` is 2026-09-22. Checking the seed alone cannot show the other five statuses.
+`NXT.openWaist`, `saveWaist` and `deleteWaist` are untouched. The reading list is still one button per row, newest first, with the date, the centimetres, and *Edit ›*. *Log waist* is the same row as before. Waist still goes through `N.cleanRows(..., 'cm')`. A future date and a 10 cm row stay out. The waist-to-waist delta is still display arithmetic over those two rows. It is not stored.
 
-`tasks/vnext/verify-2g.mjs` injects history and paints `NXP.progress()` in a vm. It does not open a browser. The main fixture produces all six statuses, plus:
+The old line *Latest Evo scan …* under the waist figure was removed. The scan is on this page now, rendered by the shared analysis, so that line was a second mention rather than a way to reach it.
 
-- Smith Bench with a 200 kg warm-up and a 150×20 set on the latest day. The displayed e1RM is the working 110×6 set. 233 and 250 do not appear.
-- Lat Pulldown at Gym A and Gym B, as two rows, with different e1RMs.
-- Reverse Fly on its own, much smaller, scale. Its domain does not overlap the pulldown's.
-- Face Pull (2 sessions), Tricep Pushdown (3), and one long-named single session, all Building data, no percent.
-- Cable Crunch on a date 70 days back, Older history.
-- An empty log, a one-exercise log, a three-exercise all-older log, and 25 cap exercises of which 24 render. `CapLift-25` is the one the engine drops.
+---
 
-`state.logs` is unchanged by painting Performance, Weight, or Body.
+## D. Honesty
+
+Weight on a scan is `Measured` (filled dot, `is-measured`). Body fat, muscle mass, fat mass, BMR and TDEE stay `Estimated` (diamond, `is-estimated`). Those classes come from `evoKindHTML` / `EVO_SPEC`. Nothing new was classified.
+
+The trend is one metric at a time, from `evoTrendHTML`. Weight and body fat do not share an SVG or an axis. The note under the switch is the 2F sentence: each metric has its own scale, and this is the EvoScan series, not the morning body-weight trend. The hero says the scan weight is not the morning weigh-in and is not part of the body-weight trend. A morning `81.2 kg` sitting in `state.bws` is not painted on this page.
+
+There is no radar, no Body Score, and no other composite. Remainder is still scale weight minus fat mass, labelled as not a measured compartment. Muscle mass is still a separate bar, not stacked onto fat mass. A scan missing fat mass still refuses the composition bar.
+
+The OCR contract was not edited. `NOT FOUND` and `CHECK` still come from `evoExtractReport`. Provenance words on detail (*Read from the scan* / *Corrected* / *Entered manually*) are `evoProvenanceHTML`. `apm_evo_scans`, the scan shape, `weighInId`, and `cleanRows` / D14 were not touched.
+
+---
+
+## E. Empty states
+
+| State | What the page says |
+|---|---|
+| No scans, no waist | *Nothing measured yet.* Waist empty copy. Scan empty copy, including that a scan never becomes the body-weight trend. *Log waist* and *New scan*. |
+| Scans, no waist | Shared analysis. *No waist measurements yet.* No *Nothing measured yet* headline over a scan that exists. |
+| Waist, no scans | Waist figure, list, per-row edit. *No scans saved*, with the same morning-weight sentence. No hero. |
+| One scan | Hero and composition when both scale weight and fat mass exist. *No earlier scan to compare.* The trend summary says the scan-to-scan line starts with the next scan. No *vs previous scan* delta. A weight with no fat mass keeps the missing-bar sentence and *Not in this scan* on the empty metrics. |
+
+Viewing any of these does not write `state.scans`, `state.bws`, or the waist store, and does not call `persist`. Opening the capture form does not either. `evoUi()` may create `state.evoUi` the first time a trend or detail is read. That is the existing UI mode object, not a scan or a weigh-in.
 
 ---
 
@@ -90,77 +79,42 @@ The dev seed was not replayed here. The task's measurement stands: 20 exercises,
 
 | File | What changed |
 |---|---|
-| `premium-ui.js` | Performance branch of `progress()`, plus the list helpers. `arrangeStrengthView()` is a no-op. |
-| `vnext.css` | `#weightPage` Performance section. |
-| `tasks/vnext/verify-2g.mjs` | New. Synthetic logs only. |
+| `index.html` | Extracted `evoAnalysisHTML` from `evoBoardHTML`. The board calls it. Capture chrome and the empty board are the same strings. No OCR, record, or delete change. |
+| `premium-ui.js` | Progress Body calls the shared analysis and detail. *Open scans* replaced by `openBodyCapture`. Waist list unchanged. |
+| `vnext.css` | EvoScan rules now match `#morePage` and `#weightPage` via `:is()`. Progress zeroes the Settings gutter so the block is not indented twice. No new action fill. |
+| `tasks/vnext/verify-2h.mjs` | New. Synthetic scans and waist rows only. No image file. |
 
-Not edited: `cut-support.js`, `index.html`, `sw.js`, `manifest.webmanifest`, `wearables.*`, `seed.*`, `train-anatomy.js`. `RELEASE` and `CACHE_NAME` stay at 109. No new page script or stylesheet.
+Not edited: `cut-support.js`, `sw.js`, `manifest.webmanifest`, `wearables.*`, `seed.*`, `train-anatomy.js`. `RELEASE` and `CACHE_NAME` stay at 109. No new page script or stylesheet.
 
-Handlers still in the Performance markup: `NXT.setView('overview')`, `NXT.setView('strength')`, `NXT.setView('body')`, `apx95OpenQuickWeight()`. Weight still renders the trajectory (`vn-weight` / Recent trajectory) and Body still renders `nxp-progress-body`. Neither renders `.vn-perf-row`.
+`--vn-action` is still `#6D28D9`. `--vn-ink-4` is still `#7E8593`. The 2H block adds no `linear-gradient`. *New scan* is the same text row as *Log waist*, not a second primary button. The filled *New scan* on the Settings form is the existing `.vn-evo-act`, which already uses `--vn-action-fill`.
+
+The `:is()` rewrite is the same declarations with a second page in the selector. Settings is not restyled. `#morePage .vn-evo-act:disabled` is still the D12 disabled primary and was not widened.
 
 ---
 
 ## G. Verification
 
-Cursor did not open a browser and did not run Playwright.
+Cursor did not open a browser and did not run Playwright. `verify-2a` through `verify-2e` and `verify-2b-fold` launch Playwright, which this slice forbids. They were not executed. They were not edited. `verify-2f`, `verify-2g` and `verify-2h` do not.
 
 ```
-node --check premium-ui.js          OK (silent, exit 0)
-vnext.css braces                    raw 653/653, comment-stripped 651/651
-node tasks/vnext/verify-2g.mjs      OK  11 passed
+node --check premium-ui.js              OK (silent, exit 0)
+node --check tasks/vnext/verify-2h.mjs  OK (silent, exit 0)
+vnext.css braces                        raw 657/657, comment-stripped 655/655
+node tasks/vnext/verify-2h.mjs          OK  10 passed
+node tasks/vnext/verify-2f.mjs          OK  23 passed
+node tasks/vnext/verify-2g.mjs          OK  11 passed
 ```
 
 Sixteen suites, enumerated as `wearables*.test.js` (no dot). Each printed `0 failed`. The pass counts were 32, 24, 16, 32, 3, 32, 28, 53, 19, 26, 34, 47, 18, 34, 29, 31. That is 16 suites, 458 tests, 0 failing. The release-gate suite (53) is in that run, so the 109 cache check still holds.
 
-Not verified here, and owned by Claude: contrast on the new ink, violet, and amber words; 390 / 393 / 402 / 430 / 375 / 320; overflow; spark legibility at 320; reduced motion; the seed screen's 20 Older-history rows. On that seed screen the expected copy is "Too old to compare", with no percent, and 20 `svg.n99-spark` elements.
+Not verified here, and owned by Claude: contrast; 390 / 393 / 402 / 430 / 375 / 320; overflow; chart legibility at 320; targets; reduced motion; visual comparison with `design-vnext/`. The seed still has zero scans and no waist readings, so the populated screen has to be driven with injected scans. The empty seed screen should read *Nothing measured yet*, with *Log waist* and *New scan*, and without *Open scans*.
 
 ---
 
 ## H. Out of scope
 
-Progress → Body still leaves capture through `NXT.more('body')`, which 2F turned into the EvoScan workspace. The design brief says Body should gain an analytical presence under Progress → Body while capture stays under Settings. That is a real follow-up. It is not part of 2G and was not touched.
+Left alone: the OCR pipeline and every D16 stage, `NOT FOUND` versus `CHECK`, confidence, validation, provenance assignment, `apm_evo_scans`, the scan record shape, `weighInId`, delete resolution, `cleanRows` and D14. Weight, Performance, Today, Train, History, the Settings hub structure, wearables, `readiness()` (D4), and legacy renderer removal (D5).
 
-Also left alone: the Weight tab, Today, Train, History, Settings, wearables, `readiness()` (D4), legacy renderer removal (D5), and Q4 (whether a row should open a lift). The legacy `strengthHTML()` remains so the engine progress renderer still has a body if something calls it directly.
+The shared detail back control still says *Body composition* and calls `evoCloseDetail()`. On Progress that returns to the analysis. The label was not forked, because a second detail renderer is what this slice was told not to build.
 
----
-
-## INT-2 repair
-
-Checkpoint repair after 2E, D12, 2F and 2G. Two defects only. Implementing model: **Grok 4.7** (this session). No browser. `RELEASE` and `CACHE_NAME` stay `109`.
-
-### C1 — `--vn-ink-4`
-
-`#787F8D` is 4.73:1 on `--vn-canvas` `#0E1014` and 4.29:1 on `--vn-surface` `#171B22`. The token is now `#7E8593`.
-
-Computed with the WCAG relative-luminance formula:
-
-| Pair | Ratio |
-|---|---|
-| `#7E8593` on `#0E1014` | 5.14:1 |
-| `#7E8593` on `#171B22` | 4.66:1 |
-| `#7E8593` on the surface gradient's darker stop `#14171E` | 4.84:1 |
-
-`#828A99` also clears both floors (5.48 / 4.97) and was left unused. Its CIEDE2000 distance to `--vn-ink-3` `#8B92A0` is 2.85, close enough that the last ink step would nearly disappear. `#7E8593` sits on the same blue-grey ramp, stays the darkest ink (relative luminance 0.895 → 0.455 → 0.286 → 0.233), and is ΔE 4.55 from ink-3. The steps above it are ΔE 15.44 and 10.33. `--vn-ink-2`, `--vn-ink-3`, `--vn-canvas` and `--vn-surface` are unchanged. No font size or weight moved.
-
-The token is the only colour edit. All 26 call sites still read `var(--vn-ink-4)`, so they inherit it. Read in the stylesheet, the ones the review named stay quiet secondary text on canvas or on the surface: inactive tab labels (`.tabs .tab:not(.active)`), `.vn-tiny` on Today and Progress, the chevrons, and the Train set-row `small` / `.vn-set-edit`. Status dots and the checkbox ring use the same token as a mark, still darker than ink-3. Out-of-month calendar days (`.nxp-cal-day.is-outside`) keep their existing `opacity: .45` fade; that rule was not part of this repair.
-
-Rendered contrast at 390 / 393 / 402 / 430 / 375 / 320 is Claude's measurement.
-
-### C2 — `verify-2e` scan probe
-
-The body probe was `#scanWeight, [onclick*="Scan"], .ocr-box`. That matched the old scan page. 2F's EvoScan board does not render those nodes: the form opens through `evoOpenForm()`, and the raw OCR block is gone (D16). The probe was adapted, not removed.
-
-It still answers "Settings → Body & scans reaches the scan capability." On the rendered board it requires a control whose `onclick` calls `evoOpenForm`. It then calls `evoOpenForm()` and requires all nine fields (`scanFile`, `scanDate`, `scanWeight`, `scanBodyFat`, `scanMuscleMass`, `scanFatMass`, `scanTDEE`, `scanBMR`, `scanNotes`) inside `#morePage`, plus call sites for `handleScanFile`, `readEvoScanOCR`, `saveEvoScan` and `useLatestScanTDEE`. Any miss fails the same `evo scan page` capability. `evoCancelForm()` runs afterwards so later audits still see the board. A lone "New scan" button with an empty form fails this check.
-
-`verify-2e.mjs` was syntax-checked (`node --check`, exit 0) and not executed. It launches Playwright, which this checkpoint assigns to Claude.
-
-### Verification
-
-```
-node --check tasks/vnext/verify-2e.mjs   OK (silent, exit 0)
-vnext.css braces                         raw 653/653, comment-stripped 651/651
-```
-
-Sixteen suites, `for f in wearables*.test.js; do node "$f" || echo "FAIL $f"; done`. Each printed `0 failed`. Pass counts: 32, 24, 16, 32, 3, 32, 28, 53, 19, 26, 34, 47, 18, 34, 29, 31. That is 16 suites, 458 tests, 0 failing.
-
-Not edited: `cut-support.js`, `index.html`, `premium-ui.js`, `sw.js`, `manifest.webmanifest`, `wearables.*`, `seed.*`, `train-anatomy.js`. Not committed. Not pushed.
+Not committed. Not pushed.

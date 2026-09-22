@@ -679,3 +679,82 @@ repair.
 
 Both are recorded because the method matters: a checkpoint that reports its own harness bugs as
 product defects is worse than no checkpoint.
+
+---
+
+# CLAUDE REVIEW — PROGRESS → BODY ANALYTICAL INTEGRATION
+
+Implemented on `grok-4.7-high-fast`.
+
+## A. THE SPLIT NOW MATCHES BRIEF §S
+
+Progress → Body owns the **analysis**; Settings → Body owns the **capture**. The dead-end
+*Open scans* hop is gone.
+
+## B. NO SECOND SOURCE OF TRUTH — the main risk, avoided
+
+`evoAnalysisHTML()` was **extracted** from `evoBoardHTML()` in `index.html`, and both screens
+call it. `evoBoardHTML` now delegates to it, keeping its capture chrome (back, new scan, manual
+entry, TDEE) around the shared analysis. Behaviour unchanged — this is the one `index.html`
+edit the task permitted, and it was declared.
+
+`vnext.css` did the same at the style layer: `#morePage .vn-evo*` rules became
+`:is(#morePage, #weightPage) .vn-evo*`. Net **+4 selectors** (651 → 655), so the 141 deleted
+lines are rescopes, not losses. One component set serves both surfaces, still inside the page
+scoping contract.
+
+## C. A HOP REMOVED, NOT A CAPABILITY
+
+`NXT.more('body')` is gone from this screen, replaced by `NXP.openBodyCapture()`. Verified end
+to end: from Progress → Body it routes to `morePage` with `moreView:'body'`, the capture form
+open, **all nine fields present and all four handlers wired**. The row is labelled honestly —
+*New scan · Review and save in Settings · Add ›*.
+
+Handlers went 6 → 18. Waist survives intact: `openWaist()`, per-row `openWaist('<date>')` edit,
+and the full reading list.
+
+## D. HONESTY RULES HOLD
+
+`MEASURED` on weight versus `ESTIMATED` on body fat, muscle mass, fat mass, BMR and TDEE, each
+carrying a shape as well as a word. Per-metric trend tabs, stated plainly: *"Each metric has
+its own scale. This is the EvoScan series, not the morning body-weight trend."* (D15)
+
+The D14 guard copy is present on the analysis: *"EvoScan · post-workout context. Not your
+morning weigh-in, and not part of the body-weight trend."*
+
+The composition bar still refuses to invent a compartment — *"Remainder is scale weight minus
+fat mass — not a measured compartment, and not lean mass"* — and the page closes with *"Body
+fat and muscle figures only appear from saved Evo scans. They are not calculated from waist or
+scale weight."* (D9)
+
+What Changed uses **percentage points** for body fat.
+
+## E. CONTRACT FROZEN AS REQUIRED
+
+`cut-support.js`, `sw.js`, `manifest.webmanifest`, `wearables.*`, `seed.*` and
+`train-anatomy.js` all untouched. `RELEASE`/`CACHE_NAME` at `109`. The D16 OCR contract, the
+`apm_evo_scans` key, the record shape, `weighInId` linking, delete semantics and `cleanRows`
+are all unchanged.
+
+Viewing writes nothing: scans 3, bws 83, waist 2 before and after touring every Progress view.
+
+## F. VERIFICATION
+
+**All nine verify scripts green** — 2a, 2b, 2b-fold, 2c, 2d, 2e, 2f (23), 2g (11), 2h (10).
+Running the earlier ones matters: INT-2 proved a slice can break an earlier slice's assertions.
+
+16 suites / 458 tests / 0 failing. `premium-ui.js` parses; `vnext.css` braces 657/657.
+
+**Progress → Body at 390 / 393 / 402 / 430 / 375 / 320**, populated with synthetic scans and
+waist readings: zero overflow, zero targets under 44pt, **zero contrast failures**, zero page
+errors.
+
+Cross-screen: all five destinations byte-identical (7449 / 1201 / 16730 / 11258 / 3613), zero
+page errors, and the full 30-combination sweep still clean with reduced motion `none`
+everywhere.
+
+## G. CARRIED FORWARD, NOT REOPENED
+
+The repeated rose **Delete** in scan history now appears on this surface too, which strengthens
+the case for **P1** in `RELEASE_CHECKS.md`. Owner ruling stands: later polish pass, do not
+reopen for it.

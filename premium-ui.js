@@ -932,7 +932,7 @@ const NXP = (() => {
     const tabs=`<div class="n99-progress-tabs nxp-progress-tabs vn-progress-tabs" role="group" aria-label="Progress view">${[['overview','Weight'],['strength','Performance'],['body','Body']].map(([key,title])=>`<button type="button" class="${v===key?'active':''}" aria-pressed="${v===key}" onclick="NXT.setView('${key}')">${title}</button>`).join('')}</div>`;
     const chrome=`<header class="nxp-heading nxp-progress-chrome vn-progress-chrome"><div><h1>Progress</h1><p>${esc(period)}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>`;
     if(v==='body'){
-      const waist=N.cleanRows(N.cfg().waist,'cm'),scans=bodyScans();
+      const waist=N.cleanRows(N.cfg().waist,'cm'),scans=bodyScanSource();
       document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-body"><header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(bodyTitle(waist,scans))}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${bodySummary(waist,scans)}${bodyView(waist,scans)}</div>`;
       return;
     }
@@ -1080,56 +1080,70 @@ const NXP = (() => {
     return [...(state.scans||[])].filter(s=>s&&Number.isFinite(N.dateMs(s.date))&&s.date<=state.date)
       .sort((a,b)=>String(a.date).localeCompare(String(b.date)));
   }
+  /* Settings reads scans through evoOrdered(). Progress uses that same list
+     so the two surfaces cannot disagree about which reading is latest. */
+  function bodyScanSource() {
+    if(typeof evoOrdered==='function')return evoOrdered();
+    return bodyScans();
+  }
   function bodyTitle(waist,scans) {
     if(waist.length&&scans.length)return 'Waist and scans';
     if(waist.length)return waist.length===1?'One waist measurement':waist.length+' waist measurements';
     if(scans.length)return scans.length===1?'One Evo scan':scans.length+' Evo scans';
     return 'No measurements yet';
   }
-  function scanBits(scan) {
-    const bits=[],w=N.finite(scan.weight),bf=N.finite(scan.bodyFat),mm=N.finite(scan.muscleMass),fm=N.finite(scan.fatMass);
-    if(w!==null)bits.push(w.toFixed(1)+' kg');
-    if(bf!==null)bits.push(bf.toFixed(1)+'% body fat');
-    if(mm!==null)bits.push(mm.toFixed(1)+' kg muscle');
-    if(fm!==null)bits.push(fm.toFixed(1)+' kg fat mass');
-    return bits;
-  }
-  function bodySummary(waist,scans) {
-    const lastW=waist.at(-1),priorW=waist.at(-2),lastS=scans.at(-1);
+  function bodySummary(waist) {
+    const lastW=waist.at(-1),priorW=waist.at(-2);
     /* Lead with the measurement, not the count. The header already says how many
        readings exist, so repeating "3 waist measurements" as the headline said
        the same thing twice and made a tally the loudest thing on a screen whose
        subject is a number in centimetres. The delta beside it is presentation
        arithmetic over the two readings already listed below — the same class of
        display-only figure as the chart's post-workout delta. It is not stored,
-       not fed to any calculation, and no Body semantics change. */
+       not fed to any calculation, and no Body semantics change. Scan figures
+       are not repeated here; evoAnalysisHTML owns them. */
     if(lastW){
       const delta=priorW?lastW.cm-priorW.cm:null;
       const move=delta===null?'':`${delta>0?'+':''}${delta.toFixed(1)} cm vs ${esc(N.shortDate(priorW.date))}`;
       const meta=[esc(N.shortDate(lastW.date)),move].filter(Boolean).join(' · ');
-      const scanLine=lastS?`<p class="nxp-progress-body-scanline">Latest Evo scan ${esc(N.shortDate(lastS.date))}.</p>`:'';
       return `<section class="nxp-progress-body-summary"><span class="nxp-caption">Waist</span>`
         +`<strong>${esc(lastW.cm.toFixed(1))} <em>cm</em></strong>`
-        +`<p>${meta}</p>${waist.length<2?'<p class="nxp-progress-body-scanline">A second reading is needed before a comparison.</p>':''}${scanLine}</section>`;
+        +`<p>${meta}</p>${waist.length<2?'<p class="nxp-progress-body-scanline">A second reading is needed before a comparison.</p>':''}</section>`;
     }
-    if(lastS){
-      const bits=scanBits(lastS);
-      return `<section class="nxp-progress-body-summary"><span class="nxp-caption">Evo scan</span>`
-        +`<strong>${esc(bits[0]||'Saved scan')}</strong>`
-        +`<p>${esc(N.shortDate(lastS.date))}${bits.length>1?' · '+esc(bits.slice(1).join(' · ')):''}</p>`
-        +`<p class="nxp-progress-body-scanline">No waist measurements yet.</p></section>`;
-    }
+    if(bodyScanSource().length)return '';
     return `<section class="nxp-progress-body-summary"><span class="nxp-caption">Body</span>`
       +`<strong>Nothing measured yet</strong>`
       +`<p>Waist and Evo scans are optional. Scale weight stays on the Weight tab; nothing here is estimated.</p></section>`;
   }
+  /* Detail is the shared scan page. The capture form is not: that stays on
+     Settings even if a form was left open there. */
+  function bodyScanAnalysis(scans) {
+    if(typeof evoUi==='function'&&typeof evoDetailHTML==='function'){
+      const ui=evoUi();
+      if(ui.mode==='detail'){
+        const scan=scans.find(s=>s&&s.id===ui.detail);
+        if(scan)return `<div class="vn-evo">${evoDetailHTML(scan,scans)}</div>`;
+      }
+    }
+    if(!scans.length||typeof evoAnalysisHTML!=='function'){
+      return `<p class="nxp-progress-body-empty">No scans saved. A scan is a reading from that moment, usually after a workout. It is not your morning weigh-in, and it never becomes the body-weight trend.</p>`;
+    }
+    return `<div class="vn-evo">${evoAnalysisHTML(scans)}</div>`;
+  }
   function bodyView(waist,scans) {
     const waistRows=waist.slice().reverse().map(r=>`<button type="button" class="n99-list-row nxp-progress-body-row" onclick="NXT.openWaist('${r.date}')"><span>${esc(N.shortDate(r.date))}</span><b>${r.cm.toFixed(1)} cm</b><span>Edit ›</span></button>`).join('');
-    const scanRows=scans.slice().reverse().map(s=>{
-      const bits=scanBits(s);
-      return `<div class="nxp-progress-body-scan"><span>${esc(N.shortDate(s.date))}</span><b>${esc(bits[0]||'Evo scan')}</b><small>${esc(bits.slice(1).join(' · ')||'Saved scan')}</small></div>`;
-    }).join('');
-    return `<section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">All readings</h2>${waist.length?waistRows:`<p class="nxp-progress-body-empty">No waist measurements yet. Optional, about once a week, with the same tape position.</p>`}${row('Log waist','+',"NXT.openWaist()",'Same position and similar conditions')}</section><section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Evo scans</h2>${scans.length?scanRows:`<p class="nxp-progress-body-empty">No scans saved. Compare readings under similar conditions; treat changes as estimates, not proof of fat or muscle loss.</p>`}${row('Open scans','Open',"NXT.more('body')",'Existing scan tools and history')}</section><p class="n99-small nxp-progress-body-note">Body fat and muscle figures only appear from saved Evo scans. They are not calculated from waist or scale weight.</p>`;
+    return `<section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">All readings</h2>${waist.length?waistRows:`<p class="nxp-progress-body-empty">No waist measurements yet. Optional, about once a week, with the same tape position.</p>`}${row('Log waist','+',"NXT.openWaist()",'Same position and similar conditions')}</section><section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Evo scans</h2>${bodyScanAnalysis(scans)}${row('New scan','Add','NXP.openBodyCapture()','Review and save in Settings')}</section><p class="n99-small nxp-progress-body-note">Body fat and muscle figures only appear from saved Evo scans. They are not calculated from waist or scale weight.</p>`;
+  }
+  /* Opens the Settings capture form. It does not paint that form here, and
+     it does not send the user to the analysis board to go looking. */
+  function openBodyCapture() {
+    if(typeof evoUi==='function'){
+      const ui=evoUi();
+      ui.mode='form';
+      ui.detail='';
+      if(!ui.draft&&typeof evoBlankReport==='function')ui.draft=evoBlankReport();
+    }
+    N.more('body');
   }
   /* ---- VNext Settings primitives (Phase 2E) --------------------------------
      Settings is configuration, not a dashboard. A row is typography, a
@@ -1685,7 +1699,7 @@ const NXP = (() => {
     if(value&&!left&&value.textContent!=='Ready')value.textContent='Ready';
   }
   bindSteppers();
-  return {ui,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection};
+  return {ui,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;

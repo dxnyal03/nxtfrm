@@ -4847,21 +4847,28 @@ function evoDetailHTML(scan,ordered){
     <div class="vn-evo-actions">${evoFinite(scan.tdee)!==null?`<button type="button" class="vn-evo-quiet" onclick="useLatestScanTDEE()">Use this TDEE as maintenance</button>`:""}<button type="button" class="vn-evo-quiet is-danger" onclick="evoDeleteScan('${jss(scan.id)}')">Delete scan</button></div>
   </article>`;
 }
-function evoBoardHTML(ordered){
-  const latest=ordered.at(-1)||null;
+/* The analysis block Settings and Progress → Body both render. Capture
+   chrome (back, new-scan, manual entry, TDEE) stays in evoBoardHTML. */
+function evoAnalysisHTML(ordered){
+  const latest=ordered&&ordered.at(-1)||null;
+  if(!latest)return "";
   const previous=ordered.length>=2?ordered[ordered.length-2]:null;
-  if(!latest){
-    return `<header class="vn-evo-head">${evoBackHTML()}<p class="vn-evo-eye">EvoScan</p><h1>Body composition</h1><p class="vn-evo-lead">No scans yet. A scan is a reading from that moment, usually after a workout. It is not your morning weigh-in, and it never becomes the body-weight trend.</p></header><div class="vn-evo-actions"><button type="button" class="vn-evo-act" onclick="evoOpenForm()">New scan</button><button type="button" class="vn-evo-quiet" onclick="evoOpenForm()">Enter numbers manually</button></div>`;
-  }
   const w=evoFinite(latest.weight);
   const weightDelta=previous?evoChangeRows(latest,previous).find(r=>r.key==="weight"):null;
-  return `<header class="vn-evo-head">${evoBackHTML()}<p class="vn-evo-eye">EvoScan</p><h1>Body composition</h1><p class="vn-evo-kicker">Latest scan · ${esc(evoShort(latest.date)||"Undated")}</p></header>
-    <section class="vn-evo-hero"><p class="vn-evo-k">Weight ${evoKindHTML(true)}</p><p class="vn-evo-num">${w===null?`<span class="is-missing">Not in this scan</span>`:`${esc(evoFmt("weight",w))}<small>kg</small>`}</p>${weightDelta?`<p class="vn-evo-delta">${esc(weightDelta.delta)} vs previous scan</p>`:""}<p class="vn-evo-ctx">EvoScan · post-workout context. Not your morning weigh-in, and not part of the body-weight trend.</p></section>
+  return `<section class="vn-evo-hero"><p class="vn-evo-k">Weight ${evoKindHTML(true)}</p><p class="vn-evo-num">${w===null?`<span class="is-missing">Not in this scan</span>`:`${esc(evoFmt("weight",w))}<small>kg</small>`}</p>${weightDelta?`<p class="vn-evo-delta">${esc(weightDelta.delta)} vs previous scan</p>`:""}<p class="vn-evo-ctx">EvoScan · post-workout context. Not your morning weigh-in, and not part of the body-weight trend.</p></section>
     <div class="vn-evo-rows">${evoMetricRows(latest,previous)}</div>
     ${evoCompHTML(latest)}
     ${evoTrendHTML(ordered)}
     ${evoChangedHTML(latest,previous)}
-    ${evoHistoryHTML(ordered)}
+    ${evoHistoryHTML(ordered)}`;
+}
+function evoBoardHTML(ordered){
+  const latest=ordered.at(-1)||null;
+  if(!latest){
+    return `<header class="vn-evo-head">${evoBackHTML()}<p class="vn-evo-eye">EvoScan</p><h1>Body composition</h1><p class="vn-evo-lead">No scans yet. A scan is a reading from that moment, usually after a workout. It is not your morning weigh-in, and it never becomes the body-weight trend.</p></header><div class="vn-evo-actions"><button type="button" class="vn-evo-act" onclick="evoOpenForm()">New scan</button><button type="button" class="vn-evo-quiet" onclick="evoOpenForm()">Enter numbers manually</button></div>`;
+  }
+  return `<header class="vn-evo-head">${evoBackHTML()}<p class="vn-evo-eye">EvoScan</p><h1>Body composition</h1><p class="vn-evo-kicker">Latest scan · ${esc(evoShort(latest.date)||"Undated")}</p></header>
+    ${evoAnalysisHTML(ordered)}
     <div class="vn-evo-actions"><button type="button" class="vn-evo-act" onclick="evoOpenForm()">New scan</button><button type="button" class="vn-evo-quiet" onclick="evoOpenForm()">Enter numbers manually</button><button type="button" class="vn-evo-quiet" onclick="useLatestScanTDEE()">Use latest TDEE as maintenance</button></div>`;
 }
 function renderEvoScanPage(){
