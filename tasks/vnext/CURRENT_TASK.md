@@ -1,180 +1,143 @@
-# CURRENT TASK — VNEXT PHASE 2B: TRAIN — ACTIVE WORKOUT MODE
+# CURRENT TASK — VNEXT PHASE 2C: PROGRESS / WEIGHT
 
 **Owner:** Cursor (implementation) · **Reviewer:** Claude (design/UX acceptance)
 **Status:** READY TO START
-**Read first:** `AGENTS.md` · `tasks/vnext/DECISIONS.md` (binding) · `design-vnext/` (visual source of truth)
-**Previous slice:** 2A committed as `9fd3772`.
+**Read first:** `AGENTS.md` · `tasks/vnext/DECISIONS.md` (binding) · `.claude/skills/nxtfrm-data-viz/SKILL.md` (binding) · `design-vnext/`
+**Previous slices:** 2A `9fd3772` · design-vnext `a0c9203` · 2B `761f339`
 
-> **This slice carries the highest scrutiny of the migration so far.** Train is where NXTFRM is used under fatigue, one-handed, mid-set. A regression here is worse than an ugly screen: it costs a logged set. Expect more review rounds than 2A, and expect me to reject anything that trades training correctness for visual fidelity.
+> **Next highest-scrutiny slice.** This is where **D2 and D3 move from approved design decisions into production behaviour**. The weight chart is NXTFRM's flagship analytical surface and currently its weakest. Expect the same review standard as 2B.
 
 ---
 
 ## 1. Objective
 
-Turn Train into a **focused mode**. Three things must become true:
+Rebuild Progress → Weight around one rule: **one chart answers one analytical question.**
 
-1. **The current set is the protagonist.** Not one region among eight.
-2. **Entering a workout feels like entering a mode** — global chrome recedes, the session takes over.
-3. **Every existing training semantic survives, exactly.**
+Today a single plot carries seven layers at near-equal weight — raw morning, trend, confidence band, forecast line, forecast cone, goal band, target reference — and the goal is allowed to set the Y-domain. Measured on live data:
 
-Today the whole logging loop is **~2,200px tall at 390px wide**, so *"Log set" sits below the fold during a set*, and the global tab bar overlaps the weight stepper. The `design-vnext` prototype fits the same loop in **~900px**. That gap is the slice.
+| State | Y-domain | Consequence |
+|---|---|---|
+| goal off | 81–85 (**4 kg**) | readable |
+| goal confirmed | 76–86 (**10 kg**) | the bottom ~40% of the plot holds **no data at all** |
 
-**This slice is presentational.** Train must read the same engine values through the same functions. No calculation, storage key, record shape or training semantic changes.
+A month of morning readings spanning ~2.5 kg gets compressed into the top third to reserve space for a goal weeks away. **That is the defect this slice exists to fix.**
 
 ---
 
-## 2. Approved design reference
+## 2. The scoping line — read before touching `cut-support.js`
 
-| What | Where |
+Progress lives in `cut-support.js`, so this slice **must** edit that file. The line is not the file, it is the function:
+
+### ❌ TRUTH — must not change (lines ~71–263)
+`weights` · `timingRows` · `windowStats` · `ewmaTrend` · `trend` · `trendConfidence` · `forecastGoal` · `plateauWindow` · `detectPlateau` · `trendStats` · `review`
+
+These compute what the numbers **mean**. No edits, no "small improvements", no changed thresholds, constants, windows or return shapes. If one looks wrong, report it — do not fix it.
+
+### ✅ GEOMETRY / PRESENTATION — this slice may change (lines ~686–960)
+`smoothPath` · `forecastGeometry` · `trendReadText` · `chartModel` · `chartHTML` · `selectPoint` · `scrub` · `setRange` · `setGoalVisible` · `setView` · `progress`
+
+These decide how truth is **drawn**. The domain fix lives in `chartModel()` (the offending pushes are at ~`:763-764`, `:766`, `:773`).
+
+Also in scope: `vnext.css` (new `#weightPage` / `vn-*` section, same scoping contract), and `premium-ui.js` only if Progress is reached through it.
+
+**Do not edit:** any `wearables.*`, `train-anatomy.js`, `seed.*`, `manifest.webmanifest`, `index.html` (unless a new asset is genuinely required). `sw.js` only to register a new asset at the existing `RELEASE` — **never bump `RELEASE`/`CACHE_NAME`** (owner is holding that as a deployment checkpoint).
+
+---
+
+## 3. Required behaviours
+
+### 3.1 Recent trajectory — the primary chart
+**Question: "Which way is my weight actually going, right now?"**
+
+| Contract | Requirement |
 |---|---|
-| Active workout screen | `design-vnext/vnext.js` → `screenActive()` |
-| Set logging + rest + settle motion | same → `logSet()`, `restStrip()`, `setHistory()`; `vnext.css` §15 |
-| Queue sheet, exercise detail | same → `sheet('queue')`, `sheet('exdetail')` |
-| Completion recap | same → `finishWorkout()` |
-| Rationale and acceptance intent | `design-vnext/DESIGN-BRIEF.md` §P, §12, §42–44, §53 |
+| Primary | Smoothed trend — the most prominent mark |
+| Context | Raw morning readings — visibly recessive |
+| Y-domain | **Visible morning readings + trend only.** The goal band, goal reference line, forecast cone and forecast endpoint must **never** stretch it (D2) |
+| Hidden by default | Post-workout, forecast/projection |
+| Range change | Each range takes its own honest domain, re-domained correctly |
+| Without colour | Trend, morning, post-workout and projection must each be distinguishable by **mark** — line vs dot vs distinct shape vs dash — not hue alone |
+| Textual conclusion | A plain-language read stays visible **without scrubbing** |
 
-Preview: `python3 -m http.server` → `/design-vnext/` → **Train**.
+### 3.2 Morning canonical, post-workout contextual (D7, D8)
+- Morning weight is the canonical series.
+- Post-workout is **contextual and visually secondary**: off by default, a distinct mark, never competing with morning values, and it must **never** enter the trend, plateau, forecast or confidence maths. It is currently excluded from those — keep it excluded, and **also remove it from the Y-domain** it is currently pushed into (`:763-764`).
+- Do **not** change which reading is canonical on a skipped-morning day (Q1, deferred).
 
-`design-vnext/` is a **reference, not a library.** Its fixture data, its own state object and its prototype-only harness must not enter production. Port the *system and the layout*, not the prototype's logic.
+### 3.3 Journey — the long-term goal, separately (D3)
+The distant target gets its **own representation**, not a layer on the recent chart. Start → current → target range, reading left-to-right to match its labels, showing total change and remaining distance. **Not a time-series.** This is the only place the distant goal appears — which is precisely what lets the chart above keep an honest domain.
 
----
+### 3.4 Forecast — visually distinct, no false precision
+- Measured history and projected future must be **unmistakably different marks** (dashed/faded projection).
+- Off by default, explicitly labelled as a model estimate rather than a measurement.
+- Show the engine's existing confidence/range; invent nothing. If `forecastGoal()` reports insufficient evidence, **omit the forecast entirely** rather than drawing a weak one.
+- Never imply a precision the engine did not produce.
 
-## 3. Files / areas likely affected
+### 3.5 Scrub — touch-friendly
+- Dragging **anywhere across the plot** activates the nearest valid observation. No 5px tap target.
+- The selected point is obvious; a **stable metric header outside the plot** updates without moving or reflowing.
+- Preserve orientation while scrubbing; keep `touch-action` correct so a horizontal scrub does not fight vertical page scroll.
+- Keyboard equivalent (arrows to move, Escape to clear) and a sensible `aria-label`.
+- **Critical interpretation must be readable without interacting at all.**
 
-| File | Expected change |
-|---|---|
-| `premium-ui.js` | `training()` and its Train helpers (`trainChrome`, `aimCell`, `stepper`, `restRail`, `logLabel`, `queue`, `exerciseDetails`, `sessionSummary`) |
-| `vnext.css` | New `#trainPage` / `vn-*` Train section. Keep the existing scoping contract. |
-| `index.html` | Only if the shell genuinely requires it for mode entry. Prefer not to. |
+### 3.6 Ranges
+Keep the existing range set unless there is a reason to change it, and report the reasoning. A range with insufficient history should say so rather than drawing a misleading near-empty plot. Range changes must re-domain and transition coherently — axes must not jump distractingly.
 
-**Do not edit:** `cut-support.js`, any `wearables.*` engine file, `train-anatomy.js`, `seed.*`, `manifest.webmanifest`.
-**`sw.js`:** only if this slice adds a new `.js`/`.css` the page requests — then register it in `VERSIONED` at the existing `RELEASE`. Never bump `RELEASE`/`CACHE_NAME`.
-**Tests:** `wearables.release-gate.test.js` may be adapted only where it asserts on Train markup this slice legitimately changed. Preserve every assertion's original intent and declare it. Weakening a gate is a defect.
-
----
-
-## 4. Required behaviours
-
-### 4.1 Mode entry and exit (D6)
-- Starting or resuming a workout **recedes the global tab bar**. `vnext.css` already ships `.tabs.vn-recede` unwired from 2A — wire it here.
-- Provide an unmistakable way out that is **not** the tab bar: a leave/close control that returns to normal chrome without ending the session, and a finish control.
-- Leaving must **not** discard the session. Re-entering resumes exactly where the user was, including drafts.
-- Nav returns on exit and on completion.
-- Mode entry/exit is a **subtle** transition (spatial tier, 280ms). No cinematic effect.
-
-### 4.2 The current set is the protagonist
-Order, top to bottom — thumb-ordered, with load/effort/Log Set together:
-
-1. Mode bar: leave · session identity + working-set count · finish
-2. Session progress across the whole session (per-exercise resolution)
-3. Current exercise: name, muscles, tap target into details
-4. **Aim strip: Last · Target · Rest** — one line of instruments, no boxes
-5. Logged sets for this exercise
-6. Rest strip, when resting
-7. Weight stepper → reps stepper → set type → RIR → **Log set**
-8. Prev · queue · next
-
-**Acceptance: on a 390×844 viewport, at the start of an exercise, the Log Set control must be reachable without scrolling past the current set's own controls.** I will measure this.
-
-### 4.3 Set logging
-- Tap → immediate tactile feedback → the logged set resolves into the set-history list → session progress advances → next set is ready → rest timer appears for working sets.
-- The **in-place confirmation** mechanism (`ui.confirmFrom` → `confirmLabel`) is existing, deliberate behaviour that replaced a success modal. **Keep it.** No success modal, no confetti, no full-screen state, no score.
-- A freshly logged set may resolve with a brief violet settle, then return to calm. It must not stay highlighted.
-- Auto-advance to the next exercise when planned sets complete — existing behaviour.
-
-### 4.4 Rest
-- Rest strip shows remaining time, progress, **+30s** and **Skip**.
-- The engine owns the countdown. `NXP.paintRest()` updates it **without repainting the screen** — preserve that; a full repaint every second during a set is a defect.
-- `suggestedRestSeconds(ex)` remains the source of the planned duration.
-
-### 4.5 Queue, details, navigation
-- Queue in a sheet: current exercise marked, per-exercise completion, jump, reorder via `NXP.queueMove` (buttons, not drag — reachable and accessible).
-- Exercise details: real primary/secondary muscles, equipment, progression rule, previous session's sets. Anatomy only via the existing `train-anatomy.js` assets — **if accurate consistent art cannot be produced, omit it and use the muscle names.**
-- Prev / next / jump keep the existing directional entrance (`ui.lastExercise` / `ui.lastIndex` → `is-forward` / `is-back`).
-
-### 4.6 Completion
-Real outcomes only, from real logs: working sets, exercises, and the next planned day. Progressed/maintained/below **only if** derived from actual comparison against each exercise's own previous session — otherwise omit it. **No fake workout score, no celebration theatre.** Keep `View session` and `Resume workout`.
-
-### 4.7 Non-lifting days
-`Rest`, `Zone2` and `Floorball` keep their own screens and their current behaviour. They may adopt VNext styling, but **must not** be turned into the lifting screen.
+### 3.7 Chart quality
+Thin marks, hairline recessive grid, no heavy gridlines, no giant gradients, no neon glow, no decorative trace animation, no dual Y-axis ever. The confidence band must not outweigh the data it describes.
 
 ---
 
-## 5. Must remain unchanged — read this twice
+## 4. Must remain unchanged
 
-**The input contract.** `NXT.logSet()` reads the DOM by id: `weightInput`, `repsInput`, `n99-set-type`, `n99-rir`. These ids, their types and their value semantics **must survive exactly**. The existing code comments this explicitly ("The field stays a real `<input id="weightInput">` so the engine reads it exactly as before"). Rename or restructure them and set logging breaks.
+- Every TRUTH function in §2, and the meaning of every number they return.
+- `state.bws` shape, `timeOfDay` semantics, all `apm_*` keys, `persist()`, backup/restore.
+- Weight editing, weigh-in history, waist, scans, and the Strength/Body views — this slice owns **Weight**. Strength and Body may inherit foundation styling but must not be restructured.
+- The V86 render input lock.
+- Today, Train, History, More.
 
-**Add-on semantics (D6 adjacent, and the most dangerous thing in this file).**
-- `training()` returns the Rest/Zone2 screens unless `addOnActive()`.
-- On a non-strength day the add-ons **are** the list, resolved through `exerciseDefByName()`.
-- `state.dayType` is resolved from `settings.dayOverrides`/`weeklyPlan` and **is never written by anything downstream of an add-on**. An add-on must never reclassify the day.
-- `state.addOns` stays a separate map from `state.sessionPlans`.
-
-**Everything else:**
-- `template()` vs `templateFor()` — different stores. Do not conflate.
-- Engine reads stay as-is: `N.targetFor`, `N.done`, `N.cue`, `N.sessionRows`, `N.sessionLogs`, `N.planDone`, `N.commit`.
-- Draft state: `ui.drafts` keyed by `draftKey()`, written by `rememberInput(el)` on `oninput`. Drafts must survive a repaint and an exercise switch.
-- Warm-up vs working set distinction, RIR (including "not recorded"), set numbering, extra-working-set confirmation.
-- `NXT.undo`, `NXT.finish`, `NXT.resume`, `NXT.shorter`, `NXT.fullSession`, `NXT.sessionPicker`, `NXP.editCurrentSet`, `NXP.sessionMenu`, `NXP.sessionSummary`, `NXP.equipmentNote`, `v88OpenAddModal`, `v88NoteFor`.
-- The **V86 render input lock** (`index.html:2919`): `render()` returns early while an input is focused. Train repaints on every logged set — nothing added here may fight this or repaint during focus.
-- Today, Progress, History and More — untouched this slice.
-
-If a current Train capability has no home in the new layout, **demote it, do not delete it**, and list it under *Known deviations*. Silent feature loss is a required-fix.
+Anything on Progress → Weight with no home in the new layout: **demote, do not delete**, and list it under *Known deviations*.
 
 ---
 
-## 6. Responsive acceptance
+## 5. Responsive acceptance
 
-| Width | Requirement |
-|---|---|
-| 390 | Reference. Log Set reachable per §4.2. |
-| 375 | No reflow damage, no clipped labels. |
-| 320 | A real design state. Aim strip **wraps rather than crushing its numbers**. Steppers stay thumb-sized. |
+390 / 375 / 320, all readable, zero horizontal overflow. At 320 the chart is a **real design state** — fewer axis labels is correct; shrinking type or touch targets to fit is not. The scrub target stays full-plot at every width.
 
-Zero horizontal overflow at all three widths, in every Train state below.
+## 6. Test requirements
 
-## 7. Visual acceptance
+Add `verify-2c.mjs`. Cover: goal off · goal confirmed · each range · post-workout on/off · forecast on/off · insufficient-data/empty · a range with sparse history.
 
-- The current set unmistakably dominates. No competing regions.
-- Violet confined to I1: current set, focused input, active elements. Not every control.
-- Steppers are large and tactile without being toy-like; the numeric keyboard stays optional.
-- Completed sets read as settled, upcoming work reads as muted.
-- Differentiated radii (I7). Status word + shape, never colour alone (I2, I6).
+1. **D2 — the domain fix, measured.** Assert the Y-domain with the goal **confirmed** is materially tighter than today's, and that it is **identical** whether the goal band is toggled on or off. Report the numbers. This is the headline test.
+2. **D8 — post-workout excluded from the domain**, and toggling it does not alter the trend line's geometry.
+3. **Truth untouched** — `trend()`, `trendStats()`, `detectPlateau()`, `forecastGoal()`, `trendConfidence()` return identical values before and after this slice on the same data.
+4. **Scrub** — a drag across the plot selects the nearest observation and updates the header without layout shift; works via touch; keyboard equivalent works.
+5. **Interpretation without interaction** — the textual read is present on load.
+6. **Ranges** — each re-domains; an insufficient range degrades honestly.
+7. **Forecast** — distinct mark, off by default, omitted when evidence is insufficient.
+8. Contrast ≥4.5:1, targets ≥44pt, no overflow, at 390/375/320 across all states.
+9. Reduced motion.
+10. Non-regression: Today, Train, History, More; `node wearables.release-gate.test.js` green.
 
-## 8. Test requirements
+Screenshots of each major state at 390 and 320 into `tasks/vnext/shots/`.
 
-Extend `tasks/vnext/verify-2a.mjs` or add `verify-2b.mjs`. Cover **every Train state**: lifting active · mid-session with sets logged · resting · plan complete/finished · Rest · Zone2 · Floorball · add-on active on a Rest day · empty plan.
+## 7. Explicitly out of scope
 
-1. **Contrast** — all text ≥4.5:1, every state, 390/375/320
-2. **Touch targets** — every interactive element ≥44pt, every state
-3. **Overflow** — `scrollWidth === clientWidth`, every state, all three widths
-4. **Log Set reachability** at 390×844 per §4.2
-5. **Input contract** — `weightInput`, `repsInput`, `n99-set-type`, `n99-rir` all present with correct types; a simulated log writes a correct record (weight, reps, setType, rir, setNum) to `state.logs`
-6. **Draft survival** — type a value, switch exercise, switch back: the draft is still there
-7. **Rest timer** — ticks without a full screen repaint; +30s and Skip work
-8. **Add-on safety** — activating an add-on on a Rest day does **not** change `state.dayType`, does not write `sessionPlans`, and Rest still resolves as Rest after a reload
-9. **Nav recede/restore** — hidden in active mode, restored on exit and on finish
-10. **Reduced motion** — every Train state renders; no positional animation
-11. **Non-regression** — Today/Progress/History/More unchanged, no console errors; `node wearables.release-gate.test.js` stays green
-
-Screenshots of each major Train state at 390 and 320 into `tasks/vnext/shots/`.
-
-## 9. Explicitly out of scope
-
-Progress implementation · **chart-domain change (D2 — slice 2C)** · History · Body Intelligence · OCR · Settings · AI surfaces · Supabase/schema/RLS · **`readiness()` removal (D4/X1)** · **legacy renderer removal (D5/X2)** · decision verdict vocabulary (Q2) · any calculation, storage or training-semantics change · dependency additions or a build step · `RELEASE`/`CACHE_NAME` bump.
+Progress → Performance (2F) · Body Intelligence / OCR (2G) · History (2D) · Settings (2E) · AI (2H) · Supabase/schema/RLS · `readiness()` removal (D4/X1) · legacy renderer removal (D5/X2) · Q1 canonical-weight rule · `RELEASE`/`CACHE_NAME` bump · any change to a TRUTH function.
 
 ---
 
-## 10. Definition of done
+## 8. Definition of done
 
-- [ ] Active workout is a focused mode; the current set dominates; nav recedes and restores
-- [ ] Log Set reachable per §4.2 at 390×844
-- [ ] Every state in §8 passes contrast, targets and overflow at 390/375/320
-- [ ] Input contract intact; a simulated log writes a correct record
-- [ ] Drafts survive repaint and exercise switch
-- [ ] Add-on cannot reclassify the day — proven by test
-- [ ] Rest timer ticks without full repaint
-- [ ] Nothing in §5 changed; anything demoted is listed under *Known deviations*
-- [ ] Other four tabs unchanged; release gate green
+- [ ] Recent-trajectory domain excludes goal, target line, forecast cone and post-workout — proven by measurement
+- [ ] Domain is identical with the goal toggled on and off
+- [ ] Journey exists as a separate non-time-series treatment
+- [ ] Forecast visually distinct, off by default, omitted on weak evidence
+- [ ] Scrub works anywhere on the plot, by touch, with a stable header and a keyboard path
+- [ ] Interpretation readable without interacting
+- [ ] Series distinguishable without colour
+- [ ] All TRUTH functions return identical values — proven by test
+- [ ] 390/375/320 clean; contrast, targets, overflow all pass
+- [ ] Other tabs unchanged; release gate green
 - [ ] `CURSOR_REPORT.md` completed (A–H)
 - [ ] **Do not commit.** Claude reviews the working tree first.
