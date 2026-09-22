@@ -6,182 +6,162 @@
 
 ## Slice
 
-`D12 — SHARED PRIMARY-BUTTON CONTRAST PATCH`
+`VNEXT PHASE 2F — EVOSCAN FLAGSHIP EXPERIENCE`
+
+Implementing model: **Grok 4.7** (this session). The pinned Opus model was not used.
 
 ## Status
 
-`READY FOR REVIEW` — implementation complete, Cursor-owned verification green. Rendered contrast, responsive, interaction and reduced-motion checks are Claude's (AGENTS.md §6). No browser was used.
+`READY FOR REVIEW` — OCR extraction and the phone-first scan workspace are both in. Cursor-owned checks are green. Rendered contrast, responsive, interaction, reduced-motion and visual fidelity are Claude's (AGENTS.md §6). No browser was used.
 
 ---
 
-## A. Cascade finding — `.btn.danger` background
+## A. OCR audit
 
-The declaration that paints `RESET APP DATA` is **`index.html:2196–2198`**:
+The live pipeline was read before any edit. These are the failure modes, what was done with each, and what was left.
 
-```css
-.btn, .home-cta, .tab.active, .minimum-actions button.active,
-.complete-actions button.primary, .zone2-actions button.primary {
-  background: linear-gradient(135deg, #B794F6 0%, #8B5CF6 42%, #7DD3FC 100%) !important;
-  box-shadow: 0 10px 30px rgba(139,92,246,.25) !important;
-}
-```
-
-That is the winner, and it is a **shorthand**. A `background` shorthand set to a gradient writes `background-image` and resets every other longhand, including `background-color`, to its initial value. Initial `background-color` is `transparent`, which computes to `rgba(0,0,0,0)`. That is the measured background-color.
-
-Why this beats `premium-ui.css` `.btn.danger { background: var(--nxt-danger-tint) }`, which loads later and is more specific (0,2,0 vs 0,1,0): cascade sorts **importance before specificity**. Both are author-origin. The inline rule is `!important`; the premium-ui rule was not. Importance wins, so the later, more specific tint never becomes the used value.
-
-Why `color` still came from `premium-ui.css`: the `!important` rule does not set `color`. Among normal-importance `color` declarations, `.btn.danger { color: var(--nxt-danger) }` is the latest (0,2,0). `--nxt-danger` is `#f0768e` = `rgb(240,118,142)`, which matches the measured ink.
-
-Why this is not `index.html:124`. That rule is `background: linear-gradient(135deg, var(--purple), var(--sky))` with no `!important` and specificity (0,1,0), so `.btn.danger` already outranks it. The variables that would have been used are the last `:root` definitions, `--purple:#b18aff` / `--sky:#aa7afa` (`rgb(177,138,255)` / `rgb(170,122,250)`). The measured stops `rgb(183,148,246)` and `rgb(139,92,246)` are the literals `#B794F6` and `#8B5CF6` in the `!important` gradient. `#f0768e` on `#B794F6` recomputes to **1.12:1**, the severe failure.
-
-The same rule's `box-shadow: … !important` was also winning, so `box-shadow: none` on `.btn.danger` was not applied either. The control kept the affirmative glow.
-
-`index.html` was not edited. Raising the shared `.btn` selector to `.btn:not(.danger)` would have lifted that `!important` from (0,1,0) to (0,2,0) and could have taken the cascade from other buttons. The counter is on `.btn.danger` only, in `premium-ui.css`, which loads after the inline style: same importance, higher specificity (0,2,0), so the restrained fill and `box-shadow: none` win. `background` as a shorthand also clears the gradient image, so `background-color` is no longer transparent.
-
----
-
-## B. Primary token
-
-Defined once on `:root` in `vnext.css`. `--vn-violet` is unchanged at `#8B5CF6`.
-
-| Token | Value | Role |
+| Failure | What it did | Outcome |
 |---|---|---|
-| `--vn-action-lift` | `#7C3AED` | Lightest gradient stop. **5.70:1** vs `#fff` |
-| `--vn-action` | `#6D28D9` | Darkest stop, and the disabled fill. **7.10:1** vs `#fff` |
-| `--vn-action-ink` | `#fff` | Ink |
-| `--vn-action-fill` | `linear-gradient(180deg, var(--vn-action-lift), var(--vn-action))` | Default fill |
-| `--vn-action-shadow` | inset hairline + `rgba(109,40,217,.45)` drop | Same shape as before, tinted to the new stop |
+| `.replace(/O/g,"0")` on the whole OCR string before matching | `BODY FAT` became `B0DY FAT`, `TOTAL DAILY ENERGY` became `T0TAL DAILY ENERGY`. Uppercase printouts never matched. | **Fixed at the owning layer.** There is no global mutation and no special case for those two labels. Alphabetic tokens are repaired only for the label search (`0`→`O`, `1`→`I`), and that view is the same length as the raw text. `8O.4` becomes `80.4` only inside a token that is already number-shaped. The raw OCR string is kept. |
+| Tesseract confidence discarded | Only `result.data.text` was read. | **Fixed.** `result.data.words[].confidence` is kept per candidate. Product status is not that number alone (see B). |
+| No image preparation | The camera file went straight to Tesseract. | **Fixed, on a copy.** JPEG EXIF orientation 1–8 is read in pure code. The canvas is oriented once, scaled so the long edge sits between about 900 and 1800 px, then greyscale, 2nd–98th percentile contrast, and a mild unsharp. A median-threshold second pass runs only when the first read finds fewer than two fields or fewer than 12 characters, and it is kept only if it finds more fields. `state.currentScanImage` stays the original data URL. The `<img>` is loaded with `image-orientation: none` so the browser does not rotate from EXIF and the canvas does not rotate a second time. |
+| Raw OCR rendered to the user | `pre#ocrOutput` was in the normal flow. | **Removed from the normal flow.** The text is kept on the draft and, after an explicit save, as optional `ocrText`. It is shown only inside “What the reader saw”. |
+| `Number(x)\|\|""` | A legitimate `0` was stored as empty. | **Fixed.** Empty stays empty. `0` is a number. A weight of `0` is stored on the scan if the user enters it, and it does not create a weigh-in (`> 0` is still required for that row). |
+| Greedy first-kilogram fallback | A nearby kg could be assigned to the wrong field. `818` could be rewritten as `81.8`. | **Fixed.** A value is taken only from the window after its own label, ending at the next label or the following line. `818` kg is outside 25–300 and is **NOT FOUND**, not rewritten. Fat mass and muscle mass are not stolen as body weight. |
+| Body fat confused with fat mass; BMR with TDEE | Overlapping labels. | **Fixed by label priority.** `BODY FAT MASS` is fat mass. `BODY FAT` / `PBF` is body fat. `BMR` and `TDEE` are separate. Bare `WEIGHT` and bare `TEE` are loose and can only be **CHECK**. |
+| Competing values | First match won. | **CHECK**, both candidates kept. A preferred value is shown so the field can be edited. It is not treated as a decision. |
+| Pounds, European commas | Not handled, or handled by stripping every comma. | `lb` → kg (`× 0.45359237`, one decimal) and the field is **CHECK**. `81,8` → `81.8`. `1,820` → `1820`. A comma that is neither a decimal nor a thousands group is rejected, not stripped into `818`. |
+| Value printed before its label | Common on some device layouts. | **Left.** The window is after the label. Guessing backwards would invent associations. Those fields stay **NOT FOUND** and the user types them. |
+| Second OCR pass on a merely mediocre first read | — | **Left.** The second pass runs only when the first read is nearly empty. A first read that finds two plausible-but-wrong fields is not retried. Retrying every scan would double the wait on the common path. |
+| HEIC / PNG orientation | — | **Left.** The orientation reader understands JPEG APP1. A PNG returns orientation 1. iPhone camera JPEGs are the path that carries EXIF. |
 
-The binding case is the lightest stop. `#7C3AED` is the closest measured pass to the current violet; `#6D28D9` is the dark stop. Both figures were recomputed here and match the task's table. Font size is untouched (16px where the rule set it).
+### Metrics the parser will fill
 
-### Consumers
+Weight (kg, measured), body fat (%, estimated), muscle mass (kg, estimated), fat mass (kg, estimated), BMR (kcal, estimated), TDEE (kcal, estimated).
 
-All five sites now read the tokens. No site still carries the `#9B71F8 → var(--vn-violet)` literal.
+Nothing else is extracted. Remainder on the composition bar is `weight − fat mass` drawn as estimated arithmetic. It is not stored, not called lean mass, and it is omitted when fat mass is missing or larger than weight. No body score. No radar. No carry-over from the previous scan. A second extract that does not contain body fat leaves body fat **NOT FOUND**.
 
-| # | Selector |
+### How a field becomes one of the three statuses
+
+No percentage is shown.
+
+**NOT FOUND** — no plausible candidate in that field’s window. The input is empty. The user may type a value; that save is `MANUAL_ENTRY`.
+
+**CHECK** — at least one plausible candidate, and any of these is true: two different plausible values; the unit was converted (lb); the label was loose (`WEIGHT`, `TEE`); the number had no unit; a matching Tesseract word confidence is present and below 80. The minimum matching word confidence is used, so one weak token pulls the field down.
+
+**HIGH CONFIDENCE** — one plausible value, a specific label, a unit that already matches the field, and either no word confidence was returned or that confidence is 80 or above. Missing Tesseract confidence does not by itself force CHECK when the label, unit and range already agree.
+
+Ranges used before a candidate is even plausible: weight 25–300 kg, body fat 2–70%, muscle 10–120 kg, fat mass 1–200 kg, BMR 700–4500 kcal, TDEE 900–7000 kcal. A wrong unit for the kind is rejected, not moved onto another field.
+
+---
+
+## B. Staged pipeline
+
+`readEvoScanOCR` is the only reader. Stages written to `#scanStatus`, in order, with no `m.progress` and no fake percent:
+
+1. Preparing scan — original file kept; EXIF read; canvas built.
+2. Reading report — Tesseract, words and text.
+3. Finding metrics — label view, local windows, numeric repair, units.
+4. Checking values — plausibility and the three statuses, then the review form.
+
+If the library has not loaded, the status says the numbers can still be typed. Closing the form increments a job token so a late result cannot paint a form the user already left.
+
+Nothing in this path calls `persist` or `state.scans.push`. The only write is `saveEvoScan`, and it reads the inputs the user is looking at.
+
+---
+
+## C. D14 — canonical weight
+
+`cleanRows()` in `cut-support.js` is the only engine edit. `ewmaTrend`, `trend`, `trendConfidence`, `forecastGoal`, `plateauWindow`, `detectPlateau`, `trendStats` and `review` are untouched. Waist (`key === "cm"`) is not filtered.
+
+For `key === "weight"`, a row whose `timeOfDay` is a non-empty string other than `morning` is skipped before the two existing morning-preference lines. Those two lines are byte-identical, and the string `Post-workout` does not appear inside `cleanRows` (the release-gate greps). Morning still outranks an untimed row on the same date.
+
+**Untimed rows stay eligible.** A missing `timeOfDay` is treated as the historical weigh-in from before timings existed, not as a Post-workout or EvoScan fallback. Dropping those rows would rewrite pre-timing history. The characterization fixture’s untimed `2026-07-01` at 91.0 kg is still the EWMA seed (`e[0] = 91`, `e[1] = 87.8`). D14’s “no fallback” is applied to named non-morning timings: Post-workout, Evo Scan, Pre-workout and Night. If an untimed row should also be ineligible, that is a further decision — say so and it is a one-condition change.
+
+The dev seed was not replayed here (it is a browser seed, and it is 100% Morning, so the rule is a no-op on it). What was executed:
+
+- `verify-2f.mjs` injects Morning 80.2 on 2026-09-01 beside an Evo Scan 99.9, a Post-workout-only 99.1 on 09-02, an Evo Scan-only 99.9 on 09-03, and an untimed 81.0 on 09-04. Canonical rows are the morning 80.2 and the untimed 81.0. The two contextual dates are absent. The Post-workout 99.1 is still returned by `timingRows("Post-workout")`. Waist selection is unchanged.
+- `wearables.weight-contract.test.js` is a characterization suite, not the all-Morning seed. Its 2026-09-15 Post-workout-only 85.2 kg used to be canonical. Under D14 that day is absent and the series length is 38 rather than 39. The golden EWMA, window, trend, plateau, forecast and band figures were recomputed from the unchanged maths and the assertions were updated in place. Test 2 now asserts absence and that 85.2 kg remains in the Post-workout series. The suite was not weakened: the old pin was the fallback D14 revoked. `wearables.release-gate.test.js` was not edited and passed (53 / 0).
+
+Scan weight is still stored in full on the scan, in history, in detail, in What changed, and on the EvoScan series. The dual-write of a contextual `bws` row with `timeOfDay: "Evo Scan"` remains, so the reading is not deleted from the log. It cannot become the EWMA, plateau, forecast, cut-progress or confidence point.
+
+The board labels that weight as the EvoScan reading, not as the morning body-weight trend. The chart caption says the same.
+
+---
+
+## D. Review, provenance, delete, storage
+
+Save is the primary control (`--vn-action-fill` / `--vn-action-ink` / `--vn-action-shadow`). Read scan is quiet. Enter numbers manually opens the same form as New scan; it is not an error state. Use this TDEE snapshots the open inputs first, then writes `settings.tdee` only. It prefers the typed field, then the open scan, then the latest scan, and it refuses a missing or non-positive value.
+
+Provenance is decided at save by comparing the input with the OCR draft:
+
+- no OCR value → `MANUAL_ENTRY`
+- input differs from the OCR value, or the field was cleared → `USER_CORRECTED`, and the original OCR number and raw token are kept
+- input matches the OCR value → `OCR_EXTRACTED`
+
+Core record, unchanged: `{id, date, image, weight, bodyFat, muscleMass, fatMass, tdee, bmr, notes}` under `apm_evo_scans`. Additive and optional: `context: "EVOSCAN"`, `provenance`, `ocrText` (only if a read happened), `weighInId` (only if a contextual weigh-in was created). An older scan with none of those still renders. Zero is preserved. Empty stays empty.
+
+Delete always confirms, and the message says what goes and what stays. A linked `weighInId` whose row is `Evo Scan` is removed with the scan. A linked Morning row is not. With no id, a unique date + weight + `Evo Scan` match is removed; zero matches remove nothing; two or more matches remove nothing and the message says the weigh-ins stay because the link is not unique. The filter also refuses to drop a row whose timing is morning. A hand-entered weigh-in is not inferred.
+
+---
+
+## E. The scan workspace
+
+Settings → Body is no longer the old OCR page inside settings chrome. `NXP.more('body')` paints `renderEvoScanPage()` in a `vn-evo` shell.
+
+Board, in order: EVOSCAN · Body composition, latest scan date, weight with its EvoScan context, body fat, muscle, fat mass, the composition bar, one trend, what changed, history, New scan. Detail is one scan, with the image, provenance, and delete. Form is the photo plus one row per metric: value, unit, measured or estimated, and HIGH CONFIDENCE / CHECK / NOT FOUND. Each row is editable.
+
+Measured is a filled dot. Estimated is a hollow diamond. HIGH is a violet circle plus the words. CHECK is an amber diamond plus the words. NOT FOUND is a hollow concern ring plus the words. Deltas are ink, not green or red. Body-fat deltas are percentage points. A 0.6 point move is written as `0.6 percentage points`, not as a percent of the previous value.
+
+The trend switcher is Weight / Body fat / Muscle / Fat mass. One SVG at a time, its own min and max, captioned as the scan-to-scan series. The composition bar draws fat and muscle as shares of that scan’s weight and does not stack muscle on top of fat.
+
+Primary actions use the shared D12 tokens. Disabled primary stays opacity 1 and solid `--vn-action`. At 320 px the title and the hero number step down and the metric rows stack. Reduced motion cuts the status pulse.
+
+---
+
+## F. Files and constraints
+
+| File | What changed |
 |---|---|
-| 1 | `#homePage .vn-act` |
-| 2 | `#trainPage .vn-train-active .nxp-train-cta` |
-| 3 | `#trainPage .vn-train-ready .n99-button` |
-| 4 | `#trainPage .nxp-train-idle.vn-train .nxp-train-idle-actions .n99-button`, `… .nxp-session-tools .n99-button` |
-| 5 | `#morePage .vn-set-act` |
+| `index.html` | EvoScan parser, reader, review, dashboard, detail, delete. Region from `latestEvoScan` through the scan page. |
+| `vnext.css` | `#morePage .vn-evo` section. Disabled primary extended to `.vn-evo-act`. |
+| `premium-ui.js` | `evoScanView()`; `more('body')` uses it. |
+| `cut-support.js` | `cleanRows()` weight eligibility only. |
+| `wearables.weight-contract.test.js` | Characterization pins recomputed after D14. See C. |
+| `tasks/vnext/verify-2f.mjs` | New. Synthetic fixtures only, generated in memory. No image file is written. |
 
-`#morePage .vn-set-act.is-quiet` still overrides fill, ink and shadow afterwards (surface-2 / `--vn-ink`). Recomputed at rest: **14.19:1**. Left alone.
+Not edited: `sw.js`, `manifest.webmanifest`, `wearables.release-gate.test.js`, the other wearables suites, `seed.*`, `train-anatomy.js`. `RELEASE` and `CACHE_NAME` stay at 109. No new page script or stylesheet. The scratch snippet used to splice the parser was deleted.
 
-Secondary train buttons still override the primary fill with `--vn-surface-2` / `--vn-ink`.
-
-### States
-
-Computed against `#fff`, sRGB WCAG relative luminance. `filter: brightness()` multiplies channels; `opacity` is an element group composited over `#0E1014`.
-
-| State | What applies | Lightest stop | Verdict |
-|---|---|---|---|
-| Default | `--vn-action-fill` | **5.70:1** (`#7C3AED`); dark stop 7.10:1 | Pass |
-| Hover | No `:hover` rule in `vnext.css`, `premium-ui.css`, or on `.btn` in `index.html`. Hover computes as default | **5.70:1** | Pass |
-| Pressed | Existing `:active` `filter: brightness(.94)` on `.vn-act`, `.nxp-train-cta`, `.vn-set-act`. Darkens both ink and fill; does not composite with the page | **5.48:1** lightest, 6.77:1 darkest | Pass |
-| Focus | Existing outline only (`--vn-violet-lift` / `--vn-violet-line`). Fill and ink unchanged | **5.70:1** | Pass |
-| Disabled, if left at opacity .42 | `.nxp .n99-button:disabled` is .42; train CTA's later rule is .45; `button:disabled` is .5. At .42, white on `#7C3AED` over canvas composites to **2.74:1** | Fail | — |
-| Disabled, as shipped | One shared rule, tokens only, `opacity: 1`, solid `--vn-action` (`#6D28D9`), shadow and filter cleared. Quiet (`:not(.is-quiet)`) and `.secondary` are excluded | **7.10:1** | Pass |
-
-The disabled rule covers the five consumers. `pointer-events: none` from the existing disabled rules still applies; this rule only replaces the opacity that was destroying contrast. A flat darker stop is the disabled cue, so a disabled primary does not keep the gradient highlight.
+Handlers still present: `apx96SetMoreView('hub')`, `handleScanFile`, `readEvoScanOCR`, `saveEvoScan`, `useLatestScanTDEE`, and confirmed delete. Field ids still present on the form: `scanFile`, `scanDate`, `scanWeight`, `scanBodyFat`, `scanMuscleMass`, `scanFatMass`, `scanTDEE`, `scanBMR`, `scanNotes`. They are not in the DOM until New scan or Enter numbers manually.
 
 ---
 
-## C. Destructive treatment
+## G. Verification
 
-`premium-ui.css` `.btn.danger` only. Class names, `onclick` handlers, the confirm, and `NXT.resetData()` are untouched. `index.html` markup was not edited.
-
-| Property | Value | Contrast |
-|---|---|---|
-| Ink | `#DC5A76` (the measured concern; equals `--vn-concern`. `--nxt-danger` itself is unchanged) | — |
-| Fill | `#0E1014` (canvas), `!important` so the gradient shorthand loses | **5.23:1** |
-| Border | `1px` `#DC5A76` (the `.btn` border was already 1px, color was transparent) | — |
-| Shadow | `none !important` | the affirmative glow loses |
-
-White on a `#DC5A76` fill is 3.64:1 and was not used. A pink tint over the card was not used either: `#DC5A76` on an 8% tint of itself over `#1a1922` recomputes to **4.38:1**. An opaque canvas fill keeps the pair at the measured 5.23:1 on every parent (the card, the edit-set sheet, the cloud card).
-
-### States
-
-| State | Treatment | Contrast |
-|---|---|---|
-| Default | Ink and border `#DC5A76`, fill `#0E1014` | **5.23:1** |
-| Hover | No `:hover` rule. Computes as default | **5.23:1** |
-| Pressed | `.btn:active` still scales the control. Its `filter: brightness(.92)` would leave this pair at **4.55:1** — inside AA, with no margin. `.btn.danger:active { filter: none }` clears it (specificity 0,3,0 vs 0,2,0), so pressed stays **5.23:1** | Pass |
-| Focus | Text, fill and border unchanged. On `#morePage` the existing violet focus outline still wins (an id beats `.btn.danger:focus-visible`) and does not recolor the label | **5.23:1** |
-| Disabled | `.btn:disabled` opacity .42 would composite this pair to **~1.83:1**. `.btn.danger:disabled` sets `opacity: 1` and keeps the same ink and fill. The border drops to `rgba(220,90,118,.5)` as the disabled cue. `pointer-events: none` and `cursor: not-allowed` still come from the existing rules | **5.23:1** |
-
-### Other `.btn.danger` consumers
-
-Same class, so they inherit this treatment. Handlers were not opened:
-
-| Control | Where | Handler |
-|---|---|---|
-| RESET APP DATA | `index.html` App & install | confirm, then `localStorage.clear()` |
-| SIGN OUT | `cloudCardHTML()` | `cloudSignOut()` |
-| DELETE SET | edit-set sheet | `deleteLoggedSet()` |
-| DELETE ENTRY | edit weigh-in sheet | `apx95DeleteWeight()` |
-| RESET | legacy `renderMore()` card | confirm, then `localStorage.clear()` |
-
----
-
-## D. Left alone
-
-- `--vn-violet` and every non-button use of it (active tab, selected date, focus ring, focal surface)
-- `.vn-set-act.is-quiet` (14.19:1 at rest)
-- `backfillAllCoachInsights()` — D13
-- `RELEASE` / `CACHE_NAME` — still `109` / `nxtfrm-v109-premium-cache`. No new asset, so `sw.js` was not edited
-- `cut-support.js`, `premium-ui.js`, `index.html`, wearables, seed, train-anatomy
-
----
-
-## E. Verification
-
-No JavaScript was changed, so `node --check` does not apply.
-
-Brace balance (raw, and again with comments stripped):
-
-| File | Raw | Comments stripped |
-|---|---|---|
-| `vnext.css` | 502 / 502 | 500 / 500 |
-| `premium-ui.css` | 816 / 816 | 815 / 815 |
-
-Sixteen suites, enumerated `wearables*.test.js` so `wearables.test.js` is included:
+Cursor did not open a browser and did not run Playwright.
 
 ```
-16 suites / 458 tests / 0 failing
+node --check premium-ui.js          OK
+node --check cut-support.js         OK
+node --check (index.html inline script, lines 2664–7444)   OK
+vnext.css braces                    raw 602/602, comment-stripped 600/600
+node tasks/vnext/verify-2f.mjs      OK  23 passed
 ```
 
-| Suite | Result |
-|---|---|
-| wearables.adapters.test.js | 32 passed |
-| wearables.canonical.test.js | 24 passed |
-| wearables.days.test.js | 16 passed |
-| wearables.ingest.test.js | 32 passed |
-| wearables.provider-garmin.test.js | 3 passed |
-| wearables.recovery-integration.test.js | 32 passed |
-| wearables.recovery.test.js | 28 passed |
-| wearables.release-gate.test.js | 53 passed |
-| wearables.resolution.test.js | 19 passed |
-| wearables.snapshots.test.js | 26 passed |
-| wearables.store.test.js | 34 passed |
-| wearables.sync.test.js | 47 passed |
-| wearables.test.js | 18 passed |
-| wearables.train-enrichment.test.js | 34 passed |
-| wearables.training-readiness.test.js | 29 passed |
-| wearables.weight-contract.test.js | 31 passed |
+Sixteen suites, run after the D14 characterization update and before the one-line `image-orientation: none` fix. That line is inside `evoLoadImage` and is not executed by these suites. `node --check` on the inline script was repeated after it.
 
-Not committed. Not pushed.
+```
+for f in wearables*.test.js; do node "$f" || echo "FAIL $f"; done
+```
+
+16 files, 0 failing. Per-suite `OK` lines, in glob order: 32, 24, 16, 32, 3, 32, 28, 53, 19, 26, 34, 47, 18, 34, 29, 31. **Total 458 passed, 0 failed.**
 
 ---
 
-## F. For Claude to measure
+## H. For Claude, and one recommendation
 
-Rendered contrast at 390px, on the lightest gradient stop, for default, hover, pressed, focus and disabled:
+Please verify at 390 / 393 / 402 / 430 / 375 / 320: the board, the review form (including a NOT FOUND row and a CHECK row), detail, delete confirmation copy, the single-metric chart, the composition bar when fat mass is missing, reduced motion, and that the primary control is the shared violet rather than a local fill. A real camera JPEG is the only way to see EXIF and Tesseract together; the fixtures here are synthetic and never a personal scan.
 
-- Today `.vn-act`
-- Train `.nxp-train-cta`, ready `.n99-button`, idle primary `.n99-button`
-- Settings `.vn-set-act` (Save appearance, Export app backup)
-- Settings `.vn-set-act.is-quiet` still at its previous pair
-- `RESET APP DATA`, plus Sign out and Delete set, including a disabled `.btn.danger` if one can be reached
+**Recommendation.** Keep untimed weigh-ins eligible, as implemented. The rows D14 names — Post-workout and EvoScan — are excluded, and a skipped morning stays a gap. Treating a blank `timeOfDay` as ineligible would move every pre-timing weigh-in out of EWMA, plateau and forecast, including the 91.0 kg seed point the characterization suite still depends on. If that stricter reading is what you want, it should be a separate decision.
 
-Disabled primary should be solid `#6D28D9` at opacity 1, not the gradient at opacity .42. Destructive fill should be `#0E1014` with `#DC5A76` ink, and `background-image` should be `none`.
+Do not commit. Do not push.

@@ -35,7 +35,7 @@ renderMore=NXP.more; renderHistory=NXP.history;
 | **2D** | History: calendar-first, selected-date detail | ✅ committed `eb713de` |
 | **2E** | Settings / More: calm configuration rows | ✅ committed `1499653` |
 | **D12** | Shared primary-button + destructive contrast patch | ✅ committed `0f54aa6` |
-| **2F** | **EvoScan flagship: OCR reliability + body-composition workspace** | ← **current** |
+| **2F** | EvoScan flagship: OCR reliability + body-composition workspace | ✅ committed |
 | 2G | Progress → Performance | 2F approved |
 
 | 2H | AI surfaces (Why / Ask / proposal sheets) | 2G approved |

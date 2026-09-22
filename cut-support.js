@@ -63,6 +63,15 @@ const NXT = (() => {
       if(!r||!Number.isFinite(dateMs(r.date))||r.date>state.date)continue;
       const v=finite(r[key]);
       if(v===null||v<=0||(key==="weight"&&(v<20||v>400))||(key==="cm"&&(v<30||v>250)))continue;
+      /* D14 — a canonical weight is a Morning weigh-in, or a row that never
+         recorded a timing (the pre-timing weigh-in). Any other recorded timing
+         is contextual and is skipped, so a date with no morning reading stays
+         absent. Waist rows are not filtered here. The two lines below still
+         choose among the rows that remain eligible. */
+      if(key==="weight"){
+        const timing=String(r.timeOfDay||"").trim().toLowerCase();
+        if(timing&&timing!=="morning")continue;
+      }
       const prior=byDate.get(r.date),morning=String(r.timeOfDay||"").toLowerCase()==="morning";
       if(!prior||morning||String(prior.timeOfDay||"").toLowerCase()!=="morning")byDate.set(r.date,{...r,[key]:v});
     }

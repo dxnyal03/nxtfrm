@@ -1110,14 +1110,22 @@ const NXP = (() => {
     if(signedOut&&hasData&&!(typeof lastCloudSyncAt!=='undefined'&&lastCloudSyncAt)&&!dismissed)return {word:'Not backed up',tone:'watch',sub:'Your records exist on this device only'};
     return calm;
   }
+  function evoScanView() {
+    const page=document.getElementById('morePage');
+    if(!page)return;
+    page.classList.remove('nxp-settings-page');
+    page.setAttribute('data-vn-view','body');
+    page.innerHTML=shell(typeof renderEvoScanPage==='function'?renderEvoScanPage():'','vn-evo');
+  }
   function more() {
     applyAppearance();
     syncTrainNav(false);
     const view=state.moreView||'hub',c=N.cfg(),page=document.getElementById('morePage');
-    page.classList.toggle('nxp-settings-page',view!=='hub'&&view!=='appearance'&&view!=='data');
+    page.classList.toggle('nxp-settings-page',view!=='hub'&&view!=='appearance'&&view!=='data'&&view!=='body');
     page.setAttribute('data-vn-view',view);
     if(view==='appearance'){appearanceView();return;}
     if(view==='data'){dataView();return;}
+    if(view==='body'){evoScanView();return;}
     if(view!=='hub'){base.more();subviewChrome();return;}
     const lifts=Object.values(settings.weeklyPlan||{}).filter(t=>!['Rest','Zone2','Floorball'].includes(t)).length;
     const waist=N.cleanRows(c.waist,'cm').length;

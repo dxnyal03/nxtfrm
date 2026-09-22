@@ -3,7 +3,10 @@
    These are CHARACTERIZATION tests. They execute the real shipped functions in
    cut-support.js against fixed fixtures and pin the exact numbers this build
    produces. They do not independently prove the maths is correct — they prove it
-   has not CHANGED. That is precisely what a presentation-only overhaul needs.
+   has not CHANGED, except where an owner decision changed the canonical set.
+   D14 (2026-09-22) removed non-morning timings from that set. The pinned
+   numbers below were recomputed from the engine after that change. The maths
+   functions themselves were not edited.
 
    Why this file exists: the release gate asserts weight behaviour by grepping
    source text. A refactor can keep the source shape and still alter a number, so
@@ -179,10 +182,13 @@ test("1 · a morning-only day is represented by its morning reading", function (
   assert.strictEqual(at("2026-09-14").timeOfDay, "Morning");
 });
 
-// 2. Post-workout-only day plots a contextual point.
-test("2 · a post-workout-only day still yields a canonical point", function () {
-  const row = at("2026-09-15");
-  assert.ok(row, "a day with no morning reading must not vanish from the trend");
+// 2. D14 — a post-workout-only day is not a canonical point.
+// The reading stays in the contextual series. It must not feed the trend.
+test("2 · a post-workout-only day is absent from the canonical set", function () {
+  assert.strictEqual(at("2026-09-15"), undefined, "a day with no morning reading has no canonical point");
+  const post = N.timingRows("Post-workout");
+  const row = post.find(r => r.date === "2026-09-15");
+  assert.ok(row, "the reading stays in the contextual series");
   assert.strictEqual(row.weight, 85.2);
   assert.strictEqual(row.timeOfDay, "Post-workout");
 });
@@ -253,13 +259,15 @@ test("7,8 · the chart exposes exactly one shared kg scale and no second axis", 
 // 9. Morning trend output unchanged.
 test("9 · EWMA trend output is unchanged", function () {
   const e = N.ewmaTrend(W);
-  assert.strictEqual(e.length, 39);
-  assert.strictEqual(r4(e[e.length - 1].avg), 86.253);
+  // D14 drops the post-workout-only day, so the series is 38 rather than 39.
+  // The legacy row and the gap restart are unchanged.
+  assert.strictEqual(e.length, 38);
+  assert.strictEqual(r4(e[e.length - 1].avg), 86.3557);
   assert.strictEqual(e[e.length - 1].trendReady, true);
   const t = N.trend(W);
-  assert.strictEqual(t.length, 39);
-  assert.strictEqual(r4(t[t.length - 1].avg), 86.253);
-  assert.strictEqual(t[t.length - 1].coverage, 7);
+  assert.strictEqual(t.length, 38);
+  assert.strictEqual(r4(t[t.length - 1].avg), 86.3557);
+  assert.strictEqual(t[t.length - 1].coverage, 6);
   // The gap reset: the legacy 2026-07-01 row is >3 days before the series, so
   // the EWMA restarts at 2026-08-10 rather than carrying 91.0 forward.
   assert.strictEqual(r4(e[0].avg), 91, "first reading seeds its own average");
@@ -270,8 +278,8 @@ test("9 · EWMA trend output is unchanged", function () {
 // 10. 7-day average output unchanged.
 test("10 · the 7-day window average is unchanged", function () {
   const w = N.windowStats(W);
-  assert.strictEqual(w.n, 7, "inclusive calendar window [today-6, today]");
-  assert.strictEqual(r4(w.avg), 85.8143);
+  assert.strictEqual(w.n, 6, "inclusive calendar window [today-6, today], post-workout-only day absent");
+  assert.strictEqual(r4(w.avg), 85.9167);
   const prev = N.windowStats(W, N.dateAdd("2026-09-16", -7));
   assert.strictEqual(prev.n, 7);
   assert.strictEqual(r4(prev.avg), 86.3429);
@@ -283,25 +291,25 @@ test("10 · the 7-day window average is unchanged", function () {
 // 11. Rate of loss unchanged.
 test("11 · rate of loss is unchanged", function () {
   const s = N.trendStats(W);
-  assert.strictEqual(r4(s.change), -0.5286);
-  assert.strictEqual(r4(s.percent), -0.6122);
-  assert.strictEqual(r4(s.current.avg), 85.8143);
+  assert.strictEqual(r4(s.change), -0.4262);
+  assert.strictEqual(r4(s.percent), -0.4936);
+  assert.strictEqual(r4(s.current.avg), 85.9167);
   assert.strictEqual(r4(s.previous.avg), 86.3429);
-  assert.strictEqual(r4(N.detectPlateau(W).weeklyRate), -0.4732);
+  assert.strictEqual(r4(N.detectPlateau(W).weeklyRate), -0.4453);
 });
 
 // 12. Projection unchanged.
 test("12 · the forecast is unchanged", function () {
   const f = N.forecastGoal(W);
   assert.strictEqual(f.ok, true);
-  assert.strictEqual(f.weeks, 7);
-  assert.strictEqual(f.lowWeeks, 6);
-  assert.strictEqual(f.highWeeks, 8);
+  assert.strictEqual(f.weeks, 8);
+  assert.strictEqual(f.lowWeeks, 7);
+  assert.strictEqual(f.highWeeks, 9);
   assert.strictEqual(f.confidence, "high");
-  assert.strictEqual(r4(f.slope), -0.0739);
+  assert.strictEqual(r4(f.slope), -0.0674);
   const band = N.trendConfidence(W);
-  assert.strictEqual(band.length, 32);
-  assert.strictEqual(r4(band[band.length - 1].sigma), 0.2548);
+  assert.strictEqual(band.length, 31);
+  assert.strictEqual(r4(band[band.length - 1].sigma), 0.2166);
 });
 
 // 13. Target trajectory unchanged (geometry), but off the recent Y-domain (D2/D3).
@@ -318,15 +326,15 @@ test("13 · the target trajectory is unchanged", function () {
   assert.ok(mid.y2 > mid.y1, "and downward on screen, because weight is falling");
   assert.strictEqual(m.futureDays, 12,
     "future span is FUTURE_SHARE of the visible history, not the 42-day cap");
-  assert.strictEqual(r4(m.forecast.level), 85.5991, "cone anchors on the FITTED level");
-  assert.strictEqual(r4(m.forecast.days), 48.7053);
+  assert.strictEqual(r4(m.forecast.level), 85.691, "cone anchors on the FITTED level");
+  assert.strictEqual(r4(m.forecast.days), 54.7869);
   assert.strictEqual(m.forecast.arrives, false, "goal is beyond the drawn window");
   // D3: distant goal is not a chart reference line — it lives on Journey.
   assert.strictEqual(m.goalRef, null, "goal reference line removed from recent chart (D3)");
   // The cone walls are forecastGoal's own bounds drawn — not a new statistic.
   const f = N.forecastGoal(W);
-  assert.strictEqual(f.lowWeeks, 6);
-  assert.strictEqual(f.highWeeks, 8);
+  assert.strictEqual(f.lowWeeks, 7);
+  assert.strictEqual(f.highWeeks, 9);
   N.ui.showForecast = false;
 });
 
@@ -360,8 +368,9 @@ test("post-workout readings change no statistic", function () {
 
   const a = loadNXT(withPost);
   const b = loadNXT(withoutPost);
-  // 2026-09-15 is post-workout-only, so dropping post rows removes that day
-  // from the canonical set. Compare the statistics on the shared dates.
+  // D14: 2026-09-15 is post-workout-only and already absent from the canonical
+  // set. Dates up to 2026-09-14 still prove a post-workout row beside a morning
+  // reading does not move the statistics.
   const same = (fn, label) => assert.strictEqual(
     JSON.stringify(fn(a)), JSON.stringify(fn(b)), label + " must ignore post-workout rows");
 

@@ -380,3 +380,127 @@ this.
   versus thin accents on dark. Consistent with I1; the identity reads intact.
 - The "DANGER ZONE" kicker above the reset button is still generic violet rather than
   the concern colour. Tier 3 legacy, outside D12's button scope.
+
+---
+
+# CLAUDE REVIEW — VNEXT PHASE 2F: EVOSCAN FLAGSHIP
+
+Implemented on `grok-4.7-high-fast` (Opus still rate-limited until 2026-10-13).
+
+## A. SCOPE — PASS
+
+`sw.js`, `manifest.webmanifest`, `seed.*`, `train-anatomy.js` and every wearables suite
+except the weight contract are untouched. `RELEASE`/`CACHE_NAME` at `109`.
+`cut-support.js` changed by **9 lines**, confined to `cleanRows()` selection as D14 permits.
+No other engine function moved.
+
+## B. THE D14 ENGINE CHANGE — verified independently
+
+```js
+if(key==="weight"){
+  const timing=String(r.timeOfDay||"").trim().toLowerCase();
+  if(timing&&timing!=="morning")continue;
+}
+```
+
+Gated on `key==="weight"`, so waist rows are unaffected. The `timing&&` guard is the
+important judgement: rows with **no timing at all** stay eligible, so pre-`timeOfDay`
+weigh-ins from the V93–V106 era are not silently dropped out of the trend.
+
+I recomputed the engine's real output from the contract fixture, independent of the test's
+assertions:
+
+| | Engine actually produces |
+|---|---|
+| `ewmaTrend` length | 38 |
+| last EWMA avg | 86.3557 |
+| last trend coverage | 6 |
+| untimed legacy row (91.0) | **still canonical** — no history loss |
+| 2026-09-15, post-workout only | **absent** — D14 enforced |
+| post-workout contextual rows | **both preserved** (84.8, 85.2) |
+
+## C. THE MODIFIED TEST — legitimate, not weakened
+
+`wearables.weight-contract.test.js` changed because D14 reverses what test 2 asserted.
+
+Test 2 previously required *"a post-workout-only day still yields a canonical point"*. It now
+asserts the day is absent from the canonical set **and** that the reading survives in
+`N.timingRows("Post-workout")` at the same 85.2 kg — the original intent (the data must not
+vanish) is preserved, only the canonical claim is inverted.
+
+Tests 9/10 are characterization tests pinning exact numbers; D14 legitimately moves them
+(39→38, `86.253`→`86.3557`, coverage 7→6). **I verified every re-pinned number against the
+engine directly** — they are real output, not numbers chosen to pass. The file header declares
+the change and why, as AGENTS.md §5 requires.
+
+## D. OCR — the flagship defect is fixed at the owning layer
+
+`.replace(/O/g,"0")` across the whole string is gone. Label normalisation and numeric
+normalisation are separate, so `BODY FAT` and `TOTAL DAILY ENERGY` stay searchable while
+`8O.4` resolves to `80.4` only inside a numeric context. `verify-2f.mjs` asserts the repair is
+**general, not a label special case** — which was the explicit instruction.
+
+`verify-2f.mjs`: **23 passed**, covering uppercase and lowercase printouts, a missing metric
+staying `NOT FOUND`, fat/muscle mass not being stolen as body weight, a dropped decimal not
+being rewritten into a plausible weight, pounds converting and staying `CHECK`, garbage
+producing nothing, competing values marked `CHECK` with both candidates kept, low OCR
+confidence forcing `CHECK`, no value carried forward between extracts, correction retaining
+the original OCR interpretation, percentage-point semantics, per-metric separate scales, EXIF
+orientation, and synthetic-only fixtures.
+
+## E. DELETE SEMANTICS — correct and conservative
+
+`evoDeleteScan()` confirms with a message that states what is removed and what remains, and
+always says "A morning weigh-in is not deleted." The cascade filter keeps any `Morning` row by
+construction. Where more than one weigh-in matches a legacy scan, it **removes none and says
+so** rather than guessing — exactly the instructed behaviour.
+
+## F. STORAGE — compatible
+
+Key `apm_evo_scans` unchanged. All ten original fields keep their names. Additive optional
+fields only: `provenance`, `ocrText`, `weighInId`. Proven by test: an older scan without them
+still renders its core numbers.
+
+## G. BROWSER QA — PASS
+
+**390 / 393 / 402 / 430 / 375 / 320**: zero horizontal overflow, zero targets under 44pt, zero
+page errors at every width. **Zero contrast failures** on the EvoScan surface.
+
+Capability check: the capture form moved behind `evoOpenForm()` as a dashboard-first entry
+point, so I verified reachability rather than assuming. All four baseline handlers
+(`handleScanFile`, `readEvoScanOCR`, `saveEvoScan`, `useLatestScanTDEE`) and **all nine fields**
+are present once opened. Nothing lost.
+
+Other four destinations render byte-identical to 2E (7449 / 1201 / 16730 / 11258 / 3613).
+16 suites / 458 tests / 0 failing.
+
+## H. PRODUCT QUALITY
+
+The populated dashboard reads as body-composition intelligence rather than an OCR tool:
+weight as protagonist with `MEASURED` vs `ESTIMATED` carried by a diamond as well as a word,
+per-metric deltas in correct units, body fat in **percentage points**, a composition bar, an
+EvoScan-series trend with per-metric tabs on separate scales, What Changed, and scan history.
+
+The honesty is the strongest part. The context line states plainly that a scan
+"is not your morning weigh-in, and not part of the body-weight trend". The composition bar
+labels its own limit: "Remainder is scale weight minus fat mass — not a measured compartment,
+and not lean mass stored as its own metric", and muscle mass is shown unstacked with
+"It is not stacked onto fat mass." That refuses to invent a compartment the scan never
+measured (D9).
+
+## I. ONE DESIGN NOTE — not a blocker
+
+Scan history repeats a rose **Delete** on every row, three of them down the list. Targets are
+≥44pt, contrast passes and the action now confirms, so nothing here is unsafe — but a
+destructive action repeated at that prominence pulls the eye harder than the scan data it sits
+beside. Worth demoting into the scan detail view, or behind a swipe/overflow affordance, in a
+later polish pass.
+
+## J. LIMITATION WORTH STATING
+
+The dev seed carries **zero scans and 100% Morning weigh-ins**, so neither the dashboard nor
+D14 can be exercised by seeding alone. The dashboard above was rendered against synthetic
+scans injected at runtime, and D14 is proven by the contract fixture and `verify-2f.mjs`
+rather than by the seed. On real data the visible effect of D14 depends on how many
+skipped-morning days exist; that dataset is in the owner's browser, not the repo, so the
+magnitude there is unmeasured.

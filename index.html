@@ -4009,19 +4009,370 @@ function showZone2Prompt(){
 }
 
 
+/* EVO_PARSE_START
+   Staged scan extraction. Label text and numeric tokens are normalised
+   separately. Nothing here mutates the caller's string. */
+const EVO_SPEC={
+  weight:{unit:"kg",kind:"mass",lo:25,hi:300,label:"Weight",measured:true},
+  bodyFat:{unit:"%",kind:"percent",lo:2,hi:70,label:"Body fat",measured:false},
+  muscleMass:{unit:"kg",kind:"mass",lo:10,hi:120,label:"Muscle mass",measured:false},
+  fatMass:{unit:"kg",kind:"mass",lo:1,hi:200,label:"Fat mass",measured:false},
+  bmr:{unit:"kcal",kind:"energy",lo:700,hi:4500,label:"BMR",measured:false},
+  tdee:{unit:"kcal",kind:"energy",lo:900,hi:7000,label:"TDEE",measured:false}
+};
+const EVO_LABELS=[
+  {key:"fatMass",src:"BODY\\s+FAT\\s+MASS|\\bFAT\\s+MASS\\b",loose:false,pri:1},
+  {key:"muscleMass",src:"SKELETAL\\s+MUSCLE(?:\\s+MASS)?|\\bMUSCLE\\s+MASS\\b|\\bSMM\\b",loose:false,pri:1},
+  {key:"bodyFat",src:"BODY\\s+FAT(?:\\s+(?:PERCENTAGE|PERCENT))?|\\bPBF\\b|\\bFAT\\s*%",loose:false,pri:2},
+  {key:"tdee",src:"TOTAL\\s+DAILY\\s+ENERGY(?:\\s+EXPENDITURE)?|\\bTDEE\\b",loose:false,pri:1},
+  {key:"tdee",src:"\\bTEE\\b",loose:true,pri:3},
+  {key:"bmr",src:"BASAL\\s+METABOLIC(?:\\s+RATE)?|\\bBMR\\b",loose:false,pri:1},
+  {key:"weight",src:"BODY\\s+WEIGHT",loose:false,pri:1},
+  {key:"weight",src:"\\bWEIGHT\\b",loose:true,pri:4}
+];
+const EVO_KEYS=["weight","bodyFat","muscleMass","fatMass","bmr","tdee"];
+
+function evoIsNumericToken(token){
+  const core=String(token||"").trim();
+  if(!core)return false;
+  if(/[A-HJ-NP-Za-hj-np-z]/.test(core))return false;
+  if(!/[0-9]/.test(core)&&!/[.,]/.test(core))return false;
+  return /^[0-9OoIl]+(?:[.,][0-9OoIl]+)?$/.test(core);
+}
+function evoRepairNumeric(token){
+  let core=String(token||"").trim().replace(/[Oo]/g,"0").replace(/[Il]/g,"1");
+  if(!core)return null;
+  if(core.includes(",")){
+    if(/^\d{1,3},\d{1,2}$/.test(core))core=core.replace(",",".");
+    else if(/^\d{1,3}(,\d{3})+$/.test(core))core=core.replace(/,/g,"");
+    else return null;
+  }
+  const n=Number(core);
+  return Number.isFinite(n)?n:null;
+}
+function evoLabelView(text){
+  const s=String(text||"");
+  let out="",last=0,m;
+  const re=/[A-Za-z0-9]+/g;
+  while((m=re.exec(s))){
+    out+=s.slice(last,m.index);
+    const tok=m[0];
+    if(evoIsNumericToken(tok))out+=tok;
+    else if(/[A-Za-z]/.test(tok))out+=tok.replace(/0/g,"O").replace(/1/g,"I");
+    else out+=tok;
+    last=m.index+tok.length;
+  }
+  return out+s.slice(last);
+}
+function evoFindLabels(view){
+  const found=[];
+  for(const spec of EVO_LABELS){
+    const re=new RegExp(spec.src,"gi");
+    let m;
+    while((m=re.exec(view))){
+      if(!m[0]){re.lastIndex++;continue;}
+      found.push({key:spec.key,loose:spec.loose,pri:spec.pri,start:m.index,end:m.index+m[0].length});
+    }
+  }
+  found.sort((a,b)=>a.start-b.start||a.pri-b.pri||(b.end-b.start)-(a.end-a.start));
+  const kept=[];
+  for(const hit of found){
+    if(kept.some(k=>!(hit.end<=k.start||hit.start>=k.end)))continue;
+    kept.push(hit);
+  }
+  return kept.sort((a,b)=>a.start-b.start);
+}
+function evoRegionEnd(raw,from,nextStart){
+  const nl=raw.indexOf("\n",from);
+  let end;
+  if(nl===-1)end=raw.length;
+  else{
+    const nl2=raw.indexOf("\n",nl+1);
+    end=nl2===-1?raw.length:nl2;
+  }
+  if(nextStart!=null)end=Math.min(end,nextStart);
+  return Math.max(from,end);
+}
+function evoNumbersIn(slice){
+  const out=[];
+  const re=/[0-9OoIl]+(?:[.,][0-9OoIl]+)?/g;
+  let m;
+  while((m=re.exec(slice))){
+    const rawTok=m[0];
+    if(!evoIsNumericToken(rawTok))continue;
+    const value=evoRepairNumeric(rawTok);
+    if(value===null)continue;
+    const after=slice.slice(m.index+rawTok.length);
+    const um=/^\s*(kg|lbs?|kcal|%)/i.exec(after);
+    let unit=um?um[1].toLowerCase():"";
+    if(unit==="lbs")unit="lb";
+    out.push({value,raw:rawTok,unit,index:m.index});
+  }
+  return out;
+}
+function evoInterpret(key,num){
+  const spec=EVO_SPEC[key];
+  let value=num.value,converted=false,reject=false;
+  const rawUnit=num.unit||"";
+  const unitMissing=!rawUnit;
+  if(spec.kind==="mass"){
+    if(rawUnit==="%"||rawUnit==="kcal")reject=true;
+    else if(rawUnit==="lb"){value=Math.round(value*0.45359237*10)/10;converted=true;}
+  }else if(spec.kind==="percent"){
+    if(rawUnit==="kg"||rawUnit==="lb"||rawUnit==="kcal")reject=true;
+  }else if(rawUnit==="kg"||rawUnit==="lb"||rawUnit==="%")reject=true;
+  const plausible=!reject&&value>=spec.lo&&value<=spec.hi;
+  return {value,unit:spec.unit,raw:rawUnit?num.raw+" "+rawUnit:num.raw,rawUnit,converted,unitMissing,plausible};
+}
+function evoTokenConf(words,raw){
+  if(!Array.isArray(words)||!raw)return null;
+  const want=String(raw).replace(/\s/g,"").toUpperCase();
+  let best=null;
+  for(const w of words){
+    const t=String(w&&w.text||"").replace(/\s/g,"").toUpperCase();
+    if(!t)continue;
+    if(t===want||t.includes(want)||want.includes(t)){
+      const c=Number(w.confidence);
+      if(Number.isFinite(c))best=best==null?c:Math.min(best,c);
+    }
+  }
+  return best;
+}
+function evoSameValue(key,a,b){
+  if(key==="tdee"||key==="bmr")return Math.round(a)===Math.round(b);
+  return Math.round(a*10)===Math.round(b*10);
+}
+function evoPrefer(cands){
+  return cands.slice().sort((a,b)=>{
+    const score=c=>(c.unitMissing?4:0)+(c.converted?2:0)+(c.loose?1:0)-((Number(c.conf)||0)/10000);
+    return score(a)-score(b)||a.index-b.index;
+  })[0];
+}
+function evoDecide(key,cands){
+  const good=cands.filter(c=>c.plausible);
+  if(!good.length)return {status:"NOT FOUND",pick:null};
+  const uniq=[];
+  for(const c of good){
+    if(!uniq.some(u=>evoSameValue(key,u.value,c.value)))uniq.push(c);
+  }
+  const pick=evoPrefer(good);
+  if(uniq.length>1)return {status:"CHECK",pick};
+  const c=uniq[0];
+  if(c.converted||c.loose||c.unitMissing)return {status:"CHECK",pick:c};
+  if(c.conf!=null&&c.conf<80)return {status:"CHECK",pick:c};
+  return {status:"HIGH CONFIDENCE",pick:c};
+}
+function evoExtractReport(input){
+  const text=typeof input==="string"?input:String(input&&input.text||"");
+  const words=(input&&typeof input==="object"&&input.words)||[];
+  const view=evoLabelView(text);
+  const labels=evoFindLabels(view);
+  const buckets={};
+  for(const key of EVO_KEYS)buckets[key]=[];
+  labels.forEach((hit,i)=>{
+    const next=labels[i+1];
+    const end=evoRegionEnd(text,hit.end,next?next.start:null);
+    for(const num of evoNumbersIn(text.slice(hit.end,end))){
+      const read=evoInterpret(hit.key,num);
+      buckets[hit.key].push(Object.assign({key:hit.key,loose:hit.loose,conf:evoTokenConf(words,num.raw),index:hit.end+num.index},read));
+    }
+  });
+  const fields={};
+  for(const key of EVO_KEYS){
+    const spec=EVO_SPEC[key];
+    const decision=evoDecide(key,buckets[key]);
+    const pick=decision.pick;
+    const found=!!(pick&&decision.status!=="NOT FOUND");
+    fields[key]={
+      key,label:spec.label,unit:spec.unit,measured:!!spec.measured,
+      value:found?pick.value:"",
+      status:decision.status,
+      source:found?"OCR_EXTRACTED":"MANUAL_ENTRY",
+      ocr:found?pick.value:"",
+      raw:found?pick.raw:"",
+      candidates:buckets[key].filter(c=>c.plausible).map(c=>({value:c.value,raw:c.raw,conf:c.conf}))
+    };
+  }
+  return {rawText:text,fields};
+}
+function evoBlankField(key){
+  const spec=EVO_SPEC[key];
+  return {key,label:spec.label,unit:spec.unit,measured:!!spec.measured,value:"",status:"NOT FOUND",source:"MANUAL_ENTRY",ocr:"",raw:"",candidates:[]};
+}
+function evoBlankReport(){
+  const fields={};
+  for(const key of EVO_KEYS)fields[key]=evoBlankField(key);
+  return {rawText:"",fields,read:false,notes:"",date:""};
+}
+function evoFinite(v){
+  if(v===""||v==null)return null;
+  const n=Number(v);
+  return Number.isFinite(n)?n:null;
+}
+function evoFmt(key,value){
+  const n=evoFinite(value);
+  if(n===null)return "";
+  if(key==="tdee"||key==="bmr")return String(Math.round(n));
+  return (Math.round(n*10)/10).toFixed(1);
+}
+function evoProvenanceFor(entered,prior){
+  const n=evoFinite(entered);
+  const priorOcr=prior?evoFinite(prior.ocr):null;
+  const raw=prior&&prior.raw||"";
+  if(priorOcr===null)return {source:"MANUAL_ENTRY",ocr:"",raw};
+  if(n===null||n!==priorOcr)return {source:"USER_CORRECTED",ocr:priorOcr,raw};
+  return {source:prior.source==="MANUAL_ENTRY"?"MANUAL_ENTRY":"OCR_EXTRACTED",ocr:priorOcr,raw};
+}
+function evoChangeRows(current,previous){
+  if(!current||!previous)return [];
+  const rows=[];
+  for(const key of EVO_KEYS){
+    const from=evoFinite(previous[key]),to=evoFinite(current[key]);
+    if(from===null||to===null)continue;
+    const d=to-from;
+    const spec=EVO_SPEC[key];
+    let delta;
+    if(key==="bodyFat"){
+      const abs=(Math.round(Math.abs(d)*10)/10).toFixed(1);
+      delta=d===0?"0 percentage points":(d>0?"+":"−")+abs+" percentage points";
+    }else{
+      const dec=spec.kind==="energy"?0:1;
+      const abs=Math.abs(d).toFixed(dec);
+      delta=d===0?"0 "+spec.unit:(d>0?"+":"−")+abs+" "+spec.unit;
+    }
+    rows.push({key,label:spec.label,from:evoFmt(key,from),to:evoFmt(key,to),unit:spec.unit,delta});
+  }
+  return rows;
+}
+function evoSeries(scans,key){
+  return (Array.isArray(scans)?scans:[]).map((s,i)=>({s,i}))
+    .filter(x=>x.s&&evoFinite(x.s[key])!==null&&x.s.date)
+    .sort((a,b)=>String(a.s.date).localeCompare(String(b.s.date))||a.i-b.i)
+    .map(x=>({date:x.s.date,value:evoFinite(x.s[key])}));
+}
+function evoChartModel(scans,key){
+  const points=evoSeries(scans,key);
+  const spec=EVO_SPEC[key]||EVO_SPEC.weight;
+  if(!points.length)return {key,points,low:null,high:null,unit:spec.unit,label:spec.label};
+  const vals=points.map(p=>p.value);
+  let lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);
+  if(lo===hi){lo-=1;hi+=1;}
+  else{const pad=(hi-lo)*0.12;lo-=pad;hi+=pad;}
+  return {key,points,low:lo,high:hi,unit:spec.unit,label:spec.label};
+}
+function evoShort(d){
+  if(!d)return "";
+  const ms=Date.parse(String(d)+"T12:00:00Z");
+  if(!Number.isFinite(ms))return String(d);
+  return new Date(ms).toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"});
+}
+function evoResolveScanDelete(scan,bws){
+  const list=Array.isArray(bws)?bws:[];
+  const morning="A morning weigh-in is not deleted.";
+  let row=null,certain=false,ambiguous=false;
+  if(scan&&scan.weighInId){
+    const hit=list.find(r=>r&&r.id===scan.weighInId);
+    if(hit&&String(hit.timeOfDay||"").toLowerCase()==="evo scan"){row=hit;certain=true;}
+    else if(hit&&String(hit.timeOfDay||"").toLowerCase()==="morning"){certain=true;}
+    else if(hit)ambiguous=true;
+    else certain=true;
+  }else if(scan){
+    const matches=list.filter(r=>r&&r.date===scan.date&&Number(r.weight)===Number(scan.weight)&&String(r.timeOfDay||"").toLowerCase()==="evo scan");
+    if(matches.length===1){row=matches[0];certain=true;}
+    else if(matches.length===0)certain=true;
+    else ambiguous=true;
+  }
+  const drop=!!(certain&&row&&String(row.timeOfDay||"").toLowerCase()!=="morning");
+  let message;
+  if(ambiguous)message="Delete this scan? The scan record will be removed. More than one weigh-in matches it, so no weigh-in will be removed. "+morning;
+  else if(drop)message="Delete this scan? The scan record will be removed, and the Evo Scan weigh-in it added ("+row.weight+" kg on "+row.date+") will be removed. "+morning;
+  else message="Delete this scan? The scan record will be removed. No Evo Scan weigh-in is linked to it, so your weigh-ins stay as they are. "+morning;
+  return {weighInId:drop?row.id:null,message,certain:certain&&!ambiguous};
+}
+function evoReadOrientation(input){
+  const b=input instanceof Uint8Array?input:new Uint8Array(input||[]);
+  if(b.length<4||b[0]!==0xFF||b[1]!==0xD8)return 1;
+  let i=2;
+  while(i+4<b.length){
+    if(b[i]!==0xFF){i++;continue;}
+    const marker=b[i+1];
+    if(marker===0xD8){i+=2;continue;}
+    if(marker===0xD9||marker===0xDA)break;
+    if(marker===0x00||marker===0x01){i+=2;continue;}
+    const len=(b[i+2]<<8)|b[i+3];
+    if(len<2||i+2+len>b.length)break;
+    if(marker===0xE1){
+      const start=i+4;
+      if(b[start]===0x45&&b[start+1]===0x78&&b[start+2]===0x69&&b[start+3]===0x66&&b[start+4]===0&&b[start+5]===0){
+        const o=evoTiffOrientation(b,start+6,i+2+len);
+        if(o>=1&&o<=8)return o;
+      }
+    }
+    i+=2+len;
+  }
+  return 1;
+}
+function evoTiffOrientation(b,tiff,end){
+  if(tiff+8>b.length||tiff+8>end)return 0;
+  const le=b[tiff]===0x49&&b[tiff+1]===0x49;
+  const be=b[tiff]===0x4D&&b[tiff+1]===0x4D;
+  if(!le&&!be)return 0;
+  const u16=o=>le?b[o]|(b[o+1]<<8):(b[o]<<8)|b[o+1];
+  const u32=o=>le?(b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]*16777216)):(b[o]*16777216)|(b[o+1]<<16)|(b[o+2]<<8)|b[o+3];
+  if(u16(tiff+2)!==42)return 0;
+  let ifd=tiff+u32(tiff+4);
+  if(ifd<0||ifd+2>end)return 0;
+  const n=u16(ifd);
+  ifd+=2;
+  for(let k=0;k<n;k++){
+    const e=ifd+k*12;
+    if(e+12>end)break;
+    if(u16(e)===0x0112){
+      const val=u16(e+8);
+      return val>=1&&val<=8?val:0;
+    }
+  }
+  return 0;
+}
+/* EVO_PARSE_END */
+
+const EVO_INPUT={weight:"scanWeight",bodyFat:"scanBodyFat",muscleMass:"scanMuscleMass",fatMass:"scanFatMass",bmr:"scanBMR",tdee:"scanTDEE"};
+let evoJobSeq=0;
+
+function evoUi(){
+  if(!state.evoUi||typeof state.evoUi!=="object")state.evoUi={mode:"board",trend:"weight",detail:""};
+  return state.evoUi;
+}
+function evoOrdered(){
+  return [...(state.scans||[])].map((s,i)=>({s,i})).sort((a,b)=>String(a.s&&a.s.date||"").localeCompare(String(b.s&&b.s.date||""))||a.i-b.i).map(x=>x.s);
+}
 function latestEvoScan(){
-  return [...(state.scans||[])].sort((a,b)=>String(a.date).localeCompare(String(b.date))).at(-1) || null;
+  return evoOrdered().at(-1)||null;
 }
 function previousEvoScan(){
-  const sorted=[...(state.scans||[])].sort((a,b)=>String(a.date).localeCompare(String(b.date)));
-  return sorted.length>=2 ? sorted[sorted.length-2] : null;
+  const rows=evoOrdered();
+  return rows.length>=2?rows[rows.length-2]:null;
 }
 function scanDelta(key){
-  const latest=latestEvoScan(), prev=previousEvoScan();
-  if(!latest || !prev || !Number(latest[key]) || !Number(prev[key])) return "—";
-  const d=Number(latest[key])-Number(prev[key]);
-  const sign=d>0?"+":"";
-  return sign + d.toFixed(key==="tdee"?0:1);
+  const latest=latestEvoScan(),prev=previousEvoScan();
+  const a=evoFinite(latest&&latest[key]),b=evoFinite(prev&&prev[key]);
+  if(a===null||b===null)return "—";
+  const d=a-b;
+  return (d>0?"+":"")+d.toFixed(key==="tdee"||key==="bmr"?0:1);
+}
+function evoStored(raw){
+  if(raw===""||raw==null)return "";
+  const n=Number(raw);
+  return Number.isFinite(n)?n:"";
+}
+function evoRender(){
+  window.__apexTyping=false;
+  if(state)state.typingWeight=false;
+  const el=document.activeElement;
+  if(el&&typeof el.blur==="function"&&["INPUT","TEXTAREA","SELECT"].includes(el.tagName)){
+    try{el.blur();}catch(e){}
+  }
+  render();
 }
 function scanImageToBase64(file){
   return new Promise((resolve,reject)=>{
@@ -4031,230 +4382,499 @@ function scanImageToBase64(file){
     reader.readAsDataURL(file);
   });
 }
+function evoBytesFromDataURL(url){
+  try{
+    const i=String(url||"").indexOf(",");
+    if(i<0)return new Uint8Array();
+    const bin=atob(String(url).slice(i+1));
+    const out=new Uint8Array(bin.length);
+    for(let k=0;k<bin.length;k++)out[k]=bin.charCodeAt(k);
+    return out;
+  }catch(e){return new Uint8Array();}
+}
 async function handleScanFile(input){
-  const file=input.files && input.files[0];
+  const file=input&&input.files&&input.files[0];
   if(!file)return;
   const src=await scanImageToBase64(file);
-  const img=document.getElementById("scanPreview");
-  const placeholder=document.getElementById("scanPlaceholder");
-  if(img){img.src=src; img.classList.remove("hide");}
-  if(placeholder) placeholder.classList.add("hide");
   state.currentScanImage=src;
+  const ui=evoUi();
+  if(!ui.draft)ui.draft=evoBlankReport();
+  ui.draft.image=src;
+  const img=document.getElementById("scanPreview");
+  if(img){img.src=src;img.hidden=false;}
+  const zoom=document.getElementById("scanZoom");
+  if(zoom)zoom.hidden=false;
 }
 function setScanStatus(msg){
   const el=document.getElementById("scanStatus");
   if(!el)return;
-  el.style.display="block";
-  el.textContent=msg;
+  el.hidden=!msg;
+  el.textContent=msg||"";
 }
-function fillScanField(id,value){
-  const el=document.getElementById(id);
-  if(el && value!==undefined && value!==null && value!=="") el.value=value;
+function evoLoadImage(src){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    /* Keep the file's raw pixels. The browser default (image-orientation:
+       from-image) would already rotate from EXIF, and evoDrawOriented
+       rotates again. Orientation is applied once, on the canvas. */
+    img.style.imageOrientation="none";
+    img.onload=()=>resolve(img);
+    img.onerror=reject;
+    img.src=src;
+  });
 }
-function numFromText(patterns,text){
-  for(const p of patterns){
-    const m=text.match(p);
-    if(m && m[1]) return m[1].replace(/,/g,"");
+function evoDrawOriented(img,orientation){
+  const w=img.naturalWidth||img.width||1,h=img.naturalHeight||img.height||1;
+  const swap=orientation>=5&&orientation<=8;
+  const dw=swap?h:w,dh=swap?w:h;
+  const long=Math.max(dw,dh)||1;
+  let scale=1;
+  if(long>1800)scale=1800/long;
+  else if(long<900)scale=Math.min(2,1400/long);
+  const canvas=document.createElement("canvas");
+  canvas.width=Math.max(1,Math.round(dw*scale));
+  canvas.height=Math.max(1,Math.round(dh*scale));
+  const ctx=canvas.getContext("2d",{willReadFrequently:true});
+  ctx.save();
+  ctx.scale(scale,scale);
+  if(orientation===2)ctx.transform(-1,0,0,1,w,0);
+  else if(orientation===3)ctx.transform(-1,0,0,-1,w,h);
+  else if(orientation===4)ctx.transform(1,0,0,-1,0,h);
+  else if(orientation===5)ctx.transform(0,1,1,0,0,0);
+  else if(orientation===6)ctx.transform(0,1,-1,0,h,0);
+  else if(orientation===7)ctx.transform(0,-1,-1,0,h,w);
+  else if(orientation===8)ctx.transform(0,-1,1,0,0,w);
+  ctx.drawImage(img,0,0);
+  ctx.restore();
+  evoEnhance(ctx,canvas.width,canvas.height);
+  return canvas;
+}
+function evoEnhance(ctx,w,h){
+  let img;
+  try{img=ctx.getImageData(0,0,w,h);}catch(e){return;}
+  const d=img.data,n=w*h,grey=new Float32Array(n);
+  for(let p=0,i=0;p<n;p++,i+=4)grey[p]=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+  const sample=[];
+  const step=Math.max(1,Math.floor(n/4000));
+  for(let i=0;i<n;i+=step)sample.push(grey[i]);
+  sample.sort((a,b)=>a-b);
+  const lo=sample[Math.floor(sample.length*0.02)]||0;
+  const hi=sample[Math.min(sample.length-1,Math.floor(sample.length*0.98))]||255;
+  const span=Math.max(12,hi-lo);
+  const stretched=new Float32Array(n);
+  for(let i=0;i<n;i++)stretched[i]=Math.max(0,Math.min(255,(grey[i]-lo)*255/span));
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const i=y*w+x;
+      let v=stretched[i];
+      if(x>0&&x<w-1&&y>0&&y<h-1){
+        const sharp=v*5-stretched[i-1]-stretched[i+1]-stretched[i-w]-stretched[i+w];
+        v=Math.max(0,Math.min(255,v+0.35*(sharp-v)));
+      }
+      const o=i*4;
+      d[o]=d[o+1]=d[o+2]=v;
+      d[o+3]=255;
+    }
   }
-  return "";
+  ctx.putImageData(img,0,0);
+}
+function evoThresholdCanvas(source){
+  const canvas=document.createElement("canvas");
+  canvas.width=source.width;canvas.height=source.height;
+  const ctx=canvas.getContext("2d",{willReadFrequently:true});
+  ctx.drawImage(source,0,0);
+  const img=ctx.getImageData(0,0,canvas.width,canvas.height);
+  const d=img.data;
+  let sum=0,count=0;
+  for(let i=0;i<d.length;i+=16){sum+=d[i];count++;}
+  const mid=count?sum/count:140;
+  for(let i=0;i<d.length;i+=4){
+    const v=d[i]>=mid?255:0;
+    d[i]=d[i+1]=d[i+2]=v;
+  }
+  ctx.putImageData(img,0,0);
+  return canvas;
+}
+function evoFoundCount(report){
+  return EVO_KEYS.filter(k=>report&&report.fields&&report.fields[k]&&report.fields[k].status!=="NOT FOUND").length;
+}
+async function evoRecognize(source){
+  const result=await Tesseract.recognize(source,"eng",{
+    logger(m){if(m&&m.status)setScanStatus("Reading report");}
+  });
+  const data=result&&result.data||{};
+  return {text:data.text||"",words:Array.isArray(data.words)?data.words:[]};
 }
 function extractEvoValues(text){
-  const clean=String(text||"")
-    .replace(/[|]/g," ")
-    .replace(/\s+/g," ")
-    .replace(/O/g,"0");
-
-  const weight=numFromText([
-    /weight[^0-9]{0,20}(\d{2,3}\.?\d?)/i,
-    /body\s*weight[^0-9]{0,20}(\d{2,3}\.?\d?)/i,
-    /(\d{2,3}\.\d)\s*kg/i
-  ], clean);
-
-  const bodyFat=numFromText([
-    /body\s*fat\s*(?:percentage|percent|%)?[^0-9]{0,20}(\d{1,2}\.?\d?)/i,
-    /fat\s*%[^0-9]{0,20}(\d{1,2}\.?\d?)/i,
-    /pbf[^0-9]{0,20}(\d{1,2}\.?\d?)/i
-  ], clean);
-
-  const muscleMass=numFromText([
-    /muscle\s*mass[^0-9]{0,20}(\d{2,3}\.?\d?)/i,
-    /skeletal\s*muscle[^0-9]{0,20}(\d{2,3}\.?\d?)/i,
-    /smm[^0-9]{0,20}(\d{2,3}\.?\d?)/i
-  ], clean);
-
-  const fatMass=numFromText([
-    /fat\s*mass[^0-9]{0,20}(\d{1,3}\.?\d?)/i,
-    /body\s*fat\s*mass[^0-9]{0,20}(\d{1,3}\.?\d?)/i
-  ], clean);
-
-  const tdee=numFromText([
-    /tdee[^0-9]{0,20}(\d{3,5})/i,
-    /tee[^0-9]{0,20}(\d{3,5})/i,
-    /total\s*daily\s*energy[^0-9]{0,20}(\d{3,5})/i
-  ], clean);
-
-  const bmr=numFromText([
-    /bmr[^0-9]{0,20}(\d{3,5})/i,
-    /basal\s*metabolic[^0-9]{0,20}(\d{3,5})/i
-  ], clean);
-
-  fillScanField("scanWeight",weight);
-  fillScanField("scanBodyFat",bodyFat);
-  fillScanField("scanMuscleMass",muscleMass);
-  fillScanField("scanFatMass",fatMass);
-  fillScanField("scanTDEE",tdee);
-  fillScanField("scanBMR",bmr);
+  const report=evoExtractReport(typeof text==="string"?{text}:{text:text&&text.text||"",words:text&&text.words||[]});
+  report.read=true;
+  const ui=evoUi();
+  const prev=ui.draft||{};
+  report.date=prev.date||"";
+  report.notes=prev.notes||"";
+  report.image=prev.image||state.currentScanImage||"";
+  ui.draft=report;
+  for(const key of EVO_KEYS){
+    const el=document.getElementById(EVO_INPUT[key]);
+    const field=report.fields[key];
+    if(el&&field&&field.value!==""&&field.value!=null)el.value=String(field.value);
+  }
+  return report;
 }
 async function readEvoScanOCR(){
+  const job=++evoJobSeq;
   const fileInput=document.getElementById("scanFile");
-  const file=fileInput && fileInput.files && fileInput.files[0];
-  if(!file){toast("Upload scan first");return;}
+  const file=fileInput&&fileInput.files&&fileInput.files[0];
+  if(!file&&!state.currentScanImage){toast("Upload scan first");return;}
   if(typeof Tesseract==="undefined"){
     toast("OCR library not loaded");
-    setScanStatus("OCR needs internet to load Tesseract.js.");
+    setScanStatus("OCR needs a connection to load. You can still enter the numbers.");
     return;
   }
-  setScanStatus("Reading scan... this can take 10–30 seconds");
-  const output=document.getElementById("ocrOutput");
-  if(output) output.textContent="Reading scan...";
+  const ui=evoUi();
+  if(!ui.draft)ui.draft=evoBlankReport();
+  ui.draft.date=val("scanDate")||ui.draft.date||state.date;
+  ui.draft.notes=val("scanNotes");
+  ui.mode="form";
+  setScanStatus("Preparing scan");
   try{
-    const result=await Tesseract.recognize(file,"eng",{
-      logger:m=>{
-        if(m && m.status){
-          const pct=m.progress ? ` ${Math.round(m.progress*100)}%` : "";
-          setScanStatus(`${m.status}${pct}`);
-        }
-      }
-    });
-    const text=result.data.text || "";
-    if(output) output.textContent=text || "No text detected.";
-    extractEvoValues(text);
-    setScanStatus("OCR complete. Check and edit the numbers before saving.");
-    toast("Scan read. Please confirm values.");
+    if(!state.currentScanImage&&file)state.currentScanImage=await scanImageToBase64(file);
+    if(job!==evoJobSeq)return;
+    const bytes=file?new Uint8Array(await file.arrayBuffer()):evoBytesFromDataURL(state.currentScanImage);
+    const orientation=evoReadOrientation(bytes);
+    let canvas=null;
+    try{
+      const img=await evoLoadImage(state.currentScanImage);
+      if(job!==evoJobSeq)return;
+      canvas=evoDrawOriented(img,orientation);
+    }catch(e){canvas=null;}
+    setScanStatus("Reading report");
+    const first=await evoRecognize(canvas||state.currentScanImage);
+    if(job!==evoJobSeq)return;
+    setScanStatus("Finding metrics");
+    let report=evoExtractReport({text:first.text,words:first.words});
+    if(canvas&&(evoFoundCount(report)<2||String(first.text||"").trim().length<12)){
+      setScanStatus("Reading report");
+      const second=await evoRecognize(evoThresholdCanvas(canvas));
+      if(job!==evoJobSeq)return;
+      setScanStatus("Finding metrics");
+      const alt=evoExtractReport({text:second.text,words:second.words});
+      if(evoFoundCount(alt)>evoFoundCount(report))report=alt;
+    }
+    setScanStatus("Checking values");
+    report.read=true;
+    report.date=ui.draft.date||state.date;
+    report.notes=ui.draft.notes||"";
+    report.image=state.currentScanImage||"";
+    ui.draft=report;
+    ui.mode="form";
+    if(job!==evoJobSeq)return;
+    evoRender();
+    toast(evoFoundCount(report)?"Scan read. Check each value before saving.":"Nothing reliable was read. Enter the numbers yourself.");
   }catch(e){
     console.error(e);
-    setScanStatus("OCR failed. Enter values manually.");
+    if(job!==evoJobSeq)return;
+    const blank=evoBlankReport();
+    blank.read=true;
+    blank.error="The scan could not be read. Enter the numbers yourself.";
+    blank.date=ui.draft&&ui.draft.date||state.date;
+    blank.notes=ui.draft&&ui.draft.notes||"";
+    blank.image=state.currentScanImage||"";
+    ui.draft=blank;
+    ui.mode="form";
+    evoRender();
     toast("OCR failed");
   }
 }
+function evoOpenForm(){
+  const ui=evoUi();
+  ui.mode="form";
+  ui.detail="";
+  if(!ui.draft)ui.draft=evoBlankReport();
+  evoRender();
+}
+function evoCancelForm(){
+  evoJobSeq++;
+  const ui=evoUi();
+  ui.mode="board";
+  ui.draft=null;
+  state.currentScanImage="";
+  evoRender();
+}
+function evoOpenScan(id){
+  const ui=evoUi();
+  ui.mode="detail";
+  ui.detail=id;
+  evoRender();
+}
+function evoCloseDetail(){
+  const ui=evoUi();
+  ui.mode="board";
+  ui.detail="";
+  evoRender();
+}
+function evoSetTrend(key){
+  if(!EVO_SPEC[key])return;
+  evoUi().trend=key;
+  evoRender();
+}
 function saveEvoScan(){
+  const ui=evoUi();
+  const draft=ui.draft||evoBlankReport();
+  const provenance={};
+  const metrics={};
+  for(const key of EVO_KEYS){
+    const stored=evoStored(val(EVO_INPUT[key]));
+    metrics[key]=stored;
+    provenance[key]=evoProvenanceFor(stored,draft.fields&&draft.fields[key]);
+  }
   const scan={
     id:uid(),
-    date:val("scanDate") || state.date,
-    image:state.currentScanImage || "",
-    weight:Number(val("scanWeight")) || "",
-    bodyFat:Number(val("scanBodyFat")) || "",
-    muscleMass:Number(val("scanMuscleMass")) || "",
-    fatMass:Number(val("scanFatMass")) || "",
-    tdee:Number(val("scanTDEE")) || "",
-    bmr:Number(val("scanBMR")) || "",
-    notes:val("scanNotes") || ""
+    date:val("scanDate")||draft.date||state.date,
+    image:state.currentScanImage||draft.image||"",
+    weight:metrics.weight,
+    bodyFat:metrics.bodyFat,
+    muscleMass:metrics.muscleMass,
+    fatMass:metrics.fatMass,
+    tdee:metrics.tdee,
+    bmr:metrics.bmr,
+    notes:val("scanNotes")||"",
+    context:"EVOSCAN",
+    provenance
   };
-  if(!scan.weight && !scan.bodyFat && !scan.muscleMass){
-    toast("Enter scan values first");
-    return;
+  if(draft.rawText)scan.ocrText=draft.rawText;
+  if(!EVO_KEYS.some(k=>evoFinite(scan[k])!==null)){toast("Enter scan values first");return;}
+  if(evoFinite(scan.weight)!==null&&Number(scan.weight)>0){
+    const wid=uid();
+    scan.weighInId=wid;
+    state.bws.push({id:wid,date:scan.date,weight:Number(scan.weight),timeOfDay:"Evo Scan"});
   }
   state.scans.push(scan);
-  if(scan.weight) state.bws.push({id:uid(),date:scan.date,weight:scan.weight,timeOfDay:"Evo Scan"});
+  ui.mode="board";
+  ui.detail="";
+  ui.draft=null;
+  state.currentScanImage="";
   persist();
-  render();
+  evoRender();
   toast("Evo scan saved");
 }
+function evoCaptureForm(){
+  const ui=evoUi();
+  if(!ui.draft)return;
+  const date=document.getElementById("scanDate");
+  const notes=document.getElementById("scanNotes");
+  if(date)ui.draft.date=date.value;
+  if(notes)ui.draft.notes=notes.value;
+  if(!ui.draft.fields)return;
+  for(const key of EVO_KEYS){
+    const el=document.getElementById(EVO_INPUT[key]);
+    if(!el||!ui.draft.fields[key])continue;
+    ui.draft.fields[key].value=evoStored(el.value);
+  }
+}
 function useLatestScanTDEE(){
-  const t=Number(val("scanTDEE")) || Number(latestEvoScan()?.tdee);
-  if(!t){toast("No TDEE found");return;}
+  evoCaptureForm();
+  const typed=evoFinite(val("scanTDEE"));
+  const ui=evoUi();
+  const open=ui.mode==="detail"?(state.scans||[]).find(s=>s&&s.id===ui.detail):null;
+  const fromOpen=open?evoFinite(open.tdee):null;
+  const fromLatest=evoFinite(latestEvoScan()&&latestEvoScan().tdee);
+  const t=typed!==null?typed:fromOpen!==null?fromOpen:fromLatest;
+  if(t===null||!(Number(t)>0)){toast("No TDEE found");return;}
   settings.tdee=t;
   USER_TDEE=t;
   persist();
-  render();
+  evoRender();
   toast("TDEE updated");
 }
-function renderEvoScanPage(){
-  const latest=latestEvoScan();
-  const prev=previousEvoScan();
-  return `<div class="card hero">
-    <div class="row">
-      <div>
-        <div class="kicker">Evo scan tracker</div>
-        <div class="title" style="margin-top:7px">Body Composition</div>
-        <div class="sub" style="margin-top:6px">Upload a scan, OCR-read it, confirm values, then save.</div>
-      </div>
-      <span class="pill">OCR beta</span>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:10px;margin-top:14px">
-      <label class="scan-upload">
-        <input id="scanFile" type="file" accept="image/*" onchange="handleScanFile(this)">
-        <div id="scanPlaceholder">
-          <div style="font-size:32px">📄</div>
-          <div style="font-size:12px;font-weight:1000;margin-top:8px">Upload Scan</div>
-          <div class="sub" style="font-size:11px;margin-top:3px">photo/screenshot</div>
-        </div>
-        <img id="scanPreview" class="scan-preview hide" alt="scan preview">
-      </label>
-      <div class="stack">
-        <div class="scan-metric"><span class="sub">Progress</span><b>${latest?.weight?latest.weight+"kg":"—"}</b></div>
-        <div class="scan-metric"><span class="sub">Body Fat</span><b>${latest?.bodyFat?latest.bodyFat+"%":"—"}</b></div>
-        <div class="scan-metric"><span class="sub">Muscle</span><b>${latest?.muscleMass?latest.muscleMass+"kg":"—"}</b></div>
-        <div class="scan-metric"><span class="sub">TDEE</span><b>${latest?.tdee?latest.tdee+" kcal":"—"}</b></div>
-      </div>
-    </div>
-
-    <button class="btn secondary" style="margin-top:12px" onclick="readEvoScanOCR()">READ SCAN WITH OCR</button>
-    <div id="scanStatus" class="scan-status"></div>
-  </div>
-
-  <div class="card">
-    <div class="title">Confirm values</div>
-    <div class="sub" style="margin-top:5px">OCR can misread numbers. Check before saving.</div>
-    <div class="grid2" style="margin-top:12px">
-      <div><label class="label">Date</label><input id="scanDate" class="input" type="date" value="${state.date}"></div>
-      <div><label class="label">Weight</label><input id="scanWeight" class="input" type="number" inputmode="decimal" placeholder="84.1" step="0.1"></div>
-      <div><label class="label">Body Fat %</label><input id="scanBodyFat" class="input" type="number" inputmode="decimal" placeholder="23.8" step="0.1"></div>
-      <div><label class="label">Muscle Mass</label><input id="scanMuscleMass" class="input" type="number" inputmode="decimal" placeholder="62.9" step="0.1"></div>
-      <div><label class="label">Fat Mass</label><input id="scanFatMass" class="input" type="number" inputmode="decimal" placeholder="20.0" step="0.1"></div>
-      <div><label class="label">TDEE</label><input id="scanTDEE" class="input" type="number" inputmode="numeric" placeholder="2644" step="0.1"></div>
-      <div><label class="label">BMR</label><input id="scanBMR" class="input" type="number" inputmode="numeric" placeholder="1800" step="0.1"></div>
-    </div>
-    <div style="margin-top:10px"><label class="label">Notes</label><textarea id="scanNotes" class="textarea" placeholder="Optional notes"></textarea></div>
-    <button class="btn" style="margin-top:12px" onclick="saveEvoScan()">SAVE EVO SCAN</button>
-    <button class="btn secondary" style="margin-top:9px" onclick="useLatestScanTDEE()">USE TDEE AS MAINTENANCE</button>
-  </div>
-
-  <div class="card">
-    <div class="row">
-      <div>
-        <div class="kicker">Scan-to-scan changes</div>
-        <div class="title" style="margin-top:6px">${latest && prev ? "Latest vs previous" : "Need 2 scans"}</div>
-      </div>
-      <span class="pill ${latest&&prev?'good':'gray'}">${latest&&prev?'tracked':'waiting'}</span>
-    </div>
-    <div class="grid3" style="margin-top:12px">
-      <div class="metric"><span>Fat Mass</span><b>${scanDelta("fatMass")}${scanDelta("fatMass")!=="—"?"kg":""}</b></div>
-      <div class="metric"><span>Muscle</span><b>${scanDelta("muscleMass")}${scanDelta("muscleMass")!=="—"?"kg":""}</b></div>
-      <div class="metric"><span>BF%</span><b>${scanDelta("bodyFat")}${scanDelta("bodyFat")!=="—"?"%":""}</b></div>
-    </div>
-    <div class="coach" style="margin-top:12px">
-      <div class="kicker">Coach insight</div>
-      <div class="title" style="font-size:18px;margin-top:6px">${latest&&prev?"Cut quality check":"Start tracking scans"}</div>
-      <div class="sub" style="margin-top:6px">${latest&&prev?"Best sign: fat mass trending down while muscle mass stays stable.":"Save 2 scans to compare fat loss vs muscle retention."}</div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="title">Scan history</div>
-    ${(state.scans||[]).slice().reverse().map(s=>`<div class="list-item row">
-      <div><b>${s.weight||"—"}kg · ${s.bodyFat||"—"}%</b><div class="sub">${fmt(s.date)} · muscle ${s.muscleMass||"—"}kg · TDEE ${s.tdee||"—"}</div></div>
-      <button class="pill gray" onclick="state.scans=state.scans.filter(x=>x.id!=='${s.id}');persist();render();toast('Deleted')">Delete</button>
-    </div>`).join("") || '<div class="sub" style="margin-top:10px">No scans saved yet.</div>'}
-  </div>
-
-  <div class="card">
-    <div class="kicker">OCR text</div>
-    <pre id="ocrOutput" class="ocr-box" style="margin-top:10px">OCR result will appear here after reading the scan.</pre>
-  </div>`;
+function evoDeleteScan(id){
+  const scan=(state.scans||[]).find(s=>s&&s.id===id);
+  if(!scan)return;
+  const plan=evoResolveScanDelete(scan,state.bws||[]);
+  if(!confirm(plan.message))return;
+  state.scans=(state.scans||[]).filter(s=>s.id!==id);
+  if(plan.weighInId){
+    state.bws=(state.bws||[]).filter(r=>{
+      if(!r||r.id!==plan.weighInId)return true;
+      return String(r.timeOfDay||"").toLowerCase()==="morning";
+    });
+  }
+  const ui=evoUi();
+  if(ui.detail===id){ui.detail="";ui.mode="board";}
+  persist();
+  evoRender();
+  toast("Scan deleted");
 }
-
+function evoKindHTML(measured){
+  return measured
+    ?`<span class="vn-evo-kind is-measured"><i aria-hidden="true"></i>Measured</span>`
+    :`<span class="vn-evo-kind is-estimated"><i aria-hidden="true"></i>Estimated</span>`;
+}
+function evoStatusHTML(status){
+  const kind=status==="HIGH CONFIDENCE"?"high":status==="CHECK"?"check":"miss";
+  return `<span class="vn-evo-status is-${kind}"><i aria-hidden="true"></i>${esc(status)}</span>`;
+}
+function evoBit(scan,key){
+  const n=evoFinite(scan&&scan[key]);
+  if(n===null)return "—";
+  return evoFmt(key,n)+" "+EVO_SPEC[key].unit;
+}
+function evoBackHTML(){
+  return `<button type="button" class="vn-evo-back" onclick="apx96SetMoreView('hub')"><i aria-hidden="true">‹</i>Settings</button>`;
+}
+function evoMetricRows(scan,previous){
+  return ["bodyFat","muscleMass","fatMass","bmr","tdee"].map(key=>{
+    const n=evoFinite(scan[key]);
+    const spec=EVO_SPEC[key];
+    const delta=previous?evoChangeRows(scan,previous).find(r=>r.key===key):null;
+    return `<div class="vn-evo-row"><div class="vn-evo-row-l"><span>${esc(spec.label)}</span>${evoKindHTML(spec.measured)}</div><div class="vn-evo-row-v">${n===null?`<b class="is-missing">Not in this scan</b>`:`<b>${esc(evoFmt(key,n))}<small>${esc(spec.unit)}</small></b>`}${delta?`<em>${esc(delta.delta)}</em>`:""}</div></div>`;
+  }).join("");
+}
+function evoCompHTML(scan){
+  const w=evoFinite(scan.weight),f=evoFinite(scan.fatMass),m=evoFinite(scan.muscleMass);
+  if(w===null||f===null||f<0||w<=0||f>w*1.25){
+    return `<section class="vn-evo-sec"><h2>Body composition</h2><p class="vn-evo-note">A composition bar needs both scale weight and fat mass from the same scan. A missing figure stays missing.</p></section>`;
+  }
+  const fatPct=Math.max(0,Math.min(100,f/w*100));
+  const rest=Math.round((w-f)*10)/10;
+  let muscle="";
+  if(m!==null&&m>=0&&m<=w*1.25){
+    const mp=Math.max(0,Math.min(100,m/w*100));
+    muscle=`<div class="vn-evo-comp-top"><span>Muscle mass <b>${esc(evoFmt("muscleMass",m))} kg</b></span>${evoKindHTML(false)}</div><div class="vn-evo-bar is-muscle" role="img" aria-label="Muscle mass ${esc(evoFmt("muscleMass",m))} kilograms, shown against this scan's scale weight of ${esc(evoFmt("weight",w))} kilograms. Not added to fat mass."><i style="width:${mp.toFixed(1)}%"></i></div><p class="vn-evo-note">Muscle mass against this scan's scale weight. It is not stacked onto fat mass.</p>`;
+  }
+  return `<section class="vn-evo-sec"><h2>Body composition</h2><div class="vn-evo-comp-top"><span>Fat mass <b>${esc(evoFmt("fatMass",f))} kg</b></span><span>Remainder <b>${rest.toFixed(1)} kg</b></span></div><div class="vn-evo-comp-kinds">${evoKindHTML(false)}<span class="vn-evo-kind is-estimated"><i aria-hidden="true"></i>Estimated remainder</span></div><div class="vn-evo-bar" role="img" aria-label="Fat mass ${esc(evoFmt("fatMass",f))} kilograms of ${esc(evoFmt("weight",w))} kilograms scale weight. Remainder ${rest.toFixed(1)} kilograms is scale weight minus fat mass, not a measured compartment."><i style="width:${fatPct.toFixed(1)}%"></i></div><p class="vn-evo-note">Fat mass as a share of this scan's scale weight. Remainder is scale weight minus fat mass — not a measured compartment, and not lean mass stored as its own metric.</p>${muscle}</section>`;
+}
+function evoTrendSVG(scans,key){
+  const model=evoChartModel(scans,key);
+  const spec=EVO_SPEC[key];
+  if(!model.points.length)return `<p class="vn-evo-sum">No ${esc(spec.label.toLowerCase())} on saved scans yet.</p>`;
+  const W=320,H=128,padL=44,padR=10,padT=16,padB=26;
+  const plotW=W-padL-padR,plotH=H-padT-padB;
+  const vals=model.points.map(p=>p.value);
+  const dataLo=Math.min.apply(null,vals),dataHi=Math.max.apply(null,vals);
+  const x=i=>model.points.length===1?padL+plotW/2:padL+plotW*i/(model.points.length-1);
+  const y=v=>padT+plotH*(1-(v-model.low)/(model.high-model.low||1));
+  const path=model.points.map((p,i)=>`${i?"L":"M"}${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(" ");
+  const dots=model.points.map((p,i)=>{
+    const last=i===model.points.length-1;
+    return `<circle cx="${x(i).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="${last?4.5:3}" ${last?"":`fill="none" stroke-width="1.6"`}></circle>`;
+  }).join("");
+  const first=model.points[0],last=model.points[model.points.length-1];
+  const summary=model.points.length<2
+    ?`One ${spec.label.toLowerCase()} reading, ${evoFmt(key,last.value)} ${spec.unit}, on ${evoShort(last.date)}. The scan-to-scan line starts with the next scan. This is the EvoScan series, not the morning weight trend.`
+    :`${spec.label} moved from ${evoFmt(key,first.value)} to ${evoFmt(key,last.value)} ${spec.unit} across ${model.points.length} scans. EvoScan series, not the morning weight trend.`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(summary)}"><line x1="${padL}" y1="${y(dataHi).toFixed(1)}" x2="${W-padR}" y2="${y(dataHi).toFixed(1)}"></line><line x1="${padL}" y1="${y(dataLo).toFixed(1)}" x2="${W-padR}" y2="${y(dataLo).toFixed(1)}"></line><text x="${(padL-8).toFixed(1)}" y="${(y(dataHi)+4).toFixed(1)}" text-anchor="end">${esc(evoFmt(key,dataHi))}</text><text x="${(padL-8).toFixed(1)}" y="${(y(dataLo)+4).toFixed(1)}" text-anchor="end">${esc(evoFmt(key,dataLo))}</text>${model.points.length>1?`<path d="${path}" fill="none"></path>`:""}${dots}<text x="${x(0).toFixed(1)}" y="${H-6}">${esc(evoShort(first.date))}</text>${model.points.length>1?`<text x="${x(model.points.length-1).toFixed(1)}" y="${H-6}" text-anchor="end">${esc(evoShort(last.date))}</text>`:""}</svg><p class="vn-evo-sum">${esc(summary)}</p>`;
+}
+function evoTrendHTML(scans){
+  const key=EVO_SPEC[evoUi().trend]?evoUi().trend:"weight";
+  const buttons=[["weight","Weight"],["bodyFat","Body fat"],["muscleMass","Muscle"],["fatMass","Fat mass"]].map(([k,label])=>`<button type="button" class="${k===key?"is-on":""}" aria-pressed="${k===key}" onclick="evoSetTrend('${k}')">${label}</button>`).join("");
+  return `<section class="vn-evo-sec"><h2>Trend</h2><p class="vn-evo-note">Each metric has its own scale. This is the EvoScan series, not the morning body-weight trend.</p><div class="vn-evo-switch" role="group" aria-label="Which EvoScan metric to chart">${buttons}</div><div class="vn-evo-chart">${evoTrendSVG(scans,key)}</div></section>`;
+}
+function evoChangedHTML(current,previous){
+  if(!previous)return `<section class="vn-evo-sec"><h2>What changed</h2><p class="vn-evo-note">No earlier scan to compare.</p></section>`;
+  const rows=evoChangeRows(current,previous);
+  if(!rows.length)return `<section class="vn-evo-sec"><h2>What changed</h2><p class="vn-evo-note">Since ${esc(evoShort(previous.date))}, the two scans share no metric.</p></section>`;
+  return `<section class="vn-evo-sec"><h2>What changed</h2><p class="vn-evo-kicker">Since ${esc(evoShort(previous.date))}</p><div class="vn-evo-chg">${rows.map(r=>`<div class="vn-evo-chg-row"><span>${esc(r.label)}</span><b>${esc(r.from)} → ${esc(r.to)} ${esc(r.unit)}</b><em>${esc(r.delta)}</em></div>`).join("")}</div></section>`;
+}
+function evoHistoryHTML(ordered){
+  if(!ordered.length)return `<section class="vn-evo-sec"><h2>Scan history</h2><p class="vn-evo-note">No scans saved yet.</p></section>`;
+  const rev=[...ordered].reverse();
+  const rows=rev.map((s,i)=>{
+    const prior=rev[i+1]||null;
+    const weightDelta=prior?evoChangeRows(s,prior).find(r=>r.key==="weight"):null;
+    return `<div class="vn-evo-hist"><button type="button" class="vn-evo-hist-main" onclick="evoOpenScan('${jss(s.id)}')"><b>${esc(evoShort(s.date)||"Undated")}</b><span>${esc(evoBit(s,"weight"))} · ${esc(evoBit(s,"bodyFat"))} · ${esc(evoBit(s,"muscleMass"))}</span>${weightDelta?`<em>${esc(weightDelta.delta)} in weight</em>`:""}</button><button type="button" class="vn-evo-hist-del" onclick="evoDeleteScan('${jss(s.id)}')">Delete</button></div>`;
+  }).join("");
+  return `<section class="vn-evo-sec"><h2>Scan history</h2>${rows}</section>`;
+}
+function evoProvenanceHTML(scan){
+  const prov=scan&&scan.provenance;
+  if(!prov)return "";
+  const lines=EVO_KEYS.map(key=>{
+    const row=prov[key];
+    if(!row)return "";
+    const word=row.source==="USER_CORRECTED"?"Corrected":row.source==="OCR_EXTRACTED"?"Read from the scan":"Entered manually";
+    const kept=row.source==="USER_CORRECTED"&&row.ocr!==""&&row.ocr!=null?` Original read ${evoFmt(key,row.ocr)} ${EVO_SPEC[key].unit}${row.raw?` (${row.raw})`:""}.`:"";
+    return `<p><b>${esc(EVO_SPEC[key].label)}</b> ${esc(word)}.${esc(kept)}</p>`;
+  }).join("");
+  return `<details class="vn-evo-disc"><summary>How these numbers were recorded</summary>${lines}</details>`;
+}
+function evoFormHTML(){
+  const ui=evoUi();
+  const draft=ui.draft||evoBlankReport();
+  const src=state.currentScanImage||draft.image||"";
+  const fields=EVO_KEYS.map(key=>{
+    const spec=EVO_SPEC[key];
+    const field=draft.fields&&draft.fields[key]||evoBlankField(key);
+    const shown=field.value===""||field.value==null?"":String(field.value);
+    return `<label class="vn-evo-field"><span class="vn-evo-field-l"><span>${esc(spec.label)}</span><small>${esc(spec.unit)}</small>${evoKindHTML(spec.measured)}</span>${draft.read?evoStatusHTML(field.status):""}<input id="${EVO_INPUT[key]}" class="vn-evo-input" type="number" inputmode="${spec.kind==="energy"?"numeric":"decimal"}" step="${spec.kind==="energy"?"1":"0.1"}" value="${esc(shown)}" aria-label="${esc(spec.label)}"></label>`;
+  }).join("");
+  return `<form class="vn-evo-form" onsubmit="event.preventDefault();saveEvoScan()">
+    <button type="button" class="vn-evo-back" onclick="evoCancelForm()"><i aria-hidden="true">‹</i>Body composition</button>
+    <p class="vn-evo-eye">EvoScan review</p>
+    <h1>Check the reading</h1>
+    <p class="vn-evo-lead">Nothing is saved until you confirm. A field the reader could not find stays empty — it is not guessed, and it is not copied from an older scan.</p>
+    <label class="vn-evo-file"><input id="scanFile" type="file" accept="image/*" onchange="handleScanFile(this)"><span>${src?"Replace scan photo":"Add a scan photo"}</span></label>
+    <img id="scanPreview" class="vn-evo-preview" alt="Original scan" ${src?`src="${esc(src)}"`:"hidden"}>
+    <button type="button" id="scanZoom" class="vn-evo-quiet" ${src?"":"hidden"} onclick="document.getElementById('scanPreview').classList.toggle('is-open')">Enlarge scan</button>
+    <p id="scanStatus" class="vn-evo-stage" role="status" ${draft.error?"":"hidden"}>${esc(draft.error||"")}</p>
+    <button type="button" class="vn-evo-quiet" onclick="readEvoScanOCR()">Read scan</button>
+    <label class="vn-evo-field"><span class="vn-evo-field-l"><span>Date</span></span><input id="scanDate" class="vn-evo-input" type="date" value="${esc(draft.date||state.date)}"></label>
+    ${fields}
+    <label class="vn-evo-field"><span class="vn-evo-field-l"><span>Notes</span></span><textarea id="scanNotes" class="vn-evo-input" rows="3" placeholder="Optional">${esc(draft.notes||"")}</textarea></label>
+    <div class="vn-evo-actions"><button type="submit" class="vn-evo-act">Save scan</button><button type="button" class="vn-evo-quiet" onclick="useLatestScanTDEE()">Use this TDEE as maintenance</button><button type="button" class="vn-evo-quiet" onclick="evoCancelForm()">Close without saving</button></div>
+    ${draft.read&&draft.rawText?`<details class="vn-evo-disc"><summary>What the reader saw</summary><pre class="vn-evo-raw">${esc(draft.rawText)}</pre></details>`:""}
+  </form>`;
+}
+function evoDetailHTML(scan,ordered){
+  const idx=ordered.findIndex(s=>s.id===scan.id);
+  const previous=idx>0?ordered[idx-1]:null;
+  const src=scan.image||"";
+  const w=evoFinite(scan.weight);
+  return `<article class="vn-evo-detail">
+    <button type="button" class="vn-evo-back" onclick="evoCloseDetail()"><i aria-hidden="true">‹</i>Body composition</button>
+    <p class="vn-evo-eye">Scan detail</p>
+    <h1>${esc(evoShort(scan.date)||"Undated scan")}</h1>
+    <p class="vn-evo-ctx">EvoScan · post-workout context. This weight is not your morning weigh-in and does not enter the body-weight trend.</p>
+    ${src?`<img class="vn-evo-preview is-detail" alt="Original scan from ${esc(evoShort(scan.date))}" src="${esc(src)}"><button type="button" class="vn-evo-quiet" onclick="this.previousElementSibling.classList.toggle('is-open')">Enlarge scan</button>`:""}
+    <p class="vn-evo-k">Weight ${evoKindHTML(true)}</p>
+    <p class="vn-evo-num">${w===null?`<span class="is-missing">Not in this scan</span>`:`${esc(evoFmt("weight",w))}<small>kg</small>`}</p>
+    <div class="vn-evo-rows">${evoMetricRows(scan,previous)}</div>
+    ${evoCompHTML(scan)}
+    ${evoChangedHTML(scan,previous)}
+    ${scan.notes?`<section class="vn-evo-sec"><h2>Notes</h2><p class="vn-evo-note">${esc(scan.notes)}</p></section>`:""}
+    ${evoProvenanceHTML(scan)}
+    ${scan.ocrText?`<details class="vn-evo-disc"><summary>What the reader saw</summary><pre class="vn-evo-raw">${esc(scan.ocrText)}</pre></details>`:""}
+    <div class="vn-evo-actions">${evoFinite(scan.tdee)!==null?`<button type="button" class="vn-evo-quiet" onclick="useLatestScanTDEE()">Use this TDEE as maintenance</button>`:""}<button type="button" class="vn-evo-quiet is-danger" onclick="evoDeleteScan('${jss(scan.id)}')">Delete scan</button></div>
+  </article>`;
+}
+function evoBoardHTML(ordered){
+  const latest=ordered.at(-1)||null;
+  const previous=ordered.length>=2?ordered[ordered.length-2]:null;
+  if(!latest){
+    return `<header class="vn-evo-head">${evoBackHTML()}<p class="vn-evo-eye">EvoScan</p><h1>Body composition</h1><p class="vn-evo-lead">No scans yet. A scan is a reading from that moment, usually after a workout. It is not your morning weigh-in, and it never becomes the body-weight trend.</p></header><div class="vn-evo-actions"><button type="button" class="vn-evo-act" onclick="evoOpenForm()">New scan</button><button type="button" class="vn-evo-quiet" onclick="evoOpenForm()">Enter numbers manually</button></div>`;
+  }
+  const w=evoFinite(latest.weight);
+  const weightDelta=previous?evoChangeRows(latest,previous).find(r=>r.key==="weight"):null;
+  return `<header class="vn-evo-head">${evoBackHTML()}<p class="vn-evo-eye">EvoScan</p><h1>Body composition</h1><p class="vn-evo-kicker">Latest scan · ${esc(evoShort(latest.date)||"Undated")}</p></header>
+    <section class="vn-evo-hero"><p class="vn-evo-k">Weight ${evoKindHTML(true)}</p><p class="vn-evo-num">${w===null?`<span class="is-missing">Not in this scan</span>`:`${esc(evoFmt("weight",w))}<small>kg</small>`}</p>${weightDelta?`<p class="vn-evo-delta">${esc(weightDelta.delta)} vs previous scan</p>`:""}<p class="vn-evo-ctx">EvoScan · post-workout context. Not your morning weigh-in, and not part of the body-weight trend.</p></section>
+    <div class="vn-evo-rows">${evoMetricRows(latest,previous)}</div>
+    ${evoCompHTML(latest)}
+    ${evoTrendHTML(ordered)}
+    ${evoChangedHTML(latest,previous)}
+    ${evoHistoryHTML(ordered)}
+    <div class="vn-evo-actions"><button type="button" class="vn-evo-act" onclick="evoOpenForm()">New scan</button><button type="button" class="vn-evo-quiet" onclick="evoOpenForm()">Enter numbers manually</button><button type="button" class="vn-evo-quiet" onclick="useLatestScanTDEE()">Use latest TDEE as maintenance</button></div>`;
+}
+function renderEvoScanPage(){
+  const ui=evoUi();
+  const ordered=evoOrdered();
+  if(ui.mode==="form")return `<div class="vn-evo-page">${evoFormHTML()}</div>`;
+  if(ui.mode==="detail"){
+    const scan=ordered.find(s=>s.id===ui.detail);
+    if(scan)return `<div class="vn-evo-page">${evoDetailHTML(scan,ordered)}</div>`;
+    ui.mode="board";
+  }
+  return `<div class="vn-evo-page">${evoBoardHTML(ordered)}</div>`;
+}
 
 let tempSubstituteContext = { original:"", options:[] };
 

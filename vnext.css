@@ -16,6 +16,7 @@
      · Progress / Weight                   (#weightPage .vn-*)  ← Phase 2C
      · History                             (#historyPage .vn-*) ← Phase 2D
      · Settings                            (#morePage .vn-*)    ← Phase 2E
+     · EvoScan                             (#morePage .vn-evo)  ← Phase 2F
    Every screen rule is scoped under its page id, and every component class is
    new (vn-*), so no existing .nxp-* / .n99-* rule is altered at the source —
    overrides are additive under page ids.
@@ -1689,10 +1690,259 @@ body:has(.tabs.vn-recede) .toast{
 #trainPage .vn-train-ready .n99-button:disabled,
 #trainPage .nxp-train-idle.vn-train .nxp-train-idle-actions .n99-button:not(.secondary):disabled,
 #trainPage .nxp-train-idle.vn-train .nxp-session-tools .n99-button:not(.secondary):disabled,
-#morePage .vn-set-act:not(.is-quiet):disabled{
+#morePage .vn-set-act:not(.is-quiet):disabled,
+#morePage .vn-evo-act:disabled{
   opacity:1;
   background:var(--vn-action);
   color:var(--vn-action-ink);
   box-shadow:none;
   filter:none;
 }
+
+/* ==========================================================================
+   EVOSCAN — body composition. Scoped to #morePage .vn-evo.
+   One reading is the protagonist. Everything else is type, hairline and scale.
+   ========================================================================== */
+
+#morePage .vn-evo{
+  padding:var(--vn-s2) var(--vn-gutter) calc(var(--vn-s7) + env(safe-area-inset-bottom,0px));
+  min-width:0;
+  overflow-x:clip;
+  color:var(--vn-ink);
+}
+#morePage .vn-evo-page{min-width:0}
+#morePage .vn-evo-back{
+  display:inline-flex;align-items:center;gap:4px;
+  min-height:44px;margin:0 0 var(--vn-s3);padding:0 4px 0 0;
+  border:0;background:none;box-shadow:none;
+  color:var(--vn-ink-2);font:inherit;font-size:14.5px;font-weight:540;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+#morePage .vn-evo-back i{font-style:normal;color:var(--vn-ink-3);font-size:17px}
+#morePage .vn-evo-back:active{opacity:.6}
+#morePage .vn-evo-eye{
+  margin:0;font-size:12px;font-weight:620;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--vn-violet-lift);
+}
+#morePage .vn-evo h1{
+  margin:6px 0 0;
+  font-size:32px;font-weight:640;letter-spacing:-.03em;line-height:1.08;
+  color:var(--vn-ink);
+}
+#morePage .vn-evo-lead,
+#morePage .vn-evo-note,
+#morePage .vn-evo-ctx{
+  margin:10px 0 0;
+  font-size:14.5px;font-weight:450;line-height:1.45;color:var(--vn-ink-2);
+  overflow-wrap:anywhere;
+}
+#morePage .vn-evo-kicker{
+  margin:8px 0 0;font-size:13px;font-weight:560;letter-spacing:.02em;color:var(--vn-ink-3);
+}
+#morePage .vn-evo-hero{margin-top:var(--vn-s6)}
+#morePage .vn-evo-k{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  margin:0;font-size:13px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--vn-ink-3);
+}
+#morePage .vn-evo-num{
+  margin:2px 0 0;
+  font-size:56px;font-weight:620;letter-spacing:-.04em;line-height:.95;
+  font-variant-numeric:tabular-nums;color:var(--vn-ink);
+}
+#morePage .vn-evo-num small{
+  margin-left:6px;font-size:18px;font-weight:540;letter-spacing:0;color:var(--vn-ink-3);
+}
+#morePage .vn-evo-num .is-missing,
+#morePage .vn-evo-row-v .is-missing{
+  font-size:16px;font-weight:540;letter-spacing:0;color:var(--vn-ink-3);
+}
+#morePage .vn-evo-delta{
+  margin:8px 0 0;font-size:14px;font-weight:540;font-variant-numeric:tabular-nums;color:var(--vn-ink-2);
+}
+#morePage .vn-evo-kind{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11.5px;font-weight:620;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--vn-ink-2);
+}
+#morePage .vn-evo-kind i{width:7px;height:7px;flex:none;display:block}
+#morePage .vn-evo-kind.is-measured i{background:var(--vn-ink-2);border-radius:50%}
+#morePage .vn-evo-kind.is-estimated i{
+  width:6px;height:6px;background:transparent;border:1.5px solid var(--vn-review-lift);
+  border-radius:1px;transform:rotate(45deg);
+}
+#morePage .vn-evo-rows{margin-top:var(--vn-s5)}
+#morePage .vn-evo-row{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding:14px 0;border-top:1px solid var(--vn-line);
+}
+#morePage .vn-evo-row-l{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
+#morePage .vn-evo-row-l > span{font-size:15px;font-weight:540;color:var(--vn-ink)}
+#morePage .vn-evo-row-v{text-align:right;min-width:0}
+#morePage .vn-evo-row-v b{
+  display:block;font-size:20px;font-weight:600;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;color:var(--vn-ink);
+}
+#morePage .vn-evo-row-v b small{
+  margin-left:4px;font-size:12px;font-weight:540;color:var(--vn-ink-3);
+}
+#morePage .vn-evo-row-v em{
+  display:block;margin-top:3px;font-style:normal;font-size:12.5px;font-weight:500;
+  font-variant-numeric:tabular-nums;color:var(--vn-ink-3);
+}
+#morePage .vn-evo-sec{margin-top:var(--vn-s6);padding-top:var(--vn-s5);border-top:1px solid var(--vn-line)}
+#morePage .vn-evo-sec h2{
+  margin:0;font-size:13px;font-weight:620;letter-spacing:.08em;text-transform:uppercase;color:var(--vn-ink-3);
+}
+#morePage .vn-evo-comp-top{
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  margin-top:14px;font-size:14px;color:var(--vn-ink-2);
+}
+#morePage .vn-evo-comp-top b{color:var(--vn-ink);font-weight:600;font-variant-numeric:tabular-nums}
+#morePage .vn-evo-comp-kinds{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px}
+#morePage .vn-evo-bar{
+  height:14px;margin-top:10px;border-radius:7px;background:var(--vn-surface-3);overflow:hidden;
+}
+#morePage .vn-evo-bar > i{display:block;height:100%;background:var(--vn-violet);border-radius:7px}
+#morePage .vn-evo-bar.is-muscle{height:8px}
+#morePage .vn-evo-bar.is-muscle > i{background:var(--vn-ink-2)}
+#morePage .vn-evo-switch{
+  display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;
+}
+#morePage .vn-evo-switch button{
+  min-height:44px;padding:0 14px;border:1px solid var(--vn-line-2);border-radius:var(--vn-r-control);
+  background:transparent;color:var(--vn-ink-2);font:inherit;font-size:14.5px;font-weight:540;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+#morePage .vn-evo-switch button.is-on{
+  background:var(--vn-violet-dim);color:var(--vn-ink);border-color:transparent;
+  box-shadow:inset 0 0 0 1px var(--vn-violet-line);
+}
+#morePage .vn-evo-chart{margin-top:12px}
+#morePage .vn-evo-chart svg{display:block;width:100%;height:auto;overflow:visible}
+#morePage .vn-evo-chart line{stroke:var(--vn-line-2);stroke-width:1}
+#morePage .vn-evo-chart path{stroke:var(--vn-violet-lift);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#morePage .vn-evo-chart circle{fill:var(--vn-canvas);stroke:var(--vn-violet-lift)}
+#morePage .vn-evo-chart circle:last-of-type{fill:var(--vn-violet-lift)}
+#morePage .vn-evo-chart text{fill:var(--vn-ink-3);font-size:12px;font-variant-numeric:tabular-nums}
+#morePage .vn-evo-sum{margin:8px 0 0;font-size:13.5px;line-height:1.4;color:var(--vn-ink-2)}
+#morePage .vn-evo-chg{margin-top:8px}
+#morePage .vn-evo-chg-row{
+  display:grid;grid-template-columns:minmax(0,1fr);gap:2px;
+  padding:12px 0;border-top:1px solid var(--vn-line);
+}
+#morePage .vn-evo-chg-row span{font-size:13px;color:var(--vn-ink-3)}
+#morePage .vn-evo-chg-row b{font-size:16px;font-weight:580;font-variant-numeric:tabular-nums;color:var(--vn-ink);overflow-wrap:anywhere}
+#morePage .vn-evo-chg-row em{font-style:normal;font-size:13.5px;color:var(--vn-ink-2);font-variant-numeric:tabular-nums}
+#morePage .vn-evo-hist{
+  display:flex;align-items:stretch;gap:8px;
+  border-top:1px solid var(--vn-line);
+}
+#morePage .vn-evo-hist-main{
+  flex:1 1 auto;min-width:0;min-height:64px;padding:12px 0;
+  border:0;background:none;text-align:left;color:var(--vn-ink);font:inherit;cursor:pointer;
+}
+#morePage .vn-evo-hist-main b{display:block;font-size:15px;font-weight:580}
+#morePage .vn-evo-hist-main span,
+#morePage .vn-evo-hist-main em{
+  display:block;margin-top:3px;font-style:normal;font-size:13px;color:var(--vn-ink-3);
+  font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
+}
+#morePage .vn-evo-hist-del{
+  flex:0 0 auto;align-self:center;min-height:44px;min-width:44px;padding:0 8px;
+  border:0;background:none;color:var(--vn-concern);font:inherit;font-size:14px;font-weight:560;
+  cursor:pointer;
+}
+#morePage .vn-evo-act,
+#morePage .vn-evo-quiet{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;min-height:50px;margin-top:10px;padding:0 16px;
+  border:0;border-radius:var(--vn-r-control);
+  font:inherit;font-size:16px;font-weight:580;letter-spacing:-.005em;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+#morePage .vn-evo-act{
+  background:var(--vn-action-fill);
+  color:var(--vn-action-ink);
+  box-shadow:var(--vn-action-shadow);
+}
+#morePage .vn-evo-act:active{transform:scale(.982);filter:brightness(.94)}
+#morePage .vn-evo-quiet{
+  background:var(--vn-surface-2);color:var(--vn-ink);
+  box-shadow:inset 0 0 0 1px var(--vn-line-2);
+}
+#morePage .vn-evo-quiet.is-danger{color:var(--vn-concern)}
+#morePage .vn-evo-quiet:active{opacity:.72}
+#morePage .vn-evo-actions{margin-top:var(--vn-s5)}
+#morePage .vn-evo-file{
+  position:relative;
+  display:flex;align-items:center;justify-content:center;
+  min-height:52px;margin-top:var(--vn-s5);padding:12px;
+  border:1px dashed var(--vn-line-3);border-radius:var(--vn-r-control);
+  color:var(--vn-ink);font-size:15px;font-weight:560;cursor:pointer;
+}
+#morePage .vn-evo-file input{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0;
+}
+#morePage .vn-evo-file:active{background:rgba(255,255,255,.03)}
+#morePage .vn-evo-preview{
+  display:block;width:100%;max-height:220px;object-fit:contain;margin-top:12px;
+  border-radius:var(--vn-r-control);background:var(--vn-surface);
+}
+#morePage .vn-evo-preview.is-open{max-height:none}
+#morePage .vn-evo-preview[hidden]{display:none}
+#morePage .vn-evo-stage{
+  margin:12px 0 0;min-height:22px;font-size:14.5px;font-weight:540;color:var(--vn-ink-2);
+}
+#morePage .vn-evo-stage[hidden]{display:none}
+#morePage .vn-evo-field{display:block;padding:14px 0;border-top:1px solid var(--vn-line)}
+#morePage .vn-evo-field-l{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;
+  font-size:14px;font-weight:560;color:var(--vn-ink);
+}
+#morePage .vn-evo-field-l small{color:var(--vn-ink-3);font-size:12px;font-weight:540}
+#morePage .vn-evo-input{
+  display:block;width:100%;min-height:48px;padding:12px 14px;box-sizing:border-box;
+  border:1px solid var(--vn-line-2);border-radius:var(--vn-r-input);
+  background:var(--vn-surface);color:var(--vn-ink);
+  font:inherit;font-size:16px;font-variant-numeric:tabular-nums;
+  color-scheme:dark;
+}
+#morePage .vn-evo-input::placeholder{color:var(--vn-ink-4)}
+#morePage textarea.vn-evo-input{min-height:88px;resize:vertical;line-height:1.4}
+#morePage .vn-evo-status{
+  display:inline-flex;align-items:center;gap:6px;margin:0 0 8px;
+  font-size:12px;font-weight:650;letter-spacing:.04em;
+}
+#morePage .vn-evo-status i{width:7px;height:7px;flex:none;display:block}
+#morePage .vn-evo-status.is-high{color:var(--vn-violet-lift)}
+#morePage .vn-evo-status.is-high i{background:var(--vn-violet);border-radius:50%}
+#morePage .vn-evo-status.is-check{color:var(--vn-review-lift)}
+#morePage .vn-evo-status.is-check i{background:var(--vn-review);border-radius:1px;transform:rotate(45deg)}
+#morePage .vn-evo-status.is-miss{color:var(--vn-concern)}
+#morePage .vn-evo-status.is-miss i{background:transparent;border:1.5px solid var(--vn-concern);border-radius:50%}
+#morePage .vn-evo-disc{margin-top:var(--vn-s4);border-top:1px solid var(--vn-line)}
+#morePage .vn-evo-disc summary{
+  min-height:44px;display:flex;align-items:center;
+  font-size:14.5px;font-weight:540;color:var(--vn-ink-2);cursor:pointer;
+}
+#morePage .vn-evo-disc p{margin:0 0 8px;font-size:13.5px;line-height:1.4;color:var(--vn-ink-2)}
+#morePage .vn-evo-disc b{color:var(--vn-ink);font-weight:580}
+#morePage .vn-evo-raw{
+  margin:0 0 8px;white-space:pre-wrap;overflow-wrap:anywhere;
+  font-size:12px;line-height:1.45;color:var(--vn-ink-3);
+}
+@media (max-width:359px){
+  #morePage .vn-evo{padding-inline:16px}
+  #morePage .vn-evo h1{font-size:28px}
+  #morePage .vn-evo-num{font-size:44px}
+  #morePage .vn-evo-row{flex-wrap:wrap}
+  #morePage .vn-evo-row-v{text-align:left}
+}
+@media (prefers-reduced-motion:reduce){
+  #morePage .vn-evo-act:active,
+  #morePage .vn-evo-quiet:active,
+  #morePage .vn-evo-switch button{transform:none;transition:none}
+}
+:root[data-nxp-motion="reduced"] #morePage .vn-evo-act:active{transform:none;filter:none}
