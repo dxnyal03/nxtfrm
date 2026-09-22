@@ -1,0 +1,452 @@
+{
+  "widths": {
+    "320": {
+      "lift-active": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Push",
+        "trainActive": true,
+        "navReceded": true,
+        "hasActive": true,
+        "hasIdle": false,
+        "hasLog": true
+      },
+      "lift-mid": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Push",
+        "trainActive": true,
+        "navReceded": true,
+        "hasActive": true,
+        "hasIdle": false,
+        "hasLog": true
+      },
+      "lift-resting": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Push",
+        "trainActive": true,
+        "navReceded": true,
+        "hasActive": true,
+        "hasIdle": false,
+        "hasLog": true
+      },
+      "lift-finished": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Push",
+        "trainActive": false,
+        "navReceded": false,
+        "hasActive": false,
+        "hasIdle": false,
+        "hasLog": false
+      },
+      "rest": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Rest",
+        "trainActive": false,
+        "navReceded": false,
+        "hasActive": false,
+        "hasIdle": true,
+        "hasLog": false
+      },
+      "zone2": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Zone2",
+        "trainActive": false,
+        "navReceded": false,
+        "hasActive": false,
+        "hasIdle": true,
+        "hasLog": false
+      },
+      "floorball": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Floorball",
+        "trainActive": false,
+        "navReceded": false,
+        "hasActive": false,
+        "hasIdle": true,
+        "hasLog": false
+      },
+      "addon-rest": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Rest",
+        "trainActive": true,
+        "navReceded": true,
+        "hasActive": true,
+        "hasIdle": false,
+        "hasLog": true
+      },
+      "empty-plan": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Push",
+        "trainActive": false,
+        "navReceded": false,
+        "hasActive": false,
+        "hasIdle": true,
+        "hasLog": false
+      }
+    },
+    "375": {
+      "lift-active": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Push",
+        "trainActive": true,
+        "navReceded": true,
+        "hasActive": true,
+        "hasIdle": false,
+        "hasLog": true
+      },
+      "lift-mid": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Push",
+        "trainActive": true,
+        "navReceded": true,
+        "hasActive": true,
+        "hasIdle": false,
+        "hasLog": true
+      },
+      "lift-resting": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Push",
+        "trainActive": true,
+        "navReceded": true,
+        "hasActive": true,
+        "hasIdle": false,
+        "hasLog": true
+      },
+      "lift-finished": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Push",
+        "trainActive": false,
+        "navReceded": false,
+        "hasActive": false,
+        "hasIdle": false,
+        "hasLog": false
+      },
+      "rest": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Rest",
+        "trainActive": false,
+        "navReceded": false,
+        "hasActive": false,
+        "hasIdle": true,
+        "hasLog": false
+      },
+      "zone2": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Zone2",
+        "trainActive": false,
+        "navReceded": false,
+        "hasActive": false,
+        "hasIdle": true,
+        "hasLog": false
+      },
+      "floorball": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Floorball",
+        "trainActive": false,
+        "navReceded": false,
+        "hasActive": false,
+        "hasIdle": true,
+        "hasLog": false
+      },
+      "addon-rest": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Rest",
+        "trainActive": true,
+        "navReceded": true,
+        "hasActive": true,
+        "hasIdle": false,
+        "hasLog": true
+      },
+      "empty-plan": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Push",
+        "trainActive": false,
+        "navReceded": false,
+        "hasActive": false,
+        "hasIdle": true,
+        "hasLog": false
+      }
+    },
+    "390": {
+      "lift-active": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Push",
+        "trainActive": true,
+        "navReceded": true,
+        "hasActive": true,
+        "hasIdle": false,
+        "hasLog": true
+      },
+      "lift-mid": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Push",
+        "trainActive": true,
+        "navReceded": true,
+        "hasActive": true,
+        "hasIdle": false,
+        "hasLog": true
+      },
+      "lift-resting": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Push",
+        "trainActive": true,
+        "navReceded": true,
+        "hasActive": true,
+        "hasIdle": false,
+        "hasLog": true
+      },
+      "lift-finished": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Push",
+        "trainActive": false,
+        "navReceded": false,
+        "hasActive": false,
+        "hasIdle": false,
+        "hasLog": false
+      },
+      "rest": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Rest",
+        "trainActive": false,
+        "navReceded": false,
+        "hasActive": false,
+        "hasIdle": true,
+        "hasLog": false
+      },
+      "zone2": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Zone2",
+        "trainActive": false,
+        "navReceded": false,
+        "hasActive": false,
+        "hasIdle": true,
+        "hasLog": false
+      },
+      "floorball": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Floorball",
+        "trainActive": false,
+        "navReceded": false,
+        "hasActive": false,
+        "hasIdle": true,
+        "hasLog": false
+      },
+      "addon-rest": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Rest",
+        "trainActive": true,
+        "navReceded": true,
+        "hasActive": true,
+        "hasIdle": false,
+        "hasLog": true
+      },
+      "empty-plan": {
+        "overflow": false,
+        "textFails": [],
+        "textFailCount": 0,
+        "targetFails": [],
+        "targetFailCount": 0,
+        "dayType": "Push",
+        "trainActive": false,
+        "navReceded": false,
+        "hasActive": false,
+        "hasIdle": true,
+        "hasLog": false
+      }
+    }
+  },
+  "specifics": {
+    "logReachability": {
+      "ok": true,
+      "top": 628,
+      "bottom": 678,
+      "vh": 844
+    },
+    "inputContract": {
+      "present": true,
+      "types": {
+        "weight": "number",
+        "reps": "number",
+        "setType": "hidden",
+        "rir": "hidden"
+      },
+      "ok": true,
+      "record": {
+        "weight": 60,
+        "reps": 8,
+        "setType": "working",
+        "rir": 2,
+        "setNum": 1,
+        "exercise": "Incline Dumbbell Press"
+      }
+    },
+    "restTick": {
+      "ok": true,
+      "stillThere": true,
+      "timerText": "01:29",
+      "afterPlus": "01:59",
+      "htmlMutatedAway": false
+    },
+    "draftSurvival": {
+      "ok": true,
+      "value": "77.5",
+      "draftWeight": "77.5",
+      "exercise": "Incline Dumbbell Press"
+    },
+    "addOnSafety": {
+      "ok": true,
+      "beforeType": "Rest",
+      "afterAddType": "Rest",
+      "afterResolve": "Rest",
+      "wrotePlans": false,
+      "hadAddOn": true
+    },
+    "navRecede": {
+      "during": true,
+      "afterLeave": false,
+      "again": true,
+      "onHome": false,
+      "ok": true
+    }
+  },
+  "otherTabs": {
+    "home": {
+      "ok": true,
+      "errors": []
+    },
+    "weight": {
+      "ok": true,
+      "errors": []
+    },
+    "history": {
+      "ok": true,
+      "errors": []
+    },
+    "more": {
+      "ok": true,
+      "errors": []
+    }
+  },
+  "reducedMotion": {
+    "Push": {
+      "hasTrain": true,
+      "navReceded": true
+    },
+    "Rest": {
+      "hasTrain": true,
+      "navReceded": false
+    },
+    "Zone2": {
+      "hasTrain": true,
+      "navReceded": false
+    },
+    "Floorball": {
+      "hasTrain": true,
+      "navReceded": false
+    }
+  },
+  "consoleErrors": []
+}

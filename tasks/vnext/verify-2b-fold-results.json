@@ -1,0 +1,114 @@
+{
+  "320": {
+    "0": {
+      "sets": 0,
+      "bottom": 753,
+      "top": 703,
+      "vh": 844,
+      "ok": true,
+      "bannerHidden": true,
+      "restActive": false,
+      "restH": 0,
+      "historyRows": 0,
+      "navReceded": true
+    },
+    "1": {
+      "sets": 1,
+      "bottom": 825,
+      "top": 775,
+      "vh": 844,
+      "ok": true,
+      "bannerHidden": true,
+      "restActive": true,
+      "restH": 44,
+      "historyRows": 1,
+      "navReceded": true
+    },
+    "2": {
+      "sets": 2,
+      "bottom": 825,
+      "top": 775,
+      "vh": 844,
+      "ok": true,
+      "bannerHidden": true,
+      "restActive": true,
+      "restH": 44,
+      "historyRows": 2,
+      "navReceded": true
+    }
+  },
+  "390": {
+    "0": {
+      "sets": 0,
+      "bottom": 678,
+      "top": 628,
+      "vh": 844,
+      "ok": true,
+      "bannerHidden": true,
+      "restActive": false,
+      "restH": 0,
+      "historyRows": 0,
+      "navReceded": true
+    },
+    "1": {
+      "sets": 1,
+      "bottom": 750,
+      "top": 700,
+      "vh": 844,
+      "ok": true,
+      "bannerHidden": true,
+      "restActive": true,
+      "restH": 44,
+      "historyRows": 1,
+      "navReceded": true
+    },
+    "2": {
+      "sets": 2,
+      "bottom": 750,
+      "top": 700,
+      "vh": 844,
+      "ok": true,
+      "bannerHidden": true,
+      "restActive": true,
+      "restH": 44,
+      "historyRows": 2,
+      "navReceded": true
+    }
+  },
+  "banner": {
+    "active": {
+      "visible": false,
+      "receded": true
+    },
+    "afterLeave": {
+      "visible": true,
+      "receded": false
+    },
+    "afterFinish": {
+      "visible": true,
+      "receded": false
+    },
+    "tabs": {
+      "home": {
+        "visible": true,
+        "receded": false
+      },
+      "weight": {
+        "visible": true,
+        "receded": false
+      },
+      "history": {
+        "visible": true,
+        "receded": false
+      },
+      "more": {
+        "visible": true,
+        "receded": false
+      },
+      "train": {
+        "visible": true,
+        "receded": false
+      }
+    }
+  }
+}

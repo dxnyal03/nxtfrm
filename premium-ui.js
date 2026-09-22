@@ -3,7 +3,39 @@
 const NXP = (() => {
   const N=NXT;
   const base={home:N.home,training:N.training,more:N.moreView,historyDay:showHistoryDay,exportJSON,logSet:N.logSet};
-  const ui={drafts:new Map(),historyRows:[],restTotal:0,confirmFrom:null,confirmTimer:null,lastExercise:null,lastIndex:-1,addOnFlash:null,connection:{busy:false,lines:[],summary:'Not tested on this device'}};
+  const ui={drafts:new Map(),historyRows:[],restTotal:0,confirmFrom:null,confirmTimer:null,lastExercise:null,lastIndex:-1,addOnFlash:null,trainActive:false,connection:{busy:false,lines:[],summary:'Not tested on this device'}};
+  /* D6: focused Train mode recedes global nav. Cleared on leave, finish, and
+     any non-Train tab so the dock cannot stay hidden after a route change.
+     The cloud/local banner is the same chrome — suppressed while mode is
+     engaged, restored via D11 targeting on leave/finish (not a D11 change). */
+  function syncTrainNav(active) {
+    const tabs=document.querySelector('.tabs');
+    if(tabs)tabs.classList.toggle('vn-recede',!!active);
+    const banner=document.getElementById('cloudLocalBanner');
+    if(active){
+      if(banner)banner.setAttribute('hidden','');
+    }else if(typeof updateCloudLocalBanner==='function'){
+      updateCloudLocalBanner();
+    }
+  }
+  function enterTrain() {
+    ui.trainActive=true;
+    if(typeof switchTab==='function'){
+      if(state.tab!=='train')switchTab('train');
+      else if(typeof render==='function')render();
+      else training();
+    }else{
+      state.tab='train';
+      if(typeof render==='function')render();
+      else training();
+    }
+  }
+  function leaveTrain() {
+    ui.trainActive=false;
+    syncTrainNav(false);
+    if(typeof render==='function')render();
+    else training();
+  }
   const button=N.button;
   const formatNumber=n=>Number(n).toLocaleString('en-SG');
   function header(title,sub='',action='') {return `<header class="nxp-heading nxp-more-chrome"><div><h1>${esc(title)}</h1>${sub?`<p>${esc(sub)}</p>`:''}</div>${action}</header>`;}
@@ -24,6 +56,7 @@ const NXP = (() => {
   }
   function home() {
     applyAppearance();
+    syncTrainNav(false);
     const list=template(),logs=N.sessionLogs(),lift=!['Rest','Zone2','Floorball'].includes(state.dayType),finished=N.planDone();
     const s=N.trendStats(),r=N.review(),cal=N.finite(N.cfg().calories);
     const action=lift?"startWorkoutNow()":state.dayType==='Zone2'?"showCardioSheet()":state.dayType==='Floorball'?"startWorkoutNow()":"apx96OpenReadiness()";
@@ -279,7 +312,10 @@ const NXP = (() => {
     b.textContent=label;
   }
   function trainChrome() {return `<header class="nxp-train-chrome"><div><h1>${esc(N.label(state.dayType))}</h1><p>${esc(state.gym||'Gym')} · ${N.shortDate(state.date)}</p></div>${button('Change','showSessionSheet()',true)}</header>`;}
-  function trainIdle(kind,body) {document.getElementById('trainPage').innerHTML=`<div class="n99 nxp nxp-train nxp-train-idle ${kind}">${trainChrome()}${trainGuidanceHTML()}${body}</div>`;}
+  function trainIdle(kind,body) {
+    syncTrainNav(false);
+    document.getElementById('trainPage').innerHTML=`<div class="n99 nxp nxp-train nxp-train-idle vn-train ${kind}">${trainChrome()}${trainGuidanceHTML()}${body}</div>`;
+  }
   function idleSecondary(label,action) {return `<button type="button" class="n99-text" onclick="${esc(action)}">${label}</button>`;}
   function cardioWeekLine() {
     const mins=N.cardioWeek(),target=Number(settings.zone2WeeklyTarget)||90;
@@ -303,6 +339,32 @@ const NXP = (() => {
      are not eligible, so a strength day with an emptied plan is unchanged. */
   function trainEmpty() {
     trainIdle('nxp-train-empty',`<section class="nxp-train-idle-copy"><h2>No exercises in this session</h2><p>This session currently has no exercises.</p></section><div class="nxp-train-idle-actions">${button('Add exercise','v88OpenAddModal()')}${idleSecondary('Restore programme','NXT.fullSession()')}</div>${addOnSection()}`);
+  }
+  /* Strength-day overview before entering focused mode. Session data is
+     untouched — leave/enter only toggles presentation (D6). */
+  function trainLiftIdle(list) {
+    const logs=N.sessionLogs(),working=logs.filter(r=>r.setType!=='warmup');
+    const sets=list.reduce((a,e)=>a+Number(e.sets),0);
+    const title=working.length?'Resume workout':'Start workout';
+    const plan=list.map((e,i)=>{
+      const done=N.done(e.name);
+      const prev=N.sessionRows(e.name,state.gym,state.date,100).at(-1);
+      const last=prev?.sets?.[0];
+      const w=last&&Number.isFinite(Number(last.weight))?String(Math.round(Number(last.weight)*1000)/1000):'';
+      return `<div class="vn-train-plan-row"><span class="vn-train-plan-l"><span class="vn-train-plan-t">${esc(e.name)}</span><span class="vn-train-plan-s">${e.sets} × ${e.reps[0]}–${e.reps[1]}${w?` · last ${esc(w)} kg`:' · no history'}${done?` · ${done} today`:''}</span></span></div>`;
+    }).join('');
+    syncTrainNav(false);
+    document.getElementById('trainPage').innerHTML=`<div class="n99 nxp nxp-train nxp-train-idle vn-train vn-train-lift-idle">
+      ${trainChrome()}
+      ${trainGuidanceHTML()}
+      <section class="vn-train-ready">
+        <p class="nxp-caption">${working.length?'In progress':'Ready'}</p>
+        <p class="vn-train-ready-meta">${list.length} exercises · ${sets} working sets${working.length?` · ${working.length} logged`:''}</p>
+        <button type="button" class="n99-button" onclick="NXP.enterTrain()">${esc(title)}</button>
+      </section>
+      <section class="vn-train-plan"><h2 class="nxp-caption">Session plan</h2>${plan}</section>
+      <div class="nxp-session-tools">${button('Session options','NXP.sessionMenu()',true)}</div>
+    </div>`;
   }
   /* ---- Train: shared presentation helpers --------------------------------
      Numbers are rendered, never re-derived: every figure below comes from the
@@ -339,15 +401,42 @@ const NXP = (() => {
     const pct=left&&total?Math.max(0,Math.min(100,left/total*100)):0;
     return `<div class="nxp-rest-rail" aria-hidden="true"><span style="width:${pct}%"></span></div>`;
   }
+  /* Real outcomes only — progressed/maintained/below appear solely when each
+     exercise has a previous session to compare against. No invented score. */
+  function sessionOutcomeHTML() {
+    const working=N.sessionLogs().filter(r=>r.setType!=='warmup');
+    const byEx={};
+    working.forEach(r=>{(byEx[r.exercise]=byEx[r.exercise]||[]).push(r);});
+    let up=0,same=0,down=0,compared=0;
+    Object.entries(byEx).forEach(([name,sets])=>{
+      const prev=N.sessionRows(name,state.gym,state.date,100).at(-1);
+      if(!prev||!prev.sets||!prev.sets.length)return;
+      compared+=1;
+      const best=Math.max(...sets.map(s=>Number(s.weight)*Number(s.reps)));
+      const pbest=Math.max(...prev.sets.map(s=>Number(s.weight)*Number(s.reps)));
+      if(best>pbest*1.005)up+=1; else if(best<pbest*0.995)down+=1; else same+=1;
+    });
+    const nextDate=N.dateAdd(state.date,1);
+    const compare=compared?`<div class="vn-train-outcome-rows">
+      <div class="vn-train-outcome-row"><span>Progressed</span><b class="vn-num">${up}</b></div>
+      <div class="vn-train-outcome-row"><span>Maintained</span><b class="vn-num">${same}</b></div>
+      <div class="vn-train-outcome-row"><span>Below recent</span><b class="vn-num">${down}</b></div>
+    </div>`:'';
+    return `<p class="vn-train-outcome-lede">${working.length} working sets · ${Object.keys(byEx).length} exercises</p>
+      ${compare}
+      <p class="nxp-caption vn-train-outcome-next">Next · ${esc(N.label(N.typeFor(nextDate)))} tomorrow</p>`;
+  }
   function training() {
     applyAppearance();
-    if(state.dayType==='Floorball')return trainFloorball();
+    if(state.dayType==='Floorball'){ui.trainActive=false;return trainFloorball();}
     /* A non-strength day keeps its own screen unless the user has explicitly
-       added an optional exercise AND is currently on it. Falling through then
-       reuses the normal logging controls — it does not change what the day is.
-       dayType is resolved from settings.dayOverrides / weeklyPlan and is never
-       written here or anywhere downstream of an add-on. */
-    if((state.dayType==='Rest'||state.dayType==='Zone2')&&!addOnActive()){
+       added an optional exercise AND is currently on it in focused mode.
+       Falling through then reuses the normal logging controls — it does not
+       change what the day is. dayType is resolved from settings.dayOverrides /
+       weeklyPlan and is never written here or anywhere downstream of an add-on. */
+    const addonFocused=addOnActive()&&ui.trainActive;
+    if((state.dayType==='Rest'||state.dayType==='Zone2')&&!addonFocused){
+      ui.trainActive=false;
       return state.dayType==='Rest'?trainRest():trainZone2();
     }
     /* On a non-strength day the add-ons ARE the list. Resolved through the same
@@ -358,10 +447,15 @@ const NXP = (() => {
       : template();
     if(!list.length)return trainEmpty();
     if(!list.some(e=>e.name===state.exercise))state.exercise=list[0].name;
+    const finished=N.planDone();
+    if(finished)ui.trainActive=false;
+    /* Focused mode is opt-in. Leave returns here without discarding logs. */
+    if(!ui.trainActive&&!finished&&!addOnActive())return trainLiftIdle(list);
+
     const ex=state.exercise,t=N.targetFor(ex),done=N.done(ex),cue=N.cue(ex),draft=ui.drafts.get(draftKey())||{};
     const previous=N.sessionRows(ex,state.gym,state.date,100).at(-1),prev=previous?.sets[Math.min(done,previous.sets.length-1)];
     const current=N.sessionLogs().filter(r=>r.exercise===ex),last=current.filter(r=>r.setType!=='warmup').at(-1);
-    const total=list.reduce((a,e)=>a+Number(e.sets),0),count=list.reduce((a,e)=>a+Math.min(N.done(e.name),e.sets),0),finished=N.planDone();
+    const total=list.reduce((a,e)=>a+Number(e.sets),0),count=list.reduce((a,e)=>a+Math.min(N.done(e.name),e.sets),0);
     const weight=draft.weightInput??last?.weight??(cue.weight||'');
     const index=list.findIndex(e=>e.name===ex),lastMove=index===list.length-1;
     /* Train repaints on every logged set, so an entrance animation declared in
@@ -384,25 +478,43 @@ const NXP = (() => {
     const confirmLabel=loggedEntry?(loggedEntry.setType==='warmup'?'Warm-up logged':'Set '+loggedEntry.setNum+' logged'):'';
     const idleLabel=logLabel(setType,done);
     const page=document.getElementById('trainPage');
+    const focused=ui.trainActive&&!finished;
+    syncTrainNav(focused);
 
     if(finished){
-      page.innerHTML=`<div class="n99 nxp nxp-train nxp-train-lift is-finished">
+      page.innerHTML=`<div class="n99 nxp nxp-train nxp-train-lift vn-train is-finished">
         ${trainChrome()}
-        <section class="nxp-train-done">${N.card('Workout saved',`<p>${N.sessionLogs().filter(r=>r.setType!=='warmup').length} working sets recorded. Everything you logged is in History.</p><div class="n99-stack">${button('View session','NXP.sessionSummary()')}${button('Resume workout','NXT.resume()',true)}</div>`)}</section>
+        <section class="nxp-train-done vn-train-done">
+          <p class="nxp-caption">Workout saved</p>
+          <h2>${esc(N.label(state.dayType))} · ${esc(state.gym||'Gym')}</h2>
+          ${sessionOutcomeHTML()}
+          <div class="n99-stack">${button('View session','NXP.sessionSummary()')}${button('Resume workout','NXT.resume()',true)}</div>
+        </section>
         <button type="button" class="nxp-queue-open" onclick="NXP.queue()"><span>Workout queue</span><small>${list.length} exercises</small><i aria-hidden="true">›</i></button>
       </div>`;
       return;
     }
 
-    /* Every region below sits in normal document flow and is separated by the
-       spacing scale. Nothing is positioned by coordinate, so no control can
-       drift over another one at any width. The order is thumb-ordered too:
-       load, effort and Log Set sit together, with rest and Next immediately
-       under them and the growing set list pushed below all of it. */
-    page.innerHTML=`<div class="n99 nxp nxp-train nxp-train-lift${justLogged?' is-just-logged':''}">
-      <header class="nxp-train-chrome">
-        <div><h1>Train</h1><p>${esc(N.label(state.dayType))} · ${esc(state.gym)}</p></div>
-        ${button('Session','NXP.sessionMenu()',true)}
+    /* Order is thumb-ordered around the current set (design-vnext screenActive).
+       Set history sits below Log Set so logged rows cannot push the CTA past the
+       fold. Coach, set-dots, Swap and session tools are demoted below. Input ids
+       are unchanged for NXT.logSet(). */
+    const setHistory=current.length?`<section class="nxp-set-history vn-train-sets" aria-label="Today’s sets">${current.map((r,i)=>{
+      const latest=i===current.length-1;
+      const fresh=justLogged&&loggedEntry&&latest&&loggedEntry.exercise===ex;
+      const rirLabel=r.rir===null||r.rir===undefined||r.rir===''?'':Number(r.rir)===4?'RIR 4+':'RIR '+r.rir;
+      const meta=r.setType==='warmup'?'Warm-up':rirLabel;
+      return `<button type="button" class="nxp-set-row${latest?' is-latest':''}${fresh?' is-fresh':''}" onclick="NXP.editCurrentSet(${i})"><span class="vn-set-n">${r.setType==='warmup'?'W':r.setNum}</span><b>${loadLine(r.weight,r.reps)}</b>${meta?`<small>${esc(meta)}</small>`:''}<span class="vn-set-edit">Edit</span></button>`;
+    }).join('')}</section>`:'';
+
+    page.innerHTML=`<div class="n99 nxp nxp-train nxp-train-lift vn-train vn-train-active${justLogged?' is-just-logged':''}${focused?' is-mode':''}">
+      <header class="vn-train-top">
+        <button type="button" class="vn-train-icon" onclick="NXP.leaveTrain()" aria-label="Leave workout">✕</button>
+        <div class="vn-train-id">
+          <p class="nxp-caption">${esc(N.label(state.dayType))} · ${esc(state.gym||'Gym')}</p>
+          <p class="vn-train-count">${count} of ${total} working sets</p>
+        </div>
+        <button type="button" class="vn-train-icon" onclick="NXT.finish()" aria-label="Finish workout">✓</button>
       </header>
 
       ${trainAlertHTML()}
@@ -410,13 +522,14 @@ const NXP = (() => {
       <div class="nxp-ex-rail">
         <ol aria-hidden="true">${list.map((e,i)=>{
           const complete=N.done(e.name)>=Number(e.sets);
-          return `<li class="${i===index?'is-current':complete?'is-done':''}"></li>`;
+          const curDone=N.done(e.name);
+          const pct=i===index&&e.sets?Math.round(Math.min(curDone,e.sets)/e.sets*100):0;
+          return `<li class="${i===index?'is-current':complete?'is-done':''}" style="--p:${pct}%"></li>`;
         }).join('')}</ol>
-        <p>
+        <p hidden>
           <button type="button" class="nxp-rail-jump" onclick="NXP.queue()">Exercise ${index+1} of ${list.length}<i aria-hidden="true">›</i></button>
           <span>${count} of ${total} sets</span>
         </p>
-        ${sessionFocus(list)}
       </div>
 
       <section class="nxp-ex-head">
@@ -426,28 +539,25 @@ const NXP = (() => {
             <div class="nxp-ex-text">
               <h2><button type="button" class="nxp-ex-title" onclick="NXP.exerciseDetails()">${esc(ex)}</button></h2>
               <p class="nxp-ex-muscles">${esc(muscleLine(ex)) || '&nbsp;'}</p>
-              <p class="nxp-ex-meta">${t.sets} sets · ${t.reps[0]}–${t.reps[1]} reps${note?' · '+esc(note):''}</p>
+              <p class="nxp-ex-meta" hidden>${t.sets} sets · ${t.reps[0]}–${t.reps[1]} reps${note?' · '+esc(note):''}</p>
             </div>
-            ${anatomyStrip(ex)}
-          </div>
-          <div class="nxp-ex-actions">
-            <button type="button" class="nxp-ex-chip" onclick="NXP.exerciseDetails()">Exercise details<i aria-hidden="true">›</i></button>
-            <button type="button" class="nxp-ex-chip" onclick="showSubstituteSheet()">Swap</button>
           </div>
         </div>
       </section>
 
-      <div class="nxp-aim">
+      <div class="nxp-aim vn-aim wrap3">
         ${aimCell('Last',prev?loadLine(prev.weight,prev.reps):'—',previous?esc(N.shortDate(previous.date)):'First session',previous?'NXP.exerciseDetails()':'')}
-        ${aimCell('Target',`${t.reps[0]}–${t.reps[1]}`,'reps','')}
+        ${aimCell('Target',`${t.reps[0]}–${t.reps[1]}`,`reps · ${t.sets} sets`,'')}
         ${aimCell('Rest',esc(apx96FormatTimer(restPlan)),'planned','')}
       </div>
 
-      <details class="nxp-coach nxp-disclosure"><summary>${esc(cue.label)}</summary><p>${esc(cue.text)}</p></details>
+      <aside class="nxp-rest vn-rest${restLeft?' is-active':''}" aria-label="Rest timer"${restLeft?' role="timer"':''} ${restLeft?'':'hidden'}>
+        <b id="apx96TimerValue" class="vn-num">${restLeft?apx96FormatTimer(restLeft):'Ready'}</b>
+        ${restRail(restLeft,ui.restTotal||restPlan)}
+        <div class="vn-rest-actions">${button('+30s','apx96AdjustRest(30)',true)}${button('Skip','apx96SkipRest()',true)}</div>
+      </aside>
 
-      <div class="nxp-set-dots" aria-label="${done} working sets logged, ${t.sets} planned">${Array.from({length:t.sets},(_,i)=>`<span class="${i<done?'done'+(justLogged&&loggedEntry&&loggedEntry.setType!=='warmup'&&loggedEntry.exercise===ex&&i===done-1?' is-new':''):i===done?'next':''}">${i<done?'✓':i+1}</span>`).join('')}<small>Set ${Math.min(done+1,t.sets)} of ${t.sets}</small></div>
-
-      <form id="nxp-set-form" onsubmit="event.preventDefault();NXP.logSet()">
+      <form id="nxp-set-form" class="vn-set-form" onsubmit="event.preventDefault();NXP.logSet()">
         <div class="nxp-steppers">
           ${stepper('weightInput','Weight','kg',`<input id="weightInput" type="number" min="0" max="1000" step="0.1" inputmode="decimal" enterkeyhint="done" autocomplete="off" required placeholder="0" value="${esc(weight)}" aria-labelledby="weightInput-label" oninput="NXP.rememberInput(this)">`,trimNum(t.inc||2.5),`weight by ${trimNum(t.inc||2.5)} kilograms`)}
           ${stepper('repsInput','Reps','',`<input id="repsInput" type="number" min="1" max="100" step="1" inputmode="numeric" enterkeyhint="done" autocomplete="off" required placeholder="${prev?prev.reps:t.reps[0]}" value="${esc(draft.repsInput??'')}" aria-labelledby="repsInput-label" oninput="NXP.rememberInput(this)">`,'1','reps by one')}
@@ -470,26 +580,27 @@ const NXP = (() => {
         <button id="nxp-log-button" type="submit" class="n99-button nxp-train-cta" data-idle-label="${esc(idleLabel)}">${justLogged?`<span class="nxp-cta-check" aria-hidden="true">✓</span>${esc(confirmLabel)}`:esc(idleLabel)}</button>
       </form>
 
-      <aside class="nxp-rest${restLeft?' is-active':''}" aria-label="Rest timer">
-        <div class="nxp-rest-row">
-          <span><small>Rest</small><b id="apx96TimerValue">${restLeft?apx96FormatTimer(restLeft):'Ready'}</b></span>
-          <div>${button('+30s','apx96AdjustRest(30)',true)}${button('Skip','apx96SkipRest()',true)}</div>
-        </div>
-        ${restRail(restLeft,ui.restTotal||restPlan)}
-      </aside>
+      ${setHistory}
 
       <nav class="nxp-ex-nav" aria-label="Exercise navigation">
-        <button type="button" ${index<=0?'disabled':''} onclick="NXP.goExercise(-1)" aria-label="Previous exercise"><span aria-hidden="true">←</span>Prev</button>
-        <button type="button" class="nxp-ex-nav-pos" onclick="NXP.queue()" aria-label="Open workout queue">${index+1} / ${list.length}</button>
-        <button type="button" ${lastMove?'disabled':''} onclick="NXP.goExercise(1)" aria-label="Next exercise">Next<span aria-hidden="true">→</span></button>
+        <button type="button" ${index<=0?'disabled':''} onclick="NXP.goExercise(-1)" aria-label="Previous exercise"><span aria-hidden="true">‹</span> Prev</button>
+        <button type="button" class="nxp-ex-nav-pos nxp-queue-open" onclick="NXP.queue()" aria-label="Open workout queue">Queue · ${index+1}/${list.length}</button>
+        <button type="button" ${lastMove?'disabled':''} onclick="NXP.goExercise(1)" aria-label="Next exercise">Next <span aria-hidden="true">›</span></button>
       </nav>
 
-      ${current.length?`<section class="nxp-set-history"><h3>Today’s sets</h3>${current.map((r,i)=>{const latest=i===current.length-1;const rirLabel=r.rir===null||r.rir===undefined||r.rir===''?'':Number(r.rir)===4?'4+ left':r.rir+' left';const meta=r.setType==='warmup'?'Warm-up':rirLabel;return `<button type="button" class="nxp-set-row${latest?' is-latest':''}" onclick="NXP.editCurrentSet(${i})"><span>${r.setType==='warmup'?'W':r.setNum}</span><b>${loadLine(r.weight,r.reps)}</b>${meta?`<small>${esc(meta)}</small>`:''}<span>Edit</span></button>`;}).join('')}</section>`:''}
+      <details class="nxp-coach nxp-disclosure vn-train-more"><summary>${esc(cue.label)}</summary><p>${esc(cue.text)}</p></details>
 
-      <button type="button" class="nxp-queue-open" onclick="NXP.queue()"><span>Workout queue</span><small>${list.length} exercises</small><i aria-hidden="true">›</i></button>
+      <div class="nxp-set-dots" aria-label="${done} working sets logged, ${t.sets} planned" hidden>${Array.from({length:t.sets},(_,i)=>`<span class="${i<done?'done'+(justLogged&&loggedEntry&&loggedEntry.setType!=='warmup'&&loggedEntry.exercise===ex&&i===done-1?' is-new':''):i===done?'next':''}">${i<done?'✓':i+1}</span>`).join('')}<small>Set ${Math.min(done+1,t.sets)} of ${t.sets}</small></div>
 
-      ${addOnEligible()?addOnSection():''}
-      <div class="nxp-session-tools">${button('Undo last set','apx96UndoLastSet()',true)}${addOnEligible()?'':button('Finish workout','NXT.finish()',true)}</div>
+      <details class="vn-train-more"><summary>Session tools</summary>
+        ${sessionFocus(list)}
+        <div class="nxp-ex-actions">
+          <button type="button" class="nxp-ex-chip" onclick="NXP.exerciseDetails()">Exercise details<i aria-hidden="true">›</i></button>
+          <button type="button" class="nxp-ex-chip" onclick="showSubstituteSheet()">Swap</button>
+        </div>
+        ${addOnEligible()?addOnSection():''}
+        <div class="nxp-session-tools">${button('Undo last set','apx96UndoLastSet()',true)}${button('Session options','NXP.sessionMenu()',true)}</div>
+      </details>
     </div>`;
     if(justLogged)scheduleConfirmReset();
     setTimeout(apx96TickTimer,0);
@@ -504,6 +615,7 @@ const NXP = (() => {
       if(root)root.classList.remove('is-just-logged');
       const btn=document.getElementById('nxp-log-button');
       if(btn&&btn.dataset.idleLabel)btn.textContent=btn.dataset.idleLabel;
+      document.querySelectorAll('.nxp-set-row.is-fresh').forEach(el=>el.classList.remove('is-fresh'));
     },1200);
   }
   /* Only surfaces recovery guidance that asks for a change of plan. When the
@@ -656,6 +768,7 @@ const NXP = (() => {
        list, which is also what the logSet guard checks. */
     state.exercise = name;
     state.setNum = 1;
+    ui.trainActive = true;
     persist(); render(); toast("Added " + name);
   }
   function addOnRemove(name) {
@@ -730,7 +843,7 @@ const NXP = (() => {
 
   function addOnSelect(name) {
     if (addOns().indexOf(name) === -1) return;
-    state.exercise = name; state.setNum = 1; persist(); render();
+    state.exercise = name; state.setNum = 1; ui.trainActive = true; persist(); render();
   }
 
   /* ---- Muscle context --------------------------------------------------
@@ -809,6 +922,7 @@ const NXP = (() => {
   function equipmentNote() {v88OpenNoteModal(state.exercise);}
   function progress() {
     applyAppearance();
+    syncTrainNav(false);
     const s=N.trendStats(),v=N.ui.view,r=N.ui.range;
     const period=r===14?'Last 2 weeks':r===30?'Last month':r===90?'Last 3 months':'All recorded weigh-ins';
     const tabs=`<div class="n99-progress-tabs nxp-progress-tabs" role="group" aria-label="Progress view">${[['overview','Weight'],['strength','Performance'],['body','Body']].map(([key,title])=>`<button type="button" class="${v===key?'active':''}" aria-pressed="${v===key}" onclick="NXT.setView('${key}')">${title}</button>`).join('')}</div>`;
@@ -1004,6 +1118,7 @@ const NXP = (() => {
   }
   function more() {
     applyAppearance();
+    syncTrainNav(false);
     const view=state.moreView||'hub',c=N.cfg(),page=document.getElementById('morePage');
     page.classList.toggle('nxp-settings-page',view!=='hub'&&view!=='appearance'&&view!=='data');
     if(view==='appearance'){page.innerHTML=shell(header('Appearance','Purple & charcoal',button('‹ Back',"NXT.more('hub')",true))+N.card('Make it comfortable',`<form onsubmit="event.preventDefault();NXP.saveAppearance()"><label>Text size<select id="nxp-text"><option value="normal">Standard</option><option value="large" ${pref().text==='large'?'selected':''}>Larger</option></select></label><label>Motion<select id="nxp-motion"><option value="system">Follow device setting</option><option value="reduced" ${pref().motion==='reduced'?'selected':''}>Reduce motion</option></select></label><button type="submit" class="n99-button">Save appearance</button></form>`));return;}
@@ -1219,6 +1334,7 @@ const NXP = (() => {
   }
   function history() {
     applyAppearance();
+    syncTrainNav(false);
     const month=calendarMonthState(),filter=state.historyFilter||'all',scope=historyScope(filter),selected=historySelectedDate(month,scope);
     document.getElementById('historyPage').innerHTML=`<div class="n99 nxp nxp-history"><header class="nxp-heading nxp-history-chrome"><div><h1>History</h1><p>${esc(historyMonthSummary(month,filter,scope))}</p></div></header><div class="nxp-history-filters" role="group" aria-label="Activity type">${HISTORY_TABS.map(([k,t])=>`<button type="button" aria-pressed="${filter===k?'true':'false'}" class="${filter===k?'active':''}" onclick="NXP.setHistoryFilter('${k}')">${t}</button>`).join('')}</div>${historyCalendar(month,scope,selected)}${historyDayView(selected,filter,scope)}</div>`;
   }
@@ -1328,6 +1444,13 @@ const NXP = (() => {
     if(!rest)return;
     const left=apx96RestRemaining();
     rest.classList.toggle('is-active',left>0);
+    if(rest.hasAttribute('hidden')){
+      if(left>0)rest.removeAttribute('hidden');
+    }else if(!left){
+      /* Keep the node for timer writes, but hide the strip when idle so it
+         does not consume fold space during the set. */
+      rest.setAttribute('hidden','');
+    }
     const fill=rest.querySelector('.nxp-rest-rail > span');
     if(fill)fill.style.width=(left&&ui.restTotal?Math.max(0,Math.min(100,left/ui.restTotal*100)):0)+'%';
     /* The engine writes a shouted "READY" into the value. At rest-timer size
@@ -1337,7 +1460,7 @@ const NXP = (() => {
     if(value&&!left&&value.textContent!=='Ready')value.textContent='Ready';
   }
   bindSteppers();
-  return {ui,home,training,progress,more,history,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection};
+  return {ui,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;
@@ -1372,6 +1495,36 @@ if(typeof apx96StartRest==='function'){
   apx96StartRest=function(seconds){
     NXP.noteRestTotal(seconds);
     return apx96StartRestSource.apply(this,arguments);
+  };
+}
+/* Mode entry: Today CTA and legacy startWorkoutNow both enter focused Train. */
+if(typeof startWorkoutNow==='function'){
+  const startWorkoutNowSource=startWorkoutNow;
+  startWorkoutNow=function(){
+    NXP.enterTrain();
+    return;
+  };
+  void startWorkoutNowSource;
+}
+if(typeof NXT.resume==='function'){
+  const resumeSource=NXT.resume;
+  NXT.resume=function(){
+    const result=resumeSource.apply(this,arguments);
+    NXP.ui.trainActive=true;
+    return result;
+  };
+}
+/* Mode-scoped banner suppression (D6). D11 conditions stay in updateCloudLocalBanner;
+   render() re-runs that function after every paint, so re-apply the gate here. */
+if(typeof updateCloudLocalBanner==='function'){
+  const updateCloudLocalBannerSource=updateCloudLocalBanner;
+  updateCloudLocalBanner=function(){
+    if(document.querySelector('.tabs.vn-recede')){
+      const el=document.getElementById('cloudLocalBanner');
+      if(el)el.setAttribute('hidden','');
+      return;
+    }
+    return updateCloudLocalBannerSource.apply(this,arguments);
   };
 }
 if(document.readyState!=='loading')NXT.repaint();

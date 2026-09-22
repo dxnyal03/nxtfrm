@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NXTFRM VNext — foundation layer (Phase 2A)
+   NXTFRM VNext — foundation layer (Phase 2A + 2B)
    Loads AFTER cut-support.css and premium-ui.css.
 
    DIRECTION: INSTRUMENT (tasks/vnext/DECISIONS.md D1)
@@ -7,14 +7,16 @@
    transient sheets. Everything else sits on the canvas, organised by type,
    space and hairlines.
 
-   SCOPE DISCIPLINE — Phase 2A owns:
+   SCOPE DISCIPLINE —
      · the --vn-* token set                (new names; collide with nothing)
      · the page-transition timing          (.content, shared foundation)
-     · the tab bar                         (.tabs)
+     · the tab bar                         (.tabs) + D6 recede
      · Today                               (#homePage .vn-*)
-   Train, Progress, History and More are NOT restyled here. Every Today rule is
-   scoped under #homePage, and every component class is new (vn-*), so no
-   existing .nxp-* / .n99-* rule is altered.
+     · Train                               (#trainPage .vn-*)   ← Phase 2B
+   Progress, History and More are NOT restyled here. Every screen rule is
+   scoped under its page id, and every component class is new (vn-*), so no
+   existing .nxp-* / .n99-* rule is altered at the source — Train overrides
+   are additive under #trainPage.
    ========================================================================== */
 
 :root{
@@ -87,17 +89,24 @@
   backdrop-filter:blur(20px) saturate(1.4) !important;
   -webkit-backdrop-filter:blur(20px) saturate(1.4) !important;
   border-top:1px solid var(--vn-line) !important;
+  transition:transform var(--vn-t-move) var(--vn-ease), opacity var(--vn-t-move) var(--vn-ease);
 }
 .tabs .tab:not(.active){color:var(--vn-ink-4) !important}
 .tabs .tab.active{color:var(--vn-violet-lift) !important}
 .tabs .tab.active::before{background:var(--vn-violet)}
-/* D6 groundwork: the bar can recede for a focused mode. Phase 2A ships the
-   mechanism only — nothing sets this class yet; Train (2B) will. */
+/* D6: focused Train mode recedes the dock. Wired by NXP.syncTrainNav. */
 .tabs.vn-recede{
   transform:translateX(-50%) translateY(100%) !important;
   opacity:0;
   pointer-events:none;
-  transition:transform var(--vn-t-move) var(--vn-ease), opacity var(--vn-t-move) var(--vn-ease);
+}
+/* D6 mode chrome: sync banner must not occupy fold space mid-set.
+   D11 targeting is unchanged — this only hides while .vn-recede is on. */
+.app:has(.tabs.vn-recede) #cloudLocalBanner{
+  display:none !important;
+}
+body:has(.tabs.vn-recede) .content{
+  padding-top:0 !important;
 }
 
 /* ==========================================================================
@@ -359,6 +368,303 @@
   @keyframes vn-route-enter{from{opacity:0;transform:none}to{opacity:1;transform:none}}
   .content:not(.hide){animation:none}
   #homePage .vn-act:active{transform:none}
+  #trainPage .nxp-set-row.is-fresh{animation:none;background:transparent}
+  #trainPage .nxp-ex-top.is-forward .nxp-ex-text,
+  #trainPage .nxp-ex-top.is-back .nxp-ex-text{animation:none;transform:none}
+  .tabs,.tabs.vn-recede{transition:none}
 }
 :root[data-nxp-motion="reduced"] .content:not(.hide){animation:none}
 :root[data-nxp-motion="reduced"] #homePage .vn-act:active{transform:none}
+:root[data-nxp-motion="reduced"] #trainPage .nxp-set-row.is-fresh{animation:none;background:transparent}
+:root[data-nxp-motion="reduced"] .tabs,
+:root[data-nxp-motion="reduced"] .tabs.vn-recede{transition:none}
+
+/* ==========================================================================
+   TRAIN  —  Phase 2B. Everything below is scoped to #trainPage
+   Active workout is a focused mode: current set is the protagonist; global
+   nav recedes via .tabs.vn-recede. Non-lifting days keep their own screens.
+   ========================================================================== */
+
+#trainPage{
+  background:
+    radial-gradient(120% 40% at 50% 0%, rgba(139,92,246,.08), transparent 55%),
+    var(--vn-canvas);
+  background-attachment:fixed;
+  color:var(--vn-ink);
+}
+#trainPage .vn-train{
+  padding-bottom:var(--vn-s8);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;
+  font-size:15px;line-height:1.45;text-align:left;
+  color:var(--vn-ink);
+}
+#trainPage .vn-train-active.is-mode{
+  padding-bottom:calc(var(--vn-s6) + env(safe-area-inset-bottom,0px));
+}
+#trainPage .vn-num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+/* ---- Mode bar (leave · identity · finish) ---- */
+#trainPage .vn-train-top{
+  display:flex;align-items:center;gap:var(--vn-s3);
+  padding:var(--vn-s1) 0 var(--vn-s2);
+}
+#trainPage .vn-train-icon{
+  width:44px;height:44px;min-width:44px;min-height:44px;flex:none;
+  border:0;border-radius:var(--vn-r-input);
+  background:var(--vn-surface-2);color:var(--vn-ink);
+  font:inherit;font-size:16px;font-weight:500;cursor:pointer;
+  box-shadow:inset 0 0 0 1px var(--vn-line-2);
+  -webkit-tap-highlight-color:transparent;
+  transition:background var(--vn-t-touch) var(--vn-ease), transform var(--vn-t-touch) var(--vn-ease);
+}
+#trainPage .vn-train-icon:active{background:var(--vn-surface-3);transform:scale(.95)}
+#trainPage .vn-train-id{flex:1;min-width:0;text-align:center}
+#trainPage .vn-train-id .nxp-caption{
+  font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--vn-ink-3);margin:0;
+}
+#trainPage .vn-train-count{
+  margin:2px 0 0;font-size:12px;font-weight:500;color:var(--vn-ink-3);
+  font-variant-numeric:tabular-nums;
+}
+
+#trainPage .vn-train-active .nxp-ex-rail > p[hidden],
+#trainPage .vn-train-active .nxp-ex-meta[hidden],
+#trainPage .vn-train-active .nxp-set-dots[hidden]{
+  display:none !important;
+}
+#trainPage .vn-train-active .nxp-ex-rail ol{
+  display:flex;gap:3px;height:3px;margin:0;padding:0;list-style:none;
+}
+#trainPage .vn-train-active .nxp-ex-rail li{
+  flex:1;border-radius:2px;background:rgba(255,255,255,.09);
+  overflow:hidden;position:relative;min-height:3px;height:3px;
+}
+#trainPage .vn-train-active .nxp-ex-rail li.is-done{background:var(--vn-violet)}
+#trainPage .vn-train-active .nxp-ex-rail li.is-current{background:rgba(255,255,255,.18)}
+#trainPage .vn-train-active .nxp-ex-rail li.is-current::after{
+  content:"";position:absolute;inset:0;width:var(--p,0%);
+  background:var(--vn-violet);
+  transition:width var(--vn-t-state) var(--vn-ease);
+}
+#trainPage .vn-train-active .nxp-ex-rail p{
+  display:flex;align-items:center;justify-content:space-between;gap:var(--vn-s3);
+  margin:0;font-size:12px;color:var(--vn-ink-3);
+}
+#trainPage .vn-train-active .nxp-ex-rail .nxp-rail-jump{
+  border:0;background:none;color:var(--vn-ink-2);font:inherit;font-size:12.5px;
+  font-weight:560;padding:8px 0;min-height:44px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+#trainPage .vn-train-active .nxp-ex-rail .nxp-session-focus{margin-top:var(--vn-s2)}
+
+/* ---- Current exercise ---- */
+#trainPage .vn-train-active .nxp-ex-bar{display:none}
+#trainPage .vn-train-active .nxp-ex-head{
+  display:block;margin:0 0 var(--vn-s3);padding:0;background:none;border:0;box-shadow:none;
+}
+#trainPage .vn-train-active .nxp-ex-title{
+  font-size:24px;font-weight:650;letter-spacing:-.028em;line-height:1.1;
+  color:var(--vn-ink);text-align:left;padding:0;border:0;background:none;
+  min-height:44px;cursor:pointer;display:inline-flex;align-items:center;
+}
+#trainPage .vn-train-active .nxp-ex-muscles{
+  margin:2px 0 0;font-size:12.5px;color:var(--vn-ink-3);
+}
+
+/* ---- Aim strip: typography instruments, wrap at 320 ---- */
+#trainPage .vn-aim{
+  display:flex;gap:var(--vn-s4);margin:0 0 var(--vn-s3);
+  padding:0;border:0;background:none;
+}
+#trainPage .vn-aim .nxp-aim-cell{
+  flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;
+  box-shadow:none;border-radius:0;
+}
+#trainPage .vn-aim .nxp-aim-cell + .nxp-aim-cell{border:0;padding-left:0}
+#trainPage .vn-aim .nxp-caption{display:block;margin-bottom:2px;color:var(--vn-ink-3)}
+#trainPage .vn-aim b{
+  font-size:17px;font-weight:620;letter-spacing:-.015em;display:block;color:var(--vn-ink);
+}
+#trainPage .vn-aim b em,
+#trainPage .vn-train-sets b em,
+#trainPage .vn-train em{
+  font-style:normal;font-size:.6em;font-weight:520;color:var(--vn-ink-2);margin:0 3px 0 2px;
+}
+#trainPage .vn-aim small{font-size:11.5px;color:var(--vn-ink-3);display:block;margin-top:1px}
+#trainPage .vn-train .nxp-field-label small{color:var(--vn-ink-3)}
+#trainPage .vn-train .nxp-stepper .nxp-field-label{color:var(--vn-ink-3)}
+
+/* ---- Logged sets (below Log Set so history growth cannot push the CTA) ---- */
+#trainPage .vn-train-sets{
+  display:flex;flex-direction:column;gap:0;margin:var(--vn-s3) 0 0;
+  padding:0;border:0;background:none;
+}
+#trainPage .vn-train-sets .nxp-set-row{
+  display:flex;align-items:center;gap:var(--vn-s3);min-height:44px;
+  padding-block:4px;border:0;border-radius:0;background:none;width:100%;
+  text-align:left;color:var(--vn-ink-2);font:inherit;font-size:14px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+#trainPage .vn-train-sets .nxp-set-row + .nxp-set-row{border-top:1px solid var(--vn-line)}
+#trainPage .vn-set-n{
+  width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;
+  font-size:10.5px;font-weight:620;color:var(--vn-ink-3);
+  box-shadow:inset 0 0 0 1px var(--vn-line-3);
+}
+#trainPage .vn-train-sets .nxp-set-row b{color:var(--vn-ink);font-weight:580;font-variant-numeric:tabular-nums}
+#trainPage .vn-train-sets .nxp-set-row small{margin-left:auto;font-size:12px;color:var(--vn-ink-4)}
+#trainPage .vn-set-edit{font-size:12px;color:var(--vn-ink-4);margin-left:var(--vn-s2)}
+@keyframes vn-set-settle{
+  0%{background:rgba(139,92,246,.20)}
+  100%{background:transparent}
+}
+#trainPage .nxp-set-row.is-fresh{animation:vn-set-settle 900ms var(--vn-ease) forwards;border-radius:var(--vn-r-input)}
+
+/* ---- Rest strip: single instrument row (timer · rail · +30s · Skip) ---- */
+#trainPage .vn-rest{
+  display:flex;flex-direction:row;align-items:center;gap:var(--vn-s3);
+  margin:0 0 var(--vn-s3);padding:0;
+  min-height:44px;
+  background:transparent;border:0;border-radius:0;box-shadow:none;
+}
+#trainPage .vn-rest[hidden]{display:none !important}
+#trainPage .vn-rest.is-active{display:flex}
+#trainPage .vn-rest #apx96TimerValue{
+  flex:none;min-width:3.25em;margin:0;padding:0;
+  font-size:15px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;
+  letter-spacing:-.02em;color:var(--vn-violet-lift);
+}
+#trainPage .vn-rest .nxp-rest-rail{
+  flex:1;min-width:0;height:2px;border-radius:2px;
+  background:rgba(255,255,255,.09);overflow:hidden;align-self:center;
+}
+#trainPage .vn-rest .nxp-rest-rail > span{background:var(--vn-violet);height:100%;display:block}
+#trainPage .vn-rest .vn-rest-actions{
+  display:flex;flex:none;gap:var(--vn-s2);align-items:center;
+}
+#trainPage .vn-rest .vn-rest-actions .n99-button{
+  width:auto;min-width:44px;min-height:44px;margin:0;padding:0 12px;
+  border-radius:var(--vn-r-input);font-size:13px;
+}
+
+/* ---- Steppers + Log Set (protagonist controls) ---- */
+#trainPage .vn-set-form{
+  display:flex;flex-direction:column;gap:var(--vn-s3);margin:0;padding:0;
+}
+#trainPage .vn-train-active .nxp-steppers{gap:var(--vn-s2)}
+#trainPage .vn-train-active .nxp-step{
+  min-width:48px;min-height:52px;width:48px;
+  border-radius:var(--vn-r-input);
+  background:var(--vn-surface-2);border:1px solid var(--vn-line-2);
+  color:var(--vn-ink);
+}
+#trainPage .vn-train-active .nxp-step:active,
+#trainPage .vn-train-active .nxp-step.is-held{
+  background:var(--vn-surface-3);border-color:var(--vn-violet-line);color:var(--vn-violet-lift);
+}
+#trainPage .vn-train-active .nxp-stepper-row{
+  grid-template-columns:48px minmax(0,1fr) 48px;
+}
+#trainPage .vn-train-active .nxp-stepper input[type="number"]{
+  min-height:52px;font-size:1.625rem !important;
+  border-radius:var(--vn-r-input);background:rgba(255,255,255,.035);
+  border:1px solid var(--vn-line-2);color:var(--vn-ink);
+}
+#trainPage .vn-train-active .nxp-stepper input:focus{
+  background:var(--vn-violet-dim);
+  border-color:var(--vn-violet-line);
+  box-shadow:0 0 0 4px rgba(139,92,246,.10);
+}
+#trainPage .vn-train-active .nxp-train-cta{
+  min-height:50px;border-radius:var(--vn-r-control);margin-top:var(--vn-s1);
+  background:linear-gradient(180deg,#9B71F8,var(--vn-violet));
+  color:#fff;font-size:16px;font-weight:580;
+  box-shadow:0 1px 0 rgba(255,255,255,.15) inset, 0 6px 16px -10px rgba(139,92,246,.45);
+  border:0;
+}
+#trainPage .vn-train-active .nxp-train-cta:active{filter:brightness(.94);transform:scale(.985)}
+#trainPage .vn-train-active .nxp-seg-row{gap:var(--vn-s3)}
+#trainPage .vn-train-active .nxp-seg button{
+  min-height:44px;border-radius:var(--vn-r-input);
+}
+#trainPage .vn-train-active .nxp-seg button.is-on{
+  background:var(--vn-violet-dim);color:var(--vn-violet-lift);
+  box-shadow:inset 0 0 0 1px var(--vn-violet-line);
+}
+
+/* ---- Prev / Queue / Next ---- */
+#trainPage .vn-train-active .nxp-ex-nav{
+  display:flex;align-items:center;justify-content:space-between;gap:var(--vn-s3);
+  margin:var(--vn-s4) 0 0;padding:0;border:0;background:none;
+}
+#trainPage .vn-train-active .nxp-ex-nav > button{
+  min-height:44px;min-width:44px;padding:8px 4px;
+  border:0;background:none;color:var(--vn-ink-2);font:inherit;font-size:14.5px;
+  font-weight:540;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+#trainPage .vn-train-active .nxp-ex-nav > button:disabled{opacity:.35}
+#trainPage .vn-train-active .nxp-ex-nav-pos{color:var(--vn-violet-lift);font-weight:560}
+
+/* ---- Demoted regions ---- */
+#trainPage .vn-train-more{
+  margin-top:var(--vn-s5);border-top:1px solid var(--vn-line);padding-top:0;
+}
+#trainPage .vn-train-more > summary{
+  list-style:none;cursor:pointer;min-height:44px;display:flex;align-items:center;
+  font-size:14.5px;font-weight:500;color:var(--vn-ink-2);
+  -webkit-tap-highlight-color:transparent;
+}
+#trainPage .vn-train-more > summary::-webkit-details-marker{display:none}
+
+/* ---- Idle strength overview ---- */
+#trainPage .vn-train-ready{
+  background:linear-gradient(180deg,var(--vn-surface) 0%,#14171E 100%);
+  border-radius:var(--vn-r-surface);padding:var(--vn-s5);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.055), 0 1px 2px rgba(0,0,0,.4);
+  margin-bottom:var(--vn-s6);
+}
+#trainPage .vn-train-ready-meta{
+  margin:var(--vn-s2) 0 var(--vn-s4);font-size:14.5px;color:var(--vn-ink);
+}
+#trainPage .vn-train-ready .n99-button{width:100%;min-height:50px}
+#trainPage .vn-train-plan{margin-bottom:var(--vn-s5)}
+#trainPage .vn-train-plan-row{
+  display:flex;align-items:center;min-height:52px;padding-block:var(--vn-s3);
+}
+#trainPage .vn-train-plan-row + .vn-train-plan-row{border-top:1px solid var(--vn-line)}
+#trainPage .vn-train-plan-t{display:block;font-size:15px;font-weight:500;color:var(--vn-ink)}
+#trainPage .vn-train-plan-s{display:block;font-size:12.5px;color:var(--vn-ink-3);margin-top:1px}
+
+/* ---- Finished recap ---- */
+#trainPage .vn-train-done{
+  background:linear-gradient(180deg,var(--vn-surface) 0%,#14171E 100%);
+  border-radius:var(--vn-r-surface);padding:var(--vn-s5);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.055);
+}
+#trainPage .vn-train-done h2{margin:var(--vn-s2) 0 var(--vn-s4);font-size:20px;font-weight:600;color:var(--vn-ink)}
+#trainPage .vn-train-outcome-lede{margin:0 0 var(--vn-s4);font-size:14.5px;color:var(--vn-ink-2)}
+#trainPage .vn-train-outcome-rows{display:flex;flex-direction:column}
+#trainPage .vn-train-outcome-row{
+  display:flex;justify-content:space-between;align-items:center;
+  min-height:44px;padding-block:8px;font-size:15px;color:var(--vn-ink);
+}
+#trainPage .vn-train-outcome-row + .vn-train-outcome-row{border-top:1px solid var(--vn-line)}
+#trainPage .vn-train-outcome-next{margin:var(--vn-s4) 0}
+
+/* ---- Idle Rest / Zone2 / Floorball: light canvas alignment ---- */
+#trainPage .nxp-train-idle.vn-train .nxp-train-chrome h1{color:var(--vn-ink)}
+#trainPage .nxp-train-idle.vn-train .nxp-train-idle-copy h2{color:var(--vn-ink)}
+#trainPage .nxp-train-idle.vn-train .nxp-train-idle-copy p{color:var(--vn-ink-2)}
+
+/* ---- 320: aim wraps rather than crushing ---- */
+@media (max-width:359px){
+  #trainPage .vn-train-active .nxp-ex-title{font-size:22px}
+  #trainPage .vn-train-active .nxp-step{min-width:48px;width:48px;min-height:52px}
+  #trainPage .vn-train-active .nxp-stepper-row{grid-template-columns:48px minmax(0,1fr) 48px}
+  #trainPage .vn-train-active .nxp-stepper input[type="number"]{min-height:52px;font-size:1.5rem !important}
+  #trainPage .vn-aim{flex-wrap:wrap;gap:var(--vn-s4)}
+  #trainPage .vn-aim.wrap3 .nxp-aim-cell{flex:1 1 44%}
+  #trainPage .vn-aim b{font-size:16px}
+}

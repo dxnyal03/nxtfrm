@@ -8,7 +8,7 @@ Overwrite this file each slice. Keep it factual: Claude reviews the actual git d
 
 ## Slice
 
-`D11 — cloud/local banner targeting` + root `.gitignore` for `.playwright-mcp/`
+`VNext Phase 2B — Train: active workout mode` — **fix round for CLAUDE_REVIEW required items 1a + 1b only**
 
 ## Status
 
@@ -20,41 +20,50 @@ Overwrite this file each slice. Keep it factual: Claude reviews the actual git d
 
 | File | Added / Modified | What changed |
 |---|---|---|
-| `cut-support.js` | Modified | **Only** `updateCloudLocalBanner` / `dismissCloudLocalBanner` (was ~1553–1560). Replaced in-memory `cloudBannerDismissed` with D11 targeting (A sync fail / B cloud configured + signed out / C unsynced local data) and persistent dismiss under `nxtfrm_cloud_banner_dismissed`. |
-| `.gitignore` | Added | Single entry: `.playwright-mcp/` |
-| `tasks/vnext/CURSOR_REPORT.md` | Modified | This report. |
-| `tasks/vnext/verify-d11-results.json` | Added | Playwright evidence for banner cases A/B/C + tab smoke. |
+| `premium-ui.js` | Modified | **1a:** `syncTrainNav` hides `#cloudLocalBanner` while mode is engaged and restores via `updateCloudLocalBanner` on leave; wrap of `updateCloudLocalBanner` so post-`render` D11 updates cannot re-show mid-set. **1b:** rest strip markup is a single row (timer · rail · +30s · Skip); set history moved below Log Set so row growth cannot push the CTA. |
+| `vnext.css` | Modified | **1a:** CSS belt-and-suspenders hide banner + undo banner-driven content inset while `.tabs.vn-recede`. **1b:** compact horizontal rest strip (15px timer); set-history margin adjusted for below-CTA placement. |
+| `tasks/vnext/verify-2b.mjs` | Unchanged this round | Re-run green |
+| `tasks/vnext/verify-2b-results.json` | Modified | Fresh evidence dump |
+| `tasks/vnext/verify-2b-fold.mjs` | Added | Fold table 0/1/2 × 390/320 + banner restore matrix |
+| `tasks/vnext/verify-2b-fold-results.json` | Added | Fold/banner numbers |
+| `tasks/vnext/shots/train-*.png` | Modified | Re-shot from verify-2b |
+| `tasks/vnext/CURSOR_REPORT.md` | Modified | This report |
 
-No other production files touched this pass (including no other regions of `cut-support.js`).
+No edits to `cut-support.js` (D11 targeting untouched), wearables engines, `train-anatomy.js`, `sw.js` RELEASE/CACHE, Supabase, or unrelated untracked trees.
 
 ---
 
-## B. Behaviour implemented
+## B. Behaviour implemented (this fix)
 
-### CHANGE 1 — D11 banner targeting
+### 1a — Banner suppressed in active workout mode (D6 chrome)
 
-Show `#cloudLocalBanner` only when `cloudSessionChecked` **and** one of:
+- While `.tabs.vn-recede` is on, the cloud/local banner is forced `hidden` (and CSS `display:none` + zero content `padding-top`).
+- On leave and on finish, `syncTrainNav(false)` / non-receded paint restores via the existing `updateCloudLocalBanner` D11 path — **no change to when the banner is warranted**.
+- Verified: hidden in active mode; visible again after leave and after finish; visible on Today / Progress / History / More / Train idle when D11 says show.
 
-- **A** `lastCloudError` set (actionable; not suppressible by dismiss)
-- **B** both `apm_sb_url` and `apm_sb_key` present **and** signed out (`!cloudUser && !hasStoredSbAuthToken()`) (actionable; not suppressible)
-- **C** signed out, `state.logs` or `state.bws` non-empty, `!lastCloudSyncAt`, and dismiss key not set (informational; dismissible)
+### 1b — Rest strip + set history no longer push Log Set past the fold
 
-Dismiss writes `localStorage['nxtfrm_cloud_banner_dismissed']='1'` (try/catch). Reads likewise. Key uses `nxtfrm_` deliberately so it stays off the `apm_*` backup/restore surface.
+- Rest strip: one 44px-tall instrument row; timer figure 15px (calmer, cheaper).
+- Set history: still fully visible and editable; placed **below** Log Set (before Prev/Queue/Next) so 1→2 logged sets do not move the CTA.
+- Touch targets stay ≥44pt; type scale not dropped below the design system.
 
-Kept: existing markup, Log in / Dismiss buttons, `openCloudLoginFromBanner`, session-checked gating (no flash before session known).
+### Fold table (Log Set bottom edge vs 844)
 
-### CHANGE 2 — `.gitignore`
+| Sets logged | 390px | 320px |
+|---|---|---|
+| 0 | **678** ok | **753** ok |
+| 1 | **750** ok | **825** ok |
+| 2 | **750** ok | **825** ok |
 
-Ignores only `.playwright-mcp/`. Does **not** ignore `design-v102/`, `design-v103/`, `design-vnext/`, `tasks/`, or `.claude/`.
+(1 and 2 match because history sits below the CTA; rest strip height measured 44px when active.) Source: `tasks/vnext/verify-2b-fold-results.json`.
 
 ---
 
 ## C. Architecture / state wiring
 
-- No fitness calculation, trend, plateau, forecast, or fitness-data storage logic changed.
-- No `apm_*` keys, `persist()`, Safe Sync, schema, or `NXT` API surface changes.
-- Dismiss persistence is a new **non-`apm_`** preference key only.
-- Case C is gated with signed-out so a signed-in first-sync (`lastCloudSyncAt` still null) does not surface the local-only banner.
+- Presentation only. D11 conditions in `updateCloudLocalBanner` unchanged; mode gate is a wrapper + `syncTrainNav` + CSS.
+- Input ids unchanged. Rest timer still updated by `paintRest` / `#apx96TimerValue` / `.nxp-rest-rail` without full repaint.
+- No calculation, storage key, record shape, or training-semantic changes.
 
 ---
 
@@ -62,35 +71,28 @@ Ignores only `.playwright-mcp/`. Does **not** ignore `design-v102/`, `design-v10
 
 | # | Test | Result | Evidence |
 |---|---|---|---|
-| 1 | Case C: local, signed out, cloud not configured, data present → banner shows | PASS | Playwright MCP |
-| 2 | Case C: Dismiss → hidden; key=`1`; **reload** → stays hidden | PASS | Playwright MCP |
-| 3 | Case B: cloud configured + signed out → shows **even if previously dismissed** | PASS | Playwright MCP |
-| 4 | Case A: `lastCloudError` → shows despite dismiss | PASS | Playwright MCP (extra check) |
-| 5 | Today contrast ≥4.5:1 @ 390/375/320 × lift/rest | PASS | `verify-2a.mjs` → 0 `textFails` |
-| 6 | Today targets ≥44pt | PASS | 0 `targetFails` |
-| 7 | No horizontal overflow @ 390/375/320 | PASS | `scrollWidth === clientWidth` all six |
-| 8 | Train / Progress / History / More / Today — no console errors | PASS | D11 run + verify-2a `otherTabs` |
-| 9 | `node wearables.release-gate.test.js` | **53 passed, 0 failed** | CLI |
-
-Test file paths:
-
-- `tasks/vnext/verify-d11-results.json`
-- `tasks/vnext/verify-2a.mjs` / `tasks/vnext/verify-2a-results.json`
-- `wearables.release-gate.test.js`
-
-Verification note: the page still requests `cut-support.js?v=109`. Browser HTTP cache can retain the pre-D11 script. Playwright checks used a no-store fulfill for `cut-support.js*` so the live file was exercised. **Shipping this change to real clients still needs the existing cache-bust / RELEASE path** (not done in this pass — out of authorised file list).
+| 1 | Contrast ≥4.5:1 — lifting-idle, lifting-active, mid, resting, Rest, Zone2, Floorball × 390/375/320 | PASS | `verify-2b-results.json` `textFailCount:0`; idle audited separately |
+| 2 | Touch targets ≥44pt — same matrix | PASS | `targetFailCount:0` |
+| 3 | No horizontal overflow — same matrix | PASS | `overflow:false` |
+| 4 | Fold table 0/1/2 @390 and 320 | PASS | table above; all ≤844 including 320×2 |
+| 5 | Banner hidden in active; restored leave/finish; correct on other surfaces | PASS | `verify-2b-fold-results.json` → `banner` |
+| 6 | Input contract + simulated log | PASS | types + record ok |
+| 7 | Draft survival | PASS | `77.5` |
+| 8 | Rest tick without full repaint | PASS | probe survived; +30s worked |
+| 9 | Add-on dayType safety | PASS | Rest→Rest |
+| 10 | Nav recede/restore | PASS | |
+| 11 | Other four tabs | PASS | no console errors |
+| 12 | `node wearables.release-gate.test.js` | PASS | **53 passed, 0 failed** |
 
 ---
 
 ## E. Responsive verification
 
-| Width | Today · lifting | Today · rest | Notes |
-|---|---|---|---|
-| 390 | PASS | PASS | Contrast / targets / overflow |
-| 375 | PASS | PASS | Same |
-| 320 | PASS | PASS | Same |
-
-Screenshots refreshed by verify-2a under `tasks/vnext/shots/`.
+| Width | Idle | Active | Mid | Resting | Rest | Zone2 | Floorball |
+|---|---|---|---|---|---|---|---|
+| 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 375 | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 320 | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 
 ---
 
@@ -98,26 +100,19 @@ Screenshots refreshed by verify-2a under `tasks/vnext/shots/`.
 
 | Item | Note |
 |---|---|
-| Cache-bust | `index.html` still loads `cut-support.js?v=109`. Content changed; version query / SW RELEASE not bumped (not authorised this pass). Reviewer should decide whether this rides the next release bump. |
-| Prior Today deviations (Q2, demoted rows, etc.) | Unchanged; not re-opened. |
-| Cloud/local banner vs I10 | **Resolved by D11** for healthy local+dismissed and healthy signed-in operation; actionable A/B still surface. |
+| Set history position | Below Log Set (was above). Required for fold; history + Edit survive. |
+| Rest strip layout | Single horizontal row vs stacked column; controls unchanged. |
+| Coach / set-dots / Session tools / etc. | Unchanged demotions from the original 2B pass. |
 
 ---
 
-## G. Git status (this pass focus)
+## G. Open questions / risks
 
-```
- M cut-support.js          # D11 banner functions only
-?? .gitignore              # .playwright-mcp/
- M tasks/vnext/CURSOR_REPORT.md
-?? tasks/vnext/verify-d11-results.json
-(+ prior Phase 2A / unrelated untracked still in tree — not touched this pass)
-```
-
-**Nothing committed.** No push.
+1. Original open question about long set-history pushing Log Set is addressed by placing history below the CTA.
+2. Shipping still needs the normal cache-bust / RELEASE path (out of scope).
 
 ---
 
-## H. Questions / blockers
+## H. Stop
 
-1. Should the next release bump `cut-support.js?v=` (and SW shell if required) so installed PWAs pick up D11 without a hard cache clear?
+Working tree ready for Claude design/UX review of **1a + 1b only**. **No commit. No push.**

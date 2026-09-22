@@ -2,113 +2,114 @@
 
 ## Slice
 
-`VNEXT PHASE 2A: FOUNDATION + TODAY` — final (rounds 1–3)
+`VNEXT PHASE 2B: TRAIN — ACTIVE WORKOUT MODE` — final (rounds 1–2)
 
 ## Verdict
 
 **APPROVED — ready for the owner's commit decision.**
 
-Round 1 raised two required fixes; round 2 resolved both; round 3 cleared one further copy defect I found on re-inspection. All re-verified by me below. Round 1's findings are kept beneath for the record.
+Round 1 found one defect with two parts; round 2 resolved both. Round 1's findings are kept below for the record.
 
-### Round 2 — required fixes, re-verified by Claude
-- **Fix 1 (offline shell)** — `'vnext.css'` added to `VERSIONED` in `sw.js`; `index.html` requests `vnext.css?v=109`. `RELEASE` and `CACHE_NAME` untouched, as instructed. **`node wearables.release-gate.test.js` → 53 passed, 0 failed.**
-- **Fix 2 (Performance copy)** — row now reads *"20 lifts · last logged 14 Jul · Older history"*. Contradiction gone, and the row is more informative than before. Status word remains engine vocabulary (I12).
-- Polish applied: last-lift spacing, and a comment pinning `Older history`/`Building` to `is-neutral`.
+### Round 2 — re-verified by Claude
 
-### Round 3 — defect I found on re-inspection
-The add-on subtitle interpolated `N.label(state.dayType)`, so a Zone 2 day rendered *"today stays a Easy cardio day"* — ungrammatical, and visible three days a week under the default plan. Now reads *"Kept as an add-on — today's plan is unchanged"*, which is correct for every add-on-eligible type (Rest, Zone2, Cardio) and still makes the point that the day is not reclassified. Verified on both Zone2 and Rest.
+**1a — banner scoped to active mode.** Verified across eight surfaces: suppressed in Train active mode (including mid-session), present on Today, Progress, Train idle, Train Rest, Train Zone2, and restored after leave. D11 targeting untouched everywhere else.
 
-### Final acceptance — all re-run by Claude after the last change
-| Check | Result |
-|---|---|
-| Contrast ≥4.5:1 — both states, 390/375/320 | **0 failures** |
-| Touch targets ≥44pt — both states, 390/375/320 | **0 under 44pt** |
-| Horizontal overflow | **none**, all six combinations |
-| Surfaces on Today (D1) | **exactly 1**, all six combinations |
-| Chart on Today (I9) | **0** |
-| Week strip visible, not in a `<details>` | **yes** |
-| Reduced motion | animation `none`, renders, tabs switch |
-| Normal motion | `vn-route-enter 0.28s cubic-bezier(.32,.72,0,1)` |
-| Other four tabs | render, **0 `vn-*` leak**, 0 page errors |
-| Release gate | **53 passed, 0 failed** |
-| Working tree | nothing committed; `HEAD` still `6bfe084` |
+**1b — fold resolved, and now stable.** Log Set no longer moves as sets accumulate, because the set history was relocated below the CTA and the rest strip compacted to a single 44px row.
 
-### Housekeeping for the next slice
-`.playwright-mcp/` appeared as an untracked tool-cache directory from Cursor's verification run. Harmless and uncommitted, but it should be gitignored or removed before any commit so it does not get swept in.
+| Sets logged | 390px (was) | 320px (was) |
+|---|---|---|
+| 0 | **678** (763) | **753** (838) |
+| 1 | **750** (951) | **825** (1026) |
+| 2 | **750** (995) | **825** (1070) |
+| 3 | **750** (875) | **825** (950) |
+
+All ≤ 844. The whole logging loop now fits one screen at both widths, for the entire exercise.
+
+**All six semantic contracts re-verified after the fix and still hold** — input contract and record write, add-on non-reclassification across reload, draft survival, rest tick without repaint, nav recede/restore, session survival on leave.
+
+**Full sweep re-run post-fix:** state matrix (6 Train states × 390/375/320) → 0 contrast, 0 target, 0 overflow failures · reduced motion clean · other four tabs unchanged, no errors · Today non-regression still green · release gate **53 passed, 0 failed**.
+
+### Accepted design trade
+
+Cursor moved the set history **below** Log Set. I checked the consequence: the just-logged row is visible without scrolling after set 1 at 390 (811px), but below the fold after set 2 (855px) and at 320 throughout.
+
+**Accepted.** Confirmation that a set landed comes from the in-place "Working set saved" on the button, the advancing session bar, and the CTA incrementing to "Log set 3" — not from the history list, which is reference. Under INSTRUMENT the current set is the protagonist and completed sets are reference, so this is the correct thing to push down. Forcing both above the fold at 320 would mean compressing something that matters more.
+
+### POLISH — non-blocking, carry into a later pass
+- The "Working set saved" toast briefly covers the session identity in the mode bar. Transient, but it obscures the one line naming the workout.
+- Two stacked disclosures at the foot of an active workout is near the limit; consider reaching *Session tools* from the mode bar instead.
 
 ## Scope check
 
-Clean. `index.html` (+1 line), `premium-ui.js` (`NXP.home()` only), `vnext.css`, plus task-local files under `tasks/vnext/`.
+Clean. `premium-ui.js`, `vnext.css`, `CURSOR_REPORT.md` and test artefacts under `tasks/vnext/`. No engine file, no `wearables.*`, no `sw.js`, no `RELEASE`/`CACHE_NAME` change. Nothing committed; `HEAD` at `a0c9203`.
 
-`wearables.release-gate.test.js` was also modified, which §3 nominally forbade. **Reviewed and accepted:** the gate asserts on Today's markup, so it is legitimately coupled to this slice. The change preserves the original intent ("the week is visible, not behind a closed disclosure") and accepts the new always-visible strip *or* the legacy disclosure. I independently confirmed `.vn-week` is rendered, visible, and **not** inside a `<details>` — so the assertion is honest, not weakened. §3 has been amended to carve this out.
+## APPROVED — verified by me, independently of the report
 
-No commit, no push. `HEAD` unchanged at `6bfe084`. Unrelated untracked work untouched.
+**The six semantic contracts — the things that break silently — all hold:**
 
-## APPROVED
+| Contract | Evidence |
+|---|---|
+| Input contract | Exactly one `weightInput` in the DOM (2nd source occurrence is a comment). `repsInput`, `n99-set-type`, `n99-rir` present. A simulated log wrote a correct record: `{Romanian Deadlift, 72.5, 9, working, rir 2, setNum 1, FullB, Gym A, vol 653}` |
+| Add-on cannot reclassify | **Zero assignments to `state.dayType` anywhere in `premium-ui.js`.** Added an add-on on a Rest day → dayType stayed `Rest`, survived a **reload** (`resolveDayType` → `Rest`), add-on preserved, `sessionPlans` untouched |
+| Draft survival | Set `88.5`, moved to next exercise, moved back → `88.5` still there |
+| Rest timer without full repaint | Marked a DOM node, waited 2.5s through ticks → **node survived**, timer advanced `02:30 → 02:27` |
+| Nav recede / restore | Receded in active mode, restored on leave, and correctly **not** receded on the other four tabs |
+| Session survives leaving | Logged sets still present after `leaveTrain()` |
 
-Verified by me, independently of the report:
-
-- **The INSTRUMENT rule holds.** Exactly **one** `.vn-surface` on Today at 390/375/320, both states. Everything else sits on the canvas with hairlines and spacing. This is the thing that had to be right.
-- **Accessibility passes my own audit, not just Cursor's** — 0 contrast failures and 0 sub-44pt targets at all three widths in both states.
-- **No horizontal overflow** at 390/375/320, both states.
-- **No chart on Today** (I9). **Exactly one surface** (D1).
-- **Rest state genuinely adapts**: no gym control, no lifting CTA, no stale lifting figures, morning-weight row reflecting the displayed day, next-session line.
-- **Add-on semantics correct** — routes through production `addOnEligible()`/`addOnPick()`, and the copy states the day stays a Rest day. `resolveDayType`, `sessionPlans`/`addOns` separation untouched.
-- **Q2 respected.** The decision surface renders `N.review().title` + `message`/`reason`, not the prototype's invented verdict vocabulary. Correct restraint.
-- **Demotions declared and still reachable** — recovery, calorie guide and adherence all live under *More for today* with their original entry points. No silent feature loss.
-- **Motion is exactly spec**: `vn-route-enter`, `0.28s`, `cubic-bezier(.32,.72,0,1)`. Under `prefers-reduced-motion` the animation is `none` and tab switching still works.
-- **No regression in the four untouched tabs.** All render, **zero `vn-*` leakage outside `#homePage`**, unchanged transparent backgrounds, no page errors. Progress is pixel-consistent with my Phase 1 baseline.
-- Render input lock, engine, state and storage untouched.
+**Also verified:**
+- Contrast, touch targets and overflow: **0 failures** across lifting-idle, lifting-active, mid+resting, Rest, Zone2 and Floorball, at 390/375/320.
+- Non-lifting days keep their own screens; `addOnActive()` gating intact.
+- Reduced motion: every Train state renders, logging still works, no errors.
+- Other four tabs unchanged, no console errors; nav not receded there.
+- Release gate **53 passed, 0 failed**.
+- **Demotions are real, not losses.** Under *Re-establish your baseline* and *Session tools*: swap, undo, queue, finish, session menu, edit-current-set, coach and exercise details all still reachable.
+- Design quality is genuinely good — mode bar, session progress, aim strip as one instrument line, settled set rows, thumb-ordered controls.
 
 ## REQUIRED FIXES
 
-| # | File | Issue | Required outcome |
-|---|---|---|---|
-| 1 | `index.html`, `sw.js` | `vnext.css` is linked as `?v=110` while `sw.js` `RELEASE = '109'`, so it is absent from the offline shell. Release gate fails (**52 passed, 1 failed** — "the service-worker shell matches what the page requests"), and a cold offline start would render the app unstyled. | Add `'vnext.css'` to the `VERSIONED` array in `sw.js`, and change the `index.html` link to `vnext.css?v=109` so it matches the current `RELEASE`. **Do not bump `RELEASE` or `CACHE_NAME`** — that is a release action, not part of this slice. Then `node wearables.release-gate.test.js` must report 53 passed, 0 failed. |
-| 2 | `premium-ui.js` (Today, Performance row) | Copy contradiction. The row subtitle is hardcoded `"${lifts.length} lifts with recent history"` while the status word can be `Older history` — the row currently reads *"20 lifts with recent history · Older history"*. On seeded data this is the default state, so it is visible, not an edge case. | Make the subtitle agree with the status: when `perfLabel === 'Older history'`, the subtitle must not claim recency (e.g. *"N lifts · last logged <date>"* or *"No recent comparable sessions"*). Keep engine vocabulary for the status word (I12). |
+### 1. Log Set must stay above the fold during an exercise
 
-**Authorisation for fix 1:** `sw.js` was listed as do-not-edit in §3 because I did not anticipate the slice adding a stylesheet. Registering a new asset at the existing `RELEASE` is mechanical and carries no product decision, so I am authorising that edit and have amended §3. It does not extend to any other `sw.js` change.
+§1 of the task set the objective as fitting the logging loop on one screen; §4.2 made Log Set reachability an acceptance criterion. It passes **only before the first set**, then regresses for the rest of the exercise — which is when it matters most.
+
+Measured, Log Set bottom edge against an 844px fold:
+
+| Sets logged | 390px | 320px |
+|---|---|---|
+| 0 | 763 ok | 838 ok |
+| 1 | **951 — over by 107** | **1026 — over by 182** |
+| 2 | **995 — over by 151** | **1070 — over by 226** |
+| 3 | 875 — over by 31 | 950 — over by 106 |
+
+(The drop at 3 is only the auto-advance resetting the list.)
+
+Two contributors, both must be addressed:
+
+**1a — the cloud/local banner is showing inside active workout mode.** Focused mode means app chrome recedes (D6); a sync banner is exactly the chrome that should not be present mid-set. It also costs ~73px directly: suppressing it moves the 1-set case from 951 → 878 at 390.
+
+Suppress the banner **while active workout mode is engaged**, and restore it on leave and on finish. Do **not** alter the D11 targeting logic for any other context — this is a mode-scoped suppression, not a change to when the banner is warranted.
+
+**1b — the rest strip and set history are too tall stacked above the form.** After 1a there is still an overshoot (390: 34 / 78px at 1 / 2 sets; 320: 109 / 153px). The rest strip measures 80px and each logged-set row 44px, and the list grows through the exercise.
+
+Mechanism is yours — compact the rest strip, tighten set rows, or reflow so they do not stack above the form — but the rest controls (+30s, Skip, remaining time) and the visible set history must both survive.
+
+**Target:** Log Set bottom ≤ 844 at **390×844** with 0, 1 and 2 working sets logged. At **320×844**, ≤ 844 with 0 and 1; get 2 as close as the layout honestly allows and report the number rather than sacrificing touch-target size or type scale to hit it.
 
 ## POLISH
 
-Non-blocking; apply if cheap, otherwise defer and say so.
-
-- The last-lift line sits tight under the primary action on the lifting state. A little more separation would let the CTA breathe.
-- `perfTone` maps `Older history` to `is-neutral`, which is right. Worth a one-line comment so a later edit does not promote it to `is-ok`.
+- The rest strip's `02:30` is set at a large size; a smaller figure would read as calmly and help 1b.
+- `Re-establish your baseline` is good copy, but two stacked disclosures at the foot of an active workout is near the limit — consider whether `Session tools` is better reached from the mode bar's finish/menu affordance.
 
 ## REGRESSION RISKS
 
-Each checked, each clear:
-
-- **Engine / calculations** — `cut-support.js` untouched; Today reads the same functions.
-- **State / storage** — no key, shape or `persist()` change.
-- **Render input lock** — the transition is pure CSS on `.content`; nothing defers `render()` or repaints on focus.
-- **`template()` vs `templateFor()`** — not conflated; Today uses `template()` as before.
-- **`addOns` vs `sessionPlans`** — separation intact; add-on entry point unchanged.
-- **Other four tabs** — verified rendering, zero `vn-*` leak, no errors.
-- **Offline shell** — currently broken; that is required fix 1.
-
-## OPEN — owner decision, not a fix for Cursor
-
-**Cloud/local banner vs invariant I10.** I10 says sync state should be absent in normal operation, and the banner currently shows on every open when signed out. But its message is a **data-loss warning** ("iOS may wipe it"), which is arguably a real problem rather than routine sync chatter. I am **not** instructing Cursor to suppress it — silently hiding a data-safety warning is a product decision, not styling. Flagged for the owner.
+Each checked, each clear: engine untouched · state/storage untouched · render input lock not fought (rest ticks without repaint proves it) · `template()`/`templateFor()` not conflated · `addOns`/`sessionPlans` separation intact and proven across a reload · other four tabs unchanged · demoted capabilities all reachable · release gate green.
 
 ## VERIFICATION RUN BY CLAUDE
 
-Independent of `CURSOR_REPORT.md`, using my own Playwright scripts and my own Chromium:
-
-- Contrast audit — computed against actual rendered backgrounds, `#homePage`, both states, 390/375/320 → **0 failures**
-- Touch-target audit — every `button/a/summary/[tabindex]`, both states, three widths → **0 under 44pt**
-- Overflow — `scrollWidth === clientWidth` → **pass**, all six combinations
-- Surface count → **1**, all six combinations
-- Week strip → rendered, visible, not inside a `<details>`
-- Chart count on Today → **0**
-- Four other tabs → render, 0 `vn-*` leak, 0 page errors; Progress visually matches Phase 1 baseline
-- Reduced motion → `animationName: none`, Today renders, tab switching works
-- `node wearables.release-gate.test.js` → **52 passed, 1 failed** (the SW shell gate)
+Own Playwright scripts, own Chromium, independent of `verify-2b.mjs`: state matrix across six Train states × 390/375/320 (contrast/targets/overflow/nav) · input-contract record write · draft survival · rest-tick node survival · add-on dayType safety across reload · nav recede/restore · session survival on leave · fold measurement at 0/1/2/3 sets at 390 and 320 · fold re-measurement with the banner suppressed · demotion reachability · reduced motion · other-tab non-regression · release gate.
 
 ## NEXT ACTION
 
-Cursor: resolve required fixes 1 and 2 only. Re-run `node wearables.release-gate.test.js` (must be 53/0) and the 390/375/320 acceptance checks. Update `CURSOR_REPORT.md`. Do not commit.
+Cursor: fix 1a and 1b only. Re-measure the fold table at 390 and 320 for 0, 1 and 2 logged sets and put the numbers in the report. Re-run the state matrix and the release gate. Do not commit.
 
 ---
 
@@ -117,3 +118,4 @@ Cursor: resolve required fixes 1 and 2 only. Re-run `node wearables.release-gate
 | Date | Slice | Verdict | Rounds |
 |---|---|---|---|
 | 2026-09-22 | 2A Foundation + Today | **APPROVED** | 3 |
+| 2026-09-22 | 2B Train active workout | **APPROVED** | 2 |
