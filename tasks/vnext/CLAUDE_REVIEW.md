@@ -182,3 +182,106 @@ Today, Train, Progress/Weight and History now read as one product at 390, 375 an
 | 2026-09-22 | 2C Progress / Weight | **APPROVED** | 2 |
 | 2026-09-22 | 2D History | **APPROVED** | 2 |
 | 2026-09-22 | **INT-1 integration checkpoint** | **PASSED** | 2 |
+
+---
+
+# CLAUDE REVIEW — VNEXT PHASE 2E: SETTINGS
+
+**Method:** a pristine `git archive` of the pre-2E tip (`a354ce0`) was exported and served
+independently, so the "before" measurements could not be contaminated by Cursor's in-flight
+edits. Every claim below is measured, not read from `CURSOR_REPORT.md`.
+
+## Baseline (pre-2E, measured)
+
+52 distinct capability handlers across nine views · hub 9 rows / **5 surfaces** · 17 storage
+keys · 0 page errors · no horizontal overflow at 390/375/320 · reduced motion already clean.
+
+## A. SCOPE — PASS
+
+`cut-support.js`, `sw.js`, `manifest.webmanifest`, `wearables.*`, `seed.*` and
+`train-anatomy.js` all untouched. `RELEASE` and `CACHE_NAME` remain `109`.
+
+`index.html` carries exactly the one permitted line: the nav label and `aria-label` become
+*Settings* and the three-dot glyph becomes a gear. **`data-tab="more"`, `switchTab('more')`,
+`#morePage`, `state.moreView` and `renderMore` are all unchanged** — the rename stayed at the
+label level, as §3.8 required.
+
+## B. NO SILENT FEATURE LOSS — PASS
+
+All **52** baseline handlers survive. Two added, both from the new segmented control:
+`NXP.pickOption('nxp-text',…)` and `NXP.pickOption('nxp-motion',…)`.
+
+Storage key set **identical, 17 before and after**. Touring all nine views writes nothing.
+
+Verified functionally rather than by inspection: Appearance's two `<select>` elements became
+segmented controls **backed by hidden inputs under the same ids**, so `val('nxp-text')` and
+`val('nxp-motion')` still resolve. Clicking through and saving writes
+`{text:"large", motion:"reduced"}` to config. `aria-pressed` tracks selection.
+
+## C. INSTRUMENT / VISUAL — PASS
+
+Hub surfaces **5 → 0**: typographic rows on canvas, hairline separators, chevrons, no
+card-per-row and no dashboard tiles. `data` **4 → 0**, `appearance` **1 → 0**.
+
+IA is PLAN / PREFERENCES / BODY / DATA / ABOUT. Body kept its own group per the design brief.
+
+Cloud status is calm when healthy and mirrors the three `updateCloudLocalBanner()` conditions
+faithfully, reading `nxtfrm_cloud_banner_dismissed` without writing it (D11). "Not backed up"
+carries an amber **diamond plus the word** — never colour alone (I2 / I6).
+
+**Tier discipline held.** Tier 2 surface counts unchanged (goals 2, training 4, coach 3);
+Tier 3 untouched. Nothing in this slice reached into 2G territory.
+
+## D. DEFECTS FOUND AND REPAIRED (round 1)
+
+| # | Defect | Measured before | After repair |
+|---|---|---|---|
+| R1 | Value column wrapped to two lines at 390 and 375 — `"90 min / week"`, `"3 lifting days"`, `"Not backed up"`, `"Not connected"` broken mid-phrase. Cause: `.vn-set-v` carried shrink factor 1 plus `overflow-wrap:anywhere` while `.vn-set-l` grew greedily. | 4 of 9 rows at 390; 5 of 9 at 375 | **0 wrapped at every width** |
+| R2 | Chevron orphaned onto its own line at 320 on the Wearable row. Cause: `flex-basis:auto` gave the label a max-content basis that pushed the chevron past the line. | row 129px vs ~90px neighbours | **chevron inline on all 9 rows**, row 110px |
+
+Post-repair geometry: 390 rows 67–87 (spread 20) · 375 rows 67–87 (spread 20) ·
+320 rows 69–110 (spread 41). No value truncated. No horizontal overflow at any width.
+
+## E. REGRESSION — PASS
+
+16 suites / **458 tests** / 0 failing, matching baseline exactly. `node --check` clean;
+`vnext.css` braces balanced 501/501. Zero page errors across all nine views at all widths.
+Reduced motion `animationName:none`. Settings inherits the shared `vn-route-enter`.
+
+## F. THE ONE CRITERION NOT MET — shared primary-button contrast
+
+Acceptance required "no new accessibility regression." One exists, and it is **an instance of
+the deferred D12 defect rather than an independent fault**:
+
+| | Pre-2E | Post-2E |
+|---|---|---|
+| Class | `.n99-button` | `.vn-set-act` |
+| Treatment | dark ink `rgb(23,18,31)` on solid violet `rgb(180,154,255)` | white on violet gradient |
+| Contrast | **7.88:1 — passes** | **3.80:1 — fails I4** |
+
+Affects two controls: *Save appearance* and *Export app backup*. Settings regressed them by
+correctly adopting the shared VNext primary token — the same token that already measures
+3.80:1 on Today (`.vn-act`) and Train. My INT-1 checkpoint did not catch it; that is recorded.
+
+Fixing it inside 2E would mean inventing a Settings-only button treatment, which is precisely
+what D12 forbids ("adjust the shared gradient/token rather than individual screens"). The
+scheduled follow-up patch resolves all three screens in one coherent change.
+
+## G. RECORDED, NOT ACTED ON
+
+- **D12** — shared primary-button contrast, narrow patch immediately after 2E.
+- **D13** — `backfillAllCoachInsights()` pre-existing dead code. The pre-2E baseline capture
+  confirms it was already unreachable, so this is not a 2E regression.
+- **`RESET APP DATA` is styled as the primary action.** Legacy `.btn.danger` inherits the
+  violet gradient and only recolours its text to pink — measured **1.04:1**, effectively
+  illegible, and it reads as the affirmative CTA. Tier 3 legacy, untouched by this slice.
+  Worth folding into the D12 patch since it is the same shared gradient.
+- Inherited V96 accessibility debt, unchanged by 2E: body 19, notifications 4 (plus three
+  unlabelled 48×28 toggles), app 4, training 2.
+
+## H. HARNESS CORRECTION
+
+My first contrast pass reported three failures at ~1.05:1 that were **false** — the checker
+read only `backgroundColor`, so gradient-filled buttons fell through to the page canvas. It
+now averages gradient stops; those three actually pass at ~7.3:1. The numbers in this document
+are post-fix. The `RESET APP DATA` and primary-button findings survive the correction.

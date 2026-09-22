@@ -38,7 +38,6 @@ const NXP = (() => {
   }
   const button=N.button;
   const formatNumber=n=>Number(n).toLocaleString('en-SG');
-  function header(title,sub='',action='') {return `<header class="nxp-heading nxp-more-chrome"><div><h1>${esc(title)}</h1>${sub?`<p>${esc(sub)}</p>`:''}</div>${action}</header>`;}
   function shell(html, extra='') {return `<div class="n99 nxp${extra?' '+extra:''}">${html}</div>`;}
   function row(title,value,action,sub='') {return `<button type="button" class="nxp-setting" onclick="${esc(action)}"><span><b>${esc(title)}</b>${sub?`<small>${esc(sub)}</small>`:''}</span><span class="nxp-setting-value">${esc(value||'')}<i aria-hidden="true">›</i></span></button>`;}
   function pref() {return N.cfg().appearance||{};}
@@ -1074,42 +1073,175 @@ const NXP = (() => {
     }).join('');
     return `<section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">All readings</h2>${waist.length?waistRows:`<p class="nxp-progress-body-empty">No waist measurements yet. Optional, about once a week, with the same tape position.</p>`}${row('Log waist','+',"NXT.openWaist()",'Same position and similar conditions')}</section><section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Evo scans</h2>${scans.length?scanRows:`<p class="nxp-progress-body-empty">No scans saved. Compare readings under similar conditions; treat changes as estimates, not proof of fat or muscle loss.</p>`}${row('Open scans','Open',"NXT.more('body')",'Existing scan tools and history')}</section><p class="n99-small nxp-progress-body-note">Body fat and muscle figures only appear from saved Evo scans. They are not calculated from waist or scale weight.</p>`;
   }
+  /* ---- VNext Settings primitives (Phase 2E) --------------------------------
+     Settings is configuration, not a dashboard. A row is typography, a
+     hairline and a chevron — the group heading is a quiet label, not a
+     container. Under D1 that leaves the hub with no protagonist surface at
+     all, which is the correct answer for this destination. */
+  function setRow(title,value,action,sub='',tone='') {
+    return `<button type="button" class="vn-set-row" onclick="${esc(action)}">`
+      +`<span class="vn-set-l"><span class="vn-set-t">${esc(title)}</span>${sub?`<span class="vn-set-s">${esc(sub)}</span>`:''}</span>`
+      +`<span class="vn-set-v${tone?' vn-set-flag is-'+tone:''}">${tone?'<i aria-hidden="true"></i>':''}${esc(value||'')}</span>`
+      +`<i class="vn-chev" aria-hidden="true">›</i></button>`;
+  }
+  function setGroup(title,rows) {
+    return `<section class="vn-set-group"><h2 class="vn-set-grp">${esc(title)}</h2><div class="vn-set-rows">${rows}</div></section>`;
+  }
+  function settingsHead(title,sub='') {
+    return `<header class="vn-set-head"><button type="button" class="vn-set-back" aria-label="Back to Settings" onclick="NXT.more('hub')"><i aria-hidden="true">‹</i>Settings</button>`
+      +`<h1>${esc(title)}</h1>${sub?`<p>${esc(sub)}</p>`:''}</header>`;
+  }
+  /* D11 / §3.6 — the actionable conditions are the ones already encoded in
+     updateCloudLocalBanner() (cut-support.js): A sync failure, B configured
+     but signed out, C unsynced data at meaningful risk. This reads the same
+     signals and only decides how loud the row is. It derives nothing new,
+     writes nothing, and changes no sync behaviour. Healthy operation returns
+     an empty tone, so the row is a plain value with no status mark. */
+  function cloudSignal() {
+    const calm={word:cloudUser?'Signed in':'Local-only',tone:'',sub:'Backup export: '+backupLabel()};
+    if(typeof cloudSessionChecked!=='undefined'&&!cloudSessionChecked)return calm;
+    let configured=false,dismissed=false;
+    try{configured=!!((localStorage.getItem('apm_sb_url')||'').trim()&&(localStorage.getItem('apm_sb_key')||'').trim());}catch(e){}
+    try{dismissed=localStorage.getItem('nxtfrm_cloud_banner_dismissed')==='1';}catch(e){}
+    const signedOut=!cloudUser&&!(typeof hasStoredSbAuthToken==='function'&&hasStoredSbAuthToken());
+    const hasData=(Array.isArray(state.logs)&&state.logs.length>0)||(Array.isArray(state.bws)&&state.bws.length>0);
+    if(typeof lastCloudError!=='undefined'&&lastCloudError)return {word:'Sync error',tone:'concern',sub:'The last cloud save did not complete'};
+    if(configured&&signedOut)return {word:'Sign-in needed',tone:'watch',sub:'Cloud backup is set up but this device is signed out'};
+    if(signedOut&&hasData&&!(typeof lastCloudSyncAt!=='undefined'&&lastCloudSyncAt)&&!dismissed)return {word:'Not backed up',tone:'watch',sub:'Your records exist on this device only'};
+    return calm;
+  }
   function more() {
     applyAppearance();
     syncTrainNav(false);
     const view=state.moreView||'hub',c=N.cfg(),page=document.getElementById('morePage');
     page.classList.toggle('nxp-settings-page',view!=='hub'&&view!=='appearance'&&view!=='data');
-    if(view==='appearance'){page.innerHTML=shell(header('Appearance','Purple & charcoal',button('‹ Back',"NXT.more('hub')",true))+N.card('Make it comfortable',`<form onsubmit="event.preventDefault();NXP.saveAppearance()"><label>Text size<select id="nxp-text"><option value="normal">Standard</option><option value="large" ${pref().text==='large'?'selected':''}>Larger</option></select></label><label>Motion<select id="nxp-motion"><option value="system">Follow device setting</option><option value="reduced" ${pref().motion==='reduced'?'selected':''}>Reduce motion</option></select></label><button type="submit" class="n99-button">Save appearance</button></form>`));return;}
+    page.setAttribute('data-vn-view',view);
+    if(view==='appearance'){appearanceView();return;}
     if(view==='data'){dataView();return;}
-    if(view!=='hub'){base.more();return;}
+    if(view!=='hub'){base.more();subviewChrome();return;}
     const lifts=Object.values(settings.weeklyPlan||{}).filter(t=>!['Rest','Zone2','Floorball'].includes(t)).length;
     const waist=N.cleanRows(c.waist,'cm').length;
-    page.innerHTML=shell(`${header('More')}
+    const p=pref(),cloud=cloudSignal();
+    const look=[p.text==='large'?'Larger text':'Standard text',p.motion==='reduced'?'Reduced motion':''].filter(Boolean).join(' · ');
+    page.innerHTML=shell(`<h1 class="vn-set-title">Settings</h1>
       ${moreAccount()}
-      ${moreGroup('Plan',row('Profile & cut',c.calories?formatNumber(c.calories)+' kcal':'Set up',"NXT.more('goals')",c.targetConfirmed?goalLow()+'–'+goalHigh()+' kg range':'Calorie guide and optional goal range')+row('Training',lifts+' lifting days',"NXT.more('training')",'Plan, workouts and gyms'))}
-      ${moreGroup('Recovery',row('Wearable',wearableConnectionLabel(),'NXP.openWearableConnection()','Connect stays disconnected until a secure backend exists')+row('Cardio & recovery',(Number(settings.zone2WeeklyTarget)||90)+' min / week',"NXT.more('coach')",'Weekly minutes and check-ins'))}
-      ${moreGroup('Body',row('Body & scans',waist?waist+(waist===1?' waist entry':' waist entries'):'None yet',"NXT.more('body')",'Evo scans and measurements'))}
-      ${moreGroup('Preferences',row('Appearance','Purple · charcoal',"NXT.more('appearance')")+row('Reminders',state.notifs?.enabled?'Enabled':'Off',"NXT.more('notifications')"))}
-      ${moreGroup('Data',row('Data & sync',cloudUser?'Signed in':'Local-only',"NXT.more('data')",'Backup export: '+backupLabel())+row('App','Install & reset',"NXT.more('app')"))}
-      ${cloudUser?`<button type="button" class="nxp-more-signout" onclick="cloudSignOut()">Sign out</button>`:''}
-      <p class="nxp-footer">NXTFRM · your next form</p>`,'nxp-more');
+      ${setGroup('Plan',
+        setRow('Goals & calories',c.calories?formatNumber(c.calories)+' kcal':'Set up',"NXT.more('goals')",c.targetConfirmed?goalLow()+'–'+goalHigh()+' kg range':'Calorie guide and optional goal range')
+        +setRow('Training',lifts+(lifts===1?' lifting day':' lifting days'),"NXT.more('training')",'Weekly plan, saved workouts and gyms')
+        +setRow('Cardio & recovery',(Number(settings.zone2WeeklyTarget)||90)+' min / week',"NXT.more('coach')",'Weekly minutes and recovery check-ins'))}
+      ${setGroup('Preferences',
+        setRow('Appearance',look,"NXT.more('appearance')",'Text size and motion')
+        +setRow('Reminders',state.notifs?.enabled?'On':'Off',"NXT.more('notifications')",'Weigh-in, cardio and backup prompts'))}
+      ${setGroup('Body',
+        setRow('Body & scans',waist?waist+(waist===1?' waist entry':' waist entries'):'None yet',"NXT.more('body')",'Evo scans and measurements'))}
+      ${setGroup('Data',
+        setRow('Cloud & sync',cloud.word,"NXT.more('data')",cloud.sub,cloud.tone)
+        +setRow('Wearable',wearableConnectionLabel(),'NXP.openWearableConnection()','Connection stays off until a secure backend exists'))}
+      ${setGroup('About',
+        setRow('App & install','',"NXT.more('app')",'Install, build version and safe reset'))}
+      ${cloudUser?`<div class="vn-set-account-out"><button type="button" class="vn-set-text" onclick="cloudSignOut()">Sign out</button></div>`:''}
+      <p class="vn-set-foot">NXTFRM · your next form</p>`,'vn-settings');
   }
   function moreAccount() {
     const signed=!!cloudUser;
     const configured=!!((localStorage.getItem('apm_sb_url')||'').trim()&&(localStorage.getItem('apm_sb_key')||'').trim());
     const title=signed?(cloudUser.email||'Signed in'):configured?'Sign-in needed':'Local-only';
     const detail=[state.gym||null,signed?'Cloud session on this device':'Stored on this device'].filter(Boolean).join(' · ');
-    return `<section class="nxp-more-account"><span class="nxp-caption">Account</span><h2>${esc(title)}</h2><p>${esc(detail)}</p></section>`;
+    return `<section class="vn-set-account"><span class="vn-set-eyebrow">Account</span><h2>${esc(title)}</h2><p>${esc(detail)}</p></section>`;
   }
-  function moreGroup(title,html) {
-    return `<h2 class="nxp-group-title">${esc(title)}</h2><section class="nxp-more-group">${html}</section>`;
+  /* Tier 2 / Tier 3 (§3.5): the bodies of goals / training / coach live in
+     cut-support.js and body / notifications / app in index.html, neither of
+     which this slice may edit. Chrome is normalised here, from the
+     premium-ui.js side, after the engine has written the page. Nothing inside
+     the subviews is rewritten. */
+  function subviewChrome() {
+    const page=document.getElementById('morePage');if(!page)return;
+    const head=page.querySelector('.n99-heading');
+    if(head){
+      head.classList.add('vn-set-subhead');
+      const eyebrow=head.querySelector('.n99-eyebrow');
+      if(eyebrow)eyebrow.textContent='Settings';
+      const back=head.querySelector('.n99-button');
+      if(back){back.textContent='‹ Settings';back.setAttribute('aria-label','Back to Settings');}
+    }
+    /* Tier 3 keeps its V96 body by design; the icon-only back control is the
+       one thing that cannot stay as it is, because it has no accessible name. */
+    const legacyBack=page.querySelector('.apx96-back');
+    if(legacyBack&&!legacyBack.getAttribute('aria-label'))legacyBack.setAttribute('aria-label','Back to Settings');
+  }
+  /* The VNext form language this slice establishes: a persistent label above
+     the control, the current value legible without opening anything, a
+     segment with a real selected state, and explanatory copy only where it
+     earns its place. The hidden input keeps the stored shape identical — the
+     saved record is still {text,motion} written by saveAppearance(). */
+  function setField(id,label,help,options,current) {
+    const opts=options.map(([v,t])=>`<button type="button" class="vn-seg-opt${v===current?' is-on':''}" data-value="${esc(v)}" aria-pressed="${v===current?'true':'false'}" onclick="NXP.pickOption('${esc(id)}',this)">${esc(t)}</button>`).join('');
+    return `<div class="vn-set-field"><span class="vn-set-label" id="${esc(id)}-label">${esc(label)}</span>`
+      +`<input type="hidden" id="${esc(id)}" value="${esc(current)}">`
+      +`<div class="vn-seg" role="group" aria-labelledby="${esc(id)}-label">${opts}</div>`
+      +`${help?`<p class="vn-set-help">${esc(help)}</p>`:''}</div>`;
+  }
+  function pickOption(id,btn) {
+    const input=document.getElementById(id);if(!input||!btn)return;
+    input.value=btn.dataset.value||'';
+    const group=btn.parentElement;if(!group)return;
+    [...group.children].forEach(b=>{
+      const on=b===btn;
+      b.classList.toggle('is-on',on);
+      b.setAttribute('aria-pressed',on?'true':'false');
+    });
+  }
+  function appearanceView() {
+    const p=pref();
+    document.getElementById('morePage').innerHTML=shell(`${settingsHead('Appearance')}
+      <form class="vn-set-form" onsubmit="event.preventDefault();NXP.saveAppearance()">
+        ${setField('nxp-text','Text size','Applies to every screen, not just this one.',[['normal','Standard'],['large','Larger']],p.text==='large'?'large':'normal')}
+        ${setField('nxp-motion','Motion','Reduce motion removes page and set-logging animation. Your device setting is followed by default.',[['system','Follow device'],['reduced','Reduce motion']],p.motion==='reduced'?'reduced':'system')}
+        <button type="submit" class="vn-set-act">Save appearance</button>
+      </form>`,'vn-settings');
   }
   function saveAppearance() {N.cfg().appearance={text:val('nxp-text')==='large'?'large':'normal',motion:val('nxp-motion')==='reduced'?'reduced':'system'};applyAppearance();N.commit('Appearance saved');}
+  /* Associates the persistent labels the legacy cloud/backup forms already
+     print with the inputs they describe. Adds `for`/`id` only — no control,
+     no id and no value is changed, so every reader of sbUrl / sbKey / sbEmail
+     / sbPass keeps working exactly as before. */
+  function linkFieldLabels(root) {
+    if(!root)return;
+    root.querySelectorAll('label.label').forEach((label,i)=>{
+      if(label.getAttribute('for'))return;
+      let field=label.nextElementSibling;
+      if(!field||!['INPUT','SELECT','TEXTAREA'].includes(field.tagName))field=label.parentElement?.querySelector('input,select,textarea');
+      if(!field||field.type==='hidden')return;
+      if(!field.id)field.id='nxp-field-'+i+'-'+Math.random().toString(36).slice(2,7);
+      label.setAttribute('for',field.id);
+    });
+  }
   function dataView() {
     const settingsHTML=cloudCardHTML().replace(/>Online</g,'>Signed in<').replace(/>Connected</g,'>Signed in<').replace('Supabase Anon Public Key','Supabase publishable / anon key').replace('id="sbKey" class="input"','id="sbKey" type="password" autocomplete="off" class="input"');
-    document.getElementById('morePage').innerHTML=shell(`${header('Data & sync','Your records stay yours.',button('‹ Back',"NXT.more('hub')",true))}<section class="n99-card"><div class="n99-row"><h2>Supabase connection</h2><span class="nxp-tag">Read-only test</span></div><p>${esc(cloudLabel())}</p><div id="nxp-connection-result" aria-live="polite">${connectionHTML()}</div><button type="button" id="nxp-connection-test" class="n99-button" onclick="NXP.testConnection()">Test connection</button><p class="n99-small">Checks your project, sign-in and whether your backup row is visible. It does not upload, load or replace workout data. Write access is not tested.</p><details class="nxp-advanced"><summary>Account & connection settings</summary>${settingsHTML}</details></section>
-      <section class="n99-card"><h2>Backup & restore</h2><p>Export workouts, weigh-ins, settings and check-ins stored in this browser. Wearable evidence in the on-device wearable store is not included; it remains on this device until you reset the app, and can be rebuilt by a later provider sync.</p><p class="n99-small">Export last requested: ${esc(backupLabel())}. Check your Downloads to confirm the file was saved.</p><div class="n99-stack">${button('Export app backup','exportJSON()')}${button('Export workout CSV','exportCSV()',true)}</div><details class="nxp-advanced"><summary>Restore a backup</summary>${backupRestoreHTML()}</details></section>
-      <details class="n99-card"><summary>Local safety copy</summary><p>Recovery copy made before a restore, cloud load or reset. It is not an independent backup.</p><div class="n99-stack">${button('Download safety copy','NXT.exportSafety()',true)}${button('Restore safety copy','NXT.restoreSafety()',true)}</div></details><details class="n99-card"><summary>Advanced cloud setup</summary>${supabaseSQLHelpHTML()}</details>`);
+    const cloud=cloudSignal();
+    const page=document.getElementById('morePage');
+    page.innerHTML=shell(`${settingsHead('Data & sync','Your records stay yours.')}
+      <section class="vn-set-block">
+        <h2 class="vn-set-grp">Cloud</h2>
+        <p class="vn-set-state"><span class="vn-set-flag is-${cloud.tone||'calm'}"><i aria-hidden="true"></i>${esc(cloud.word)}</span><span>${esc(cloudLabel())}</span></p>
+        <div id="nxp-connection-result" aria-live="polite">${connectionHTML()}</div>
+        <button type="button" id="nxp-connection-test" class="vn-set-act is-quiet" onclick="NXP.testConnection()">Test connection</button>
+        <p class="vn-set-note">Checks your project, sign-in and whether your backup row is visible. It does not upload, load or replace workout data. Write access is not tested.</p>
+        <details class="vn-set-disc nxp-advanced"><summary>Account &amp; connection settings</summary>${settingsHTML}</details>
+      </section>
+      <section class="vn-set-block">
+        <h2 class="vn-set-grp">Backup &amp; restore</h2>
+        <p class="vn-set-body">Export workouts, weigh-ins, settings and check-ins stored in this browser. Wearable evidence in the on-device wearable store is not included; it remains on this device until you reset the app, and can be rebuilt by a later provider sync.</p>
+        <p class="vn-set-note">Export last requested: ${esc(backupLabel())}. Check your Downloads to confirm the file was saved.</p>
+        <div class="vn-set-actions"><button type="button" class="vn-set-act" onclick="exportJSON()">Export app backup</button><button type="button" class="vn-set-act is-quiet" onclick="exportCSV()">Export workout CSV</button></div>
+        <details class="vn-set-disc nxp-advanced"><summary>Restore a backup</summary>${backupRestoreHTML()}</details>
+        <details class="vn-set-disc nxp-advanced"><summary>Local safety copy</summary><p class="vn-set-body">Recovery copy made before a restore, cloud load or reset. It is not an independent backup.</p><div class="vn-set-actions"><button type="button" class="vn-set-act is-quiet" onclick="NXT.exportSafety()">Download safety copy</button><button type="button" class="vn-set-act is-quiet" onclick="NXT.restoreSafety()">Restore safety copy</button></div></details>
+      </section>
+      <section class="vn-set-block">
+        <h2 class="vn-set-grp">Advanced</h2>
+        <details class="vn-set-disc nxp-advanced"><summary>Advanced cloud setup</summary>${supabaseSQLHelpHTML()}</details>
+      </section>`,'vn-settings');
+    linkFieldLabels(page);
   }
   function exportBackup() {try{base.exportJSON();N.cfg().backupExportRequestedAt=Date.now();persist();toast('Backup download requested — check Downloads');}catch(e){toast('Could not prepare the backup. Try again before changing devices.');}}
   function connectionHTML() {const c=ui.connection;return `<div class="nxp-connection ${c.tone||''}"><b>${esc(c.busy?'Checking connection…':c.summary)}</b>${c.lines.length?`<ul>${c.lines.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}${c.checkedAt?`<small>Checked ${new Date(c.checkedAt).toLocaleTimeString('en-SG',{hour:'2-digit',minute:'2-digit'})} · this browser only</small>`:''}</div>`;}
@@ -1487,7 +1619,7 @@ const NXP = (() => {
     if(value&&!left&&value.textContent!=='Ready')value.textContent='Ready';
   }
   bindSteppers();
-  return {ui,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection};
+  return {ui,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;
