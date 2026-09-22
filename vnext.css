@@ -36,11 +36,12 @@
   --vn-line-3:rgba(255,255,255,.16);
 
   /* Ink — every step carries text somewhere, so every step clears WCAG AA
-     (4.5:1) against --vn-canvas. Verified computationally, not by eye. */
+     (4.5:1) against both --vn-canvas and --vn-surface. --vn-ink-4 stays the
+     quietest step. Verified computationally, not by eye. */
   --vn-ink:#F1F3F7;
   --vn-ink-2:#AEB4C0;
   --vn-ink-3:#8B92A0;
-  --vn-ink-4:#787F8D;
+  --vn-ink-4:#7E8593;
 
   /* Violet = SIGNAL (I1). Never wallpaper. */
   --vn-violet:#8B5CF6;

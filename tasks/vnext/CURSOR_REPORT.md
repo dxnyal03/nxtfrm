@@ -121,3 +121,46 @@ Not verified here, and owned by Claude: contrast on the new ink, violet, and amb
 Progress → Body still leaves capture through `NXT.more('body')`, which 2F turned into the EvoScan workspace. The design brief says Body should gain an analytical presence under Progress → Body while capture stays under Settings. That is a real follow-up. It is not part of 2G and was not touched.
 
 Also left alone: the Weight tab, Today, Train, History, Settings, wearables, `readiness()` (D4), legacy renderer removal (D5), and Q4 (whether a row should open a lift). The legacy `strengthHTML()` remains so the engine progress renderer still has a body if something calls it directly.
+
+---
+
+## INT-2 repair
+
+Checkpoint repair after 2E, D12, 2F and 2G. Two defects only. Implementing model: **Grok 4.7** (this session). No browser. `RELEASE` and `CACHE_NAME` stay `109`.
+
+### C1 — `--vn-ink-4`
+
+`#787F8D` is 4.73:1 on `--vn-canvas` `#0E1014` and 4.29:1 on `--vn-surface` `#171B22`. The token is now `#7E8593`.
+
+Computed with the WCAG relative-luminance formula:
+
+| Pair | Ratio |
+|---|---|
+| `#7E8593` on `#0E1014` | 5.14:1 |
+| `#7E8593` on `#171B22` | 4.66:1 |
+| `#7E8593` on the surface gradient's darker stop `#14171E` | 4.84:1 |
+
+`#828A99` also clears both floors (5.48 / 4.97) and was left unused. Its CIEDE2000 distance to `--vn-ink-3` `#8B92A0` is 2.85, close enough that the last ink step would nearly disappear. `#7E8593` sits on the same blue-grey ramp, stays the darkest ink (relative luminance 0.895 → 0.455 → 0.286 → 0.233), and is ΔE 4.55 from ink-3. The steps above it are ΔE 15.44 and 10.33. `--vn-ink-2`, `--vn-ink-3`, `--vn-canvas` and `--vn-surface` are unchanged. No font size or weight moved.
+
+The token is the only colour edit. All 26 call sites still read `var(--vn-ink-4)`, so they inherit it. Read in the stylesheet, the ones the review named stay quiet secondary text on canvas or on the surface: inactive tab labels (`.tabs .tab:not(.active)`), `.vn-tiny` on Today and Progress, the chevrons, and the Train set-row `small` / `.vn-set-edit`. Status dots and the checkbox ring use the same token as a mark, still darker than ink-3. Out-of-month calendar days (`.nxp-cal-day.is-outside`) keep their existing `opacity: .45` fade; that rule was not part of this repair.
+
+Rendered contrast at 390 / 393 / 402 / 430 / 375 / 320 is Claude's measurement.
+
+### C2 — `verify-2e` scan probe
+
+The body probe was `#scanWeight, [onclick*="Scan"], .ocr-box`. That matched the old scan page. 2F's EvoScan board does not render those nodes: the form opens through `evoOpenForm()`, and the raw OCR block is gone (D16). The probe was adapted, not removed.
+
+It still answers "Settings → Body & scans reaches the scan capability." On the rendered board it requires a control whose `onclick` calls `evoOpenForm`. It then calls `evoOpenForm()` and requires all nine fields (`scanFile`, `scanDate`, `scanWeight`, `scanBodyFat`, `scanMuscleMass`, `scanFatMass`, `scanTDEE`, `scanBMR`, `scanNotes`) inside `#morePage`, plus call sites for `handleScanFile`, `readEvoScanOCR`, `saveEvoScan` and `useLatestScanTDEE`. Any miss fails the same `evo scan page` capability. `evoCancelForm()` runs afterwards so later audits still see the board. A lone "New scan" button with an empty form fails this check.
+
+`verify-2e.mjs` was syntax-checked (`node --check`, exit 0) and not executed. It launches Playwright, which this checkpoint assigns to Claude.
+
+### Verification
+
+```
+node --check tasks/vnext/verify-2e.mjs   OK (silent, exit 0)
+vnext.css braces                         raw 653/653, comment-stripped 651/651
+```
+
+Sixteen suites, `for f in wearables*.test.js; do node "$f" || echo "FAIL $f"; done`. Each printed `0 failed`. Pass counts: 32, 24, 16, 32, 3, 32, 28, 53, 19, 26, 34, 47, 18, 34, 29, 31. That is 16 suites, 458 tests, 0 failing.
+
+Not edited: `cut-support.js`, `index.html`, `premium-ui.js`, `sw.js`, `manifest.webmanifest`, `wearables.*`, `seed.*`, `train-anatomy.js`. Not committed. Not pushed.

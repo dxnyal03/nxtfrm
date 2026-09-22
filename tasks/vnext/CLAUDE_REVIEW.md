@@ -599,3 +599,83 @@ five destinations render byte-identical markup (7449 / 1201 / 16730 / 11258 / 36
 **Progress → Body** still links out to the old scan entry via `NXT.more('body')`, which 2F
 replaced with the EvoScan workspace. Design brief §S wants Body to gain analytical presence
 under Progress while capture stays in Settings. Carried forward; deliberately untouched here.
+
+---
+
+# CLAUDE REVIEW — INTEGRATION CHECKPOINT INT-2
+
+**Covers:** 2E `1499653` · D12 `0f54aa6` · 2F `ba33fa8` · 2G `b137e64`, reviewed **together**
+rather than in isolation. No new product feature. `RELEASE`/`CACHE_NAME` held at `109`.
+
+## RESULT — PASSED after two repairs
+
+Eight of ten areas were clean on first pass. Two genuine defects were found, both of the kind
+this checkpoint exists to catch: **contradictions between slices whose own tests all passed.**
+
+## Areas verified clean
+
+| # | Area | Evidence |
+|---|---|---|
+| 1 | Navigation / ownership | One effective renderer set (NXP wins by load order; the legacy assignments remain, D5-gated). **No CSS leakage** — all 618 `vnext.css` selectors resolve inside `#homePage` / `#trainPage` / `#weightPage` / `#historyPage` / `#morePage` / `.tabs` / `.content` / `:root`. |
+| 2 | Cross-slice data semantics | D14/D17 hold under injection: Post-workout 99.1 and Evo Scan 99.9 both **non-canonical**; an untimed legacy row **stays** canonical at 88.8; both contextual rows remain stored and present in `timingRows`. Scan save writes `timeOfDay:"Evo Scan"` with a linking `weighInId`; `cleanRows` excludes it. |
+| 3 | Train | Input contract intact (`weightInput`, `repsInput`, `n99-set-type`, `n99-rir` — the latter two now hidden inputs behind segmented controls, same pattern as 2E). Warm-up reachable, nav recedes (D6), rest timer and undo present. Add-on does not mutate planned `dayType`. Persistence across reload 174 = 174. **Log → 175, undo → 174.** |
+| 4 | Progress | D2 domain **identical** with goal on and off (80–90). Strength engine untouched. All six states render. Null delta never a percentage. Sparkline text equivalents survive. |
+| 5 | Today | D11 conditions in the 2E hub mirror `updateCloudLocalBanner()` exactly — same three conditions, same order, dismissal key read and not written. |
+| 6 | Body / OCR | Review-before-save intact; `NOT FOUND` distinct from `CHECK`; no carry-forward; units/range/confidence validation intact (`verify-2f` 23/23). Contextual scan weight does not reach the morning trend. |
+| 8 | Offline / cache | All 22 production assets registered at `RELEASE 109`. `wearables.fixtures.js` is absent **correctly** — it is injected at runtime only on localhost/`::1`/`file:`, predates VNext, and must not be precached into the production shell. |
+| 9 | Tests | 16 suites / 458 tests / 0 failing. All eight verify scripts green. |
+
+## Defects found and repaired
+
+### C1 — `--vn-ink-4` failed WCAG AA on the surface colour
+
+Today's `.vn-evid` labels *Trend* and *Confidence* (11.5px / 500) measured **4.29:1** at all six
+widths. The token was safe on canvas but not on `--vn-surface`.
+
+Today shipped in 2A and passed INT-1. It was missed then because my contrast checker only read
+`backgroundColor` and became accurate during D12. Fixed at the token so all **27** consumers
+inherit it:
+
+| Token | Canvas | Surface | AA |
+|---|---|---|---|
+| `--vn-ink-3` `#8B92A0` | 6.09 | 5.52 | pass |
+| **`--vn-ink-4` new `#7E8593`** | **5.14** | **4.66** | **pass** |
+| `--vn-ink-4` old `#787F8D` | 4.73 | **4.29** | **fail** |
+
+`--vn-ink-4` remains the quietest step and the four-step ramp stays distinguishable. No font
+size or weight was raised to dodge the threshold.
+
+### C2 — `verify-2e` carried a probe that 2F invalidated
+
+It asserted the body view exposes `#scanWeight` / `.ocr-box`. 2F legitimately replaced both:
+capture moved behind `evoOpenForm()` and the raw OCR block was removed per D16. **Not a
+regression** — all four handlers and nine fields remained reachable.
+
+Re-pointed at the real contract, and the replacement is **stronger** than what it replaced: it
+requires `evoOpenForm` to exist, calls it, then demands all nine field ids and all four handler
+call sites inside `#morePage`, then cancels back. It still fails if the scan path disappears.
+
+## Post-repair verification
+
+**30 combinations** — Today · Train · Progress/Weight · History · Settings, at
+**390 / 393 / 402 / 430 / 375 / 320**:
+
+- zero horizontal overflow
+- zero targets under 44pt
+- **zero contrast failures**
+- reduced motion `animationName:none` on all five destinations
+
+16 suites / 458 tests / 0 failing. All eight verify scripts pass, including the repaired 2e.
+`vnext.css` braces 653/653. `cut-support.js`, `index.html`, `premium-ui.js`, `sw.js`,
+`manifest.webmanifest`, `wearables.*`, `seed.*` and `train-anatomy.js` all untouched by the
+repair.
+
+## Two false alarms I resolved rather than reported
+
+- **Train "missing logging contract"** — my probe never reached a lifting day; `repaint()`
+  re-derives `state.date`. Forcing the weekly plan showed the contract intact.
+- **"Undo does not work"** — `apx96UndoLastSet()` calls `confirm()`, and Playwright
+  auto-dismisses dialogs. With the dialog accepted: 174 → 175 → 174.
+
+Both are recorded because the method matters: a checkpoint that reports its own harness bugs as
+product defects is worse than no checkpoint.

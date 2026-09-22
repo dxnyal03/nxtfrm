@@ -106,7 +106,11 @@ const CAPABILITIES = {
     ['safety copy restore', '[onclick*="NXT.restoreSafety()"]'],
   ],
   body: [
-    ['evo scan page', '#scanWeight, [onclick*="Scan"], .ocr-box'],
+    /* 2F replaced the old scan page. Capture is behind evoOpenForm(), and the
+       raw .ocr-box is gone (D16). Intent is unchanged: Settings → Body & scans
+       still reaches the scan capability. This opens that form and requires the
+       nine fields plus the four handlers. It fails if that path is gone. */
+    ['evo scan page', 'evo-scan-contract'],
   ],
   notifications: [
     ['weigh-in reminder', '[onclick*="toggleNotif(\'weighIn\')"]'],
@@ -416,11 +420,43 @@ async function run() {
       page.off('pageerror', onErr);
 
       const probes = CAPABILITIES[view] || [];
-      const found = await page.evaluate((sels) => sels.map(([name, sel]) => {
-        let el = null;
-        try { el = document.querySelector('#morePage ' + sel.split(',').map((s) => s.trim()).join(', #morePage ')); } catch (e) { el = null; }
-        return [name, !!el];
-      }), probes);
+      const found = await page.evaluate((sels) => {
+        /* Board first, form second. A button that names evoOpenForm is not
+           enough: the fields and the handler call sites have to be in the
+           form it opens. Cancel returns the board so later audits see it. */
+        function evoScanReachable() {
+          const root = document.getElementById('morePage');
+          if (!root || typeof evoOpenForm !== 'function') return false;
+          if (!root.querySelector('[onclick*="evoOpenForm"]')) return false;
+          let ok = false;
+          try {
+            evoOpenForm();
+            const ids = ['scanFile', 'scanDate', 'scanWeight', 'scanBodyFat', 'scanMuscleMass', 'scanFatMass', 'scanTDEE', 'scanBMR', 'scanNotes'];
+            const fields = ids.every((id) => {
+              const el = document.getElementById(id);
+              return !!(el && root.contains(el));
+            });
+            const handlers = [
+              '[onchange*="handleScanFile"]',
+              '[onclick*="readEvoScanOCR"]',
+              '[onsubmit*="saveEvoScan"]',
+              '[onclick*="useLatestScanTDEE"]',
+            ].every((sel) => !!root.querySelector(sel));
+            ok = fields && handlers;
+          } catch (e) {
+            ok = false;
+          } finally {
+            try { if (typeof evoCancelForm === 'function') evoCancelForm(); } catch (e) {}
+          }
+          return ok;
+        }
+        return sels.map(([name, sel]) => {
+          if (sel === 'evo-scan-contract') return [name, evoScanReachable()];
+          let el = null;
+          try { el = document.querySelector('#morePage ' + sel.split(',').map((s) => s.trim()).join(', #morePage ')); } catch (e) { el = null; }
+          return [name, !!el];
+        });
+      }, probes);
 
       results.renders[key][view] = await page.evaluate(() => {
         const p = document.getElementById('morePage');

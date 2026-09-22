@@ -36,7 +36,7 @@ renderMore=NXP.more; renderHistory=NXP.history;
 | **2E** | Settings / More: calm configuration rows | ✅ committed `1499653` |
 | **D12** | Shared primary-button + destructive contrast patch | ✅ committed `0f54aa6` |
 | **2F** | EvoScan flagship: OCR reliability + body-composition workspace | ✅ committed `ba33fa8` |
-| **2G** | Progress → Performance | ✅ committed |
+| **2G** | Progress → Performance | ✅ committed `b137e64` |
 
 | 2H | AI surfaces (Why / Ask / proposal sheets) | 2G approved |
 
@@ -55,6 +55,7 @@ After a group of slices lands, an integration checkpoint reviews them **together
 | Checkpoint | Covers | Gate |
 |---|---|---|
 | **INT-1** | Today · Train · Progress/Weight · History | ✅ passed, committed `2cc4a5c` |
+| **INT-2** | Settings · D12 · EvoScan · Performance, reviewed together | ✅ passed after two repairs |
 
 ## Working rules
 
