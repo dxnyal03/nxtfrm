@@ -285,3 +285,98 @@ My first contrast pass reported three failures at ~1.05:1 that were **false** �
 read only `backgroundColor`, so gradient-filled buttons fell through to the page canvas. It
 now averages gradient stops; those three actually pass at ~7.3:1. The numbers in this document
 are post-fix. The `RESET APP DATA` and primary-button findings survive the correction.
+
+---
+
+# CLAUDE REVIEW — D12: SHARED PRIMARY-BUTTON CONTRAST PATCH
+
+Implemented on `grok-4.7-high-fast`, not the pinned Opus model — see §D.
+
+## A. RENDERED CONTRAST — measured, not inferred
+
+Default state, worst gradient stop, 390px:
+
+| Surface | Class | Before | After |
+|---|---|---|---|
+| Today primary CTA | `.vn-act` | 3.44:1 | **5.70:1** |
+| Train primary CTA | `.n99-button` | 3.44:1 | **5.70:1** |
+| Settings *Save appearance* | `.vn-set-act` | 3.44:1 | **5.70:1** |
+| Settings *Export app backup* | `.vn-set-act` | 3.44:1 | **5.70:1** |
+| Settings quiet variant | `.vn-set-act.is-quiet` | 14.19:1 | 14.19:1 (untouched) |
+| **RESET APP DATA** | `.btn.danger` | **1.12:1** | **5.23:1** |
+
+## B. INTERACTION STATES — all measured, opacity and filter composited
+
+| Surface | default | hover | active | focus | disabled |
+|---|---|---|---|---|---|
+| Today primary | 5.70 | 5.70 | 5.70 | 5.70 | 7.10 |
+| Train primary | 5.70 | 5.70 | 5.70 | 5.70 | 19.04 |
+| Save appearance | 5.70 | 5.70 | 5.70 | 5.70 | 7.10 |
+| Export app backup | 5.70 | 5.70 | 5.70 | 5.70 | 7.10 |
+| Quiet variant | 14.19 | 14.19 | 14.19 | 14.19 | 3.34 |
+| RESET APP DATA | 5.23 | 5.23 | 5.23 | 5.23 | 5.23 |
+
+**The quiet variant's disabled 3.34:1 is not a defect.** WCAG 2.1 SC 1.4.3 exempts text
+in an inactive user-interface component from any contrast requirement. Measured
+like-for-like, the pre-2E equivalents sat at **2.12–2.38** in the same state, so this is
+an improvement on a long-standing characteristic of `opacity:.42`, not a regression.
+D12 went further than required on the primaries, holding full opacity when disabled.
+
+## C. THE CASCADE FINDING
+
+The destructive control was painted by `index.html` ~2196:
+
+```css
+.btn{ background:linear-gradient(135deg,#B794F6 0%,#8B5CF6 42%,#7DD3FC 100%) !important }
+```
+
+**Importance is sorted before specificity**, so that shorthand beat the correct
+`.btn.danger` tint in `premium-ui.css` despite the latter's higher specificity. A
+gradient shorthand sets the image and resets `background-color` to transparent — which
+is exactly the `rgba(0,0,0,0)` I measured. It sets no `color`, so `--nxt-danger`
+`#f0768e` still won the ink, giving pink-on-violet at **1.12:1**.
+
+That is why the app's most destructive control was wearing the affirmative gradient.
+
+## D. MODEL DEVIATION
+
+The pinned `claude-opus-5-thinking-high-fast` returned
+`ActionRequiredError: You've hit your usage limit for Opus`, resetting 2026-10-13. No
+work was attempted and no file was modified. With owner approval the patch ran on
+`grok-4.7-high-fast`, the fallback AGENTS.md §6b already named. Recorded so the slice
+stays attributable.
+
+## E. REGRESSION — PASS
+
+CSS only. `cut-support.js`, `premium-ui.js`, `index.html`, `sw.js`,
+`manifest.webmanifest`, `wearables.*`, `seed.*` and `train-anatomy.js` all untouched.
+`RELEASE`/`CACHE_NAME` at `109`.
+
+16 suites / 458 tests / 0 failing. Braces balanced: `vnext.css` 502/502,
+`premium-ui.css` 816/816. All 52 Settings capability handlers reachable; storage an
+identical 17 keys. All five destinations render byte-identical markup to 2E
+(7449 / 1201 / 16730 / 11258 / 3613). Zero page errors, no overflow at 390/375/320.
+
+`verify-2e.mjs`: **ALL PASS**. Appearance and data text-contrast failures both drop
+to **0**; `app` falls 4 → 3 as the reset button is fixed. The residual
+body 18 / notifications 5 / app 3 is inherited V96 Tier 3 debt, out of scope.
+
+## F. TEST-HARNESS CORRECTION (mine)
+
+`verify-2e.mjs` read only `backgroundColor`, so gradient-filled buttons fell through
+to the page canvas — which is why it certified `a11y: true` over a measured 3.44:1 CTA.
+Made gradient-aware, evaluating the **worst** stop.
+
+The first attempt over-corrected, reporting 36 false hub failures: it treated the
+page's decorative `rgba(167,139,250,.15)` wash as an opaque background. Now a gradient
+counts only when its stops are effectively opaque (α ≥ 0.9), and an element's own fill
+takes precedence over any ancestor's. D12's fix would not have been verifiable without
+this.
+
+## G. OBSERVATIONS, NOT DEFECTS
+
+- The action fill (`#7C3AED`→`#6D28D9`) is now a deeper step than the signal violet
+  `#8B5CF6`. Two steps of one hue doing two jobs — large fills carrying white text
+  versus thin accents on dark. Consistent with I1; the identity reads intact.
+- The "DANGER ZONE" kicker above the reset button is still generic violet rather than
+  the concern colour. Tier 3 legacy, outside D12's button scope.

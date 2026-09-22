@@ -85,6 +85,8 @@ Chosen for the failure modes this project actually hits. The defects found in re
 
 Set per delegation via `--model`; the interactive Cursor config is left alone.
 
+**Fallback.** On 2026-09-22 the pinned model returned `ActionRequiredError: You've hit your usage limit for Opus` (resets 2026-10-13) and exited without attempting work. D12 ran on `grok-4.7-high-fast` with owner approval. When the pinned model is unavailable, use that fallback and **record the model in the slice's review entry**, so a quality regression stays attributable to a model rather than to chance.
+
 ## 6a. Working agreement
 
 - Implement only the scope in `tasks/vnext/CURRENT_TASK.md`. Anything else — including improvements that look obvious — is out of scope; raise it in your report instead.

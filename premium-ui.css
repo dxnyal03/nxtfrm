@@ -648,11 +648,28 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   box-shadow: none;
 }
 .btn.secondary:active { background: var(--nxt-surface-alt); }
+/* Destructive actions. The fill has to be !important: index.html's grouped
+   `.btn` rule paints `background` and `box-shadow` !important, and importance
+   beats this selector's higher specificity. Without that, the violet gradient
+   shorthand stays, resets background-color to transparent, and leaves only
+   the danger ink. Outlined, not a filled concern colour — white on #DC5A76
+   is 3.64:1. #DC5A76 on #0E1014 is 5.23:1. */
 .btn.danger {
-  background: var(--nxt-danger-tint);
-  border-color: var(--nxt-danger);
-  color: var(--nxt-danger);
-  box-shadow: none;
+  background: #0E1014 !important;
+  border-color: #DC5A76;
+  color: #DC5A76;
+  box-shadow: none !important;
+}
+/* .btn:active applies filter:brightness(.92). That pair then computes to
+   4.55:1 — inside AA, with no margin. Clear the filter so pressed stays 5.23:1.
+   The existing scale stays. */
+.btn.danger:active { filter: none; }
+/* .btn:disabled opacity .42 composites this pair down to ~1.8:1. Keep the
+   same ink and fill; a quieter border is the disabled cue. */
+.btn.danger:disabled {
+  opacity: 1;
+  filter: none;
+  border-color: rgba(220, 90, 118, .5);
 }
 .btn:disabled { opacity: .42; box-shadow: none; pointer-events: none; }
 

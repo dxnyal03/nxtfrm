@@ -1,199 +1,206 @@
-# CURRENT TASK — VNEXT PHASE 2E: SETTINGS
+# CURRENT TASK — D12: SHARED PRIMARY-BUTTON CONTRAST PATCH
 
-**Owner:** Cursor (implementation) · **Reviewer:** Claude (design/UX acceptance)
+**Owner:** Cursor (implementation) · **Reviewer:** Claude (measurement + acceptance)
 **Status:** READY TO START
-**Read first:** `AGENTS.md` · `tasks/vnext/DECISIONS.md` (binding) · `design-vnext/DESIGN-BRIEF.md` §V, §W · the four NXTFRM skills
-**Previous slices:** 2A `9fd3772` · design-vnext `a0c9203` · 2B `761f339` · 2C `6563be6` · 2D `eb713de` · INT-1 `5b4e14c`
+**Read first:** `AGENTS.md` · `tasks/vnext/DECISIONS.md` (D12 is binding) · `tasks/vnext/CLAUDE_REVIEW.md` §F
+**Previous:** 2A `9fd3772` · 2B `761f339` · 2C `6563be6` · 2D `eb713de` · INT-1 `2cc4a5c` · 2E `1499653`
 
 ---
 
 ## 1. Objective
 
-Settings completes the five-destination VNext shell. It must feel **quiet, structured, predictable, low-cognitive-load**.
+Fix the shared VNext primary-action contrast **once, at the token**, so every screen
+inherits the fix. Then fix the destructive-action treatment, which is a separate and
+more severe defect.
 
-**Settings is configuration, not a dashboard.** It must not compete visually with Today, Train, Progress or History. Per the brief (§V): *typographic rows with chevrons — no cards.* Under INSTRUMENT (D1), Settings needs **very few protagonist surfaces** — plausibly zero on the hub.
+This is a **narrow accessibility patch**. It is not a redesign. Nothing else changes.
 
-### 1.1 What you are actually walking into — read this before planning
+---
 
-Settings is **not one screen**. It is a hub plus nine subviews rendered by **three different visual generations**, and the routing falls through two layers:
+## 2. Measured evidence — this is rendered truth, not inference
 
-| View | Rendered by | File | Generation |
+All figures below are computed from `getComputedStyle` on the live page, averaging
+gradient stops, at 390px.
+
+### 2.1 The shared primary treatment
+
+Five sites in `vnext.css` carry the **identical** declaration:
+
+```css
+background:linear-gradient(180deg,#9B71F8,var(--vn-violet));
+color:#fff;
+box-shadow:0 1px 0 rgba(255,255,255,.15) inset, 0 6px 16px -10px rgba(139,92,246,.45);
+```
+
+| # | Line | Selector | Screen |
 |---|---|---|---|
-| `hub` | `NXP.more()` | `premium-ui.js:1077` | V100 |
-| `appearance` | `NXP.more()` inline branch | `premium-ui.js:1082` | V100 |
-| `data` | `NXP.dataView()` | `premium-ui.js:1107` | V100 |
-| `goals` | `NXT.goalsHTML()` | `cut-support.js:1263` | V99 |
-| `training` | `NXT.programmeHTML()` | `cut-support.js:1272` | V99 |
-| `coach` | `NXT.coachHTML()` | `cut-support.js` | V99 |
-| `body` | `apx96MoreSectionHTML('body')` → `renderEvoScanPage()` | `index.html:7209` | V96 legacy |
-| `notifications` | `apx96MoreSectionHTML('notifications')` → `notificationsSettingsHTML()` | `index.html:7209` | V96 legacy |
-| `app` | `apx96MoreSectionHTML(else)` | `index.html:7209` | V96 legacy |
+| 1 | ~260 | `#homePage .vn-act` | Today primary CTA |
+| 2 | ~627 | `#trainPage .vn-train-active .nxp-train-cta` | Train active CTA |
+| 3 | ~687 | `#trainPage .vn-train-ready .n99-button` | Train ready |
+| 4 | ~724 | `#trainPage .nxp-train-idle.vn-train .nxp-train-idle-actions .n99-button`, `… .nxp-session-tools .n99-button` | Train idle |
+| 5 | ~1571 | `#morePage .vn-set-act` | Settings (Save appearance, Export app backup) |
 
-The fallthrough is `NXP.more()` line 1084: `if(view!=='hub'){base.more();return;}` → `NXT.moreView()` (`cut-support.js:1246`) → for `body`/`notifications`/`app`, `N.old.apx96MoreSectionHTML(view)`.
+White text against that gradient:
 
-**This is why the slice is scoped the way §3 scopes it.** The hub and the form language are the deliverable. The deep subviews are where scope risk lives, and §3.5 tells you exactly how far to go into each one.
+| Stop | Contrast vs `#fff` | Verdict |
+|---|---|---|
+| `#9B71F8` (lightest — the worst case) | **3.44:1** | FAIL |
+| `#8B5CF6` (`--vn-violet`) | **4.23:1** | FAIL |
+| averaged | **3.80:1** | FAIL |
+
+**Both stops fail.** The brand violet cannot carry white text at AA as it stands.
+For reference, the legacy treatment it replaced — dark ink `#17121F` on `#B49AFF` —
+measured **7.88:1**.
+
+### 2.2 Candidate replacements, white text, measured
+
+The binding constraint is the **lightest stop**, because that is the worst case.
+
+| Colour | vs `#fff` | Verdict |
+|---|---|---|
+| `#8B5CF6` current base | 4.23:1 | fail |
+| `#7C3AED` | **5.70:1** | pass — closest to current identity |
+| `#7A45E0` | 5.59:1 | pass |
+| `#7339DC` | 6.27:1 | pass |
+| `#6D28D9` | 7.10:1 | pass |
+
+`#7C3AED` → `#6D28D9` is a violet gradient that keeps white text, stays unmistakably
+violet, and passes at both stops with margin. **You are not required to use these
+exact values** — but whatever you choose must be measured, not assumed.
+
+### 2.3 The destructive control — more severe
+
+`RESET APP DATA` in Settings → App & install renders as:
+
+- `color: rgb(240,118,142)` — i.e. `--nxt-danger` from `premium-ui.css:59`
+- `background-image: linear-gradient(135deg, rgb(183,148,246), rgb(139,92,246))` —
+  the **violet affirmative gradient** from `index.html:124`
+- measured **1.04:1** — effectively illegible
+
+So the app's most destructive control is filled with the affirmative-action gradient
+and reads as the primary CTA.
+
+**There is a cascade puzzle here you must resolve by measurement, not by reading.**
+`premium-ui.css:651` already declares a correct restrained treatment:
+
+```css
+.btn.danger{background:var(--nxt-danger-tint);border-color:var(--nxt-danger);color:var(--nxt-danger)}
+```
+
+Its `color` clearly wins — the measured colour is exactly `--nxt-danger`. But its
+`background` does not take effect and the `.btn` gradient shows through, with
+`background-color` computing to `rgba(0,0,0,0)`. There are further `.btn.danger`
+rules at `index.html:131` and `index.html:2402`. Stylesheet order is: inline
+`<style>` (line 16) → `cut-support.css` → `premium-ui.css` → `vnext.css`.
+
+**Find out which declaration actually wins and why the background does not apply.**
+Do not guess. Then fix it at the correct level.
+
+Measured destructive-palette options:
+
+| Treatment | Contrast | Verdict |
+|---|---|---|
+| `#DC5A76` text on canvas `#0E1014` | 5.23:1 | pass |
+| `#DC5A76` text on surface `#171B22` | 4.74:1 | pass |
+| `#FF8FA3` text on canvas | 8.80:1 | pass |
+| white on a `#DC5A76` fill | 3.64:1 | **fail — do not fill with concern + white** |
 
 ---
 
-## 2. Files / areas
+## 3. Required work
 
-| File | Expected change |
+### 3.1 Primary — fix at the token, never screen by screen
+
+Introduce a shared token (or a single shared class) for the primary-action fill and
+its ink, define it **once**, and have all five sites consume it. Do not patch five
+selectors with five literals — that reproduces the defect the next time anything
+changes.
+
+Requirements (D12):
+- maintain the premium violet identity
+- keep white text if practical
+- **≥4.5:1 for normal-size text**, verified at the lightest gradient stop
+- verify **default, hover, pressed/active, focus and disabled** states
+- **do not** raise font size to qualify as large text
+- do not materially degrade the established VNext visual language
+
+Note `.vn-act:active` and `.nxp-train-cta:active` apply `filter:brightness(.94)`.
+A pressed state that darkens only increases contrast, but **measure it** rather than
+assuming. The `:disabled` case at `opacity:.42` is the one that can regress — check it.
+
+`--vn-violet` also carries non-button meaning (active tab, selected date, focus
+rings, the focal surface). **Do not change `--vn-violet` itself** unless you have
+verified every one of those consumers. Prefer a new action-specific token.
+
+### 3.2 Destructive — narrow exception inside Tier 3
+
+Fix only the destructive-action treatment. **Do not redesign the App & install page**
+or anything else in Tier 3.
+
+Requirements:
+- clearly destructive, never affirmative
+- **≥4.5:1** text contrast, measured
+- visually separated from primary and normal actions
+- consistent hover / pressed / focus / disabled behaviour
+- no accidental visual promotion
+- **preserve existing functionality and identifiers** — `NXT.resetData()`, the
+  confirm, and every class name stay as they are
+
+Prefer a **restrained** destructive treatment — tinted or outlined — over another
+filled gradient.
+
+Note `.btn.danger` is also used by `cloudSignOut()` (`index.html:4842`) and
+`deleteLoggedSet()` (`index.html:4914`). Whatever you change affects those too, which
+is correct — but check them.
+
+---
+
+## 4. Files
+
+| File | Permitted |
 |---|---|
-| `premium-ui.js` | `more()`, `moreAccount()`, `moreGroup()`, `dataView()`, `saveAppearance()`, plus new VNext row/section helpers |
-| `vnext.css` | New `#morePage` section. Follow the existing scoping contract exactly. |
-| `index.html` | **Narrowly permitted, §3.8 only** — the nav tab's visible label, its `aria-label` and its icon. Nothing else. |
+| `vnext.css` | yes — the five primary sites and the shared token |
+| `premium-ui.css` | yes — **only** for the destructive treatment |
+| `index.html` | yes — **only** if the measurement proves the winning `.btn`/`.btn.danger` declaration lives there. CSS only. No markup, no handler, no identifier. |
 
-**Do not edit:** `cut-support.js`, any `wearables.*`, `train-anatomy.js`, `seed.*`, `sw.js`, `manifest.webmanifest`.
+**Do not edit:** `cut-support.js`, `premium-ui.js`, `sw.js`, `manifest.webmanifest`,
+any `wearables.*`, `seed.*`, `train-anatomy.js`.
 
-**Never bump `RELEASE`/`CACHE_NAME`** — both stay at `109`. The owner holds that as a deployment checkpoint.
+**`RELEASE` and `CACHE_NAME` stay at `109`.** No new asset is introduced, so `sw.js`
+needs no edit.
 
-Note the load-order fact: `cut-support.js:1412` sets `renderMore=NXT.moreView`, then `premium-ui.js:1510` sets `renderMore=NXP.more`. The later assignment wins. That is the seam — work above it.
+## 5. Explicitly out of scope
 
----
+`backfillAllCoachInsights()` removal — that is **D13 and stays separate** · any Tier 3
+page redesign · the inherited V96 contrast debt in body / notifications / training ·
+`readiness()` (D4) · legacy renderer removal (D5) · any new feature · any storage,
+record-shape or calculation change · `RELEASE`/`CACHE_NAME` bump.
 
-## 3. Required behaviours
+## 6. Verification you owe
 
-### 3.1 Functional accounting comes FIRST — before any code
+- Brace balance on every changed stylesheet
+- **All sixteen suites.** `for f in wearables*.test.js; do node "$f" || echo "FAIL $f"; done`
+  Baseline **16 suites / 458 tests / 0 failing**. It must stay exactly there.
+- No browser. Claude measures rendered contrast and runs browser QA.
 
-Inventory **every** capability currently reachable from More, hub and subviews both. Classify each: **KEEP / MOVE / DEMOTE / DEFER REDESIGN / OBSOLETE**.
+State in `CURSOR_REPORT.md`: which declaration was actually winning for `.btn.danger`
+and why its background did not apply · the token you introduced · the chosen values ·
+every consumer you changed · your reasoning for each state (hover/pressed/focus/disabled).
 
-`OBSOLETE` requires owner approval — you may not act on it in this slice, only propose it.
-
-**Silent feature loss is a REQUIRED FIX.** Do not drop a capability because it is absent from the prototype. The prototype is a Settings *skeleton* (§290 of the brief says so explicitly); it is not a capability list.
-
-Put the table in `CURSOR_REPORT.md` section A. The starting inventory — verify and extend it, do not assume it is complete:
-
-Account block (signed in / sign-in needed / local-only, gym, sign out) · Profile & cut → calorie card, goal range form incl. the **BMI 18.5 underweight safety floor in `saveGoal()`**, weekly review entry · Training → weekly plan editor, `saveWeek()` >3-lifting-day confirm + snapshot, saved workouts FullA/B/C, other routines Push/Pull/Pump/Legs, template draft editor, `cycleGym()`, gym names & equipment, programme defaults `restoreWeek()` · Wearable connection · Cardio & recovery → zone2 weekly target, readiness row, recovery warning, coach-insight backfill · Body & scans → `renderEvoScanPage()` · Appearance → text size, motion · Reminders → `notificationsSettingsHTML()` · Data & sync → Supabase connection + test, account/connection settings, backup & restore, export JSON, export CSV, safety copy export/restore, advanced cloud SQL help · App → install instructions, build version, danger-zone reset (routed to `NXT.resetData()`) · footer.
-
-### 3.2 Information architecture
-
-Follow the brief (§V) — **PLAN / PREFERENCES / BODY / DATA / ABOUT**.
-
-The owner's brief listed Body under PREFERENCES; the design brief gives Body its own group. **Resolved by the design director: Body keeps its own group.** It is a distinct domain, not a preference. The owner's instruction *"do not force an item into a section if current semantics make another location more appropriate"* governs.
-
-Advanced controls belong with the domain they configure, or in ABOUT — not in a catch-all drawer.
-
-### 3.3 Visual rule — rows, not cards
-
-Rows are built from **typography, spacing, hairlines, chevrons, toggles and small status text**.
-
-Not: a card around every row · dashboard tiles · purple glowing controls · giant status banners.
-
-Group headings are quiet typographic labels. The existing `.nxp-more-group` card-per-group treatment is exactly what this slice replaces.
-
-### 3.4 Forms and controls — this slice establishes the VNext form language
-
-Everything after 2E inherits it, so it has to be right:
-
-- Persistent labels — never placeholder-as-label
-- Current value legible on the row without opening it
-- **≥44pt** on every important target (audit computationally, do not eyeball)
-- Meaningful toggles with a real selected state
-- Visible focus rings
-- Keyboard-safe: the field being edited stays visible above the keyboard
-- Destructive actions visually separated — the danger zone stays a danger zone
-- Explanatory copy only where it earns its place
-- **No icon-only controls for important configuration**
-
-### 3.5 Subviews — how deep to go
-
-Three tiers. Do not exceed the tier.
-
-**Tier 1 — bring fully into VNext:** `hub`, `appearance`, `data`.
-These are already V100 and owned by `premium-ui.js`. They are in scope.
-
-**Tier 2 — chrome only:** `goals`, `training`, `coach`.
-These are V99 in `cut-support.js`, which you may not edit. Give them consistent VNext page chrome (header, back affordance, route transition, spacing) from the `premium-ui.js` side. **Do not rewrite their internals.** Their forms carry real safety behaviour — `saveGoal()`'s BMI floor, `saveWeek()`'s snapshot and confirm, `restoreWeek()`'s confirm. Preserve all of it untouched.
-
-**Tier 3 — preserve functionally, defer redesign:** `body`, `notifications`, `app`.
-V96 legacy. `body` is `renderEvoScanPage()` and belongs to **2G**. Do not redesign these. Reach them, keep them working, record them under *Known deviations* as deferred.
-
-If a Tier-2 or Tier-3 subview cannot get consistent chrome without touching a file you may not edit, **say so in the report** rather than editing it.
-
-### 3.6 Cloud & Sync — D11 governs
-
-Healthy normal operation must not dominate Settings. Show status calmly; let genuinely actionable problems become prominent. The three D11 conditions already implemented in `updateCloudLocalBanner()` are the model — reuse that thinking, do not re-derive it.
-
-**Do not:** weaken a data-safety warning · change sync semantics · change a storage key · change Supabase behaviour · change backup/restore semantics.
-
-If the current cloud controls are confusing, improve **hierarchy and copy only**. Do not rewrite the underlying system in this slice.
-
-### 3.7 Entry points for later slices — structure only, no fake controls
-
-- **Body / measurements / scans (2G):** a clean entry point that does not make the scanner feel like the destination.
-- **Coaching / AI preferences (2H):** a sensible location **only where existing semantics already support it.** If no real preference exists today, leave the space structurally obvious and add nothing. **No fake controls (D9).**
-
-**Conflict you must not resolve on your own:** the `coach` subview renders `readiness().score`. The design brief (§AD) lists that score for removal, but **D4 gates it and X1 is a separate audited slice.** So: preserve it exactly as it is, and do not give it new prominence. Do not delete it. Note it in the report.
-
-### 3.8 "More" → "Settings"
-
-Rename the **visible label only**. Audit first: `grep -n "'more'\|\"more\"\|morePage\|moreView\|renderMore" index.html premium-ui.js cut-support.js`.
-
-Change: the nav button's `<span class="tab-label">`, its `aria-label`, its icon, and the hub header.
-The icon is currently a three-dot "more" glyph. A configuration destination takes a gear. That is the whole permitted `index.html` edit.
-
-**Do not change:** `data-tab="more"` · `switchTab('more')` · `#morePage` · `state.moreView` · `state.tab='more'` · `renderMore` · any storage key · any route identifier.
-
-Visible label and internal identifier do not have to change together. If the audit shows the rename cannot be done safely at the label level, **stop and report** rather than renaming identifiers.
-
-### 3.9 Motion
-
-Settings is **quieter than Train**. Use the existing VNext route language — `vn-route-enter`, 0.28s, `cubic-bezier(.32,.72,0,1)` — already applied to all five destinations as of INT-1. Subview and sheet transitions consistent with it. No bounce, no dramatic page slides, no decorative animation. Reduced motion stays clean: no positional movement.
+**Do not commit. Do not push.**
 
 ---
 
-## 4. Must remain unchanged
+## 7. Definition of done
 
-- Every `apm_*` key, `persist()`, backup/restore semantics, Supabase behaviour
-- `state.moreView` stays in-memory UI state — **do not start persisting it**
-- All safety behaviour in `saveGoal()` / `saveWeek()` / `restoreWeek()` / `resetData()`
-- The V86 render input lock
-- `readiness()` (D4) and the legacy renderers (D5)
-- **Today, Train, Progress, History — untouched.** Four approved screens. A regression in any of them fails this slice.
-
-## 5. Responsive acceptance
-
-390 / 375 / 320. Zero horizontal overflow. Check: row wrapping · label/value alignment · toggle reachability · long text (a long email in the account row, a long gym name) · section spacing · safe areas · bottom nav clearance.
-
-**Do not shrink text or controls to make 320 fit.** 320 is a real design state — wrap, stack or truncate honestly instead.
-
-## 6. Test requirements
-
-Add `tasks/vnext/verify-2e.mjs`, following the pattern of `verify-2d.mjs`.
-
-1. **Capability reachability** — every KEEP capability from the §3.1 inventory is reachable from Settings. Assert per capability; this is the test that catches silent feature loss.
-2. **Every subview renders** — all nine views render without throwing, in both signed-in and local-only states.
-3. **No card-per-row** — the hub does not wrap each row in a surface.
-4. **Targets ≥44pt** and **contrast ≥4.5:1**, computed, at 390/375/320.
-5. **No horizontal overflow** at 390/375/320, hub and every subview.
-6. **Labels persist** — no placeholder-as-label on any Settings form control.
-7. **Destructive separation** — the reset control is visually distinguished and still confirms.
-8. **No storage writes on navigation** — touring every subview writes nothing. Snapshot `localStorage` before and after and assert equality.
-9. **Reduced motion** — no positional animation on route or subview change.
-10. **Non-regression** — Today, Train, Progress, History render unchanged. **Run all 16 deterministic suites and report real output.**
-
-Screenshots of the hub and one Tier-1 subview at 390 and 320 into `tasks/vnext/shots/`.
-
-## 7. Explicitly out of scope
-
-Progress → Performance (2F) · Body Intelligence / OCR / `renderEvoScanPage()` redesign (2G) · AI integration (2H) · Supabase schema/RLS/data · `readiness()` removal (D4/X1) · legacy renderer removal (D5/X2) · `RELEASE`/`CACHE_NAME` bump · any storage or data-semantic change · **consolidating the per-page `vn-*` primitives in `vnext.css` into a shared scope** (real debt, four scopes deep — raise it in the report, do not act on it here).
-
----
-
-## 8. Definition of done
-
-- [ ] §3.1 capability inventory complete in `CURSOR_REPORT.md` A, every item classified
-- [ ] Every KEEP capability reachable and working — no silent loss
-- [ ] Hub is typographic rows with chevrons; no card-per-row, no dashboard tiles
-- [ ] IA follows PLAN / PREFERENCES / BODY / DATA / ABOUT
-- [ ] Settings reads quieter than Today, Train, Progress and History
-- [ ] Cloud & Sync calm when healthy, prominent only when actionable (D11)
-- [ ] Form language established: persistent labels, values, 44pt, focus, keyboard-safe, destructive separated
-- [ ] Tier discipline held — Tier 2 chrome only, Tier 3 preserved and deferred
-- [ ] Body and Coaching entry points structural, with **no fake controls**
-- [ ] `readiness()` preserved, not promoted
-- [ ] Label renamed to Settings with identifiers untouched, or reported as unsafe
-- [ ] 390/375/320 clean; contrast, targets, overflow all pass
-- [ ] Other four destinations unchanged; **all 16 suites green**
-- [ ] `CURSOR_REPORT.md` completed (A–H)
-- [ ] **Do not commit.** Claude reviews the working tree and the actual diff first.
+- [ ] One shared token/class defines the primary fill and ink; all five sites consume it
+- [ ] Primary ≥4.5:1 with normal-size text, verified at the **lightest** gradient stop
+- [ ] Default / hover / pressed / focus / disabled all verified
+- [ ] Font size not increased to dodge the threshold
+- [ ] Violet identity intact; `--vn-violet` unchanged, or every consumer re-verified
+- [ ] `RESET APP DATA` ≥4.5:1, clearly destructive, not promoted
+- [ ] `.btn.danger`'s other consumers (sign out, delete set) checked
+- [ ] Functionality and identifiers preserved
+- [ ] 16 suites / 458 tests green; `RELEASE`/`CACHE_NAME` at 109
+- [ ] `CURSOR_REPORT.md` updated, including the cascade finding
+- [ ] **Not committed**

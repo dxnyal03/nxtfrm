@@ -33,8 +33,9 @@ renderMore=NXP.more; renderHistory=NXP.history;
 | **2B** | Train: active workout mode, set logging, rest, queue, completion recap | ✅ committed `761f339` |
 | **2C** | Progress → Weight: recent trajectory chart (D2), Journey rail (D3), scrub, ranges | ✅ committed `6563be6` |
 | **2D** | History: calendar-first, selected-date detail | ✅ committed `eb713de` |
-| **2E** | Settings / More: calm configuration rows | ← **current**, INT-1 approved |
-| 2F | Progress → Performance | 2E approved |
+| **2E** | Settings / More: calm configuration rows | ✅ committed `1499653` |
+| **D12** | Shared primary-button + destructive contrast patch | ← **current**, cross-screen |
+| 2F | Progress → Performance | D12 complete |
 | 2G | Body Intelligence + OCR review flow | 2F approved |
 | 2H | AI surfaces (Why / Ask / proposal sheets) | 2G approved |
 

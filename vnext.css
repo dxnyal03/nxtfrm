@@ -46,6 +46,15 @@
   --vn-violet-dim:rgba(139,92,246,.16);
   --vn-violet-line:rgba(139,92,246,.42);
 
+  /* Primary action only. --vn-violet stays the signal colour (tabs, dates,
+     focus, focal surface) — white on it is 4.23:1 and fails I4.
+     Lightest stop #7C3AED is 5.70:1 vs #fff; #6D28D9 is 7.10:1. */
+  --vn-action:#6D28D9;
+  --vn-action-lift:#7C3AED;
+  --vn-action-ink:#fff;
+  --vn-action-fill:linear-gradient(180deg,var(--vn-action-lift),var(--vn-action));
+  --vn-action-shadow:0 1px 0 rgba(255,255,255,.15) inset, 0 6px 16px -10px rgba(109,40,217,.45);
+
   /* Status trio — validated. ALWAYS paired with a word + shape (I2). */
   --vn-ok:#8B5CF6;
   --vn-review:#B8842A;
@@ -257,9 +266,9 @@ body:has(.tabs.vn-recede) .content{
   display:flex;align-items:center;justify-content:center;gap:8px;
   width:100%;min-height:50px;padding:0 var(--vn-s5);
   border:0;border-radius:var(--vn-r-control);
-  background:linear-gradient(180deg,#9B71F8,var(--vn-violet));
-  color:#fff;font:inherit;font-size:16px;font-weight:580;letter-spacing:-.005em;
-  box-shadow:0 1px 0 rgba(255,255,255,.15) inset, 0 6px 16px -10px rgba(139,92,246,.45);
+  background:var(--vn-action-fill);
+  color:var(--vn-action-ink);font:inherit;font-size:16px;font-weight:580;letter-spacing:-.005em;
+  box-shadow:var(--vn-action-shadow);
   transition:transform var(--vn-t-touch) var(--vn-ease), filter var(--vn-t-touch) var(--vn-ease);
   -webkit-tap-highlight-color:transparent;cursor:pointer;
 }
@@ -624,9 +633,9 @@ body:has(.tabs.vn-recede) .toast{
 }
 #trainPage .vn-train-active .nxp-train-cta{
   min-height:50px;border-radius:var(--vn-r-control);margin-top:var(--vn-s1);
-  background:linear-gradient(180deg,#9B71F8,var(--vn-violet));
-  color:#fff;font-size:16px;font-weight:580;
-  box-shadow:0 1px 0 rgba(255,255,255,.15) inset, 0 6px 16px -10px rgba(139,92,246,.45);
+  background:var(--vn-action-fill);
+  color:var(--vn-action-ink);font-size:16px;font-weight:580;
+  box-shadow:var(--vn-action-shadow);
   border:0;
 }
 #trainPage .vn-train-active .nxp-train-cta:active{filter:brightness(.94);transform:scale(.985)}
@@ -684,9 +693,9 @@ body:has(.tabs.vn-recede) .toast{
 }
 #trainPage .vn-train-ready .n99-button{
   width:100%;min-height:50px;border-radius:var(--vn-r-control);
-  background:linear-gradient(180deg,#9B71F8,var(--vn-violet));
-  color:#fff;font-size:16px;font-weight:580;
-  box-shadow:0 1px 0 rgba(255,255,255,.15) inset, 0 6px 16px -10px rgba(139,92,246,.45);
+  background:var(--vn-action-fill);
+  color:var(--vn-action-ink);font-size:16px;font-weight:580;
+  box-shadow:var(--vn-action-shadow);
 }
 #trainPage .vn-train-plan{margin-bottom:var(--vn-s5)}
 #trainPage .vn-train-plan-row{
@@ -721,8 +730,8 @@ body:has(.tabs.vn-recede) .toast{
 #trainPage .nxp-train-idle.vn-train .nxp-train-idle-actions .n99-button,
 #trainPage .nxp-train-idle.vn-train .nxp-session-tools .n99-button{
   border-radius:var(--vn-r-control);
-  background:linear-gradient(180deg,#9B71F8,var(--vn-violet));
-  color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.15) inset, 0 6px 16px -10px rgba(139,92,246,.45);
+  background:var(--vn-action-fill);
+  color:var(--vn-action-ink);box-shadow:var(--vn-action-shadow);
 }
 #trainPage .nxp-train-idle.vn-train .nxp-session-tools .n99-button.secondary,
 #trainPage .nxp-train-idle.vn-train .n99-button.secondary{
@@ -1568,9 +1577,9 @@ body:has(.tabs.vn-recede) .toast{
   display:flex;align-items:center;justify-content:center;gap:8px;
   width:100%;min-height:50px;margin-top:var(--vn-s5);padding:0 var(--vn-s5);
   border:0;border-radius:var(--vn-r-control);
-  background:linear-gradient(180deg,#9B71F8,var(--vn-violet));
-  color:#fff;font:inherit;font-size:16px;font-weight:580;letter-spacing:-.005em;
-  box-shadow:0 1px 0 rgba(255,255,255,.15) inset, 0 6px 16px -10px rgba(139,92,246,.45);
+  background:var(--vn-action-fill);
+  color:var(--vn-action-ink);font:inherit;font-size:16px;font-weight:580;letter-spacing:-.005em;
+  box-shadow:var(--vn-action-shadow);
   transition:transform var(--vn-t-touch) var(--vn-ease), filter var(--vn-t-touch) var(--vn-ease);
   -webkit-tap-highlight-color:transparent;cursor:pointer;
 }
@@ -1670,3 +1679,20 @@ body:has(.tabs.vn-recede) .toast{
 :root[data-nxp-motion="reduced"] #morePage .vn-set-act,
 :root[data-nxp-motion="reduced"] #morePage .vn-set-disc > summary::after{transition:none}
 :root[data-nxp-motion="reduced"] #morePage .vn-set-act:active{transform:none}
+
+/* D12 — disabled primary. The shared .n99-button:disabled / .btn:disabled
+   opacity .42 (train CTA .45, bare button:disabled .5) composites white ink
+   over the page to about 2.7:1. Hold the darker stop at full opacity instead:
+   #6D28D9 vs #fff is 7.10:1. Quiet and secondary keep their own treatments. */
+#homePage .vn-act:disabled,
+#trainPage .vn-train-active .nxp-train-cta:disabled,
+#trainPage .vn-train-ready .n99-button:disabled,
+#trainPage .nxp-train-idle.vn-train .nxp-train-idle-actions .n99-button:not(.secondary):disabled,
+#trainPage .nxp-train-idle.vn-train .nxp-session-tools .n99-button:not(.secondary):disabled,
+#morePage .vn-set-act:not(.is-quiet):disabled{
+  opacity:1;
+  background:var(--vn-action);
+  color:var(--vn-action-ink);
+  box-shadow:none;
+  filter:none;
+}

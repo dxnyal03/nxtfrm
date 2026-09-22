@@ -143,10 +143,48 @@ function auditFn() {
       const L2 = relLum(bg);
       return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
     }
+    /* A gradient fill is a real background. Reading only backgroundColor let
+       every gradient-filled button fall through to the page canvas, which is
+       why this check passed a measured 3.44:1 primary CTA. Gradients are now
+       evaluated at their WORST stop, since that is the worst case for the
+       text sitting on them. */
+    /* Only an effectively OPAQUE gradient counts as the background. The page
+       carries a decorative low-alpha violet wash; treating its stops as solid
+       reported 36 false failures on text that actually passes. Stops with
+       alpha < 0.9 are ignored and the walk continues to the real surface. */
+    function gradStops(img) {
+      if (!img || img === 'none' || !/gradient/.test(img)) return [];
+      const out = [];
+      for (const m of img.matchAll(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/g)) {
+        const a = m[4] === undefined ? 1 : Number(m[4]);
+        if (!Number.isFinite(a) || a < 0.9) return [];
+        out.push([Number(m[1]), Number(m[2]), Number(m[3])]);
+      }
+      return out;
+    }
+    function worstBg(el, fg) {
+      const stops = gradStops(getComputedStyle(el).backgroundImage);
+      if (!stops.length) return null;
+      let worst = null, worstRatio = Infinity;
+      for (const s of stops) {
+        const r = contrast(fg, s);
+        if (r < worstRatio) { worstRatio = r; worst = s; }
+      }
+      return worst;
+    }
     function bgOf(el) {
       let n = el;
       let fgUnder = null;
+      const ownWorst = worstBg(el, parseColor(getComputedStyle(el).color) || [255, 255, 255]);
+      if (ownWorst) return ownWorst;
       while (n && n !== document.documentElement) {
+        const gs = gradStops(getComputedStyle(n).backgroundImage);
+        if (gs.length) {
+          const fgc = parseColor(getComputedStyle(el).color) || [255, 255, 255];
+          let worst = gs[0], wr = Infinity;
+          for (const s of gs) { const r = contrast(fgc, s); if (r < wr) { wr = r; worst = s; } }
+          return worst;
+        }
         const raw = getComputedStyle(n).backgroundColor;
         const p = parseColor(raw);
         if (p) {
