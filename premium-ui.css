@@ -3274,6 +3274,8 @@ body.apex-keyboard-open .tabs {
   from { opacity: 0; transform: translate3d(-9px, 0, 0); }
   to { opacity: 1; transform: none; }
 }
+/* Anatomy on an exercise change: opacity only. The heading still arrives
+   from the side; the figure does not move, scale, rotate or loop. */
 @keyframes nxp-ex-anat-enter {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -3286,7 +3288,23 @@ body.apex-keyboard-open .tabs {
 }
 .nxp-train-lift .nxp-ex-top.is-forward .nxp-ex-anat,
 .nxp-train-lift .nxp-ex-top.is-back .nxp-ex-anat {
-  animation: nxp-ex-anat-enter var(--nxt-motion-normal) var(--nxt-ease-out) both;
+  animation: nxp-ex-anat-enter 200ms cubic-bezier(.32, .72, 0, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nxp-train-lift .nxp-ex-anat,
+  .nxp-train-lift .nxp-ex-anat .nxa,
+  .nxp-train-lift .nxp-ex-top.is-forward .nxp-ex-anat,
+  .nxp-train-lift .nxp-ex-top.is-back .nxp-ex-anat {
+    animation: none;
+    transition: none;
+  }
+}
+:root[data-nxp-motion="reduced"] .nxp-train-lift .nxp-ex-anat,
+:root[data-nxp-motion="reduced"] .nxp-train-lift .nxp-ex-anat .nxa,
+:root[data-nxp-motion="reduced"] .nxp-train-lift .nxp-ex-top.is-forward .nxp-ex-anat,
+:root[data-nxp-motion="reduced"] .nxp-train-lift .nxp-ex-top.is-back .nxp-ex-anat {
+  animation: none;
+  transition: none;
 }
 
 /* A newly added optional exercise settles into the list rather than appearing

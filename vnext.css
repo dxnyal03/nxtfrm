@@ -517,19 +517,65 @@ body:has(.tabs.vn-recede) .toast{
 #trainPage .vn-train-active .nxp-ex-title{
   font-size:24px;font-weight:650;letter-spacing:-.028em;line-height:1.1;
   color:var(--vn-ink);text-align:left;padding:0;border:0;background:none;
+  width:auto;max-width:100%;
   min-height:44px;cursor:pointer;display:inline-flex;align-items:center;
+  overflow:visible;text-overflow:clip;white-space:normal;
 }
 #trainPage .vn-train-active .nxp-ex-muscles{
   margin:2px 0 0;font-size:12.5px;color:var(--vn-ink-3);
 }
-/* Anatomy sits inline beside the name (design-vnext). Compact so the head
-   gains no vertical height vs text-only. */
+/* ANATOMY CONTRACT — active Train. Binding limits, not incidental sizes.
+   Anatomy sits inline beside the name, inside the existing exercise-head row.
+   Unboxed: no background, border, radius or shadow. Never its own row or surface.
+   0px of vertical height. The button is height-capped — 64px from 360px up,
+   56px at 359px and below — so it cannot stretch when the title wraps.
+   The svg is out of flow and keeps --nxa-ar.
+   The text column's floor is min(100%, max-content). The title lays out as
+   wide as it would with the figure gone, and the figure takes only the width
+   left beside that. A long name shrinks the figure, down to nothing, before
+   the title gains a line. The title is never truncated to make room.
+   One view, cropped to the mapped muscles. An unmapped exercise renders nothing.
+   At 360px and above the cap is 72 by 64. At 359px and below it is 64 by 56.
+   --nxa-ar keeps the crop's aspect: a 0.5 crop is about 32 by 64, a 1.7 crop
+   about 72 by 42. Nothing stretches and nothing is letterboxed.
+   It stays inside the head, clear of Last, Target and Rest. */
+#trainPage .vn-train-active .nxp-ex-top{
+  display:flex;
+  align-items:flex-start;
+  overflow-x:clip;
+}
+#trainPage .vn-train-active .nxp-ex-text{
+  flex:1 1 auto;
+  min-width:min(100%, max-content);
+  max-width:100%;
+}
 #trainPage .vn-train-active .nxp-ex-anat{
-  margin:0;max-width:72px;
+  position:relative;
+  margin:0;padding:0;
+  border:0;border-radius:0;
+  background:none;
+  box-shadow:none;
+  flex:0 1 auto;
+  align-self:flex-start;
+  min-width:0;
+  min-height:0;
+  max-width:72px;
+  width:min(72px, calc(64px * var(--nxa-ar, 1)));
+  height:64px;
+  max-height:64px;
+  overflow:hidden;
 }
 #trainPage .vn-train-active .nxp-ex-anat .nxa{
-  height:64px;max-width:72px;
+  position:absolute;
+  top:0;right:0;
+  display:block;
+  width:100%;
+  height:auto;
+  max-width:100%;
+  max-height:100%;
+  aspect-ratio:var(--nxa-ar, 1);
 }
+#trainPage .vn-train-active .nxp-ex-anat:active{transform:none}
 
 /* ---- Aim strip: typography instruments, wrap at 320 ---- */
 #trainPage .vn-aim{
@@ -825,7 +871,62 @@ body:has(.tabs.vn-recede) .toast{
   #trainPage .vn-aim{flex-wrap:wrap;gap:var(--vn-s4)}
   #trainPage .vn-aim.wrap3 .nxp-aim-cell{flex:1 1 44%}
   #trainPage .vn-aim b{font-size:16px}
-  #trainPage .vn-train-active .nxp-ex-anat .nxa{height:56px;max-width:64px}
+  #trainPage .vn-train-active .nxp-ex-anat{
+    max-width:64px;
+    max-height:56px;
+    width:min(64px, calc(56px * var(--nxa-ar, 1)));
+    /* The figure is out of flow, so it does not give this control a height.
+       Stretch was following the text row (~64px) and the 56px cap never
+       landed. The cap is the button's own box; the svg keeps --nxa-ar. */
+    height:56px;
+  }
+  #trainPage .vn-train-active .nxp-ex-anat .nxa{
+    /* Width stays 100% of the button, so a yielded figure scales instead of
+       being clipped at the 64px formula. The 56px cap is the button's height. */
+    max-width:100%;
+    max-height:100%;
+  }
+}
+
+/* Anatomy motion contract. Opacity only, at most 200ms, the standard ease.
+   Reduced motion is an immediate swap: the rule follows the one above so it
+   wins for the same selector. */
+#trainPage .vn-train-active .nxp-ex-top.is-forward .nxp-ex-anat,
+#trainPage .vn-train-active .nxp-ex-top.is-back .nxp-ex-anat{
+  animation:nxp-ex-anat-enter 200ms cubic-bezier(.32,.72,0,1) both;
+}
+@media (prefers-reduced-motion:reduce){
+  #trainPage .vn-train-active .nxp-ex-anat,
+  #trainPage .vn-train-active .nxp-ex-anat .nxa,
+  #trainPage .vn-train-active .nxp-ex-top.is-forward .nxp-ex-anat,
+  #trainPage .vn-train-active .nxp-ex-top.is-back .nxp-ex-anat{
+    animation:none;
+    transition:none;
+  }
+}
+:root[data-nxp-motion="reduced"] #trainPage .vn-train-active .nxp-ex-anat,
+:root[data-nxp-motion="reduced"] #trainPage .vn-train-active .nxp-ex-anat .nxa,
+:root[data-nxp-motion="reduced"] #trainPage .vn-train-active .nxp-ex-top.is-forward .nxp-ex-anat,
+:root[data-nxp-motion="reduced"] #trainPage .vn-train-active .nxp-ex-top.is-back .nxp-ex-anat{
+  animation:none;
+  transition:none;
+}
+
+/* Exercise Details. The pair stays 190px tall — it is not enlarged to fill
+   the gap. premium-ui.css adds a bottom margin on top of the sheet's own
+   gap; that second gap is the dead band above Primary. */
+.n99-modal .nxp-detail-anat{margin-bottom:0}
+.n99-modal .nxp-detail-anat .nxa{height:190px;max-height:190px}
+.n99-modal .nxp-detail-swap{
+  display:flex;align-items:center;
+  width:100%;min-height:44px;
+  margin:var(--vn-s2) 0 0;padding:0;
+  border:0;border-radius:0;
+  background:none;box-shadow:none;
+  color:var(--vn-ink-2);
+  font:inherit;font-size:14.5px;font-weight:540;
+  text-align:left;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
 }
 
 /* ==========================================================================

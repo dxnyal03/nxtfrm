@@ -867,9 +867,15 @@ const NXP = (() => {
     if (typeof NXTLIB === "undefined" || typeof NXTANAT === "undefined") return "";
     const m = NXTLIB.musclesFor(ex);
     if (!m.primary.length) return "";
+    /* One view, from the primary muscle. The crop is that view's mapped
+       region. --nxa-ar is the crop's own aspect so the cap cannot stretch it. */
+    const view = NXTANAT.viewFor(m.primary, []);
+    const crop = NXTANAT.cropFor(m.primary, view);
+    const ar = crop[2] > 0 && crop[3] > 0 ? crop[2] / crop[3] : 1;
+    const arAttr = Number.isFinite(ar) && ar > 0 ? ar.toFixed(3) : "1";
     return `<button type="button" class="nxp-ex-anat" onclick="NXP.exerciseDetails()" `
-      + `aria-label="Show exercise details">`
-      + NXTANAT.figure({ primary: m.primary, secondary: m.secondary })
+      + `aria-label="Show exercise details" style="--nxa-ar:${arAttr}">`
+      + NXTANAT.figure({ primary: m.primary, secondary: m.secondary, view })
       + `</button>`;
   }
 
@@ -895,6 +901,10 @@ const NXP = (() => {
       ? `<section class="nxp-detail-block"><h3>Primary</h3><p>${esc(m.primary.map(id=>NXTANAT.label(id)).join(' · '))}</p></section>`
         + (m.secondary.length?`<section class="nxp-detail-block"><h3>Secondary</h3><p>${esc(m.secondary.map(id=>NXTANAT.label(id)).join(' · '))}</p></section>`:'')
       : '';
+    /* Swap opens the sheet the mode bar already uses. That sheet writes
+       today's session plan only, then closeModal returns to Train, which
+       render() has repainted with the replacement. Cancel returns to Train
+       on the same exercise. History and the base programme are not touched. */
     N.modal(ex,`<div class="nxp-detail">
       ${anat}${muscleBlock}
       <div class="nxp-detail-facts">${facts}</div>
@@ -902,6 +912,7 @@ const NXP = (() => {
       <section class="nxp-detail-block"><h3>${esc(cue.label)}</h3><p>${esc(cue.text)}</p></section>
       <section class="nxp-detail-block"><h3>Recent sessions</h3>${history}</section>
       ${button(note?'Edit equipment note':'Add equipment note','NXP.equipmentNote()',true)}
+      <button type="button" class="nxp-detail-swap" onclick="showSubstituteSheet()">Swap exercise</button>
     </div>`);
   }
   function chooseExercise(i) {closeModal();N.selectExercise(i);}

@@ -2,7 +2,11 @@
    Realistic fixtures: first/middle/last set, warm-up and working, RIR present
    and absent, history and none, several completed sets, an active timer,
    a queue, an add-on workout, Gym A and Gym B, mapped and unmapped anatomy.
-   A set logged from the keyboard dock must match one logged in normal flow. */
+   A set logged from the keyboard dock must match one logged in normal flow.
+   Anatomy contract (D18): vertical-cost budget, at most one extra title line,
+   aim clearance, title at 320, reduced motion, both size caps with crop
+   aspect, and no figure for an unmapped name.
+   Fixtures stay inside the session queue — Train ignores any other name. */
 import fs from "fs";
 import path from "path";
 import vm from "vm";
@@ -26,6 +30,7 @@ const PLAN = [
 
 const uiSrc = fs.readFileSync(path.join(ROOT, "premium-ui.js"), "utf8");
 const css = fs.readFileSync(path.join(ROOT, "vnext.css"), "utf8");
+const premCss = fs.readFileSync(path.join(ROOT, "premium-ui.css"), "utf8");
 const cutSrc = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8");
 const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
@@ -595,6 +600,617 @@ test("the logging contract and control sizes are unchanged", () => {
   assert.ok(dock.includes("prefers-reduced-motion"));
   assert.strictEqual(sw.includes("const RELEASE = '109'"), true);
   assert.strictEqual(sw.includes("nxtfrm-v109-premium-cache"), true);
+});
+
+/* Anatomy contract, D18. No browser: the used box is the CSS cascade
+   (premium-ui.css then vnext.css) applied to the figure Train actually
+   renders. The in-flow head is the measured text row, 64px — title min-height
+   44 plus the muscle line — plus one line-height for each extra wrap this
+   model can see. Log Set sits a fixed distance under that row, so it moves
+   only when the head moves.
+   The Node layout model cannot reproduce real text wrapping, so it is not the
+   authority for the wrap case and this file does not simulate that wrap.
+   Chromium is. The approved measurement for "Chest Supported T-Bar Row" is
+   about 13px of head and about 14px of Log Set at 390, 393 and 375, about
+   7px at 320, and 0px at 402 and 430. Those sit inside the hard budget:
+   16px at 360px and above, 10px at 359px and below, and at most one extra
+   title line. This file asserts that budget on the cost it can compute
+   (figure present versus absent). A strict 0px match would fail a layout
+   the owner has already approved.
+   Full A is the queue, because Train discards a name that is not in it.
+   Title advances are the system UI font at the Train title's size, weight 650
+   and letter-spacing -0.028em. Muscle advances are the same font at 12.5px.
+   "Chest Supported T-Bar Row" is the name that wraps beside a full figure. */
+const FULL_A = [
+  { name: "Incline Dumbbell Press", sets: 3, reps: [8, 12], inc: 2.5 },
+  { name: "Chest Supported T-Bar Row", sets: 3, reps: [8, 12], inc: 2.5 },
+  { name: "Leg Press", sets: 3, reps: [8, 12], inc: 5 },
+  { name: "Hamstring Curl", sets: 2, reps: [10, 15], inc: 2.5 },
+  { name: "Cable Lateral Raise", sets: 2, reps: [12, 20], inc: 1 },
+  { name: "Ab Crunch", sets: 2, reps: [12, 20], inc: 2.5 }
+];
+const ANAT_NAMES = FULL_A.map(e => e.name);
+const ANAT_WIDTHS = [390, 393, 402, 430, 375, 320];
+const TEXT_ROW = 64;
+const TITLE_24 = {
+  "Incline Dumbbell Press": 235.7,
+  "Chest Supported T-Bar Row": 291.3,
+  "Leg Press": 101.5,
+  "Hamstring Curl": 157.2,
+  "Cable Lateral Raise": 197.8,
+  "Ab Crunch": 111.3
+};
+const TITLE_22 = {
+  "Incline Dumbbell Press": 216.6,
+  "Chest Supported T-Bar Row": 267.3,
+  "Leg Press": 93.2,
+  "Hamstring Curl": 144.5,
+  "Cable Lateral Raise": 181.5,
+  "Ab Crunch": 102.0
+};
+const MUSCLE_PX = {
+  "Incline Dumbbell Press": 203.5,
+  "Chest Supported T-Bar Row": 155.6,
+  "Leg Press": 166.6,
+  "Hamstring Curl": 119.0,
+  "Cable Lateral Raise": 179.0,
+  "Ab Crunch": 23.0
+};
+const CSS_VARS = {
+  "--nxt-touch-min": 44,
+  "--nxt-space-1": 4, "--nxt-space-2": 8, "--nxt-space-3": 12, "--nxt-space-4": 16
+};
+
+function splitCommas(s) {
+  const out = [];
+  let depth = 0, quote = "", start = 0;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (quote) { if (ch === quote) quote = ""; continue; }
+    if (ch === '"' || ch === "'") { quote = ch; continue; }
+    if (ch === "(") depth++;
+    else if (ch === ")") depth--;
+    else if (ch === "," && depth === 0) { out.push(s.slice(start, i).trim()); start = i + 1; }
+  }
+  out.push(s.slice(start).trim());
+  return out.filter(Boolean);
+}
+function parseSheet(cssText) {
+  const src = cssText.replace(/\/\*[\s\S]*?\*\//g, "");
+  const rules = [];
+  let i = 0;
+  function skipWs() { while (i < src.length && /\s/.test(src[i])) i++; }
+  function matchingBrace() {
+    let depth = 1, quote = "";
+    const start = i;
+    while (i < src.length && depth > 0) {
+      const ch = src[i];
+      if (quote) { if (ch === quote && src[i - 1] !== "\\") quote = ""; i++; continue; }
+      if (ch === '"' || ch === "'") { quote = ch; i++; continue; }
+      if (ch === "{") depth++;
+      else if (ch === "}") depth--;
+      i++;
+    }
+    return src.slice(start, i - 1);
+  }
+  function parseList(media) {
+    while (i < src.length) {
+      skipWs();
+      if (i >= src.length) return;
+      if (src[i] === "}") { i++; return; }
+      if (src[i] === "@") {
+        const brace = src.indexOf("{", i);
+        const header = src.slice(i, brace).trim();
+        i = brace + 1;
+        if (/^@media\b/i.test(header)) parseList(header);
+        else matchingBrace();
+        continue;
+      }
+      const brace = src.indexOf("{", i);
+      if (brace < 0) return;
+      const selectors = src.slice(i, brace).trim();
+      i = brace + 1;
+      const body = matchingBrace();
+      if (selectors) rules.push({ media, selectors, body });
+    }
+  }
+  parseList(null);
+  return rules;
+}
+function declsOf(body) {
+  const out = [];
+  let cur = "", depth = 0, quote = "";
+  function push(raw) {
+    const t = raw.trim();
+    if (!t) return;
+    const c = t.indexOf(":");
+    if (c < 0) return;
+    let value = t.slice(c + 1).trim();
+    const important = /!important\s*$/i.test(value);
+    value = value.replace(/\s*!important\s*$/i, "").trim();
+    out.push({ prop: t.slice(0, c).trim().toLowerCase(), value, important });
+  }
+  for (const ch of body) {
+    if (quote) { cur += ch; if (ch === quote) quote = ""; continue; }
+    if (ch === '"' || ch === "'") { quote = ch; cur += ch; continue; }
+    if (ch === "(") depth++;
+    else if (ch === ")") depth = Math.max(0, depth - 1);
+    if (ch === ";" && depth === 0) { push(cur); cur = ""; continue; }
+    cur += ch;
+  }
+  push(cur);
+  return out;
+}
+function specOf(selector) {
+  const ids = (selector.match(/#[\w-]+/g) || []).length;
+  const cls = (selector.match(/\.[\w-]+/g) || []).length;
+  const attrs = (selector.match(/\[[^\]]+\]/g) || []).length;
+  const pseudos = (selector.match(/:(?!:)[\w-]+/g) || []).length;
+  const rest = selector
+    .replace(/\[[^\]]+\]/g, " ")
+    .replace(/#[\w-]+/g, " ")
+    .replace(/\.[\w-]+/g, " ")
+    .replace(/::[\w-]+/g, " ")
+    .replace(/:[\w-]+(\([^)]*\))?/g, " ")
+    .replace(/[>+~]/g, " ");
+  const els = rest.split(/\s+/).filter(t => t && t !== "*").length;
+  return [ids, cls + attrs + pseudos, els];
+}
+function mediaApplies(header, width, flags) {
+  if (!header) return true;
+  const h = header.replace(/\s+/g, "").toLowerCase();
+  const flagsOn = flags || {};
+  if (h.includes("prefers-reduced-motion")) return !!flagsOn.reduced;
+  let saw = false, ok = true;
+  const max = /max-width:(\d+)px/.exec(h);
+  const min = /min-width:(\d+)px/.exec(h);
+  if (max) { saw = true; ok = ok && width <= Number(max[1]); }
+  if (min) { saw = true; ok = ok && width >= Number(min[1]); }
+  return saw ? ok : false;
+}
+function evalLen(value, ctx) {
+  if (value == null || value === "") return null;
+  const v = String(value).replace(/\s+/g, "");
+  if (v === "auto" || v === "none") return null;
+  if (v === "0") return 0;
+  return evalExpr(v, ctx);
+  function evalExpr(expr, c) {
+    if (expr.startsWith("min(") && expr.endsWith(")")) {
+      return Math.min(...splitCommas(expr.slice(4, -1)).map(p => evalExpr(p, c)));
+    }
+    if (expr.startsWith("max(") && expr.endsWith(")")) {
+      return Math.max(...splitCommas(expr.slice(4, -1)).map(p => evalExpr(p, c)));
+    }
+    if (expr.startsWith("var(") && expr.endsWith(")")) {
+      const bits = splitCommas(expr.slice(4, -1));
+      if (bits[0] === "--nxa-ar") return c.ar;
+      if (bits[0] in CSS_VARS) return CSS_VARS[bits[0]];
+      if (bits[1] != null) return evalExpr(bits[1], c);
+      throw new Error("unresolved " + expr);
+    }
+    if (expr.startsWith("calc(") && expr.endsWith(")")) {
+      let s = expr.slice(5, -1).replace(/var\([^)]*\)/g, m => String(evalExpr(m, c)));
+      s = s.replace(/(\d*\.?\d+)px/g, "$1");
+      s = s.replace(/(\d*\.?\d+)%/g, (_, n) => String((c.pct || 0) * parseFloat(n) / 100));
+      if (!/^[\d.+\-*/()]+$/.test(s)) throw new Error("bad calc " + expr + " => " + s);
+      return Function(`"use strict";return(${s})`)();
+    }
+    if (expr.endsWith("%")) return (c.pct || 0) * parseFloat(expr) / 100;
+    if (expr.endsWith("px")) return parseFloat(expr);
+    const n = Number(expr);
+    if (Number.isFinite(n)) return n;
+    throw new Error("bad length " + expr);
+  }
+}
+const STYLE_RULES = parseSheet(premCss).concat(parseSheet(css));
+function winning(pred, width, flags) {
+  let order = 0;
+  const map = new Map();
+  for (const rule of STYLE_RULES) {
+    if (!mediaApplies(rule.media, width, flags)) { order += declsOf(rule.body).length || 1; continue; }
+    for (const sel of splitCommas(rule.selectors)) {
+      const spec = pred(normSel(sel));
+      if (!spec) continue;
+      for (const decl of declsOf(rule.body)) {
+        order++;
+        const cand = { spec, order, value: decl.value, important: decl.important };
+        const prev = map.get(decl.prop);
+        if (!prev || wins(cand, prev)) map.set(decl.prop, cand);
+      }
+    }
+  }
+  const out = {};
+  for (const [k, v] of map) out[k] = v.value;
+  return out;
+}
+function normSel(s) { return s.replace(/\s+/g, " ").trim(); }
+function wins(a, b) {
+  if (!!a.important !== !!b.important) return !!a.important;
+  for (let i = 0; i < 3; i++) if (a.spec[i] !== b.spec[i]) return a.spec[i] > b.spec[i];
+  return a.order > b.order;
+}
+function sizePred(kind) {
+  return function (sel) {
+    if (/:active|:focus|::/.test(sel)) return null;
+    if (kind === "button" && (sel === ".nxp-train-lift .nxp-ex-anat" || sel === "#trainPage .vn-train-active .nxp-ex-anat")) return specOf(sel);
+    if (kind === "svg" && (sel === ".nxp-train-lift .nxp-ex-anat .nxa" || sel === "#trainPage .vn-train-active .nxp-ex-anat .nxa")) return specOf(sel);
+    if (kind === "top" && (sel === ".nxp-train-lift .nxp-ex-top" || sel === "#trainPage .vn-train-active .nxp-ex-top")) return specOf(sel);
+    if (kind === "textcol" && (sel === ".nxp-train-lift .nxp-ex-text" || sel === "#trainPage .vn-train-active .nxp-ex-text")) return specOf(sel);
+    if (kind === "title" && sel === "#trainPage .vn-train-active .nxp-ex-title") return specOf(sel);
+    return null;
+  };
+}
+function buttonBox(width, ar) {
+  const d = winning(sizePred("button"), width, {});
+  const ctx = { ar, pct: TEXT_ROW };
+  const maxW = evalLen(d["max-width"], { ar, pct: width });
+  const maxH = evalLen(d["max-height"], ctx);
+  const minH = evalLen(d["min-height"], ctx);
+  let w = evalLen(d.width, { ar, pct: width });
+  let h = evalLen(d.height, ctx);
+  if (w == null) w = maxW == null ? TEXT_ROW : maxW;
+  if (h == null) h = d["align-self"] === "stretch" ? TEXT_ROW : (minH || 0);
+  if (maxW != null) w = Math.min(w, maxW);
+  if (minH != null) h = Math.max(h, minH);
+  if (maxH != null) h = Math.min(h, maxH);
+  return { w, h, d };
+}
+function svgBox(width, ar, buttonW, buttonH) {
+  const d = winning(sizePred("svg"), width, {});
+  const wCtx = { ar, pct: buttonW };
+  const hCtx = { ar, pct: buttonH };
+  const maxW = evalLen(d["max-width"], wCtx);
+  const maxH = evalLen(d["max-height"], hCtx);
+  let w = evalLen(d.width, wCtx);
+  let h = evalLen(d.height, hCtx);
+  const ratio = d["aspect-ratio"] && d["aspect-ratio"].replace(/\s+/g, "").includes("--nxa-ar") ? ar : null;
+  if (w == null && h != null && ratio) w = h * ratio;
+  if (h == null && w != null && ratio) h = w / ratio;
+  if (maxW != null && w > maxW) { w = maxW; if (ratio) h = w / ratio; }
+  if (maxH != null && h > maxH) { h = maxH; if (ratio) w = Math.min(h * ratio, maxW == null ? Infinity : maxW); }
+  return { w, h, d };
+}
+function columnGap(width) {
+  const d = winning(sizePred("top"), width, {});
+  const g = evalLen(d.gap, { ar: 1, pct: 0 });
+  return g == null ? 12 : g;
+}
+function overlaps(a, b) {
+  return Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0.5
+    && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0.5;
+}
+function measuredTitle(name, fontSize) {
+  const table = fontSize <= 22 ? TITLE_22 : TITLE_24;
+  const w = table[name];
+  if (w == null) throw new Error("no title width for " + name);
+  return w;
+}
+function measuredMuscle(name) {
+  const w = MUSCLE_PX[name];
+  if (w == null) throw new Error("no muscle width for " + name);
+  return w;
+}
+function contentWidth(width) {
+  const gutter = width <= 390 ? 11 : 14;
+  return { gutter, contentW: width - gutter * 2 };
+}
+function figureYields(width) {
+  const top = winning(sizePred("top"), width, {});
+  const text = winning(sizePred("textcol"), width, {});
+  const min = (text["min-width"] || "").replace(/\s+/g, "");
+  return top.display === "flex" && min.includes("max-content");
+}
+function titleLineCount(titlePx, columnW) {
+  const col = Math.max(columnW, 1);
+  return titlePx <= col + 0.01 ? 1 : Math.ceil(titlePx / col);
+}
+function anatomyBudget(width) {
+  return width <= 359 ? 10 : 16;
+}
+function rowHeight(titlePx, musclePx, columnW, fontSize) {
+  const col = Math.max(columnW, 1);
+  const titleLines = titleLineCount(titlePx, col);
+  const muscleLines = musclePx <= col + 0.01 ? 1 : Math.ceil(musclePx / col);
+  return TEXT_ROW
+    + Math.max(0, titleLines - 1) * fontSize * 1.1
+    + Math.max(0, muscleLines - 1) * 12.5 * 1.4;
+}
+function layoutAt(width, ar, show, name) {
+  const { gutter, contentW } = contentWidth(width);
+  const fontSize = width <= 359 ? 22 : 24;
+  const titlePx = measuredTitle(name, fontSize);
+  const musclePx = measuredMuscle(name);
+  const gap = columnGap(width);
+  if (!show) {
+    const head = rowHeight(titlePx, musclePx, contentW, fontSize);
+    return {
+      head, log: logBottom(width, head), gutter, contentW, gap,
+      titleLines: titleLineCount(titlePx, contentW),
+      title: { left: gutter, right: gutter + contentW, top: 0, bottom: head }
+    };
+  }
+  const btnNom = buttonBox(width, ar);
+  const need = Math.max(titlePx, musclePx);
+  let textW;
+  let btnW;
+  if (figureYields(width)) {
+    const floor = Math.min(contentW, need);
+    const room = contentW - floor - gap;
+    if (room >= btnNom.w) {
+      btnW = btnNom.w;
+      textW = contentW - gap - btnW;
+    } else if (room >= 0) {
+      btnW = room;
+      textW = floor;
+    } else {
+      btnW = 0;
+      textW = Math.min(contentW, floor);
+    }
+  } else {
+    btnW = btnNom.w;
+    textW = contentW - gap - btnW;
+  }
+  const btn = { w: btnW, h: btnNom.h, d: btnNom.d };
+  const svgNom = svgBox(width, ar, btnNom.w, btnNom.h);
+  let svg = svgNom;
+  if (btnW < btnNom.w - 0.01) {
+    let w = btnW;
+    let h = ar > 0 ? w / ar : 0;
+    if (h > btn.h) { h = btn.h; w = Math.min(btnW, h * ar); }
+    svg = { w, h, d: svgNom.d };
+  }
+  const inFlow = svg.d.position !== "absolute";
+  const textH = rowHeight(titlePx, musclePx, textW, fontSize);
+  const titleLines = titleLineCount(titlePx, textW);
+  const head = Math.max(textH, inFlow ? Math.max(btn.h, svg.h) : btn.h);
+  const anat = {
+    left: gutter + textW + (btnW > 0 ? gap : 0),
+    right: gutter + textW + (btnW > 0 ? gap : 0) + btnW,
+    top: 0,
+    bottom: inFlow ? Math.max(btn.h, svg.h) : btn.h,
+    w: btnW, h: btn.h
+  };
+  const aim = {
+    left: gutter, right: gutter + contentW,
+    top: head, bottom: head + (width <= 359 ? 96 : 48)
+  };
+  const title = { left: gutter, right: gutter + textW, top: 0, bottom: textH };
+  return { head, log: logBottom(width, head), gutter, contentW, gap, btn, svg, anat, aim, title, titleLines };
+}
+function logBottom(width, head) {
+  const aim = width <= 359 ? 96 : 48;
+  const form = 52 + 12 + 52 + 12 + 44 + 12 + 50;
+  return 120 + head + 12 + aim + form;
+}
+function cropInfo(name) {
+  const m = app.NXTLIB.musclesFor(name);
+  const view = app.NXTANAT.viewFor(m.primary, []);
+  const crop = app.NXTANAT.cropFor(m.primary, view);
+  const front = app.NXTANAT.cropFor(m.primary, "front");
+  const back = app.NXTANAT.cropFor(m.primary, "back");
+  return { m, view, crop, front, back, ar: Number((crop[2] / crop[3]).toFixed(3)), raw: crop[2] / crop[3] };
+}
+function withQueue(list, fn) {
+  const prev = app.template;
+  const prevEx = state.exercise;
+  const snap = { active: NXP.ui.trainActive, last: NXP.ui.lastExercise, idx: NXP.ui.lastIndex };
+  app.template = () => list.slice();
+  try { fn(); }
+  finally {
+    app.template = prev;
+    state.exercise = prevEx;
+    NXP.ui.trainActive = snap.active;
+    NXP.ui.lastExercise = snap.last;
+    NXP.ui.lastIndex = snap.idx;
+  }
+}
+function renderQueued(name) {
+  assert.ok(app.template().some(e => e.name === name), name + " is outside the session queue");
+  state.dayType = "FullA";
+  state.gym = "Gym A";
+  state.logs = [];
+  state.exercise = name;
+  state.setNum = 1;
+  NXP.ui.trainActive = true;
+  NXP.training();
+  assert.strictEqual(state.exercise, name, "Train did not keep " + name);
+  return page.innerHTML;
+}
+function viewBoxOf(html) {
+  const boxes = [...html.matchAll(/<svg class="nxa"[^>]*viewBox="([^"]+)"/g)];
+  return boxes.map(m => m[1].trim().split(/\s+/).map(Number));
+}
+function motionPred(which, flags) {
+  return function (sel) {
+    if (/:active|:focus|::/.test(sel)) return null;
+    if (sel.includes(".is-back")) return null;
+    if (sel.includes(".is-forward") && !flags.forward) return null;
+    if (/data-nxp-motion/.test(sel) && !flags.attr) return null;
+    if (which === "text") {
+      if (sel.endsWith(".nxp-ex-text")) return specOf(sel);
+    } else if (sel.endsWith(".nxp-ex-anat")) return specOf(sel);
+    if (sel === ".nxp *") return specOf(sel);
+    if (flags.attr && /\*\s*$/.test(sel) && /data-nxp-motion/.test(sel)) return specOf(sel);
+    return null;
+  };
+}
+function quiet(value) {
+  if (value == null) return true;
+  const s = value.replace(/\s+/g, "").toLowerCase();
+  return s === "none" || s === "0s" || s === "0ms";
+}
+
+test("anatomy stays inside the D18 budget at 390, 393, 402, 430, 375 and 320", () => {
+  const long = "Chest Supported T-Bar Row";
+  assert.ok(FULL_A.some(e => e.name === long), long + " is not in the Full A queue");
+  assert.ok(figureYields(390), "the text column does not keep its max-content width");
+  for (const width of [390, 393, 375]) {
+    const beside = contentWidth(width).contentW - columnGap(width) - buttonBox(width, cropInfo(long).ar).w;
+    assert.ok(measuredTitle(long, 24) > beside,
+      long + " still fits beside a full figure at " + width + " (" + beside.toFixed(1) + "px)");
+  }
+  withQueue(FULL_A, () => {
+    for (const name of FULL_A.map(e => e.name)) {
+      const info = cropInfo(name);
+      const html = renderQueued(name);
+      assert.strictEqual(viewBoxOf(html).length, 1, name + " should be one view");
+      const rendered = (html.match(/class="nxp-ex-title"[^>]*>([^<]*)</) || [])[1];
+      assert.strictEqual(rendered, name, name + " title is missing or truncated in the markup");
+      for (const width of ANAT_WIDTHS) {
+        const on = layoutAt(width, info.ar, true, name);
+        const off = layoutAt(width, info.ar, false, name);
+        /* Budget, not a simulated wrap. This model cannot reproduce the
+           browser's text wrap, so head and Log Set costs are the differences
+           it does compute, checked against D18: <=16px at >=360, <=10px at
+           <=359. One extra title line is the most the contract allows. */
+        const budget = anatomyBudget(width);
+        const headCost = on.head - off.head;
+        const logCost = on.log - off.log;
+        const extraLines = on.titleLines - off.titleLines;
+        assert.strictEqual(on.svg.d.position, "absolute", name + " figure is in flow at " + width);
+        assert.ok(headCost <= budget,
+          name + " head cost " + headCost + "px exceeds " + budget + "px at " + width
+          + " (on " + on.head + ", off " + off.head + ")");
+        assert.ok(logCost <= budget,
+          name + " Log Set cost " + logCost + "px exceeds " + budget + "px at " + width
+          + " (on " + on.log + ", off " + off.log + ")");
+        assert.ok(extraLines <= 1,
+          name + " adds " + extraLines + " title lines at " + width
+          + " (on " + on.titleLines + ", off " + off.titleLines + ")");
+        assert.ok(on.btn.h <= TEXT_ROW + 0.01, name + " button grows the row at " + width);
+        const fontSize = width <= 359 ? 22 : 24;
+        assert.ok(on.title.right - on.title.left + 0.01 >= Math.min(contentWidth(width).contentW, measuredTitle(name, fontSize)),
+          name + " title column lost a line's width at " + width);
+        const style = winning(sizePred("title"), width, {});
+        assert.strictEqual(style["white-space"], "normal", name + " title cannot wrap at " + width);
+        assert.strictEqual(style.overflow, "visible", name + " title is clipped at " + width);
+        assert.ok(!style["text-overflow"] || style["text-overflow"] === "clip",
+          name + " title is ellipsised at " + width + " (" + style["text-overflow"] + ")");
+        assert.ok(!style["line-clamp"] && !style["-webkit-line-clamp"],
+          name + " title is line-clamped at " + width);
+      }
+    }
+  });
+});
+
+test("anatomy never intersects the Last, Target and Rest strip", () => {
+  for (const name of ANAT_NAMES) {
+    const info = cropInfo(name);
+    for (const width of ANAT_WIDTHS) {
+      const box = layoutAt(width, info.ar, true, name);
+      assert.strictEqual(box.btn.d.overflow, "hidden", "figure can paint outside the button");
+      assert.ok(!overlaps(box.anat, box.aim), name + " crosses the aim strip at " + width
+        + " anat " + box.anat.bottom + " aim " + box.aim.top);
+      assert.ok(box.svg.h <= box.btn.h + 0.05, name + " svg taller than its button at " + width);
+    }
+  }
+});
+
+test("the exercise title stays whole at 320", () => {
+  withQueue(FULL_A, () => {
+    const name = "Chest Supported T-Bar Row";
+    const html = renderQueued(name);
+    const title = (html.match(/class="nxp-ex-title"[^>]*>([^<]*)</) || [])[1];
+    assert.strictEqual(title, name);
+    const style = winning(sizePred("title"), 320, {});
+    assert.strictEqual(style["white-space"], "normal");
+    assert.strictEqual(style.overflow, "visible");
+    assert.ok(!style["text-overflow"] || style["text-overflow"] === "clip");
+    const info = cropInfo(name);
+    const box = layoutAt(320, info.ar, true, name);
+    const titleW = box.title.right - box.title.left;
+    assert.ok(titleW >= 160, "title column is " + titleW + "px");
+    assert.ok(!overlaps(box.title, box.anat), "figure covers the title");
+    for (const other of ANAT_NAMES) {
+      const view = renderQueued(other);
+      const text = (view.match(/class="nxp-ex-title"[^>]*>([^<]*)</) || [])[1];
+      assert.strictEqual(text, other);
+    }
+  });
+});
+
+test("reduced motion swaps the exercise with no transition or animation", () => {
+  withQueue(FULL_A, () => {
+    NXP.ui.lastExercise = "Incline Dumbbell Press";
+    NXP.ui.lastIndex = 0;
+    const html = renderQueued("Chest Supported T-Bar Row");
+    assert.ok(html.includes("is-forward"), "exercise change did not mark the head");
+  });
+  const live = winning(motionPred("anat", { forward: true, attr: false }), 390, {});
+  assert.ok(/nxp-ex-anat-enter/.test(live.animation || ""), "change animation missing: " + live.animation);
+  assert.ok(/200ms/.test(live.animation || ""));
+  const reduced = winning(motionPred("anat", { forward: true, attr: false }), 390, { reduced: true });
+  const reducedText = winning(motionPred("text", { forward: true, attr: false }), 390, { reduced: true });
+  assert.ok(quiet(reduced.animation), "anatomy animation " + reduced.animation);
+  assert.ok(quiet(reduced.transition), "anatomy transition " + reduced.transition);
+  assert.ok(quiet(reducedText.animation), "title animation " + reducedText.animation);
+  assert.ok(quiet(reducedText.transition), "title transition " + reducedText.transition);
+  const attr = winning(motionPred("anat", { forward: true, attr: true }), 390, { attr: true });
+  assert.ok(quiet(attr.animation) && quiet(attr.transition), "data-nxp-motion still animates");
+  assert.ok(/@media \(prefers-reduced-motion:reduce\)\{[\s\S]*\.nxp-ex-anat[\s\S]*?animation:none;[\s\S]*?transition:none/.test(css));
+  assert.ok(/data-nxp-motion="reduced"[\s\S]*\.nxp-ex-anat[\s\S]*?animation:none/.test(css));
+  const kfAt = premCss.indexOf("@keyframes nxp-ex-anat-enter");
+  const kf = premCss.slice(kfAt, premCss.indexOf("}", premCss.indexOf("}", kfAt) + 1) + 1);
+  assert.ok(/opacity:\s*0/.test(kf) && /opacity:\s*1/.test(kf));
+  assert.strictEqual(/transform|scale|rotate/.test(kf), false);
+});
+
+test("size clamps hold at both breakpoints and the svg keeps the crop aspect", () => {
+  const wideCap = { w: 72, h: 64 };
+  const narrowCap = { w: 64, h: 56 };
+  withQueue(FULL_A, () => {
+    for (const name of ANAT_NAMES) {
+      const info = cropInfo(name);
+      const html = renderQueued(name);
+      const boxes = viewBoxOf(html);
+      assert.ok(boxes[0].length === info.crop.length && boxes[0].every((n, i) => n === info.crop[i]),
+        name + " viewBox " + boxes[0].join(" ") + " vs " + info.crop.join(" "));
+      const attr = Number((html.match(/--nxa-ar:([0-9.]+)/) || [])[1]);
+      assert.strictEqual(attr, info.ar, name + " --nxa-ar");
+      const expectBack = name === "Chest Supported T-Bar Row" || name === "Hamstring Curl";
+      assert.strictEqual(info.view, expectBack ? "back" : "front", name + " view " + info.view);
+      if (expectBack) {
+        const sameFront = info.crop.length === info.front.length && info.crop.every((n, i) => n === info.front[i]);
+        assert.strictEqual(sameFront, false, name + " used the front crop");
+      }
+      for (const [width, cap, tall] of [[390, wideCap, true], [360, wideCap, true], [359, narrowCap, false], [320, narrowCap, false]]) {
+        const btn = buttonBox(width, info.ar);
+        const svg = svgBox(width, info.ar, btn.w, btn.h);
+        assert.ok(btn.w <= cap.w + 0.05 && btn.h <= cap.h + 0.05,
+          name + " button " + btn.w.toFixed(2) + "x" + btn.h.toFixed(2) + " at " + width + " over " + cap.w + "x" + cap.h);
+        assert.ok(svg.w <= cap.w + 0.05 && svg.h <= cap.h + 0.05,
+          name + " svg " + svg.w.toFixed(2) + "x" + svg.h.toFixed(2) + " at " + width);
+        if (tall) assert.ok(btn.h > 60, name + " wide button collapsed to " + btn.h + " at " + width);
+        else assert.ok(Math.abs(btn.h - 56) < 0.05, name + " narrow height " + btn.h + " at " + width);
+        const aspect = svg.w / svg.h;
+        assert.ok(Math.abs(aspect - info.raw) < 0.02, name + " aspect " + aspect.toFixed(3) + " vs crop " + info.raw.toFixed(3) + " at " + width);
+        assert.ok(Math.abs(aspect - info.ar) < 0.01, name + " aspect drifted from --nxa-ar");
+      }
+    }
+  });
+});
+
+test("an unmapped exercise renders no figure", () => {
+  withQueue(FULL_A, () => {
+    state.dayType = "FullA";
+    state.exercise = "Mystery Lift";
+    state.logs = [];
+    NXP.ui.trainActive = true;
+    NXP.training();
+    assert.strictEqual(state.exercise, FULL_A[0].name, "a name outside the queue was kept");
+  });
+  const queued = FULL_A.concat([{ name: "Mystery Lift", sets: 3, reps: [8, 12], inc: 2.5 }]);
+  withQueue(queued, () => {
+    const known = renderQueued("Incline Dumbbell Press");
+    assert.ok(known.includes("nxp-ex-anat"));
+    const bare = renderQueued("Mystery Lift");
+    const muscles = app.NXTLIB.musclesFor("Mystery Lift");
+    assert.strictEqual(muscles.primary.length, 0);
+    assert.strictEqual(app.NXTLIB.has("Mystery Lift"), false);
+    assert.strictEqual(bare.includes("nxp-ex-anat"), false);
+    assert.strictEqual(bare.includes('class="nxa"'), false);
+    assert.ok(bare.includes("Mystery Lift"));
+  });
 });
 
 await testAsync("blur returns Log Set to the form", async () => {

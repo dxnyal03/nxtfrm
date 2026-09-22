@@ -869,3 +869,94 @@ the delegation. Waiters now match the delegation's own prompt text.
 - Architecture: Train styling still spans `premium-ui.css` (166 rules) and `vnext.css` (139).
   Legacy `renderTrain` remains in `index.html` and `cut-support.js`, superseded by `NXP.training`
   at load order. **Documented as cleanup candidates, not touched** — D5 gates removal.
+
+---
+
+# CLAUDE REVIEW — ANATOMY CONTRACT (D18) + EXERCISE DETAILS
+
+Implemented on `grok-4.7-high-fast` across three rounds; two rounds ended on Cursor-side
+network/turn failures with partial work, which I verified piece by piece rather than
+relaunching blind.
+
+## A. THE DECISION THAT SHAPED THIS
+
+The owner chose to keep the existing active-Train treatment over contained or bleeding
+alternatives, on evidence rather than taste: anatomy already cost **0px** vertically, already
+had no background/border/radius, and `cropFor()` already cropped to the mapped region. Both
+proposed options would have been departures from something that already met the product rule
+at zero cost.
+
+## B. CONTRACT FORMALISED
+
+`vnext.css` now carries the contract as a commented, binding block. The implementation is
+better than specified: the figure is `position:absolute`, so **0px cost is structural**, and
+`--nxa-ar` carries the crop's own aspect into `width:min(72px, calc(64px * var(--nxa-ar,1)))`
+with `aspect-ratio:var(--nxa-ar,1)`.
+
+Verified at all six widths, every FullA exercise:
+
+| Width | Cap | Result |
+|---|---|---|
+| 390 / 393 / 402 / 430 / 375 | 72 × 64 | all within cap |
+| 320 | 64 × 56 | all exactly 56 high |
+
+Aspect matches `NXTANAT.cropFor` exactly for front **and** back exercises — Incline Press
+1.70, T-Bar Row 1.388, Hamstring Curl 0.901, Ab Crunch 0.690, Lateral Raise 1.704. One view
+only on Train; unmapped renders nothing.
+
+## C. D18 — THE BUDGET, AND WHY IT EXISTS
+
+Strict 0px and "anatomy is present" cannot both hold for long names. Anatomy takes ~70px
+horizontally, narrowing the title column 354→282, so a 25-character name wraps an extra line.
+Isolated precisely: `visibility:hidden` (space kept) left the head at 77px; `display:none`
+(space freed) returned it to 64px. It was never the figure's own height.
+
+The owner amended the contract rather than delete anatomy from a default exercise.
+**Measured against the approved budget:**
+
+| Width | Budget | Worst case |
+|---|---|---|
+| 402 / 430 | 16px | **0px**, all six exercises |
+| 390 / 393 / 375 | 16px | **13px head / 14px Log Set** — *Chest Supported T-Bar Row* only |
+| 320 | 10px | **7px / 7px** — same exercise only |
+
+Exactly **one of six** template exercises ever costs anything, at four of six widths.
+
+## D. A TESTING GAP WORTH RECORDING
+
+`verify-train.mjs`'s 0px check was a genuine assertion — `assert.strictEqual(on.head, off.head)`,
+never weakened. But it runs in a **Node layout model**, which cannot reproduce real text
+wrapping: it reported 0px while Chromium measured 13px.
+
+Checking further, `verify-2f`, `2g`, `2h` and `train` have **no Playwright import at all** —
+all four are simulations. Only `2a`–`2e` are browser-backed.
+
+So I added **`tasks/vnext/verify-train-browser.mjs`** as the authoritative wrap check the owner
+required. Real Chromium, every FullA exercise at all six widths, asserting: the D18 cost
+budget, at most one extra title line, the title never truncated and always the full name, size
+caps at both breakpoints, and no overlap with the aim strip. **294 passed, 0 failed.** Its
+header states why it exists and that it, not the model, decides the wrap case.
+
+It launches with `channel:'chrome'`, matching the other browser scripts, after a plain launch
+failed on a missing downloaded Playwright build.
+
+## E. EXERCISE DETAILS
+
+Audited rendered before commissioning anything: it already had the front+back pair (174×190 at
+390, 139×190 at 320), FRONT/BACK labels, Primary and Secondary as **text** as well as colour,
+Target/Rest/Increment/Equipment, the baseline note and real session history, with no sub-44pt
+targets and no overflow. It already met INSTRUMENT.
+
+The single genuine gap was **Swap Exercise**, now present and reusing the existing
+`showSubstituteSheet()` rather than a second flow. It renders as a **quiet text action** —
+transparent, borderless, `--vn-ink-2`, 364×44 — placed after the note action, so it reads as a
+considered option rather than the sheet's primary control. Its comment records that the sheet
+writes today's session plan only and leaves history and the base programme untouched.
+
+## F. REGRESSION
+
+16 suites / 458 tests / 0 failing. **All eleven verify scripts green**, including the six
+browser-backed ones. `cut-support.js`, `index.html`, `train-anatomy.js`, `sw.js`,
+`manifest.webmanifest`, `wearables.*` and `seed.*` all untouched. `RELEASE`/`CACHE_NAME` at
+`109`. `train-anatomy.js` was explicitly out of bounds and stayed that way — the mapping
+remains 106/107 catalogue, 21/21 templates.
