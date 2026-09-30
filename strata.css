@@ -508,6 +508,7 @@ button.st-tile:active{transform:scale(.985)}
 .st-ex h2{margin:4px 0 0}
 .st-ex-title{padding:0;border:0;background:none;color:var(--st-ink);text-align:left;cursor:pointer;font:640 30px/1.08 var(--st-font-d);letter-spacing:-.035em}
 .st-ex-mus{margin:8px 0 0;font:500 14px/1.4 var(--st-font);color:var(--st-accent-lift)}
+.st-ex-note{margin:6px 0 0;font:450 13px/1.4 var(--st-font);color:var(--st-ink-3)}
 .st-ex-mus span{color:var(--st-ink-3);font-weight:450}
 .st-ex-fig{flex:none;width:64px;height:112px;padding:0;border:0;background:none;cursor:pointer;filter:drop-shadow(0 8px 18px rgba(139,92,246,.35))}
 .st-ex-fig .nxa{width:100%;height:100%}

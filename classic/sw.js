@@ -1,5 +1,5 @@
-const RELEASE = '110';
-const CACHE_NAME = 'nxtfrm-v110-premium-cache';
+const RELEASE = '109';
+const CACHE_NAME = 'nxtfrm-v109-premium-cache';
 
 // The offline shell. Versioned URLs match exactly what index.html requests, so
 // a cold start offline serves the same files the page asks for rather than an
@@ -11,8 +11,6 @@ const VERSIONED = [
   'premium-ui.js',
   'premium-ui.css',
   'vnext.css',
-  'strata.css',
-  'strata.js',
   'wearables.js',
   'wearables.adapters.js',
   'wearables.ingest.js',

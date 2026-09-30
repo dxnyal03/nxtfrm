@@ -90,7 +90,7 @@ const NXP = (() => {
     const nextLine=`Next session · ${N.label(N.typeFor(nextDate))} tomorrow`;
     const weekLogged=N.completedWeek();
     const weekStart=N.weekStart();
-    const weekShort={FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Rest:'Rest',Floorball:'FB',Push:'Push',Pull:'Pull',Legs:'Legs',Pump:'Legs+'};
+    const weekShort={FullA:'A',FullB:'B',FullC:'C',Zone2:'Walk',Rest:'Rest',Floorball:'FB'};
     const weekStrip=`<div class="vn-week" role="list">${Array.from({length:7},(_,i)=>{
       const d=N.dateAdd(weekStart,i),t=N.typeFor(d),complete=work.some(row=>row.date===d),isToday=d===state.date;
       const short=weekShort[t]||String(t).slice(0,3);
@@ -99,32 +99,30 @@ const NXP = (() => {
     }).join('')}</div>`;
     function liftDays(t){return !['Rest','Zone2','Floorball'].includes(t);}
     const textAct=(label,fn,mute)=>`<button type="button" class="vn-text${mute?' is-mute':''}" onclick="${esc(fn)}">${label}</button>`;
-    N.logSuggestion({kind:"review",subject:null,payload:{title:r.title,action:r.action,tone:r.tone,reason:r.reason}});
-    const logged=list.reduce((a,e)=>a+Math.min(N.done(e.name),Number(e.sets)),0);
-    const trainTile=lift?`
-      <article class="st-tile st-t-train" style="--c:var(--st-lift)">
-        <div class="st-tile-head"><span class="st-cat">${finished?'Workout saved':'Today’s training'}</span>${textAct('Change','showSessionSheet()',true)}</div>
-        <div class="st-train-row">
-          <div class="st-train-id">
-            <h2 class="st-h2">${esc(N.label(state.dayType))}</h2>
-            <p class="st-meta">${list.length} exercises · ${sets} working sets · ${esc(state.gym||'Gym')}</p>
-          </div>
-          ${logged?ringHTML(logged,sets,'sets','var(--st-lift)'):''}
+    const trainBlock=lift?`
+      <div class="vn-pad vn-sect">
+        <div class="vn-sect-head">
+          <p class="vn-sect-t">${finished?'Workout saved':'Today’s training'}</p>
+          ${textAct('Change','showSessionSheet()',true)}
         </div>
-        <button type="button" class="st-cta" onclick="${esc(finished?"switchTab('train')":action)}">${esc(title)}<span aria-hidden="true">›</span></button>
-        ${lastLiftLine?`<p class="st-meta st-mt2 st-center">${esc(lastLiftLine)}</p>`:''}
-        <div class="st-tweek"><div class="st-tweek-h"><span>This week · ${weekLogged} lifting ${weekLogged===1?'day':'days'}</span>${textAct('Edit plan ›',"NXT.more('training')",true)}</div>${weekStrip}</div>
-      </article>`:`
-      <article class="st-tile st-t-train" style="--c:${state.dayType==='Zone2'?'var(--st-cardio)':state.dayType==='Floorball'?'var(--st-floor)':'var(--st-rest)'}">
-        <div class="st-tile-head"><span class="st-cat">Today</span>${textAct('Change','showSessionSheet()',true)}</div>
-        <h2 class="st-h2">${esc(N.label(state.dayType))}</h2>
-        <p class="st-body st-mt2">${state.dayType==='Rest'?'A planned recovery day. Nothing is scheduled.':state.dayType==='Zone2'?'An easy, conversational effort. No lifting session is due.':'Hard conditioning day. Log duration and effort.'}</p>
-        ${state.dayType==='Rest'?'':`<button type="button" class="st-cta" onclick="${esc(action)}">${esc(title)}<span aria-hidden="true">›</span></button>`}
-        <div class="vn-rows st-mt3">
+        <h2 class="vn-h2">${esc(N.label(state.dayType))}</h2>
+        <p class="vn-meta vn-mt1">${list.length} exercises · ${sets} working sets · ${esc(state.gym||'Gym')}</p>
+        <button type="button" class="vn-act vn-mt4" onclick="${esc(finished?"switchTab('train')":action)}">${esc(title)}</button>
+        ${lastLiftLine?`<p class="vn-meta vn-mt5">${esc(lastLiftLine)}</p>`:''}
+      </div>`:`
+      <div class="vn-pad vn-sect">
+        <div class="vn-sect-head">
+          <p class="vn-sect-t">Today</p>
+          ${textAct('Change','showSessionSheet()',true)}
+        </div>
+        <h2 class="vn-h2">${esc(N.label(state.dayType))}</h2>
+        <p class="vn-body vn-mt2">${state.dayType==='Rest'?'A planned recovery day. Nothing is scheduled.':state.dayType==='Zone2'?'An easy, conversational effort. No lifting session is due.':'Hard conditioning day. Log duration and effort.'}</p>
+        ${state.dayType==='Rest'?'':`<button type="button" class="vn-act vn-mt4" onclick="${esc(action)}">${esc(title)}</button>`}
+        <div class="vn-rows vn-mt4">
           <button type="button" class="vn-row" onclick="apx95OpenQuickWeight()">
             <span class="vn-row-l"><span class="vn-row-t">Morning weight</span>
             <span class="vn-row-s">${morning?`Logged · ${morning.weight.toFixed(1)} kg`:'Not logged yet'}</span></span>
-            ${morning?'':`<span class="vn-row-v st-accent-t">Log</span>`}
+            ${morning?'':`<span class="vn-row-v" style="color:var(--vn-violet-lift);font-weight:540">Log</span>`}
             <i class="vn-chev" aria-hidden="true">›</i>
           </button>
           ${addOnEligible()?`<button type="button" class="vn-row" onclick="NXP.addOnPick()">
@@ -133,54 +131,75 @@ const NXP = (() => {
             <i class="vn-chev" aria-hidden="true">›</i>
           </button>`:''}
         </div>
-        <p class="st-meta st-mt3">${esc(nextLine)}</p>
-        <div class="st-tweek"><div class="st-tweek-h"><span>This week · ${weekLogged} lifting ${weekLogged===1?'day':'days'}</span>${textAct('Edit plan ›',"NXT.more('training')",true)}</div>${weekStrip}</div>
-      </article>`;
-    document.getElementById('homePage').innerHTML=`<div class="vn-today st-today">
+        <p class="vn-meta vn-mt5">${esc(nextLine)}</p>
+      </div>`;
+    N.logSuggestion({kind:"review",subject:null,payload:{title:r.title,action:r.action,tone:r.tone,reason:r.reason}});
+    document.getElementById('homePage').innerHTML=`<div class="vn-today">
       <div class="vn-pad">
-        <header class="st-head">
+        <div class="vn-head">
           <div>
-            <p class="st-eyebrow">${esc(weekday)}</p>
-            <h1 class="st-h1">${esc(dateLine)}</h1>
+            <p class="vn-eyebrow">${esc(weekday)}</p>
+            <h1 class="vn-h1 vn-mt1">${esc(dateLine)}</h1>
           </div>
-          ${lift?`<button type="button" class="st-chip" onclick="cycleGym()">${esc(state.gym||'Gym')}<span aria-hidden="true">⇄</span></button>`:''}
-        </header>
-        <div class="st-bento">
-          ${trainTile}
-          <div class="st-minis">
-            ${weightTileHTML()}
-            <button type="button" class="st-tile st-mini" style="--c:var(--st-cardio)" onclick="showCardioSheet()">
-              <span class="st-cat">Cardio</span>
-              <span class="st-mini-v"><b class="vn-num">${cardioMins}</b><small>/${cardioTarget}</small></span>
-              <span class="st-mini-bar"><i style="width:${Math.min(100,cardioTarget?cardioMins/cardioTarget*100:0).toFixed(0)}%"></i></span>
-              <span class="st-meta">min · week</span>
-            </button>
-            <button type="button" class="st-tile st-mini" style="--c:var(--st-lift)" onclick="NXT.ui.view='strength';switchTab('weight')">
-              <span class="st-cat">Lifts</span>
-              <span class="st-mini-v st-mini-w">${esc(perfLabel)}</span>
-              <span class="st-meta">${lifts.length} tracked</span>
-            </button>
+          ${lift?textAct(esc(state.gym||'Gym')+' ›','cycleGym()',true):''}
+        </div>
+        <section class="vn-surface vn-focal${toneClass}" aria-labelledby="vn-dec-h">
+          <p class="vn-eyebrow">NXTFRM decision</p>
+          <h2 class="vn-h3 vn-mt2" id="vn-dec-h">${esc(r.title)}</h2>
+          ${support?`<p class="vn-body vn-mt2">${esc(support)}</p>`:''}
+          <div class="vn-hstack vn-mt4">
+            <span class="vn-evid">Trend<b class="vn-num">${esc(trendEv)}</b></span>
+            <span class="vn-evid">Confidence<b>${esc(confEv)}</b></span>
           </div>
-          <section class="st-tile st-t-dec${toneClass}" aria-labelledby="vn-dec-h" style="--c:var(--st-accent)">
-            <div class="st-tile-head"><span class="st-cat">NXTFRM decision</span><button type="button" class="st-link" onclick="NXT.openReview()">Why<span aria-hidden="true">›</span></button></div>
-            <h2 class="st-h3" id="vn-dec-h">${esc(r.title)}</h2>
-            ${support?`<p class="st-body st-mt2">${esc(support)}</p>`:''}
-            <div class="st-evid st-mt3">
-              <span>Trend<b class="vn-num">${esc(trendEv)}</b></span>
-              <span>Confidence<b>${esc(confEv)}</b></span>
-            </div>
-          </section>
-          ${bodyTileHTML()}
+          <div class="vn-mt3">${textAct('Why this call ›','NXT.openReview()')}</div>
+        </section>
+      </div>
+
+      ${trainBlock}
+
+      <div class="vn-pad vn-sect">
+        <p class="vn-sect-t" style="margin-bottom:var(--vn-s3)">Current state</p>
+        <div class="vn-rows">
+          <button type="button" class="vn-row" onclick="switchTab('weight')">
+            <span class="vn-row-l"><span class="vn-row-t">Weight</span>
+              <span class="vn-row-s">7-day mean ${esc(mean)} kg</span></span>
+            <span class="vn-row-v vn-num">${esc(weekly)}${s.change===null?'':` <small>kg/wk</small>`}</span>
+            <i class="vn-chev" aria-hidden="true">›</i>
+          </button>
+          <button type="button" class="vn-row" onclick="NXT.ui.view='strength';switchTab('weight')">
+            <span class="vn-row-l"><span class="vn-row-t">Performance</span>
+              <span class="vn-row-s">${esc(perfSub)}</span></span>
+            <span class="vn-row-v"><span class="vn-status ${perfTone}"><i aria-hidden="true"></i>${esc(perfLabel)}</span></span>
+            <i class="vn-chev" aria-hidden="true">›</i>
+          </button>
+          <button type="button" class="vn-row" onclick="showCardioSheet()">
+            <span class="vn-row-l"><span class="vn-row-t">Cardio</span>
+              <span class="vn-row-s">This week</span></span>
+            <span class="vn-row-v vn-num">${cardioMins} <small>/ ${cardioTarget} min</small></span>
+            <i class="vn-chev" aria-hidden="true">›</i>
+          </button>
         </div>
       </div>
 
-      <nav class="vn-pad st-quick" aria-label="Quick actions">
-        <button type="button" class="st-qa" style="--c:var(--st-weight)" onclick="apx95OpenQuickWeight()"><span aria-hidden="true">+</span>Weight</button>
-        ${state.dayType==='Zone2'?'':`<button type="button" class="st-qa" style="--c:var(--st-cardio)" onclick="showCardioSheet()"><span aria-hidden="true">+</span>Cardio</button>`}
-        <button type="button" class="st-qa" style="--c:var(--st-rest)" onclick="apx96OpenReadiness()"><span aria-hidden="true">+</span>Check-in</button>
+      <div class="vn-pad vn-sect">
+        <div class="vn-sect-head">
+          <p class="vn-sect-t">Your week</p>
+          <span class="vn-tiny">${weekLogged} lifting ${weekLogged===1?'day':'days'} logged</span>
+        </div>
+        ${weekStrip}
+        <div class="vn-sect-head" style="margin-top:var(--vn-s3);margin-bottom:0">
+          <span class="vn-tiny">${cardioMins} / ${cardioTarget} cardio min</span>
+          ${textAct('Edit plan ›',"NXT.more('training')",true)}
+        </div>
+      </div>
+
+      <nav class="vn-pad vn-quick" aria-label="Quick actions">
+        ${textAct('+ Weight','apx95OpenQuickWeight()')}
+        ${state.dayType==='Zone2'?'':textAct('Log cardio','showCardioSheet()')}
+        ${textAct('Check-in','apx96OpenReadiness()')}
       </nav>
 
-      <details class="vn-more vn-pad st-more">
+      <details class="vn-more vn-pad">
         <summary>More for today</summary>
         <div class="vn-more-body">
           ${recoveryHomeCard()}
@@ -189,117 +208,6 @@ const NXP = (() => {
         </div>
       </details>
     </div>`;
-  }
-  /* ---- Today tiles (Strata direction, D19) --------------------------------
-     Every figure is read from the engine: the trend series is N.trend() over
-     N.weights() (the same canonical rows chartModel() plots), weekly means are
-     N.windowStats(), scans come from the saved Evo records. Nothing here
-     computes a new statistic or a score. */
-  /* Progress as a number with a thin bar under it (no rings: they read as
-     empty at a glance). */
-  function ringHTML(value,target,unit,color) {
-    const v=Math.max(0,Number(value)||0),tg=Math.max(1,Number(target)||1),pct=Math.min(100,v/tg*100);
-    return `<span class="st-count" style="--rc:${color}" role="img" aria-label="${v} of ${tg} ${esc(unit)}"><span class="st-count-v"><b class="vn-num">${v}</b><small>/${tg}</small></span><span class="st-count-u">${esc(unit)}</span><span class="st-count-bar"><i style="width:${pct.toFixed(0)}%"></i></span></span>`;
-  }
-  function heroTileHTML() {
-    const rows=N.weights();
-    if(!rows.length)return `<article class="st-tile st-hero is-empty" style="--c:var(--st-weight)"><span class="st-cat">Weight</span><h2 class="st-h3 st-mt2">Your first weigh-in starts the trend</h2><p class="st-body st-mt2">Morning readings appear as dots; the trend line starts once a week has three of them.</p><button type="button" class="st-cta" onclick="apx95OpenQuickWeight()">Log morning weight<span aria-hidden="true">›</span></button></article>`;
-    const start=N.dateAdd(state.date,-29);
-    const series=N.trend(rows).filter(p=>p.date>=start&&p.date<=state.date);
-    const pts=series.map(p=>({d:p.date,w:Math.round(p.weight*100)/100,a:p.avg===null?null:Math.round(p.avg*1000)/1000,t:/^morning$/i.test(String(p.timeOfDay||''))?'m':'o'}));
-    const lastAvg=[...series].reverse().find(p=>p.avg!==null);
-    const firstAvg=series.find(p=>p.avg!==null);
-    const plateau=N.detectPlateau(rows),rate=N.finite(plateau&&plateau.weeklyRate);
-    const main=lastAvg?lastAvg.avg:rows.at(-1).weight;
-    const change=lastAvg&&firstAvg&&lastAvg!==firstAvg?lastAvg.avg-firstAvg.avg:null;
-    const span=lastAvg&&firstAvg?Math.round((N.dateMs(lastAvg.date)-N.dateMs(firstAvg.date))/86400000):0;
-    const data=esc(JSON.stringify({pts,today:state.date}));
-    return `<article class="st-tile st-hero" style="--c:var(--st-weight)" data-st-hero="${data}">
-      <div class="st-hero-top">
-        <span class="st-cat">Weight trend</span>
-        <button type="button" class="st-replay" data-st-replay aria-label="Replay the last 30 days"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.8v10.4L13 8z" fill="currentColor"/></svg><span>Replay</span></button>
-      </div>
-      <p class="st-hero-eb" data-st-eb>${lastAvg?'Trend · '+esc(N.shortDate(lastAvg.date)):'Latest reading · '+esc(N.shortDate(rows.at(-1).date))}</p>
-      <div class="st-big"><span class="st-odo" data-st-odo="${main.toFixed(1)}">${main.toFixed(1)}</span><small>kg</small></div>
-      <div class="st-hero-meta" data-st-meta>
-        ${change!==null?`<span class="st-pill${change<=0?'':' is-up'}">${change>0?'+':'−'}${Math.abs(change).toFixed(1)} kg</span><span>over ${span} days</span>`:'<span>Trend building</span>'}
-        ${rate!==null&&plateau.ok?`<span class="st-rate"><b class="vn-num">${N.signed(rate)}</b> kg/wk</span>`:''}
-      </div>
-      <div class="st-hero-chart" data-st-chart role="img" aria-label="Morning weight and trend, last 30 days. Drag to inspect a day."></div>
-      <div class="st-hero-foot">
-        <span class="st-key"><i class="st-key-line"></i>Trend</span><span class="st-key"><i class="st-key-dot"></i>Morning</span>
-        <button type="button" class="st-link" onclick="NXT.ui.view='overview';switchTab('weight')">Progress<span aria-hidden="true">›</span></button>
-      </div>
-    </article>`;
-  }
-  /* Compact weight: the canonical 7-day trend and the engine's weekly rate.
-     The chart itself lives on Progress. */
-  function weightTileHTML() {
-    const rows=N.weights();
-    if(!rows.length)return `<button type="button" class="st-tile st-mini" style="--c:var(--st-weight)" onclick="apx95OpenQuickWeight()"><span class="st-cat">Weight</span><span class="st-mini-v">—</span><span class="st-meta">Log a weigh-in</span></button>`;
-    const s=N.trend(rows).filter(p=>p.avg!==null).at(-1);
-    const v=s?s.avg:rows.at(-1).weight;
-    const pl=N.detectPlateau(rows),rate=N.finite(pl&&pl.weeklyRate);
-    return `<button type="button" class="st-tile st-mini" style="--c:var(--st-weight)" onclick="NXT.ui.view='overview';switchTab('weight')">
-      <span class="st-cat">Weight</span>
-      <span class="st-mini-v"><b class="st-odo st-odo-sm" data-st-odo="${v.toFixed(1)}">${v.toFixed(1)}</b><small>kg</small></span>
-      <span class="st-meta">${rate!==null&&pl.ok?`${N.signed(rate)}/wk`:'7-day trend'}</span>
-    </button>`;
-  }
-  function weeklyTileHTML() {
-    const rows=N.weights();if(!rows.length)return '';
-    const ws=N.weekStart(state.date),weeks=[];
-    for(let i=4;i>=0;i--){
-      const st=N.dateAdd(ws,-7*i),end=i===0?state.date:N.dateAdd(st,6);
-      const s=N.windowStats(rows,end,i===0?Math.round((N.dateMs(state.date)-N.dateMs(st))/86400000)+1:7);
-      weeks.push({st,avg:s.avg,n:s.n,part:i===0});
-    }
-    const have=weeks.filter(w=>w.avg!==null);if(have.length<2)return '';
-    const lo=Math.min(...have.map(w=>w.avg))-.6,hi=Math.max(...have.map(w=>w.avg))+.2;
-    const cur=weeks.at(-1),prev=weeks.at(-2);
-    const d=cur.avg!==null&&prev.avg!==null?cur.avg-prev.avg:null;
-    return `<button type="button" class="st-tile st-t-avg" style="--c:var(--st-weight)" onclick="NXT.ui.view='overview';switchTab('weight')">
-      <div class="st-tile-head"><span class="st-cat">Weekly average</span>${d!==null?`<span class="st-pill${d<=0?'':' is-up'}">${d>0?'+':'−'}${Math.abs(d).toFixed(1)} kg</span>`:''}</div>
-      <div class="st-bars" role="img" aria-label="${esc(have.map(w=>N.shortDate(w.st)+' '+w.avg.toFixed(1)+' kilograms').join(', '))}">
-        ${weeks.map((w,i)=>`<span class="st-bar${i===weeks.length-1?' is-now':''}" style="--h:${w.avg===null?0:Math.max(.08,(w.avg-lo)/(hi-lo)).toFixed(3)};--i:${i}"><b class="vn-num">${w.avg===null?'—':w.avg.toFixed(1)}</b><i></i><small>${esc(N.shortDate(w.st))}${w.part?` · ${w.n}d`:''}</small></span>`).join('')}
-      </div>
-      <p class="st-meta">Morning weight, averaged Monday to Sunday${cur.part?' · this week so far':''}</p>
-    </button>`;
-  }
-  function calendarTileHTML() {
-    const work=new Set(N.workRows().map(r=>r.date));
-    const cardio=new Set((state.cardio||[]).filter(r=>r&&r.date).map(r=>r.date));
-    const floor=new Set((state.floorball||[]).filter(r=>r&&r.date).map(r=>r.date));
-    const weigh=new Set(N.weights().map(r=>r.date));
-    const end=N.dateAdd(N.weekStart(state.date),6),start=N.dateAdd(end,-34);
-    const dows=['M','T','W','T','F','S','S'];
-    let cells='';
-    for(let i=0;i<35;i++){
-      const d=N.dateAdd(start,i),fut=d>state.date,dn=Number(d.slice(8,10));
-      const marks=(work.has(d)?'<i class="m-lift"></i>':'')+(cardio.has(d)?'<i class="m-cardio"></i>':'')+(floor.has(d)?'<i class="m-floor"></i>':'');
-      const any=work.has(d)||cardio.has(d)||floor.has(d);
-      cells+=`<span class="st-cal-d${fut?' is-fut':''}${d===state.date?' is-today':''}${any?' is-active':''}${weigh.has(d)?' is-w':''}" style="--i:${i}"><em>${dn===1?esc(N.shortDate(d)):dn}</em><span class="st-cal-m">${marks}</span></span>`;
-    }
-    const n=[...work].filter(d=>d>=start&&d<=state.date).length;
-    return `<button type="button" class="st-tile st-t-cal" style="--c:var(--st-cardio)" onclick="switchTab('history')">
-      <div class="st-tile-head"><span class="st-cat">Last 5 weeks</span><span class="st-meta">${n} lifting ${n===1?'day':'days'}</span></div>
-      <div class="st-cal">${dows.map(x=>`<span class="st-cal-h">${x}</span>`).join('')}${cells}</div>
-      <div class="st-cal-k"><span><i class="m-lift"></i>Lifting</span><span><i class="m-cardio"></i>Cardio</span><span><i class="m-floor"></i>Floorball</span><span><i class="m-w"></i>Weigh-in</span></div>
-    </button>`;
-  }
-  function bodyTileHTML() {
-    const scans=bodyScanSource().filter(s=>s&&N.finite(s.weight)!==null);
-    if(!scans.length)return '';
-    const L=scans.at(-1),P=scans.at(-2)||null;
-    const cell=(k,label,unit,c)=>{
-      const v=N.finite(L[k]);if(v===null)return '';
-      const pv=P?N.finite(P[k]):null,d=pv===null?null:v-pv;
-      return `<span class="st-scan-c" style="--c:${c}"><small>${label}</small><b class="vn-num">${v.toFixed(1)}<em>${unit}</em></b>${d===null?'':`<span class="st-scan-d${d<0?' is-dn':d>0?' is-up':''}">${d>0?'+':d<0?'−':'±'}${Math.abs(d).toFixed(1)}</span>`}</span>`;
-    };
-    return `<button type="button" class="st-tile st-t-body" style="--c:var(--st-fat)" onclick="NXT.ui.view='body';switchTab('weight')">
-      <div class="st-tile-head"><span class="st-cat">Latest Evo scan</span><span class="st-meta">${esc(N.shortDate(L.date))}${P?`<span class="st-scan-vs"> · vs ${esc(N.shortDate(P.date))}</span>`:''}</span></div>
-      <div class="st-scan-g">${cell('bodyFat','Fat %','%','var(--st-fat)')}${cell('fatMass','Fat mass','kg','var(--st-fat)')}${cell('muscleMass','Muscle','kg','var(--st-lean)')}${cell('weight','Weight','kg','var(--st-weight)')}</div>
-    </button>`;
   }
   function linkSignal(label,value,action) {return `<button type="button" class="nxp-home-signal" onclick="${esc(action)}"><small>${esc(label)}</small><strong>${esc(value)}</strong></button>`;}
   function previewAllowed() {
@@ -372,7 +280,7 @@ const NXP = (() => {
   }
   function trainGuidanceHTML() {
     const training=currentTraining(currentIntegrated());
-    if(!training||training.state==='no_recovery_signal'||training.state==='proceed')return '';
+    if(!training||training.state==='no_recovery_signal')return '';
     const detail=training.guidance&&training.guidance.detail?`<small>${esc(training.guidance.detail)}</small>`:'';
     return `<aside class="nxp-train-rec" data-state="${esc(training.state)}"><span class="nxp-caption">Recovery guidance</span><strong>${esc(training.guidance.message)}</strong>${detail}</aside>`;
   }
@@ -402,7 +310,7 @@ const NXP = (() => {
     b.dataset.idleLabel=label;
     b.textContent=label;
   }
-  function trainChrome() {return `<header class="nxp-train-chrome st-head"><div><p class="st-eyebrow">${esc(state.gym||'Gym')} · ${N.shortDate(state.date)}</p><h1 class="st-h1">${esc(N.label(state.dayType))}</h1></div><button type="button" class="st-chip" onclick="showSessionSheet()">Change</button></header>`;}
+  function trainChrome() {return `<header class="nxp-train-chrome"><div><h1>${esc(N.label(state.dayType))}</h1><p>${esc(state.gym||'Gym')} · ${N.shortDate(state.date)}</p></div>${button('Change','showSessionSheet()',true)}</header>`;}
   function trainIdle(kind,body) {
     syncTrainNav(false);
     document.getElementById('trainPage').innerHTML=`<div class="n99 nxp nxp-train nxp-train-idle vn-train ${kind}">${trainChrome()}${trainGuidanceHTML()}${body}</div>`;
@@ -433,59 +341,28 @@ const NXP = (() => {
   }
   /* Strength-day overview before entering focused mode. Session data is
      untouched — leave/enter only toggles presentation (D6). */
-  /* ---- Anatomy, two ways -------------------------------------------------
-     Lens: a zoom onto the worked region of one exercise, ringed by that
-     exercise's set progress. Map: front and back of the whole session, so the
-     day's focus is readable at a glance. Both reuse NXTANAT; muscles are
-     always named in text beside them. */
-  function bleedHTML(name){
-    if(typeof NXTLIB==='undefined'||typeof NXTANAT==='undefined')return '';
-    const m=NXTLIB.musclesFor(name);if(!m.primary.length)return '';
-    const view=NXTANAT.viewFor(m.primary,[]);
-    /* Widen the engine's tight crop so the muscle reads in context. */
-    const fig=NXTANAT.figure({primary:m.primary,secondary:m.secondary,view}).replace(/viewBox="([\d.\-]+) ([\d.\-]+) ([\d.]+) ([\d.]+)"/,(s,x,y,w,h)=>{x=+x;y=+y;w=+w;h=+h;const px=w*.3,py=h*.2;return `viewBox="${(x-px).toFixed(0)} ${Math.max(0,y-py).toFixed(0)} ${(w+2*px).toFixed(0)} ${(h+2*py).toFixed(0)}"`;});
-    return `<span class="st-bleed" aria-hidden="true">${fig}</span>`;
-  }
-  function muscleMapHTML(names,title,sub){
-    if(typeof NXTLIB==='undefined'||typeof NXTANAT==='undefined')return '';
-    const f=NXTLIB.focusFor(names);if(!f.primary.length)return '';
-    const figs=['front','back'].map(v=>`<div class="st-mm-f">${NXTANAT.figure({primary:f.primary,secondary:f.secondary,view:v,crop:false})}<small>${v==='front'?'Front':'Back'}</small></div>`).join('');
-    const chips=f.primary.slice(0,6).map(id=>`<span class="st-mchip is-p">${esc(NXTANAT.label(id))}</span>`).join('')+(f.primary.length>6?`<span class="st-mchip">+${f.primary.length-6}</span>`:'');
-    return `<section class="st-mm" aria-label="${esc(title)}"><p class="st-mm-h">${esc(title)}</p><div class="st-mm-figs" aria-hidden="true">${figs}</div><div class="st-mchips">${chips}</div><p class="st-mm-k"><span><i class="is-p"></i>Worked directly</span><span><i></i>Assists</span></p></section>`;
-  }
   function trainLiftIdle(list) {
     const logs=N.sessionLogs(),working=logs.filter(r=>r.setType!=='warmup');
     const sets=list.reduce((a,e)=>a+Number(e.sets),0);
-    const logged=list.reduce((a,e)=>a+Math.min(N.done(e.name),Number(e.sets)),0);
     const title=working.length?'Resume workout':'Start workout';
     const plan=list.map((e,i)=>{
       const done=N.done(e.name);
       const prev=N.sessionRows(e.name,state.gym,state.date,100).at(-1);
-      const best=prev?N.bestSet(prev.sets):null;
-      const m=typeof NXTLIB!=='undefined'?NXTLIB.musclesFor(e.name):{primary:[],secondary:[]};
-      const fig=(typeof NXTANAT!=='undefined'&&m.primary.length)?NXTANAT.figure({primary:m.primary,secondary:m.secondary,view:NXTANAT.viewFor(m.primary,[])}):'';
-      const complete=done>=Number(e.sets);
-      return `<button type="button" class="st-plan-row${complete?' is-done':''}" style="--i:${i}" onclick="NXP.chooseExercise(${i});NXP.enterTrain()">
-        <span class="st-plan-fig" aria-hidden="true">${fig}</span>
-        <span class="st-plan-l"><b>${esc(e.name)}</b><small>${e.sets} × ${e.reps[0]}–${e.reps[1]}${best?` · best ${esc(trimNum(best.weight))} kg × ${esc(best.reps)}`:' · no history'}</small></span>
-        <span class="st-plan-n vn-num">${complete?'✓':`${Math.min(done,e.sets)}/${e.sets}`}</span>
-      </button>`;
+      const last=prev?.sets?.[0];
+      const w=last&&Number.isFinite(Number(last.weight))?String(Math.round(Number(last.weight)*1000)/1000):'';
+      return `<div class="vn-train-plan-row"><span class="vn-train-plan-l"><span class="vn-train-plan-t">${esc(e.name)}</span><span class="vn-train-plan-s">${e.sets} × ${e.reps[0]}–${e.reps[1]}${w?` · last ${esc(w)} kg`:' · no history'}${done?` · ${done} today`:''}</span></span></div>`;
     }).join('');
     syncTrainNav(false);
-    document.getElementById('trainPage').innerHTML=`<div class="n99 nxp nxp-train nxp-train-idle st-train st-train-idle">
+    document.getElementById('trainPage').innerHTML=`<div class="n99 nxp nxp-train nxp-train-idle vn-train vn-train-lift-idle">
       ${trainChrome()}
       ${trainGuidanceHTML()}
-      <section class="st-tile st-ready" style="--c:var(--st-lift)">
-        <div class="st-train-row">
-          <div><span class="st-cat">${working.length?'In progress':'Ready when you are'}</span>
-          <h2 class="st-h2 st-mt2">${list.length} exercises</h2>
-          <p class="st-meta">${sets} working sets${working.length?` · ${working.length} logged`:''}</p></div>
-          ${logged?ringHTML(logged,sets,'sets','var(--st-lift)'):''}
-        </div>
-        ${muscleMapHTML(list.map(e=>e.name),'Today’s focus','')}
-        <button type="button" class="st-cta" onclick="NXP.enterTrain()">${esc(title)}<span aria-hidden="true">›</span></button>
+      <section class="vn-train-ready">
+        <p class="vn-sect">${working.length?'In progress':'Ready'}</p>
+        <p class="vn-train-ready-meta">${list.length} exercises · ${sets} working sets${working.length?` · ${working.length} logged`:''}</p>
+        <button type="button" class="n99-button" onclick="NXP.enterTrain()">${esc(title)}</button>
       </section>
-      <section class="st-plan"><div class="st-plan-h"><h2 class="st-sect">Session plan</h2><button type="button" class="st-link" onclick="NXP.sessionMenu()">Options<span aria-hidden="true">›</span></button></div>${plan}</section>
+      <section class="vn-train-plan"><h2 class="vn-sect">Session plan</h2>${plan}</section>
+      <div class="nxp-session-tools">${button('Session options','NXP.sessionMenu()',true)}</div>
     </div>`;
   }
   /* ---- Train: shared presentation helpers --------------------------------
@@ -534,20 +411,19 @@ const NXP = (() => {
       const prev=N.sessionRows(name,state.gym,state.date,100).at(-1);
       if(!prev||!prev.sets||!prev.sets.length)return;
       compared+=1;
-      /* D20: compared by best set — heavier load wins, then more reps at it. */
-      const a=N.bestSet(sets),b=N.bestSet(prev.sets);
-      const dw=Number(a.weight)-Number(b.weight),dr=Number(a.reps)-Number(b.reps);
-      if(dw>0||(dw===0&&dr>0))up+=1; else if(dw===0&&dr===0)same+=1; else down+=1;
+      const best=Math.max(...sets.map(s=>Number(s.weight)*Number(s.reps)));
+      const pbest=Math.max(...prev.sets.map(s=>Number(s.weight)*Number(s.reps)));
+      if(best>pbest*1.005)up+=1; else if(best<pbest*0.995)down+=1; else same+=1;
     });
     const nextDate=N.dateAdd(state.date,1);
-    const compare=compared?`<div class="st-outcome">
-      <div style="--c:var(--st-lean)"><b class="vn-num" data-st-count="${up}">${up}</b><span>Beat</span></div>
-      <div style="--c:var(--st-accent)"><b class="vn-num" data-st-count="${same}">${same}</b><span>Matched</span></div>
-      <div style="--c:var(--st-fat)"><b class="vn-num" data-st-count="${down}">${down}</b><span>Below</span></div>
+    const compare=compared?`<div class="vn-train-outcome-rows">
+      <div class="vn-train-outcome-row"><span>Progressed</span><b class="vn-num">${up}</b></div>
+      <div class="vn-train-outcome-row"><span>Maintained</span><b class="vn-num">${same}</b></div>
+      <div class="vn-train-outcome-row"><span>Below recent</span><b class="vn-num">${down}</b></div>
     </div>`:'';
-    return `<p class="st-meta st-mt2">${working.length} working sets · ${Object.keys(byEx).length} exercises</p>
+    return `<p class="vn-train-outcome-lede">${working.length} working sets · ${Object.keys(byEx).length} exercises</p>
       ${compare}
-      <p class="st-meta st-mt3">Best set vs last session, per exercise · Next: ${esc(N.label(N.typeFor(nextDate)))} tomorrow</p>`;
+      <p class="nxp-caption vn-train-outcome-next">Next · ${esc(N.label(N.typeFor(nextDate)))} tomorrow</p>`;
   }
   function training() {
     applyAppearance();
@@ -576,7 +452,7 @@ const NXP = (() => {
     if(!ui.trainActive&&!finished&&!addOnActive())return trainLiftIdle(list);
 
     const ex=state.exercise,t=N.targetFor(ex),done=N.done(ex),cue=N.cue(ex),draft=ui.drafts.get(draftKey())||{};
-    const previous=N.sessionRows(ex,state.gym,state.date,100).at(-1),prev=previous?N.bestSet(previous.sets):null,aim=N.aimFor(ex);
+    const previous=N.sessionRows(ex,state.gym,state.date,100).at(-1),prev=previous?.sets[Math.min(done,previous.sets.length-1)];
     const current=N.sessionLogs().filter(r=>r.exercise===ex),last=current.filter(r=>r.setType!=='warmup').at(-1);
     const total=list.reduce((a,e)=>a+Number(e.sets),0),count=list.reduce((a,e)=>a+Math.min(N.done(e.name),e.sets),0);
     const weight=draft.weightInput??last?.weight??(cue.weight||'');
@@ -604,126 +480,131 @@ const NXP = (() => {
     const focused=ui.trainActive&&!finished;
     syncTrainNav(focused);
 
-    const allDone=total>0&&count>=total;
-    const outer=`n99 nxp nxp-train st-train`;
     if(finished){
-      page.innerHTML=`<div class="${outer} st-train-finished">
+      page.innerHTML=`<div class="n99 nxp nxp-train nxp-train-lift vn-train is-finished">
         ${trainChrome()}
-        <section class="st-tile st-done" style="--c:var(--st-lift)">
-          <div class="st-done-badge" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="21"/><path d="M15 24.5l6 6 12-13"/></svg></div>
-          <span class="st-cat">Workout saved</span>
-          <h2 class="st-h2 st-mt2">${esc(N.label(state.dayType))} · ${esc(state.gym||'Gym')}</h2>
+        <section class="nxp-train-done vn-train-done">
+          <p class="nxp-caption">Workout saved</p>
+          <h2>${esc(N.label(state.dayType))} · ${esc(state.gym||'Gym')}</h2>
           ${sessionOutcomeHTML()}
-          ${muscleMapHTML([...new Set(N.sessionLogs().filter(r=>r.setType!=='warmup').map(r=>r.exercise))],'What you trained','')}
-          <div class="st-done-acts"><button type="button" class="st-cta" onclick="NXP.sessionSummary()">View session<span aria-hidden="true">›</span></button><button type="button" class="st-ghost" onclick="NXT.resume()">Resume workout</button></div>
+          <div class="n99-stack">${button('View session','NXP.sessionSummary()')}${button('Resume workout','NXT.resume()',true)}</div>
         </section>
-        <button type="button" class="st-row-btn" onclick="NXP.queue()"><span>Workout queue</span><small>${list.length} exercises</small><i aria-hidden="true">›</i></button>
+        <button type="button" class="nxp-queue-open" onclick="NXP.queue()"><span>Workout queue</span><small>${list.length} exercises</small><i aria-hidden="true">›</i></button>
       </div>`;
       return;
     }
 
-    /* D20: every logged working set is compared with the best set last time —
-       a real comparison, never a score. Input ids are unchanged for NXT.logSet(). */
-    const cmpBest=r=>{
-      if(!prev||r.setType==='warmup')return '';
-      const dw=Number(r.weight)-Number(prev.weight),dr=Number(r.reps)-Number(prev.reps);
-      if(dw>0||(dw===0&&dr>0))return 'up';
-      if(dw===0&&dr===0)return 'eq';
-      return '';
-    };
-    const m=typeof NXTLIB!=='undefined'?NXTLIB.musclesFor(ex):{primary:[],secondary:[]};
-    const fig=(typeof NXTANAT!=='undefined'&&m.primary.length)?NXTANAT.figure({primary:m.primary,secondary:m.secondary,view:NXTANAT.viewFor(m.primary,[]),crop:false}):'';
-    const aimText=aim?(aim.kind==='load'?`+${trimNum(aim.weight-Number(prev.weight))} kg · next increment`:aim.kind==='rep'?'One more rep':'Match your best'):'Set a baseline';
-    const restPct=restLeft&&(ui.restTotal||restPlan)?Math.max(0,Math.min(100,restLeft/(ui.restTotal||restPlan)*100)):0;
-    /* Set chips: warm-ups, then one chip per planned working set (extras are
-       appended). Logged chips open the same edit sheet as before. */
-    const freshId=justLogged&&loggedEntry&&loggedEntry.exercise===ex?loggedEntry.id:null;
-    const dots=Array.from({length:Number(t.sets)},(_,k)=>`<i class="${k<done?'is-done':k===done?'is-now':''}"></i>`).join('');
-    const setNo=setType==='warmup'?'Warm-up':(done>=Number(t.sets)?`Extra set`:`Set ${done+1}`);
-    const setOf=setType==='warmup'||done>=Number(t.sets)?'':`of ${t.sets}`;
-    /* Logged sets for this exercise, as small chips inside the card. Each
-       compares with the best set last time (D20). Tap to edit. */
-    const chips=current.map((r,i)=>{
-      const c=cmpBest(r),warm=r.setType==='warmup';
-      return `<button type="button" class="st-chip2${warm?' is-warm':''}${c==='up'?' is-up':''}${r.id===freshId?' is-fresh':''}" onclick="NXP.editCurrentSet(${i})" aria-label="Edit ${warm?'warm-up':'set '+r.setNum}: ${esc(trimNum(r.weight))} kilograms for ${esc(r.reps)}${c==='up'?', beat last time':c==='eq'?', matched last time':''}"><span>${warm?'W':r.setNum}</span>${esc(trimNum(r.weight))}×${esc(r.reps)}${c==='up'?'<i aria-hidden="true">↑</i>':''}</button>`;
-    }).join('');
-    const form=`<form id="nxp-set-form" class="st-card" onsubmit="event.preventDefault();NXP.logSet()">
-        <div class="st-card-head">
-          <p class="st-card-t"><b>${esc(setNo)}</b>${setOf?` <span>${esc(setOf)}</span>`:''}</p>
-          <fieldset class="nxp-seg-block nxp-seg-type">
-            <legend class="st-sr">Set type</legend>
-            <div class="nxp-seg" role="group">${[['working','Working'],['warmup','Warm-up']].map(([v,l])=>`<button type="button" class="${setType===v?'is-on':''}" aria-pressed="${setType===v}" onclick="NXP.setSetType('${v}')">${l}</button>`).join('')}</div>
-          </fieldset>
-        </div>
-        <div class="st-dots" role="img" aria-label="${done} of ${t.sets} working sets logged">${dots}</div>
-        ${chips?`<div class="st-chips" aria-label="Logged sets">${chips}</div>`:''}
-        <div class="st-entry">
-          ${stepper('weightInput','kg','',`<input id="weightInput" type="number" min="0" max="1000" step="0.1" inputmode="decimal" enterkeyhint="done" autocomplete="off" required placeholder="0" value="${esc(weight)}" aria-labelledby="weightInput-label" oninput="NXP.rememberInput(this)">`,trimNum(t.inc||2.5),`weight by ${trimNum(t.inc||2.5)} kilograms`)}
-          <span class="st-x" aria-hidden="true">×</span>
-          ${stepper('repsInput','reps','',`<input id="repsInput" type="number" min="1" max="100" step="1" inputmode="numeric" enterkeyhint="done" autocomplete="off" required placeholder="${aim?aim.reps:prev?prev.reps:t.reps[0]}" value="${esc(draft.repsInput??'')}" aria-labelledby="repsInput-label" oninput="NXP.rememberInput(this)">`,'1','reps by one')}
-        </div>
-        <div class="st-refs">
-          ${aim?`<button type="button" class="st-refc is-aim" onclick="NXP.useAim()" aria-label="Aim ${esc(trimNum(aim.weight))} kilograms for ${aim.reps}. Tap to fill">
-            <small>Aim <em>Tap to fill</em></small><b class="vn-num">${esc(trimNum(aim.weight))} × ${esc(aim.reps)}</b><span>${esc(aimText)}</span></button>`
-          :`<div class="st-refc is-aim"><small>Aim</small><b class="vn-num">${t.reps[0]}–${t.reps[1]} reps</b><span>Set a baseline</span></div>`}
-          <div class="st-refc"><small>Best last time</small><b class="vn-num">${prev?`${esc(trimNum(prev.weight))} × ${esc(prev.reps)}`:'—'}</b><span>${previous?esc(N.shortDate(previous.date)):'No history yet'}</span></div>
-        </div>
-        <input type="hidden" id="n99-set-type" value="${setType}">
-        <input type="hidden" id="n99-rir" value="${esc(rir)}">
-        <fieldset class="nxp-seg-block nxp-seg-rir">
-          <legend>Reps in reserve</legend>
-          <div class="nxp-seg" role="group">${[['','—'],['0','0'],['1','1'],['2','2'],['3','3'],['4','4+']].map(([v,l])=>`<button type="button" class="${rir===v?'is-on':''}" aria-pressed="${rir===v}" aria-label="${v===''?'Not recorded':v==='4'?'4 or more reps left':v+' reps left'}" onclick="NXP.setRir('${v}')">${l}</button>`).join('')}</div>
-        </fieldset>
-        <button id="nxp-log-button" type="submit" class="n99-button nxp-train-cta st-log" data-idle-label="${esc(idleLabel)}">${justLogged?`<span class="nxp-cta-check" aria-hidden="true">✓</span>${esc(confirmLabel)}`:esc(idleLabel)}</button>
-      </form>`;
+    /* Order is thumb-ordered around the current set (design-vnext screenActive).
+       Set history sits below Log Set so logged rows cannot push the CTA past the
+       fold. Coach, set-dots, Swap and session tools are demoted below. Input ids
+       are unchanged for NXT.logSet(). */
+    const setHistory=current.length?`<section class="nxp-set-history vn-train-sets" aria-label="Today’s sets">${current.map((r,i)=>{
+      const latest=i===current.length-1;
+      const fresh=justLogged&&loggedEntry&&latest&&loggedEntry.exercise===ex;
+      const rirLabel=r.rir===null||r.rir===undefined||r.rir===''?'':Number(r.rir)===4?'RIR 4+':'RIR '+r.rir;
+      const meta=r.setType==='warmup'?'Warm-up':rirLabel;
+      return `<button type="button" class="nxp-set-row${latest?' is-latest':''}${fresh?' is-fresh':''}" onclick="NXP.editCurrentSet(${i})"><span class="vn-set-n">${r.setType==='warmup'?'W':r.setNum}</span><b>${loadLine(r.weight,r.reps)}</b>${meta?`<small>${esc(meta)}</small>`:''}<span class="vn-set-edit">Edit</span></button>`;
+    }).join('')}</section>`:'';
 
-    page.innerHTML=`<div class="${outer} st-train-active${justLogged?' is-just-logged':''}${focused?' is-mode':''}${allDone?' is-all-done':''}">
-      <header class="st-tbar">
-        <button type="button" class="st-icon" onclick="NXP.leaveTrain()" aria-label="Leave workout"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/></svg></button>
-        <div class="st-tbar-mid">
-          <p class="st-tbar-t">${esc(N.label(state.dayType))}</p>
-          <p class="st-tbar-s"><b class="vn-num">${count}</b> of ${total} sets</p>
+    page.innerHTML=`<div class="n99 nxp nxp-train nxp-train-lift vn-train vn-train-active${justLogged?' is-just-logged':''}${focused?' is-mode':''}">
+      <header class="vn-train-top">
+        <button type="button" class="vn-train-icon" onclick="NXP.leaveTrain()" aria-label="Leave workout">✕</button>
+        <div class="vn-train-id">
+          <p class="nxp-caption">${esc(N.label(state.dayType))} · ${esc(state.gym||'Gym')}</p>
+          <p class="vn-train-count">${count} of ${total} working sets</p>
         </div>
-        <button type="button" class="st-icon" onclick="NXP.trainMenu()" aria-label="Workout options"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4.5" cy="10" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="15.5" cy="10" r="1.5"/></svg></button>
-        <button type="button" class="st-tfinish${allDone?' is-ready':''}" onclick="NXT.finish()">Finish</button>
+        <div class="vn-train-end">
+          <details class="vn-train-tools">
+            <summary class="vn-train-icon" aria-label="Session tools">⋯</summary>
+            <div class="vn-train-tools-panel">
+              ${sessionFocus(list)}
+              <div class="nxp-ex-actions">
+                <button type="button" class="nxp-ex-chip" onclick="NXP.exerciseDetails()">Exercise details<i aria-hidden="true">›</i></button>
+                <button type="button" class="nxp-ex-chip" onclick="showSubstituteSheet()">Swap</button>
+              </div>
+              ${addOnEligible()?addOnSection():''}
+              <div class="nxp-session-tools">${button('Undo last set','apx96UndoLastSet()',true)}${button('Session options','NXP.sessionMenu()',true)}</div>
+            </div>
+          </details>
+          <button type="button" class="vn-train-icon" onclick="NXT.finish()" aria-label="Finish workout">✓</button>
+        </div>
       </header>
-      <div class="st-segbar" aria-hidden="true">${list.map((e,i)=>{
-        const d=Math.min(N.done(e.name),Number(e.sets));
-        return `<span class="${i===index?'is-current':''}"><i style="width:${e.sets?Math.round(d/e.sets*100):0}%"></i></span>`;
-      }).join('')}</div>
 
       ${trainAlertHTML()}
 
-      ${allDone?`<section class="st-complete" aria-live="polite">
-        <div><b>All ${total} sets logged</b><span>Finish to save the session</span></div>
-        <button type="button" class="st-complete-b" onclick="NXT.finish()">Finish</button>
-      </section>`:''}
+      <div class="nxp-ex-rail">
+        <ol aria-hidden="true">${list.map((e,i)=>{
+          const complete=N.done(e.name)>=Number(e.sets);
+          const curDone=N.done(e.name);
+          const pct=i===index&&e.sets?Math.round(Math.min(curDone,e.sets)/e.sets*100):0;
+          return `<li class="${i===index?'is-current':complete?'is-done':''}" style="--p:${pct}%"></li>`;
+        }).join('')}</ol>
+        <p hidden>
+          <button type="button" class="nxp-rail-jump" onclick="NXP.queue()">Exercise ${index+1} of ${list.length}<i aria-hidden="true">›</i></button>
+          <span>${count} of ${total} sets</span>
+        </p>
+      </div>
 
-      <section class="st-ex${exMove}">
-        <div class="st-ex-info">
-          <p class="st-ex-pos">Exercise ${index+1} of ${list.length}</p>
-          <h2><button type="button" class="st-ex-title" onclick="NXP.exerciseDetails()">${esc(ex)}</button></h2>
-          <p class="st-ex-mus">${esc(m.primary.map(id=>NXTANAT.label(id)).join(' · ')||muscleLine(ex))} <span>· ${t.reps[0]}–${t.reps[1]} reps</span></p>
-          ${note?`<p class="st-ex-note">${esc(note)}</p>`:''}
+      <section class="nxp-ex-head">
+        <span class="nxp-ex-bar" aria-hidden="true"></span>
+        <div class="nxp-ex-main">
+          <div class="nxp-ex-top${exMove}">
+            <div class="nxp-ex-text">
+              <h2><button type="button" class="nxp-ex-title" onclick="NXP.exerciseDetails()">${esc(ex)}</button></h2>
+              <p class="nxp-ex-muscles">${esc(muscleLine(ex)) || '&nbsp;'}</p>
+              <p class="nxp-ex-meta" hidden>${t.sets} sets · ${t.reps[0]}–${t.reps[1]} reps${note?' · '+esc(note):''}</p>
+            </div>
+            ${anatomyStrip(ex)}
+          </div>
         </div>
-        ${bleedHTML(ex)}
       </section>
 
-      ${!addOnActive()&&sessionDiffers()?`<button type="button" class="st-diff" onclick="NXP.saveTodayToRoutine()"><span><b>Changed for today only</b><small>Save this order and these exercises to your ${esc(N.label(state.dayType))} routine</small></span><em>Save</em></button>`:''}
+      <div class="nxp-aim vn-aim wrap3">
+        ${aimCell('Last',prev?loadLine(prev.weight,prev.reps):'—',previous?esc(N.shortDate(previous.date)):'First session',previous?'NXP.exerciseDetails()':'')}
+        ${aimCell('Target',`${t.reps[0]}–${t.reps[1]}`,`reps · ${t.sets} sets`,'')}
+        ${aimCell('Rest',esc(apx96FormatTimer(restPlan)),'planned','')}
+      </div>
 
-      <aside class="nxp-rest st-rest${restLeft?' is-active':''}" aria-label="Rest timer"${restLeft?' role="timer"':''} ${restLeft?'':'hidden'} style="--pct:${restPct.toFixed(1)}">
-        <span class="st-rest-l"><small>Rest</small><b id="apx96TimerValue" class="vn-num">${restLeft?apx96FormatTimer(restLeft):'Ready'}</b></span>
+      <aside class="nxp-rest vn-rest${restLeft?' is-active':''}" aria-label="Rest timer"${restLeft?' role="timer"':''} ${restLeft?'':'hidden'}>
+        <b id="apx96TimerValue" class="vn-num">${restLeft?apx96FormatTimer(restLeft):'Ready'}</b>
         ${restRail(restLeft,ui.restTotal||restPlan)}
         <div class="vn-rest-actions">${button('+30s','apx96AdjustRest(30)',true)}${button('Skip','apx96SkipRest()',true)}</div>
       </aside>
 
-      ${allDone?`<details class="st-extra"><summary>Log an extra set</summary>${form}</details>`:form}
+      <form id="nxp-set-form" class="vn-set-form" onsubmit="event.preventDefault();NXP.logSet()">
+        <div class="nxp-steppers">
+          ${stepper('weightInput','Weight','kg',`<input id="weightInput" type="number" min="0" max="1000" step="0.1" inputmode="decimal" enterkeyhint="done" autocomplete="off" required placeholder="0" value="${esc(weight)}" aria-labelledby="weightInput-label" oninput="NXP.rememberInput(this)">`,trimNum(t.inc||2.5),`weight by ${trimNum(t.inc||2.5)} kilograms`)}
+          ${stepper('repsInput','Reps','',`<input id="repsInput" type="number" min="1" max="100" step="1" inputmode="numeric" enterkeyhint="done" autocomplete="off" required placeholder="${prev?prev.reps:t.reps[0]}" value="${esc(draft.repsInput??'')}" aria-labelledby="repsInput-label" oninput="NXP.rememberInput(this)">`,'1','reps by one')}
+        </div>
 
-      <nav class="st-exnav" aria-label="Exercise navigation">
-        <button type="button" ${index<=0?'disabled':''} onclick="NXP.goExercise(-1)" aria-label="Previous exercise"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5"/></svg></button>
-        <button type="button" class="st-exnav-mid nxp-queue-open" onclick="NXP.queue()">${index+1} / ${list.length} · All exercises</button>
-        <button type="button" ${lastMove?'disabled':''} onclick="NXP.goExercise(1)" aria-label="Next exercise"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5L13 10l-5.5 5.5"/></svg></button>
+        <input type="hidden" id="n99-set-type" value="${setType}">
+        <input type="hidden" id="n99-rir" value="${esc(rir)}">
+
+        <div class="nxp-seg-row">
+          <fieldset class="nxp-seg-block nxp-seg-type">
+            <legend>Set type</legend>
+            <div class="nxp-seg" role="group">${[['working','Working'],['warmup','Warm-up']].map(([v,l])=>`<button type="button" class="${setType===v?'is-on':''}" aria-pressed="${setType===v}" onclick="NXP.setSetType('${v}')">${l}</button>`).join('')}</div>
+          </fieldset>
+          <fieldset class="nxp-seg-block nxp-seg-rir">
+            <legend>Reps left <small>optional</small></legend>
+            <div class="nxp-seg" role="group">${[['','—'],['0','0'],['1','1'],['2','2'],['3','3'],['4','4+']].map(([v,l])=>`<button type="button" class="${rir===v?'is-on':''}" aria-pressed="${rir===v}" aria-label="${v===''?'Not recorded':v==='4'?'4 or more reps left':v+' reps left'}" onclick="NXP.setRir('${v}')">${l}</button>`).join('')}</div>
+          </fieldset>
+        </div>
+
+        <button id="nxp-log-button" type="submit" class="n99-button nxp-train-cta" data-idle-label="${esc(idleLabel)}">${justLogged?`<span class="nxp-cta-check" aria-hidden="true">✓</span>${esc(confirmLabel)}`:esc(idleLabel)}</button>
+      </form>
+
+      ${setHistory}
+
+      <nav class="nxp-ex-nav" aria-label="Exercise navigation">
+        <button type="button" ${index<=0?'disabled':''} onclick="NXP.goExercise(-1)" aria-label="Previous exercise"><span aria-hidden="true">‹</span> Prev</button>
+        <button type="button" class="nxp-ex-nav-pos nxp-queue-open" onclick="NXP.queue()" aria-label="Open workout queue">Queue · ${index+1}/${list.length}</button>
+        <button type="button" ${lastMove?'disabled':''} onclick="NXP.goExercise(1)" aria-label="Next exercise">Next <span aria-hidden="true">›</span></button>
       </nav>
+
+      <details class="nxp-coach nxp-disclosure vn-train-more"><summary>${esc(cue.label)}</summary><p>${esc(cue.text)}</p></details>
+
+      <div class="nxp-set-dots" aria-label="${done} working sets logged, ${t.sets} planned" hidden>${Array.from({length:t.sets},(_,i)=>`<span class="${i<done?'done'+(justLogged&&loggedEntry&&loggedEntry.setType!=='warmup'&&loggedEntry.exercise===ex&&i===done-1?' is-new':''):i===done?'next':''}">${i<done?'✓':i+1}</span>`).join('')}<small>Set ${Math.min(done+1,t.sets)} of ${t.sets}</small></div>
     </div>`;
     if(justLogged)scheduleConfirmReset();
     setTimeout(apx96TickTimer,0);
@@ -731,54 +612,14 @@ const NXP = (() => {
   /* The confirmation lives on the button that was pressed rather than in a
      modal, so it never interrupts the next set. It clears itself without a
      repaint: replacing the DOM again would reset scroll and re-focus. */
-  /* Fills the two fields with the aim from aimFor(). It only writes the inputs
-     (and their drafts); nothing is logged until Log Set is pressed. */
-  /* Workout options as one bottom sheet with uniform rows. Every row calls
-     the same function the old controls did. */
-  function trainMenu() {
-    const ex=state.exercise,cue=N.cue(ex);
-    const ico={
-      info:'<path d="M10 9v5M10 6.2v.1"/><circle cx="10" cy="10" r="7"/>',
-      swap:'<path d="M4 7h11l-3-3M16 13H5l3 3"/>',
-      list:'<path d="M7 5.5h9M7 10h9M7 14.5h9M3.8 5.5h.1M3.8 10h.1M3.8 14.5h.1"/>',
-      undo:'<path d="M7 7L3.5 10.5 7 14"/><path d="M4 10.5h8a4 4 0 010 8h-2"/>',
-      save:'<path d="M5 3.5h8l3 3V16a.5.5 0 01-.5.5h-11A.5.5 0 014 16V4a.5.5 0 01.5-.5z"/><path d="M7 3.5v4h6v-4M7 16.5v-5h6v5"/>',
-      edit:'<path d="M13.5 3.5l3 3L7 16H4v-3z"/>',
-      gear:'<circle cx="10" cy="10" r="2.6"/><path d="M10 2.8v2M10 15.2v2M17.2 10h-2M4.8 10h-2M15.1 4.9l-1.4 1.4M6.3 13.7l-1.4 1.4M15.1 15.1l-1.4-1.4M6.3 6.3L4.9 4.9"/>'
-    };
-    const row=(i,label,sub,fn,danger)=>`<button type="button" class="st-mrow${danger?' is-danger':''}" onclick="${esc(fn)}"><span class="st-mrow-i"><svg viewBox="0 0 20 20" aria-hidden="true">${ico[i]}</svg></span><span class="st-mrow-l"><b>${esc(label)}</b>${sub?`<small>${esc(sub)}</small>`:''}</span><i aria-hidden="true">›</i></button>`;
-    N.modal(ex,`<div class="st-menu">
-      <div class="st-menu-cue"><b>${esc(cue.label)}</b><span>${esc(cue.text)}</span></div>
-      <div class="st-mgroup">
-        ${row('info','Exercise details','Muscles, history and equipment','NXP.exerciseDetails()')}
-        ${row('swap','Swap exercise','Replace it for today only','closeModal();showSubstituteSheet()')}
-        ${row('list','All exercises','Jump or reorder','NXP.queue()')}
-      </div>
-      <div class="st-mgroup">
-        ${row('save','Save to routine',sessionDiffers()?'Keep today’s changes for next time':'Today matches your routine','NXP.saveTodayToRoutine()')}
-        ${row('edit','Edit '+N.label(state.dayType)+' routine','Exercises, sets and rep ranges',`closeModal();NXP.editRoutine('${state.dayType}')`)}
-      </div>
-      <div class="st-mgroup">
-        ${row('undo','Undo last set','','closeModal();apx96UndoLastSet()')}
-        ${row('gear','Session options','Shorter session, notes, check-in','NXP.sessionMenu()')}
-      </div>
-      ${addOnEligible()?`<div class="st-mgroup st-madd">${addOnSection()}</div>`:''}
-    </div>`);
-  }
-  function useAim() {
-    const aim=N.aimFor(state.exercise);if(!aim)return;
-    const w=document.getElementById('weightInput'),r=document.getElementById('repsInput');
-    if(w){w.value=trimNum(aim.weight);rememberInput(w);w.classList.add('st-flash');setTimeout(()=>w.classList.remove('st-flash'),600);}
-    if(r){r.value=String(aim.reps);rememberInput(r);r.classList.add('st-flash');setTimeout(()=>r.classList.remove('st-flash'),600);}
-  }
   function scheduleConfirmReset() {
     clearTimeout(ui.confirmTimer);
     ui.confirmTimer=setTimeout(()=>{
-      const root=document.querySelector('.st-train.is-just-logged');
+      const root=document.querySelector('.nxp-train-lift.is-just-logged');
       if(root)root.classList.remove('is-just-logged');
       const btn=document.getElementById('nxp-log-button');
       if(btn&&btn.dataset.idleLabel)btn.textContent=btn.dataset.idleLabel;
-      document.querySelectorAll('.nxp-set-row.is-fresh,.st-chip2.is-fresh').forEach(el=>el.classList.remove('is-fresh'));
+      document.querySelectorAll('.nxp-set-row.is-fresh').forEach(el=>el.classList.remove('is-fresh'));
     },1200);
   }
   /* Only surfaces recovery guidance that asks for a change of plan. When the
@@ -1103,7 +944,7 @@ const NXP = (() => {
     const chrome=`<header class="nxp-heading nxp-progress-chrome vn-progress-chrome"><div><h1>Progress</h1><p>${esc(period)}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>`;
     if(v==='body'){
       const waist=N.cleanRows(N.cfg().waist,'cm'),scans=bodyScanSource();
-      document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-body"><header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(bodyTitle(waist,scans))}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${bodySummary(waist,scans)}${compMapHTML(scans)}${bodyView(waist,scans)}</div>`;
+      document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-body"><header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(bodyTitle(waist,scans))}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${bodySummary(waist,scans)}${bodyView(waist,scans)}</div>`;
       return;
     }
     if(v==='strength'){
@@ -1300,22 +1141,6 @@ const NXP = (() => {
     }
     return `<div class="vn-evo">${evoAnalysisHTML(scans)}</div>`;
   }
-  /* Fat mass against muscle mass, scan by scan. Both axes are values the scan
-     itself reported — nothing is derived — and each keeps its own scale. */
-  function compMapHTML(scans) {
-    const pts=(scans||[]).filter(s=>s&&N.finite(s.fatMass)!==null&&N.finite(s.muscleMass)!==null)
-      .map(s=>({d:s.date,f:Number(s.fatMass),m:Number(s.muscleMass)}));
-    if(pts.length<2)return '';
-    const A=pts[0],B=pts.at(-1),df=B.f-A.f,dm=B.m-A.m;
-    const sg=v=>(v>0?'+':v<0?'−':'±')+Math.abs(v).toFixed(1);
-    return `<section class="st-tile st-compmap" style="--c:var(--st-fat)">
-      <div class="st-tile-head"><span class="st-cat">Composition map</span><span class="st-meta">${pts.length} scans</span></div>
-      <p class="st-meta">Where each scan sits on fat mass and muscle mass</p>
-      <div class="st-cm" data-st-cmap="${esc(JSON.stringify(pts))}" role="img" aria-label="${esc(pts.map(p=>N.shortDate(p.d)+': fat mass '+p.f+' kilograms, muscle mass '+p.m).join('; '))}"></div>
-      <p class="st-cm-read"><b>${esc(N.shortDate(A.d))} → ${esc(N.shortDate(B.d))}</b> · <span style="color:var(--st-fat)">${sg(df)} kg fat mass</span> · <span style="color:var(--st-lean)">${sg(dm)} kg muscle mass</span></p>
-      <p class="st-meta st-mt2">Left means less fat mass, up means more muscle mass. Scan estimates move with hydration, so small steps between neighbouring scans are within normal variation.</p>
-    </section>`;
-  }
   function bodyView(waist,scans) {
     const waistRows=waist.slice().reverse().map(r=>`<button type="button" class="n99-list-row nxp-progress-body-row" onclick="NXT.openWaist('${r.date}')"><span>${esc(N.shortDate(r.date))}</span><b>${r.cm.toFixed(1)} cm</b><span>Edit ›</span></button>`).join('');
     return `<section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">All readings</h2>${waist.length?waistRows:`<p class="nxp-progress-body-empty">No waist measurements yet. Optional, about once a week, with the same tape position.</p>`}${row('Log waist','+',"NXT.openWaist()",'Same position and similar conditions')}</section><section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Evo scans</h2>${bodyScanAnalysis(scans)}${row('New scan','Add','NXP.openBodyCapture()','Review and save in Settings')}</section><p class="n99-small nxp-progress-body-note">Body fat and muscle figures only appear from saved Evo scans. They are not calculated from waist or scale weight.</p>`;
@@ -1368,182 +1193,6 @@ const NXP = (() => {
     if(signedOut&&hasData&&!(typeof lastCloudSyncAt!=='undefined'&&lastCloudSyncAt)&&!dismissed)return {word:'Not backed up',tone:'watch',sub:'Your records exist on this device only'};
     return calm;
   }
-  /* ---- Training: split + routines (D22) ------------------------------------
-     A routine is the saved programme for one workout type at one gym
-     (cfg().templates[gym+'__'+type], validated by NXT.validTemplate). The
-     editor works on a draft and writes only on Save, after a safety snapshot.
-     Today's workout is re-seeded from the new routine when nothing has been
-     logged in it yet, so an edit shows up immediately. */
-  const NON_LIFT=['Rest','Zone2','Floorball'];
-  const DAY_ORDER=[1,2,3,4,5,6,0],DAY_SHORT=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],DAY_LONG=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  function liftTypes(){return N.typeNames().filter(x=>!NON_LIFT.includes(x));}
-  function gyms(){const g=['Gym A','Gym B'];if(state.gym&&!g.includes(state.gym))g.push(state.gym);return g;}
-  function routineGym(){return ui.routineGym||state.gym||'Gym A';}
-  function daysFor(type){return DAY_ORDER.filter(d=>settings.weeklyPlan&&settings.weeklyPlan[d]===type).map(d=>DAY_SHORT[d]);}
-  function typeShort(t){return ({FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Floorball:'Floorball',Pump:'Legs+',Rest:'Rest'})[t]||N.label(t);}
-  function trainingView(){
-    syncTrainNav(false);
-    const gym=routineGym(),plan=settings.weeklyPlan||{};
-    const used=[...new Set(DAY_ORDER.map(d=>plan[d]).filter(x=>x&&!NON_LIFT.includes(x)))];
-    const others=liftTypes().filter(x=>!used.includes(x));
-    const week=DAY_ORDER.map(d=>{const ty=plan[d]||'Rest',lift=!NON_LIFT.includes(ty);return `<button type="button" class="st-wd${lift?' is-lift':''}${d===new Date(N.dateMs(state.date)).getUTCDay()?' is-today':''}" onclick="NXP.pickDay(${d})" aria-label="${DAY_LONG[d]}: ${esc(N.label(ty))}. Change"><small>${DAY_SHORT[d].slice(0,1)}</small><b>${esc(typeShort(ty))}</b></button>`;}).join('');
-    const card=ty=>{const rows=N.templateFor(ty,gym),sets=rows.reduce((a,e)=>a+Number(e.sets),0),days=daysFor(ty);
-      return `<button type="button" class="st-rt" onclick="NXP.editRoutine('${ty}')"><span class="st-rt-l"><b>${esc(N.label(ty))}</b><small>${rows.length} exercises · ${sets} sets${days.length?' · '+days.join(', '):''}</small><span class="st-rt-p">${esc(rows.slice(0,3).map(e=>e.name).join(' · '))}${rows.length>3?' …':''}</span></span><i aria-hidden="true">›</i></button>`;};
-    document.getElementById('morePage').innerHTML=shell(`${settingsHead('Training','Your split, routines and gyms')}
-      <section class="st-set-sec"><div class="st-set-h"><h2>Your week</h2><span>Tap a day to change it</span></div><div class="st-week7">${week}</div></section>
-      <section class="st-set-sec"><div class="st-set-h"><h2>Routines</h2>
-        <div class="st-gymseg" role="group" aria-label="Gym">${gyms().map(g=>`<button type="button" class="${g===gym?'is-on':''}" aria-pressed="${g===gym}" onclick="NXP.setRoutineGym('${esc(g)}')">${esc(g)}</button>`).join('')}</div></div>
-        <p class="st-set-note">Each gym keeps its own routines, so loads and machines stay comparable.</p>
-        <div class="st-rts">${used.map(card).join('')||'<p class="st-set-note">No lifting days in your week yet.</p>'}</div>
-        ${others.length?`<details class="st-more-rt"><summary>Other routines · ${others.length}</summary><div class="st-rts">${others.map(card).join('')}</div></details>`:''}
-      </section>`,'vn-settings st-settings');
-  }
-  function setRoutineGym(g){ui.routineGym=g;trainingView();}
-  function pickDay(d){
-    const cur=(settings.weeklyPlan||{})[d];
-    N.modal(DAY_LONG[d],`<div class="st-mgroup">${N.typeNames().map(ty=>`<button type="button" class="st-mrow st-pick${ty===cur?' is-on':''}" onclick="NXP.setDay(${d},'${ty}')"><span class="st-mrow-l"><b>${esc(N.label(ty))}</b>${NON_LIFT.includes(ty)?'':`<small>${N.templateFor(ty,routineGym()).length} exercises</small>`}</span><i aria-hidden="true">${ty===cur?'✓':''}</i></button>`).join('')}</div>`);
-  }
-  function setDay(d,ty){
-    if(!N.typeNames().includes(ty))return;
-    const plan={...(settings.weeklyPlan||{})};if(plan[d]===ty){closeModal();return;}
-    if(!N.snapshot('Before weekly plan change'))return;
-    N.cfg().previousWeeklyPlan=N.copy(settings.weeklyPlan||{});
-    plan[d]=ty;settings.weeklyPlan=plan;state.dayType=N.typeFor(state.date);
-    closeModal();N.commit(DAY_LONG[d]+' set to '+N.label(ty));
-  }
-  function editRoutine(type){
-    const gym=routineGym();
-    ui.routine={type,gym,rows:N.copy(N.templateFor(type,gym)),dirty:false,both:false};
-    N.more('routine');
-  }
-  function routineView(){
-    syncTrainNav(false);
-    const r=ui.routine;if(!r){N.more('training');return;}
-    const sets=r.rows.reduce((a,e)=>a+Number(e.sets),0),days=daysFor(r.type);
-    const other=gyms().filter(g=>g!==r.gym)[0];
-    const rows=r.rows.map((e,i)=>`<div class="st-rx">
-        <span class="st-rx-n">${i+1}</span>
-        <button type="button" class="st-rx-main" onclick="NXP.routineEdit(${i})"><b>${esc(e.name||'Choose exercise')}</b><small>${e.sets} × ${e.reps[0]}–${e.reps[1]}${Number(e.inc)>0?' · +'+trimNum(e.inc)+' kg':''}</small></button>
-        <span class="st-rx-mv"><button type="button" ${i===0?'disabled':''} aria-label="Move ${esc(e.name)} up" onclick="NXP.routineMove(${i},-1)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5L10 7.5l5 5"/></svg></button><button type="button" ${i===r.rows.length-1?'disabled':''} aria-label="Move ${esc(e.name)} down" onclick="NXP.routineMove(${i},1)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5l5 5 5-5"/></svg></button></span>
-      </div>`).join('');
-    document.getElementById('morePage').innerHTML=shell(`<header class="vn-set-head"><button type="button" class="vn-set-back" aria-label="Back to Training" onclick="NXP.routineBack()"><i aria-hidden="true">‹</i>Training</button>
-        <h1>${esc(N.label(r.type))}</h1><p>${esc(r.gym)} · ${r.rows.length} exercises · ${sets} sets${days.length?' · '+days.join(', '):''}</p></header>
-      <div class="st-rxs">${rows}
-        <button type="button" class="st-rx-add" onclick="NXP.routinePick(-1)"><span aria-hidden="true">+</span>Add exercise</button>
-      </div>
-      ${other?`<label class="st-both"><input type="checkbox" ${r.both?'checked':''} onchange="NXP.routineBoth(this.checked)"><span><b>Also save to ${esc(other)}</b><small>Overwrites ${esc(other)}’s ${esc(N.label(r.type))} routine</small></span></label>`:''}
-      <button type="button" class="st-rx-reset" onclick="NXP.routineDefault()">Restore default exercises</button>
-      <div class="st-savebar${r.dirty?' is-dirty':''}"><span>${r.dirty?'Unsaved changes':'All changes saved'}</span><button type="button" class="st-save" ${r.dirty?'':'disabled'} onclick="NXP.routineSave()">Save routine</button></div>`,'vn-settings st-settings st-routine');
-  }
-  function routineBack(){
-    const r=ui.routine;
-    if(r&&r.dirty&&!confirm('Discard unsaved changes to this routine?'))return;
-    ui.routine=null;N.more('training');
-  }
-  function routineTouch(){ui.routine.dirty=true;routineView();}
-  function routineMove(i,dir){const rows=ui.routine.rows,j=i+dir;if(j<0||j>=rows.length)return;[rows[i],rows[j]]=[rows[j],rows[i]];routineTouch();}
-  function routineBoth(on){ui.routine.both=!!on;ui.routine.dirty=true;routineView();}
-  function routineDefault(){
-    const r=ui.routine,def=N.copy(N.defaults[r.type]||TEMPLATES[r.type]||[]);
-    if(!def.length)return toast('No default exists for this routine.');
-    if(!confirm('Replace this draft with the default exercises? Nothing is saved until you tap Save.'))return;
-    r.rows=def;routineTouch();
-  }
-  /* Edit sheet: steppers write straight into the draft row. */
-  function routineEdit(i){
-    const e=ui.routine.rows[i];if(!e)return;
-    const step=(k,label,val,sub)=>`<div class="st-es"><span><b>${label}</b>${sub?`<small>${sub}</small>`:''}</span><div class="st-es-c"><button type="button" aria-label="Decrease ${label}" onclick="NXP.routineStep(${i},'${k}',-1)">−</button><output class="vn-num" id="st-es-${k}">${val}</output><button type="button" aria-label="Increase ${label}" onclick="NXP.routineStep(${i},'${k}',1)">+</button></div></div>`;
-    N.modal(e.name||'Exercise',`<div class="st-menu">
-      <div class="st-mgroup">
-        ${step('sets','Working sets',e.sets,'')}
-        ${step('lo','Min reps',e.reps[0],'Bottom of the rep range')}
-        ${step('hi','Max reps',e.reps[1],'Hit this on every set to earn the next load')}
-        ${step('inc','Load step',trimNum(e.inc)+' kg','How much the weight goes up')}
-      </div>
-      <div class="st-mgroup">
-        <button type="button" class="st-mrow" onclick="NXP.routinePick(${i})"><span class="st-mrow-l"><b>Change exercise</b><small>Keep these sets and reps</small></span><i aria-hidden="true">›</i></button>
-        <button type="button" class="st-mrow is-danger" onclick="NXP.routineRemove(${i})"><span class="st-mrow-l"><b>Remove from routine</b></span></button>
-      </div>
-      <button type="button" class="st-cta" onclick="closeModal()">Done</button>
-    </div>`);
-  }
-  const INC_STEPS=[0,1,1.25,2,2.5,5,10];
-  function routineStep(i,k,dir){
-    const e=ui.routine.rows[i];if(!e)return;
-    if(k==='sets')e.sets=Math.max(1,Math.min(8,Number(e.sets)+dir));
-    else if(k==='lo'){e.reps=[Math.max(1,Math.min(e.reps[1],e.reps[0]+dir)),e.reps[1]];}
-    else if(k==='hi'){e.reps=[e.reps[0],Math.max(e.reps[0],Math.min(30,e.reps[1]+dir))];}
-    else if(k==='inc'){const ix=Math.max(0,INC_STEPS.findIndex(x=>x>=Number(e.inc)-1e-9));e.inc=INC_STEPS[Math.max(0,Math.min(INC_STEPS.length-1,ix+dir))];}
-    const out=document.getElementById('st-es-'+k);
-    if(out)out.textContent=k==='sets'?e.sets:k==='lo'?e.reps[0]:k==='hi'?e.reps[1]:trimNum(e.inc)+' kg';
-    ui.routine.dirty=true;routineView();
-  }
-  function routineRemove(i){
-    if(ui.routine.rows.length<=1)return toast('Keep at least one exercise.');
-    ui.routine.rows.splice(i,1);closeModal();routineTouch();
-  }
-  /* Exercise picker: search the shipped library plus every name in use. */
-  function routinePick(i){
-    ui.pickIndex=i;
-    N.modal(i<0?'Add exercise':'Change exercise',`<div class="st-picker"><input id="st-pick-q" class="st-pick-q" type="search" placeholder="Search exercises" autocomplete="off" oninput="NXP.routineFilter(this.value)"><div id="st-pick-list" class="st-mgroup st-pick-list">${pickList('')}</div></div>`);
-  }
-  function pickList(q){
-    const have=new Set(ui.routine.rows.map(e=>e.name)),s=String(q||'').trim().toLowerCase();
-    const names=v88AllExerciseNames().filter(n=>!s||n.toLowerCase().includes(s)).slice(0,80);
-    const mus=n=>{try{if(typeof NXTLIB==='undefined')return '';const m=NXTLIB.musclesFor(n);return m.primary.map(id=>NXTANAT.label(id)).join(' · ');}catch(e){return '';}};
-    const custom=s&&!names.some(n=>n.toLowerCase()===s)?`<button type="button" class="st-mrow" data-name="${esc(q.trim())}" onclick="NXP.routineChoose(this.dataset.name)"><span class="st-mrow-l"><b>Use “${esc(q.trim())}”</b><small>Custom exercise</small></span><i aria-hidden="true">+</i></button>`:'';
-    return names.map(n=>`<button type="button" class="st-mrow${have.has(n)?' is-in':''}" data-name="${esc(n)}" ${have.has(n)?'disabled':''} onclick="NXP.routineChoose(this.dataset.name)"><span class="st-mrow-l"><b>${esc(n)}</b>${mus(n)?`<small>${esc(mus(n))}</small>`:''}</span><i aria-hidden="true">${have.has(n)?'In routine':'+'}</i></button>`).join('')+custom;
-  }
-  function routineFilter(q){const el=document.getElementById('st-pick-list');if(el)el.innerHTML=pickList(q);}
-  function routineChoose(name){
-    name=String(name||'').trim().slice(0,100);if(!name)return;
-    const r=ui.routine;
-    if(r.rows.some((e,j)=>e.name===name&&j!==ui.pickIndex))return toast('Already in this routine.');
-    if(ui.pickIndex<0){
-      if(r.rows.length>=15)return toast('A routine can hold up to 15 exercises.');
-      const d=typeof exerciseDefByName==='function'?exerciseDefByName(name,r.type):null;
-      r.rows.push({name,sets:Number(d&&d.sets)||3,reps:Array.isArray(d&&d.reps)?[Number(d.reps[0]),Number(d.reps[1])]:[8,12],inc:Number.isFinite(Number(d&&d.inc))?Number(d.inc):2.5});
-    }else{
-      r.rows[ui.pickIndex]={...r.rows[ui.pickIndex],name};
-    }
-    closeModal();routineTouch();
-  }
-  function reseedToday(type,gym){
-    /* Only a session that has not started is re-seeded: logged sets are never
-       orphaned, and a workout in progress keeps its queue. */
-    const key=sessionKey(type,state.date,gym);
-    const logged=(state.logs||[]).some(x=>x&&x.date===state.date&&(x.gym||'Gym A')===gym&&(!x.dayType||x.dayType===type));
-    if(logged)return false;
-    state.sessionPlans=state.sessionPlans||{};
-    state.sessionPlans[key]=N.templateFor(type,gym).map(e=>e.name);
-    N.cfg().sessionTargets[key]=N.copy(N.templateFor(type,gym));
-    if(type===state.dayType&&gym===state.gym)state.exercise=state.sessionPlans[key][0]||'';
-    return true;
-  }
-  function routineSave(){
-    const r=ui.routine;if(!r)return;
-    r.rows=r.rows.map(e=>({...e,name:String(e.name||'').trim(),sets:Math.round(Number(e.sets)),reps:[Math.round(Number(e.reps[0])),Math.round(Number(e.reps[1]))],inc:Number(e.inc)}));
-    if(!N.validTemplate(r.rows))return toast('Check names are filled in and not repeated.');
-    if(!N.snapshot('Before routine edit'))return;
-    const targets=[r.gym].concat(r.both?gyms().filter(g=>g!==r.gym):[]);
-    let live=false;
-    targets.forEach(g=>{N.cfg().templates[g+'__'+r.type]=N.copy(r.rows);if(reseedToday(r.type,g)&&g===state.gym&&r.type===state.dayType)live=true;});
-    r.dirty=false;r.both=false;
-    N.commit(N.label(r.type)+' saved'+(live?' · today’s workout updated':''));
-  }
-  /* Train: when today's queue differs from the routine, offer to keep it. */
-  function sessionDiffers(){
-    const names=template().map(e=>e.name),base=N.templateFor().map(e=>e.name);
-    return names.length!==base.length||names.some((n,i)=>n!==base[i]);
-  }
-  function saveTodayToRoutine(){
-    const rows=template().map(e=>({name:e.name,sets:Number(e.sets),reps:[Number(e.reps[0]),Number(e.reps[1])],inc:Number(e.inc)}));
-    if(!N.validTemplate(rows))return toast('Check this workout in Settings › Training first.');
-    if(!N.snapshot('Before saving workout to routine'))return;
-    N.cfg().templates[state.gym+'__'+state.dayType]=N.copy(rows);
-    if(typeof closeModal==='function')closeModal();
-    N.commit(N.label(state.dayType)+' routine updated');
-  }
   function evoScanView() {
     const page=document.getElementById('morePage');
     if(!page)return;
@@ -1560,8 +1209,6 @@ const NXP = (() => {
     if(view==='appearance'){appearanceView();return;}
     if(view==='data'){dataView();return;}
     if(view==='body'){evoScanView();return;}
-    if(view==='training'){page.classList.add('nxp-settings-page');trainingView();return;}
-    if(view==='routine'){page.classList.add('nxp-settings-page');routineView();return;}
     if(view!=='hub'){base.more();subviewChrome();return;}
     const lifts=Object.values(settings.weeklyPlan||{}).filter(t=>!['Rest','Zone2','Floorball'].includes(t)).length;
     const waist=N.cleanRows(c.waist,'cm').length;
@@ -1582,8 +1229,7 @@ const NXP = (() => {
         setRow('Cloud & sync',cloud.word,"NXT.more('data')",cloud.sub,cloud.tone)
         +setRow('Wearable',wearableConnectionLabel(),'NXP.openWearableConnection()','Connection stays off until a secure backend exists'))}
       ${setGroup('About',
-        setRow('App & install','',"NXT.more('app')",'Install, build version and safe reset')
-        +setRow('Classic app','Backup',"location.href='classic/'",'The previous design, using the same data'))}
+        setRow('App & install','',"NXT.more('app')",'Install, build version and safe reset'))}
       ${cloudUser?`<div class="vn-set-account-out"><button type="button" class="vn-set-text" onclick="cloudSignOut()">Sign out</button></div>`:''}
       <p class="vn-set-foot">NXTFRM · your next form</p>`,'vn-settings');
   }
@@ -1806,7 +1452,7 @@ const NXP = (() => {
     const [year,monthNum]=month.split('-').map(Number);
     const first=new Date(year,monthNum-1,1,12,0,0);
     /* ≤359px: long "September 2026" + 44pt nav controls wrap the title. Short month stays one line. */
-    const narrow=typeof matchMedia==='function'&&matchMedia('(max-width:480px)').matches;
+    const narrow=typeof matchMedia==='function'&&matchMedia('(max-width:359px)').matches;
     const title=first.toLocaleDateString('en-SG',{month:narrow?'short':'long',year:'numeric'});
     const firstDow=(first.getDay()+6)%7,days=new Date(year,monthNum,0).getDate(),prevDays=new Date(year,monthNum-1,0).getDate();
     const total=Math.ceil((firstDow+days)/7)*7,today=localToday(),cells=[];
@@ -1818,16 +1464,13 @@ const NXP = (() => {
       const key=dateKeyFromParts(y,m,d),marks=historyMarks(key,scope),cls=['nxp-cal-day'];
       if(outside)cls.push('is-outside');
       if(key===today)cls.push('is-today');
-      if(key>today)cls.push('is-future');
       if(key===selected)cls.push('is-selected');
       if(marks.lift)cls.push('has-lift');
-      if(marks.cardio)cls.push('has-cardio');
-      if(marks.floorball)cls.push('has-floor');
       const kinds=[marks.lift?'lifting':'',marks.cardio?'cardio':'',marks.floorball?'floorball':'',marks.body?'weigh-in':''].filter(Boolean);
       const label=new Date(`${key}T12:00:00`).toLocaleDateString('en-SG',{day:'numeric',month:'long'})+(kinds.length?`, ${kinds.join(', ')}`:', no records');
-      cells.push(`<button type="button" class="${cls.join(' ')}" data-date="${key}" aria-label="${esc(label)}" aria-pressed="${key===selected?'true':'false'}"${key===today?' aria-current="date"':''} onclick="NXP.historySelect('${key}')"><b${d===1?' class="is-m1"':''}>${d===1?d+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]:d}</b><span class="nxp-cal-marks" aria-hidden="true">${historyMarkHTML(marks)}</span></button>`);
+      cells.push(`<button type="button" class="${cls.join(' ')}" data-date="${key}" aria-label="${esc(label)}" aria-pressed="${key===selected?'true':'false'}"${key===today?' aria-current="date"':''} onclick="NXP.historySelect('${key}')"><b>${d}</b><span class="nxp-cal-marks" aria-hidden="true">${historyMarkHTML(marks)}</span></button>`);
     }
-    return `<section class="nxp-history-calendar vn-hist-calendar" id="vn-hist-calendar"><div class="nxp-cal-head" id="vn-hist-calhead"><h2 class="nxp-cal-month">${esc(title)}</h2><div class="nxp-cal-nav"><button type="button" aria-label="Previous month" onclick="NXP.historyShiftMonth(-1)">‹</button><button type="button" class="nxp-cal-today" aria-label="Jump to current month" onclick="NXP.historyThisMonth()">Today</button><button type="button" aria-label="Next month" onclick="NXP.historyShiftMonth(1)">›</button></div></div><div class="nxp-cal-weekdays" aria-hidden="true">${['M','T','W','T','F','S','S'].map(x=>`<span>${x}</span>`).join('')}</div><div class="nxp-cal-grid" id="vn-hist-grid">${cells.join('')}</div><p class="nxp-cal-legend"><span class="lift">Lifting</span><span class="cond">Cardio</span><span class="floor">Floorball</span><span class="body">Weigh-in</span></p></section>`;
+    return `<section class="nxp-history-calendar vn-hist-calendar" id="vn-hist-calendar"><div class="nxp-cal-head" id="vn-hist-calhead"><h2 class="nxp-cal-month">${esc(title)}</h2><div class="nxp-cal-nav"><button type="button" aria-label="Previous month" onclick="NXP.historyShiftMonth(-1)">‹</button><button type="button" class="nxp-cal-today" aria-label="Jump to current month" onclick="NXP.historyThisMonth()">Today</button><button type="button" aria-label="Next month" onclick="NXP.historyShiftMonth(1)">›</button></div></div><div class="nxp-cal-weekdays" aria-hidden="true">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>`<span>${x}</span>`).join('')}</div><div class="nxp-cal-grid" id="vn-hist-grid">${cells.join('')}</div><p class="nxp-cal-legend"><span class="lift">Lifting</span><span class="cond">Cardio</span><span class="floor">Floorball</span><span class="body">Weigh-in</span></p></section>`;
   }
   function historyLiftingBlock(date,logs) {
     const order=[],groups=new Map();
@@ -2235,7 +1878,6 @@ const NXP = (() => {
          does not consume fold space during the set. */
       rest.setAttribute('hidden','');
     }
-    rest.style.setProperty('--pct',String(left&&ui.restTotal?Math.max(0,Math.min(100,left/ui.restTotal*100)):0));
     const fill=rest.querySelector('.nxp-rest-rail > span');
     if(fill)fill.style.width=(left&&ui.restTotal?Math.max(0,Math.min(100,left/ui.restTotal*100)):0)+'%';
     /* The engine writes a shouted "READY" into the value. At rest-timer size
@@ -2246,7 +1888,7 @@ const NXP = (() => {
   }
   bindSteppers();
   bindKeyboardDock();
-  return {ui,useAim,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom};
+  return {ui,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;

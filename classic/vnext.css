@@ -1,0 +1,2262 @@
+/* ==========================================================================
+   NXTFRM VNext — foundation layer (Phase 2A + 2B + 2C + 2D)
+   Loads AFTER cut-support.css and premium-ui.css.
+
+   DIRECTION: INSTRUMENT (tasks/vnext/DECISIONS.md D1)
+   A surface is a claim of primacy. One protagonist surface per screen, plus
+   transient sheets. Everything else sits on the canvas, organised by type,
+   space and hairlines.
+
+   SCOPE DISCIPLINE —
+     · the --vn-* token set                (new names; collide with nothing)
+     · the page-transition timing          (.content, shared foundation)
+     · the tab bar                         (.tabs) + D6 recede
+     · Today                               (#homePage .vn-*)
+     · Train                               (#trainPage .vn-*)   ← Phase 2B
+     · Progress / Weight                   (#weightPage .vn-*)  ← Phase 2C
+     · Progress / Performance              (#weightPage .vn-perf) ← Phase 2G
+     · History                             (#historyPage .vn-*) ← Phase 2D
+     · Settings                            (#morePage .vn-*)    ← Phase 2E
+     · EvoScan                             (#morePage .vn-evo)  ← Phase 2F
+     · Progress / Body                     (#weightPage .vn-evo) ← Phase 2H, same components
+   Every screen rule is scoped under its page id, and every component class is
+   new (vn-*), so no existing .nxp-* / .n99-* rule is altered at the source —
+   overrides are additive under page ids.
+   ========================================================================== */
+
+:root{
+  /* Canvas — layered graphite. Never jet black. */
+  --vn-canvas:#0E1014;
+  --vn-zone:#12151B;
+  --vn-surface:#171B22;
+  --vn-surface-2:#1E232C;
+  --vn-surface-3:#262C37;
+
+  --vn-line:rgba(255,255,255,.06);
+  --vn-line-2:rgba(255,255,255,.10);
+  --vn-line-3:rgba(255,255,255,.16);
+
+  /* Ink — every step carries text somewhere, so every step clears WCAG AA
+     (4.5:1) against both --vn-canvas and --vn-surface. --vn-ink-4 stays the
+     quietest step. Verified computationally, not by eye. */
+  --vn-ink:#F1F3F7;
+  --vn-ink-2:#AEB4C0;
+  --vn-ink-3:#8B92A0;
+  --vn-ink-4:#7E8593;
+
+  /* Violet = SIGNAL (I1). Never wallpaper. */
+  --vn-violet:#8B5CF6;
+  --vn-violet-lift:#A78BFA;
+  --vn-violet-dim:rgba(139,92,246,.16);
+  --vn-violet-line:rgba(139,92,246,.42);
+
+  /* Primary action only. --vn-violet stays the signal colour (tabs, dates,
+     focus, focal surface) — white on it is 4.23:1 and fails I4.
+     Lightest stop #7C3AED is 5.70:1 vs #fff; #6D28D9 is 7.10:1. */
+  --vn-action:#6D28D9;
+  --vn-action-lift:#7C3AED;
+  --vn-action-ink:#fff;
+  --vn-action-fill:linear-gradient(180deg,var(--vn-action-lift),var(--vn-action));
+  --vn-action-shadow:0 1px 0 rgba(255,255,255,.15) inset, 0 6px 16px -10px rgba(109,40,217,.45);
+
+  /* Status trio — validated. ALWAYS paired with a word + shape (I2). */
+  --vn-ok:#8B5CF6;
+  --vn-review:#B8842A;
+  --vn-review-lift:#D5A448;
+  --vn-concern:#DC5A76;
+
+  /* Radii deliberately differentiated (I7) */
+  --vn-r-surface:20px;
+  --vn-r-control:12px;
+  --vn-r-input:10px;
+
+  --vn-s1:4px; --vn-s2:8px; --vn-s3:12px; --vn-s4:16px;
+  --vn-s5:20px; --vn-s6:24px; --vn-s7:32px; --vn-s8:40px;
+  --vn-gutter:20px;
+
+  /* Motion tiers (I8) */
+  --vn-t-touch:120ms;
+  --vn-t-state:200ms;
+  --vn-t-move:280ms;
+  --vn-ease:cubic-bezier(.32,.72,0,1);
+}
+
+/* ---- PAGE TRANSITION (shared foundation) --------------------------------
+   Retimes the existing route enter to the VNext spatial tier. The trigger is
+   unchanged: render() toggles display, which restarts the animation. Nothing
+   here defers render() or runs while an input is focused, so the V86 render
+   input lock (index.html:2919) is untouched.
+   No fill-mode: the element is left with no transform once the animation ends,
+   so it never becomes a containing block for descendants. */
+@keyframes vn-route-enter{
+  from{opacity:0;transform:translateY(6px)}
+  to  {opacity:1;transform:none}
+}
+/* Cover both specificity levels: render() never strips `.hide` on non-home
+   destinations, so `.content:not(.hide)` alone only ever matched #homePage.
+   Matching `.content` as well lets vn-route-enter win over index.html's
+   legacy `.content{animation:v94-enter}` for Train / Progress / History / More. */
+.content,
+.content:not(.hide){
+  animation:vn-route-enter var(--vn-t-move) var(--vn-ease);
+}
+
+/* ---- TAB BAR -------------------------------------------------------------
+   The bar already had the right structure (flat, violet active, short top
+   rule). This aligns its palette to the VNext canvas and nothing else. */
+.tabs{
+  background:rgba(14,16,20,.86) !important;
+  backdrop-filter:blur(20px) saturate(1.4) !important;
+  -webkit-backdrop-filter:blur(20px) saturate(1.4) !important;
+  border-top:1px solid var(--vn-line) !important;
+  transition:transform var(--vn-t-move) var(--vn-ease), opacity var(--vn-t-move) var(--vn-ease);
+}
+.tabs .tab:not(.active){color:var(--vn-ink-4) !important}
+.tabs .tab.active{color:var(--vn-violet-lift) !important}
+.tabs .tab.active::before{background:var(--vn-violet)}
+/* D6: focused Train mode recedes the dock. Wired by NXP.syncTrainNav. */
+.tabs.vn-recede{
+  transform:translateX(-50%) translateY(100%) !important;
+  opacity:0;
+  pointer-events:none;
+}
+/* D6 mode chrome: sync banner must not occupy fold space mid-set.
+   D11 targeting is unchanged — this only hides while .vn-recede is on. */
+.app:has(.tabs.vn-recede) #cloudLocalBanner{
+  display:none !important;
+}
+body:has(.tabs.vn-recede) .content{
+  padding-top:0 !important;
+}
+
+/* ==========================================================================
+   TODAY  —  everything below is scoped to #homePage
+   ========================================================================== */
+
+#homePage{
+  /* The VNext canvas is painted by the page itself so the rest of the app
+     keeps its current background exactly. */
+  background:
+    radial-gradient(120% 45% at 50% 0%, rgba(139,92,246,.10), transparent 60%),
+    var(--vn-canvas);
+  background-attachment:fixed;
+  min-height:100dvh;
+  padding-left:0 !important;
+  padding-right:0 !important;
+}
+
+#homePage .vn-today{
+  padding-bottom:var(--vn-s8);
+  color:var(--vn-ink);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;
+  font-size:15px;
+  line-height:1.45;
+  text-align:left;
+}
+#homePage .vn-pad{padding-inline:var(--vn-gutter)}
+#homePage .vn-head{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:var(--vn-s3);padding-block:var(--vn-s3) var(--vn-s5);
+}
+#homePage .vn-hstack{display:flex;align-items:center;gap:var(--vn-s5);flex-wrap:wrap}
+#homePage .vn-mt1{margin-top:var(--vn-s1)}
+#homePage .vn-mt2{margin-top:var(--vn-s2)}
+#homePage .vn-mt3{margin-top:var(--vn-s3)}
+#homePage .vn-mt4{margin-top:var(--vn-s4)}
+#homePage .vn-mt5{margin-top:var(--vn-s5)}
+#homePage .vn-evid{
+  font-size:11.5px;font-weight:500;color:var(--vn-ink-4);
+}
+#homePage .vn-evid b{
+  color:var(--vn-ink-2);font-weight:600;margin-left:5px;
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;
+}
+
+/* Tabular numerals wherever a value can change — stops digit jitter */
+#homePage .vn-num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+/* ---- type ---- */
+#homePage .vn-h1{
+  font-size:26px;line-height:1.14;font-weight:640;letter-spacing:-.022em;
+  margin:0;color:var(--vn-ink);
+}
+#homePage .vn-h2{font-size:21px;font-weight:600;letter-spacing:-.016em;margin:0;color:var(--vn-ink)}
+#homePage .vn-h3{font-size:20px;font-weight:600;letter-spacing:-.014em;margin:0;color:var(--vn-ink)}
+#homePage .vn-sect-t{font-size:13px;font-weight:600;letter-spacing:.01em;color:var(--vn-ink-2);margin:0}
+#homePage .vn-eyebrow{
+  font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--vn-ink-3);margin:0;
+}
+#homePage .vn-body{font-size:15px;font-weight:420;line-height:1.5;color:var(--vn-ink-2);margin:0}
+#homePage .vn-meta{font-size:12.5px;font-weight:500;color:var(--vn-ink-3);margin:0}
+#homePage .vn-tiny{font-size:11.5px;font-weight:500;color:var(--vn-ink-4);margin:0}
+
+/* ---- section rhythm: no boxes ---- */
+#homePage .vn-sect{padding-block:var(--vn-s6)}
+#homePage .vn-sect + .vn-sect{border-top:1px solid var(--vn-line)}
+#homePage .vn-sect-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:var(--vn-s3);margin-bottom:var(--vn-s4);
+}
+
+/* ---- THE protagonist surface (exactly one on this screen) ---- */
+#homePage .vn-surface{
+  position:relative;
+  background:linear-gradient(180deg,var(--vn-surface) 0%,#14171E 100%);
+  border-radius:var(--vn-r-surface);
+  padding:var(--vn-s5);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.055),
+    0 1px 2px rgba(0,0,0,.4),
+    0 12px 28px -12px rgba(0,0,0,.6);
+}
+#homePage .vn-surface.vn-focal::before{
+  content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(120% 90% at 12% 0%, rgba(139,92,246,.17), transparent 58%);
+}
+#homePage .vn-surface.vn-focal{
+  box-shadow:
+    inset 0 1px 0 rgba(167,139,250,.28),
+    inset 0 0 0 1px rgba(139,92,246,.16),
+    0 1px 2px rgba(0,0,0,.4),
+    0 16px 36px -18px rgba(76,29,149,.45);
+}
+/* A "watch" decision carries amber, still word-first */
+#homePage .vn-surface.vn-focal.vn-tone-watch{
+  box-shadow:
+    inset 0 1px 0 rgba(213,164,72,.26),
+    inset 0 0 0 1px rgba(184,132,42,.18),
+    0 1px 2px rgba(0,0,0,.4),
+    0 16px 36px -18px rgba(120,80,15,.4);
+}
+#homePage .vn-surface.vn-focal.vn-tone-watch::before{
+  background:radial-gradient(120% 90% at 12% 0%, rgba(184,132,42,.15), transparent 58%);
+}
+#homePage .vn-surface > *{position:relative}
+
+/* ---- data row: the workhorse that replaces cards ---- */
+#homePage .vn-rows{display:flex;flex-direction:column}
+#homePage .vn-row{
+  display:flex;align-items:center;gap:var(--vn-s4);
+  min-height:52px;padding-block:var(--vn-s3);
+  border:0;background:none;width:100%;text-align:left;color:inherit;
+  font:inherit;font-size:15px;
+  -webkit-tap-highlight-color:transparent;
+}
+#homePage .vn-row + .vn-row{border-top:1px solid var(--vn-line)}
+#homePage .vn-row-l{flex:1;min-width:0}
+#homePage .vn-row-t{font-size:15px;font-weight:500;color:var(--vn-ink);display:block}
+#homePage .vn-row-s{font-size:12.5px;color:var(--vn-ink-3);display:block;margin-top:1px}
+#homePage .vn-row-v{font-size:15px;font-weight:600;color:var(--vn-ink);text-align:right;white-space:nowrap}
+#homePage .vn-row-v small{color:var(--vn-ink-3);font-weight:500;font-size:13px}
+#homePage button.vn-row{cursor:pointer}
+#homePage button.vn-row:active{background:rgba(255,255,255,.028)}
+#homePage .vn-chev{color:var(--vn-ink-4);font-size:17px;margin-left:-6px;font-style:normal}
+
+/* ---- status: word first, colour second, shape third (I2/I6) ---- */
+#homePage .vn-status{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:580}
+#homePage .vn-status i{width:7px;height:7px;border-radius:50%;flex:none;display:block}
+#homePage .vn-status.is-ok{color:var(--vn-violet-lift)}
+#homePage .vn-status.is-ok i{background:var(--vn-violet)}
+#homePage .vn-status.is-watch{color:var(--vn-review-lift)}
+#homePage .vn-status.is-watch i{background:var(--vn-review);border-radius:1px;transform:rotate(45deg)}
+#homePage .vn-status.is-concern{color:var(--vn-concern)}
+#homePage .vn-status.is-concern i{background:var(--vn-concern);border-radius:1px}
+#homePage .vn-status.is-neutral{color:var(--vn-ink-3)}
+#homePage .vn-status.is-neutral i{background:var(--vn-ink-4)}
+
+/* ---- actions: a box only when the action earns one ---- */
+#homePage .vn-act{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;min-height:50px;padding:0 var(--vn-s5);
+  border:0;border-radius:var(--vn-r-control);
+  background:var(--vn-action-fill);
+  color:var(--vn-action-ink);font:inherit;font-size:16px;font-weight:580;letter-spacing:-.005em;
+  box-shadow:var(--vn-action-shadow);
+  transition:transform var(--vn-t-touch) var(--vn-ease), filter var(--vn-t-touch) var(--vn-ease);
+  -webkit-tap-highlight-color:transparent;cursor:pointer;
+}
+#homePage .vn-act:active{transform:scale(.982);filter:brightness(.94)}
+/* secondary = text + chevron, no box. 44pt target without loosening rhythm (I5) */
+#homePage .vn-text{
+  border:0;background:none;padding:6px 0;color:var(--vn-violet-lift);
+  font:inherit;font-size:14.5px;font-weight:540;cursor:pointer;
+  display:inline-flex;align-items:center;gap:4px;
+  min-height:44px;margin-block:-5px;
+  -webkit-tap-highlight-color:transparent;
+}
+#homePage .vn-text:active{opacity:.6}
+#homePage .vn-text.is-mute{color:var(--vn-ink-2)}
+
+/* ---- week strip ---- */
+#homePage .vn-week{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+#homePage .vn-week-c{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  min-height:56px;border-radius:10px;padding:6px 0;
+  border:0;background:none;width:100%;color:inherit;font:inherit;
+  -webkit-tap-highlight-color:transparent;cursor:pointer;
+}
+#homePage button.vn-week-c:active{background:rgba(255,255,255,.028)}
+#homePage .vn-week-c.is-today{background:var(--vn-violet-dim);box-shadow:inset 0 0 0 1px var(--vn-violet-line)}
+#homePage .vn-week-c.is-today .vn-week-d{color:var(--vn-violet-lift)}
+#homePage .vn-week-c.is-today .vn-week-t{color:var(--vn-ink);font-weight:640}
+#homePage .vn-week-d{font-size:10px;font-weight:600;color:var(--vn-ink-4);letter-spacing:.04em}
+#homePage .vn-week-t{font-size:12.5px;font-weight:500;color:var(--vn-ink-3);font-variant-numeric:tabular-nums}
+#homePage .vn-week-c.is-lift .vn-week-t{font-weight:640;color:var(--vn-ink)}
+#homePage .vn-week-m{height:4px;display:flex;align-items:center;gap:2.5px}
+#homePage .vn-week-m i{width:4px;height:4px;border-radius:50%;background:var(--vn-violet);display:block}
+
+/* ---- disclosure for demoted detail (kept in product, not on the fold) ---- */
+#homePage .vn-more{border-top:1px solid var(--vn-line)}
+#homePage .vn-more > summary{
+  list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;
+  gap:var(--vn-s3);min-height:52px;padding-block:var(--vn-s3);
+  font-size:15px;font-weight:500;color:var(--vn-ink);
+  -webkit-tap-highlight-color:transparent;
+}
+#homePage .vn-more > summary::-webkit-details-marker{display:none}
+#homePage .vn-more > summary::after{content:"›";color:var(--vn-ink-4);font-size:17px;transition:transform var(--vn-t-state) var(--vn-ease)}
+#homePage .vn-more[open] > summary::after{transform:rotate(90deg)}
+#homePage .vn-more-body{padding-bottom:var(--vn-s5)}
+
+/* Demoted engine-owned blocks keep working; they are only quietened so they
+   cannot compete with the decision. Nothing about them is removed. */
+#homePage .vn-more-body .n99-card,
+#homePage .vn-more-body .nxp-home-adherence,
+#homePage .vn-more-body .nxp-home-recovery,
+#homePage .vn-more-body .nxp-home-kcal{
+  background:transparent;border:0;box-shadow:none;padding-left:0;padding-right:0;
+  border-radius:0;margin:0;
+}
+#homePage .vn-more-body .nxp-home-recovery,
+#homePage .vn-more-body .nxp-home-kcal{
+  width:100%;text-align:left;color:inherit;font:inherit;
+  border-top:1px solid var(--vn-line);min-height:52px;padding-block:var(--vn-s3);
+}
+#homePage .vn-more-body .nxp-home-adherence{margin-top:var(--vn-s3)}
+#homePage .vn-more-body .n99-quick{
+  display:flex;flex-wrap:wrap;gap:var(--vn-s2);margin:0;
+}
+#homePage .vn-more-body .nxp-home-adherence .n99-button,
+#homePage .vn-more-body .n99-quick .n99-button,
+#homePage .vn-more-body .n99-button.secondary{
+  background:var(--vn-surface-2) !important;
+  color:var(--vn-ink) !important;
+  border:1px solid var(--vn-line-2) !important;
+  box-shadow:none !important;
+  min-height:44px;
+}
+#homePage .vn-more-body .n99-button.secondary:active,
+#homePage .vn-more-body .n99-quick .n99-button:active{
+  background:var(--vn-surface-3) !important;
+}
+#homePage .vn-quick{
+  display:flex;flex-wrap:wrap;align-items:center;gap:var(--vn-s2) var(--vn-s6);
+  padding-block:var(--vn-s5);
+}
+
+/* ---- visible focus ---- */
+#homePage :where(button,a,summary,[tabindex]):focus-visible{
+  outline:2px solid var(--vn-violet-lift);outline-offset:2px;border-radius:6px;
+}
+
+/* ---- 320 IS A DESIGN STATE, NOT A SHRINK ---- */
+@media (max-width:359px){
+  :root{--vn-gutter:16px;--vn-r-surface:18px}
+  #homePage .vn-h1{font-size:23px}
+  #homePage .vn-h2{font-size:19px}
+  #homePage .vn-h3{font-size:18px}
+  #homePage .vn-row{gap:var(--vn-s3)}
+  #homePage .vn-row-v{font-size:14.5px}
+  /* Week strip goes edge-to-edge so each day clears 44pt width at 320. */
+  #homePage .vn-sect .vn-week{
+    width:calc(100% + 2 * var(--vn-gutter));
+    margin-inline:calc(-1 * var(--vn-gutter));
+    gap:0;
+  }
+  #homePage .vn-week-c{min-height:52px;min-width:44px;border-radius:0}
+  #homePage .vn-week-t{font-size:11.5px}
+  /* the day label + gym control stack rather than crushing either */
+  #homePage .vn-head{flex-wrap:wrap}
+}
+
+/* ---- REDUCED MOTION (I8) ----
+   premium-ui.css already zeroes durations globally for the media query and for
+   [data-nxp-motion="reduced"]; this removes the positional component too, so
+   the route change is a state swap rather than a fast movement. */
+@media (prefers-reduced-motion:reduce){
+  @keyframes vn-route-enter{from{opacity:0;transform:none}to{opacity:1;transform:none}}
+  .content,
+  .content:not(.hide){animation:none}
+  #homePage .vn-act:active{transform:none}
+  #trainPage .nxp-set-row.is-fresh{animation:none;background:transparent}
+  #trainPage .nxp-ex-top.is-forward .nxp-ex-text,
+  #trainPage .nxp-ex-top.is-back .nxp-ex-text{animation:none;transform:none}
+  .tabs,.tabs.vn-recede{transition:none}
+}
+:root[data-nxp-motion="reduced"] .content,
+:root[data-nxp-motion="reduced"] .content:not(.hide){animation:none}
+:root[data-nxp-motion="reduced"] #homePage .vn-act:active{transform:none}
+:root[data-nxp-motion="reduced"] #trainPage .nxp-set-row.is-fresh{animation:none;background:transparent}
+:root[data-nxp-motion="reduced"] .tabs,
+:root[data-nxp-motion="reduced"] .tabs.vn-recede{transition:none}
+
+/* ==========================================================================
+   TRAIN  —  Phase 2B. Everything below is scoped to #trainPage
+   Active workout is a focused mode: current set is the protagonist; global
+   nav recedes via .tabs.vn-recede. Non-lifting days keep their own screens.
+   ========================================================================== */
+
+#trainPage{
+  background:
+    radial-gradient(120% 40% at 50% 0%, rgba(139,92,246,.08), transparent 55%),
+    var(--vn-canvas);
+  background-attachment:fixed;
+  color:var(--vn-ink);
+}
+#trainPage .vn-train{
+  padding-bottom:var(--vn-s8);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;
+  font-size:15px;line-height:1.45;text-align:left;
+  color:var(--vn-ink);
+}
+#trainPage .vn-train-active.is-mode{
+  padding-bottom:calc(var(--vn-s6) + env(safe-area-inset-bottom,0px));
+}
+#trainPage .vn-num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+/* ---- Mode bar (leave · identity · tools · finish) ---- */
+#trainPage .vn-train-top{
+  display:flex;align-items:center;gap:var(--vn-s3);
+  padding:var(--vn-s1) 0 var(--vn-s2);
+}
+#trainPage .vn-train-icon{
+  width:44px;height:44px;min-width:44px;min-height:44px;flex:none;
+  border:0;border-radius:var(--vn-r-input);
+  background:var(--vn-surface-2);color:var(--vn-ink);
+  font:inherit;font-size:16px;font-weight:500;cursor:pointer;
+  box-shadow:inset 0 0 0 1px var(--vn-line-2);
+  -webkit-tap-highlight-color:transparent;
+  transition:background var(--vn-t-touch) var(--vn-ease), transform var(--vn-t-touch) var(--vn-ease);
+}
+#trainPage .vn-train-icon:active{background:var(--vn-surface-3);transform:scale(.95)}
+#trainPage .vn-train-id{flex:1;min-width:0;text-align:center}
+#trainPage .vn-train-id .nxp-caption{
+  font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--vn-ink-3);margin:0;
+}
+#trainPage .vn-train-count{
+  margin:2px 0 0;font-size:12px;font-weight:500;color:var(--vn-ink-3);
+  font-variant-numeric:tabular-nums;
+}
+#trainPage .vn-train-end{
+  display:flex;align-items:center;gap:var(--vn-s2);flex:none;
+}
+#trainPage .vn-train-tools{position:relative}
+#trainPage .vn-train-tools > summary{
+  list-style:none;display:grid;place-items:center;
+}
+#trainPage .vn-train-tools > summary::-webkit-details-marker{display:none}
+#trainPage .vn-train-tools-panel{
+  position:absolute;top:calc(100% + 6px);right:0;z-index:20;
+  width:min(300px,calc(100vw - 40px));
+  padding:var(--vn-s3);
+  border-radius:var(--vn-r-surface);
+  background:var(--vn-surface-2);
+  box-shadow:inset 0 0 0 1px var(--vn-line-2), 0 12px 32px rgba(0,0,0,.45);
+}
+#trainPage .vn-train-tools-panel .nxp-session-focus{margin:0 0 var(--vn-s3)}
+#trainPage .vn-train-tools-panel .nxp-ex-actions{margin:0 0 var(--vn-s3)}
+#trainPage .vn-train-tools-panel .nxp-session-tools{
+  display:flex;flex-direction:column;gap:var(--vn-s2);margin-top:var(--vn-s3);
+}
+#trainPage .vn-train-tools-panel .nxp-session-tools .n99-button{
+  width:100%;min-height:44px;border-radius:var(--vn-r-control);
+}
+
+/* Focused Train: keep the save toast clear of the mode-bar identity. */
+body:has(.tabs.vn-recede) .toast{
+  top:calc(58px + env(safe-area-inset-top,0px) + var(--nxt-safe-top,0px)) !important;
+}
+
+#trainPage .vn-train-active .nxp-ex-rail > p[hidden],
+#trainPage .vn-train-active .nxp-ex-meta[hidden],
+#trainPage .vn-train-active .nxp-set-dots[hidden]{
+  display:none !important;
+}
+#trainPage .vn-train-active .nxp-ex-rail ol{
+  display:flex;gap:3px;height:3px;margin:0;padding:0;list-style:none;
+}
+#trainPage .vn-train-active .nxp-ex-rail li{
+  flex:1;border-radius:2px;background:rgba(255,255,255,.09);
+  overflow:hidden;position:relative;min-height:3px;height:3px;
+}
+#trainPage .vn-train-active .nxp-ex-rail li.is-done{background:var(--vn-violet)}
+#trainPage .vn-train-active .nxp-ex-rail li.is-current{background:rgba(255,255,255,.18)}
+#trainPage .vn-train-active .nxp-ex-rail li.is-current::after{
+  content:"";position:absolute;inset:0;width:var(--p,0%);
+  background:var(--vn-violet);
+  transition:width var(--vn-t-state) var(--vn-ease);
+}
+#trainPage .vn-train-active .nxp-ex-rail p{
+  display:flex;align-items:center;justify-content:space-between;gap:var(--vn-s3);
+  margin:0;font-size:12px;color:var(--vn-ink-3);
+}
+#trainPage .vn-train-active .nxp-ex-rail .nxp-rail-jump{
+  border:0;background:none;color:var(--vn-ink-2);font:inherit;font-size:12.5px;
+  font-weight:560;padding:8px 0;min-height:44px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+#trainPage .vn-train-active .nxp-ex-rail .nxp-session-focus{margin-top:var(--vn-s2)}
+
+/* ---- Current exercise ---- */
+#trainPage .vn-train-active .nxp-ex-bar{display:none}
+#trainPage .vn-train-active .nxp-ex-head{
+  display:block;margin:0 0 var(--vn-s3);padding:0;background:none;border:0;box-shadow:none;
+}
+#trainPage .vn-train-active .nxp-ex-title{
+  font-size:24px;font-weight:650;letter-spacing:-.028em;line-height:1.1;
+  color:var(--vn-ink);text-align:left;padding:0;border:0;background:none;
+  width:auto;max-width:100%;
+  min-height:44px;cursor:pointer;display:inline-flex;align-items:center;
+  overflow:visible;text-overflow:clip;white-space:normal;
+}
+#trainPage .vn-train-active .nxp-ex-muscles{
+  margin:2px 0 0;font-size:12.5px;color:var(--vn-ink-3);
+}
+/* ANATOMY CONTRACT — active Train. Binding limits, not incidental sizes.
+   Anatomy sits inline beside the name, inside the existing exercise-head row.
+   Unboxed: no background, border, radius or shadow. Never its own row or surface.
+   0px of vertical height. The button is height-capped — 64px from 360px up,
+   56px at 359px and below — so it cannot stretch when the title wraps.
+   The svg is out of flow and keeps --nxa-ar.
+   The text column's floor is min(100%, max-content). The title lays out as
+   wide as it would with the figure gone, and the figure takes only the width
+   left beside that. A long name shrinks the figure, down to nothing, before
+   the title gains a line. The title is never truncated to make room.
+   One view, cropped to the mapped muscles. An unmapped exercise renders nothing.
+   At 360px and above the cap is 72 by 64. At 359px and below it is 64 by 56.
+   --nxa-ar keeps the crop's aspect: a 0.5 crop is about 32 by 64, a 1.7 crop
+   about 72 by 42. Nothing stretches and nothing is letterboxed.
+   It stays inside the head, clear of Last, Target and Rest. */
+#trainPage .vn-train-active .nxp-ex-top{
+  display:flex;
+  align-items:flex-start;
+  overflow-x:clip;
+}
+#trainPage .vn-train-active .nxp-ex-text{
+  flex:1 1 auto;
+  min-width:min(100%, max-content);
+  max-width:100%;
+}
+#trainPage .vn-train-active .nxp-ex-anat{
+  position:relative;
+  margin:0;padding:0;
+  border:0;border-radius:0;
+  background:none;
+  box-shadow:none;
+  flex:0 1 auto;
+  align-self:flex-start;
+  min-width:0;
+  min-height:0;
+  max-width:72px;
+  width:min(72px, calc(64px * var(--nxa-ar, 1)));
+  height:64px;
+  max-height:64px;
+  overflow:hidden;
+}
+#trainPage .vn-train-active .nxp-ex-anat .nxa{
+  position:absolute;
+  top:0;right:0;
+  display:block;
+  width:100%;
+  height:auto;
+  max-width:100%;
+  max-height:100%;
+  aspect-ratio:var(--nxa-ar, 1);
+}
+#trainPage .vn-train-active .nxp-ex-anat:active{transform:none}
+
+/* ---- Aim strip: typography instruments, wrap at 320 ---- */
+#trainPage .vn-aim{
+  display:flex;gap:var(--vn-s4);margin:0 0 var(--vn-s3);
+  padding:0;border:0;background:none;
+}
+#trainPage .vn-aim .nxp-aim-cell{
+  flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;
+  box-shadow:none;border-radius:0;
+}
+#trainPage .vn-aim .nxp-aim-cell + .nxp-aim-cell{border:0;padding-left:0}
+#trainPage .vn-aim .nxp-caption{display:block;margin-bottom:2px;color:var(--vn-ink-3)}
+#trainPage .vn-aim b{
+  font-size:17px;font-weight:620;letter-spacing:-.015em;display:block;color:var(--vn-ink);
+}
+#trainPage .vn-aim b em,
+#trainPage .vn-train-sets b em,
+#trainPage .vn-train em{
+  font-style:normal;font-size:.6em;font-weight:520;color:var(--vn-ink-2);margin:0 3px 0 2px;
+}
+#trainPage .vn-aim small{font-size:11.5px;color:var(--vn-ink-3);display:block;margin-top:1px}
+#trainPage .vn-train .nxp-field-label small{color:var(--vn-ink-3)}
+#trainPage .vn-train .nxp-stepper .nxp-field-label{color:var(--vn-ink-3)}
+
+/* ---- Logged sets (below Log Set so history growth cannot push the CTA) ---- */
+#trainPage .vn-train-sets{
+  display:flex;flex-direction:column;gap:0;margin:var(--vn-s3) 0 0;
+  padding:0;border:0;background:none;
+}
+#trainPage .vn-train-sets .nxp-set-row{
+  display:flex;align-items:center;gap:var(--vn-s3);min-height:44px;
+  padding-block:4px;border:0;border-radius:0;background:none;width:100%;
+  text-align:left;color:var(--vn-ink-2);font:inherit;font-size:14px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+#trainPage .vn-train-sets .nxp-set-row + .nxp-set-row{border-top:1px solid var(--vn-line)}
+#trainPage .vn-set-n{
+  width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;
+  font-size:10.5px;font-weight:620;color:var(--vn-ink-3);
+  box-shadow:inset 0 0 0 1px var(--vn-line-3);
+}
+#trainPage .vn-train-sets .nxp-set-row b{color:var(--vn-ink);font-weight:580;font-variant-numeric:tabular-nums}
+#trainPage .vn-train-sets .nxp-set-row small{margin-left:auto;font-size:12px;color:var(--vn-ink-4)}
+#trainPage .vn-set-edit{font-size:12px;color:var(--vn-ink-4);margin-left:var(--vn-s2)}
+@keyframes vn-set-settle{
+  0%{background:rgba(139,92,246,.20)}
+  100%{background:transparent}
+}
+#trainPage .nxp-set-row.is-fresh{animation:vn-set-settle 900ms var(--vn-ease) forwards;border-radius:var(--vn-r-input)}
+
+/* ---- Rest strip: single instrument row (timer · rail · +30s · Skip) ---- */
+#trainPage .vn-rest{
+  display:flex;flex-direction:row;align-items:center;gap:var(--vn-s3);
+  margin:0 0 var(--vn-s3);padding:0;
+  min-height:44px;
+  background:transparent;border:0;border-radius:0;box-shadow:none;
+}
+#trainPage .vn-rest[hidden]{display:none !important}
+#trainPage .vn-rest.is-active{display:flex}
+#trainPage .vn-rest #apx96TimerValue{
+  flex:none;min-width:3.25em;margin:0;padding:0;
+  font-size:15px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;
+  letter-spacing:-.02em;color:var(--vn-violet-lift);
+}
+#trainPage .vn-rest .nxp-rest-rail{
+  flex:1;min-width:0;height:2px;border-radius:2px;
+  background:rgba(255,255,255,.09);overflow:hidden;align-self:center;
+}
+#trainPage .vn-rest .nxp-rest-rail > span{background:var(--vn-violet);height:100%;display:block}
+#trainPage .vn-rest .vn-rest-actions{
+  display:flex;flex:none;gap:var(--vn-s2);align-items:center;
+}
+#trainPage .vn-rest .vn-rest-actions .n99-button{
+  width:auto;min-width:44px;min-height:44px;margin:0;padding:0 12px;
+  border-radius:var(--vn-r-input);font-size:13px;
+}
+
+/* ---- Steppers + Log Set (protagonist controls) ---- */
+#trainPage .vn-set-form{
+  display:flex;flex-direction:column;gap:var(--vn-s3);margin:0;padding:0;
+}
+#trainPage .vn-train-active .nxp-steppers{gap:var(--vn-s2)}
+#trainPage .vn-train-active .nxp-step{
+  min-width:48px;min-height:52px;width:48px;
+  border-radius:var(--vn-r-input);
+  background:var(--vn-surface-2);border:1px solid var(--vn-line-2);
+  color:var(--vn-ink);
+}
+#trainPage .vn-train-active .nxp-step:active,
+#trainPage .vn-train-active .nxp-step.is-held{
+  background:var(--vn-surface-3);border-color:var(--vn-violet-line);color:var(--vn-violet-lift);
+}
+#trainPage .vn-train-active .nxp-stepper-row{
+  grid-template-columns:48px minmax(0,1fr) 48px;
+}
+#trainPage .vn-train-active .nxp-stepper input[type="number"]{
+  min-height:52px;font-size:1.625rem !important;
+  border-radius:var(--vn-r-input);background:rgba(255,255,255,.035);
+  border:1px solid var(--vn-line-2);color:var(--vn-ink);
+}
+#trainPage .vn-train-active .nxp-stepper input:focus{
+  background:var(--vn-violet-dim);
+  border-color:var(--vn-violet-line);
+  box-shadow:0 0 0 4px rgba(139,92,246,.10);
+}
+#trainPage .vn-train-active .nxp-train-cta{
+  min-height:50px;border-radius:var(--vn-r-control);margin-top:var(--vn-s1);
+  background:var(--vn-action-fill);
+  color:var(--vn-action-ink);font-size:16px;font-weight:580;
+  box-shadow:var(--vn-action-shadow);
+  border:0;
+}
+#trainPage .vn-train-active .nxp-train-cta:active{filter:brightness(.94);transform:scale(.985)}
+#trainPage .vn-train-active .nxp-seg-row{gap:var(--vn-s3)}
+#trainPage .vn-train-active .nxp-seg button{
+  min-height:44px;border-radius:var(--vn-r-input);
+}
+#trainPage .vn-train-active .nxp-seg button.is-on{
+  background:var(--vn-violet-dim);color:var(--vn-violet-lift);
+  box-shadow:inset 0 0 0 1px var(--vn-violet-line);
+}
+
+/* Keyboard: the same Log Set button leaves flow only while weight or reps
+   is focused and the action would sit under the keyboard. Set type and RIR
+   stay in place. No positional transition — reduced motion included. */
+#trainPage .vn-set-form.is-kb{
+  padding-bottom:calc(50px + var(--vn-s3));
+}
+#trainPage .vn-train-active .nxp-train-cta.is-kb{
+  position:fixed;
+  z-index:70;
+  margin:0;
+  width:auto;
+  max-width:none;
+  left:max(var(--vn-gutter), env(safe-area-inset-left, 0px));
+  right:max(var(--vn-gutter), env(safe-area-inset-right, 0px));
+  bottom:var(--nxp-kb-bottom, max(8px, env(safe-area-inset-bottom, 0px)));
+  transition:none;
+  animation:none;
+}
+#trainPage .vn-train-active .nxp-train-cta.is-kb:active{
+  transform:scale(.985);
+}
+@media (prefers-reduced-motion:reduce){
+  #trainPage .vn-train-active .nxp-train-cta.is-kb,
+  #trainPage .vn-train-active .nxp-train-cta.is-kb:active{
+    transition:none;
+    animation:none;
+    transform:none;
+  }
+}
+:root[data-nxp-motion="reduced"] #trainPage .vn-train-active .nxp-train-cta.is-kb,
+:root[data-nxp-motion="reduced"] #trainPage .vn-train-active .nxp-train-cta.is-kb:active{
+  transition:none;
+  animation:none;
+  transform:none;
+}
+
+/* ---- Prev / Queue / Next ---- */
+#trainPage .vn-train-active .nxp-ex-nav{
+  display:flex;align-items:center;justify-content:space-between;gap:var(--vn-s3);
+  margin:var(--vn-s4) 0 0;padding:0;border:0;background:none;
+}
+#trainPage .vn-train-active .nxp-ex-nav > button{
+  min-height:44px;min-width:44px;padding:8px 4px;
+  border:0;background:none;color:var(--vn-ink-2);font:inherit;font-size:14.5px;
+  font-weight:540;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+#trainPage .vn-train-active .nxp-ex-nav > button:disabled{opacity:.35}
+#trainPage .vn-train-active .nxp-ex-nav-pos{color:var(--vn-violet-lift);font-weight:560}
+
+/* ---- Demoted regions ---- */
+#trainPage .vn-train-more{
+  margin-top:var(--vn-s5);border-top:1px solid var(--vn-line);padding-top:0;
+}
+#trainPage .vn-train-more > summary{
+  list-style:none;cursor:pointer;min-height:44px;display:flex;align-items:center;
+  font-size:14.5px;font-weight:500;color:var(--vn-ink-2);
+  -webkit-tap-highlight-color:transparent;
+}
+#trainPage .vn-train-more > summary::-webkit-details-marker{display:none}
+
+/* ---- Idle strength overview + Rest / Zone2 / Floorball (C2) ----
+   One protagonist surface (Ready / Start). Plan and guidance sit on the
+   canvas. Radii 20/12/10. Section titles 13px sentence case. */
+#trainPage .vn-sect{
+  margin:0 0 var(--vn-s3);
+  font-size:13px;font-weight:600;letter-spacing:.01em;
+  color:var(--vn-ink-2);text-transform:none;
+}
+#trainPage .vn-train-ready{
+  background:linear-gradient(180deg,var(--vn-surface) 0%,#14171E 100%);
+  border-radius:var(--vn-r-surface);padding:var(--vn-s5);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.055), 0 1px 2px rgba(0,0,0,.4);
+  margin-bottom:var(--vn-s6);
+}
+#trainPage .vn-train-ready .vn-sect{margin-bottom:0;color:var(--vn-ink-3);font-weight:560}
+#trainPage .vn-train-ready-meta{
+  margin:var(--vn-s2) 0 var(--vn-s4);font-size:14.5px;color:var(--vn-ink);
+}
+#trainPage .vn-train-ready .n99-button{
+  width:100%;min-height:50px;border-radius:var(--vn-r-control);
+  background:var(--vn-action-fill);
+  color:var(--vn-action-ink);font-size:16px;font-weight:580;
+  box-shadow:var(--vn-action-shadow);
+}
+#trainPage .vn-train-plan{margin-bottom:var(--vn-s5)}
+#trainPage .vn-train-plan-row{
+  display:flex;align-items:center;min-height:52px;padding-block:var(--vn-s3);
+}
+#trainPage .vn-train-plan-row + .vn-train-plan-row{border-top:1px solid var(--vn-line)}
+#trainPage .vn-train-plan-t{display:block;font-size:15px;font-weight:500;color:var(--vn-ink)}
+#trainPage .vn-train-plan-s{display:block;font-size:12.5px;color:var(--vn-ink-3);margin-top:1px}
+
+/* Idle chrome + controls: kill V102 pill/card leftovers under #trainPage. */
+#trainPage .nxp-train-idle.vn-train{
+  color:var(--vn-ink);
+}
+#trainPage .nxp-train-idle.vn-train .nxp-train-chrome{
+  margin:var(--vn-s2) 0 var(--vn-s4);
+}
+#trainPage .nxp-train-idle.vn-train .nxp-train-chrome h1{
+  color:var(--vn-ink);font-size:22px;font-weight:650;letter-spacing:-.03em;
+}
+#trainPage .nxp-train-idle.vn-train .nxp-train-chrome p{color:var(--vn-ink-3)}
+#trainPage .nxp-train-idle.vn-train .nxp-train-chrome .n99-button{
+  border-radius:var(--vn-r-control);min-height:44px;
+  background:transparent;border:0;box-shadow:none;
+  color:var(--vn-ink-2);font-size:13px !important;font-weight:540;
+  width:auto;padding:8px 10px;
+}
+#trainPage .nxp-train-idle.vn-train .nxp-train-idle-copy h2{
+  color:var(--vn-ink);font-size:18px;font-weight:600;letter-spacing:-.02em;
+  text-transform:none;
+}
+#trainPage .nxp-train-idle.vn-train .nxp-train-idle-copy p{color:var(--vn-ink-2)}
+#trainPage .nxp-train-idle.vn-train .nxp-train-idle-actions .n99-button,
+#trainPage .nxp-train-idle.vn-train .nxp-session-tools .n99-button{
+  border-radius:var(--vn-r-control);
+  background:var(--vn-action-fill);
+  color:var(--vn-action-ink);box-shadow:var(--vn-action-shadow);
+}
+#trainPage .nxp-train-idle.vn-train .nxp-session-tools .n99-button.secondary,
+#trainPage .nxp-train-idle.vn-train .n99-button.secondary{
+  background:var(--vn-surface-2);color:var(--vn-ink);
+  box-shadow:inset 0 0 0 1px var(--vn-line-2);
+}
+#trainPage .nxp-train-idle.vn-train .nxp-train-rec{
+  background:transparent;border:0;border-radius:0;padding:0 0 var(--vn-s3);
+  box-shadow:none;margin:0 0 var(--vn-s4);
+  border-bottom:1px solid var(--vn-line);
+}
+#trainPage .nxp-train-idle.vn-train .nxp-train-rec .nxp-caption,
+#trainPage .nxp-train-idle.vn-train .nxp-addon > h2.nxp-caption,
+#trainPage .nxp-train-idle.vn-train .nxp-train-floorball-history > .nxp-caption,
+#trainPage .nxp-train-idle.vn-train .nxp-train-pace .nxp-caption{
+  font-size:13px;font-weight:600;letter-spacing:.01em;
+  text-transform:none;color:var(--vn-ink-2);
+}
+#trainPage .nxp-train-idle.vn-train .nxp-train-floorball-log input,
+#trainPage .nxp-train-idle.vn-train .nxp-train-floorball-log textarea{
+  border-radius:var(--vn-r-input);
+  background:rgba(255,255,255,.035);border:1px solid var(--vn-line-2);color:var(--vn-ink);
+}
+#trainPage .nxp-train-idle.vn-train .n99-session-rail{
+  border-radius:2px;height:3px;background:rgba(255,255,255,.09);
+}
+#trainPage .nxp-train-idle.vn-train .n99-session-rail span{background:var(--vn-violet)}
+
+/* ---- Finished recap ---- */
+#trainPage .vn-train-done{
+  background:linear-gradient(180deg,var(--vn-surface) 0%,#14171E 100%);
+  border-radius:var(--vn-r-surface);padding:var(--vn-s5);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.055);
+}
+#trainPage .vn-train-done h2{margin:var(--vn-s2) 0 var(--vn-s4);font-size:20px;font-weight:600;color:var(--vn-ink)}
+#trainPage .vn-train-outcome-lede{margin:0 0 var(--vn-s4);font-size:14.5px;color:var(--vn-ink-2)}
+#trainPage .vn-train-outcome-rows{display:flex;flex-direction:column}
+#trainPage .vn-train-outcome-row{
+  display:flex;justify-content:space-between;align-items:center;
+  min-height:44px;padding-block:8px;font-size:15px;color:var(--vn-ink);
+}
+#trainPage .vn-train-outcome-row + .vn-train-outcome-row{border-top:1px solid var(--vn-line)}
+#trainPage .vn-train-outcome-next{margin:var(--vn-s4) 0}
+
+/* ---- 320: aim wraps rather than crushing ---- */
+@media (max-width:359px){
+  #trainPage .vn-train-active .nxp-ex-title{font-size:22px}
+  #trainPage .vn-train-active .nxp-step{min-width:48px;width:48px;min-height:52px}
+  #trainPage .vn-train-active .nxp-stepper-row{grid-template-columns:48px minmax(0,1fr) 48px}
+  #trainPage .vn-train-active .nxp-stepper input[type="number"]{min-height:52px;font-size:1.5rem !important}
+  #trainPage .vn-aim{flex-wrap:wrap;gap:var(--vn-s4)}
+  #trainPage .vn-aim.wrap3 .nxp-aim-cell{flex:1 1 44%}
+  #trainPage .vn-aim b{font-size:16px}
+  #trainPage .vn-train-active .nxp-ex-anat{
+    max-width:64px;
+    max-height:56px;
+    width:min(64px, calc(56px * var(--nxa-ar, 1)));
+    /* The figure is out of flow, so it does not give this control a height.
+       Stretch was following the text row (~64px) and the 56px cap never
+       landed. The cap is the button's own box; the svg keeps --nxa-ar. */
+    height:56px;
+  }
+  #trainPage .vn-train-active .nxp-ex-anat .nxa{
+    /* Width stays 100% of the button, so a yielded figure scales instead of
+       being clipped at the 64px formula. The 56px cap is the button's height. */
+    max-width:100%;
+    max-height:100%;
+  }
+}
+
+/* Anatomy motion contract. Opacity only, at most 200ms, the standard ease.
+   Reduced motion is an immediate swap: the rule follows the one above so it
+   wins for the same selector. */
+#trainPage .vn-train-active .nxp-ex-top.is-forward .nxp-ex-anat,
+#trainPage .vn-train-active .nxp-ex-top.is-back .nxp-ex-anat{
+  animation:nxp-ex-anat-enter 200ms cubic-bezier(.32,.72,0,1) both;
+}
+@media (prefers-reduced-motion:reduce){
+  #trainPage .vn-train-active .nxp-ex-anat,
+  #trainPage .vn-train-active .nxp-ex-anat .nxa,
+  #trainPage .vn-train-active .nxp-ex-top.is-forward .nxp-ex-anat,
+  #trainPage .vn-train-active .nxp-ex-top.is-back .nxp-ex-anat{
+    animation:none;
+    transition:none;
+  }
+}
+:root[data-nxp-motion="reduced"] #trainPage .vn-train-active .nxp-ex-anat,
+:root[data-nxp-motion="reduced"] #trainPage .vn-train-active .nxp-ex-anat .nxa,
+:root[data-nxp-motion="reduced"] #trainPage .vn-train-active .nxp-ex-top.is-forward .nxp-ex-anat,
+:root[data-nxp-motion="reduced"] #trainPage .vn-train-active .nxp-ex-top.is-back .nxp-ex-anat{
+  animation:none;
+  transition:none;
+}
+
+/* Exercise Details. The pair stays 190px tall — it is not enlarged to fill
+   the gap. premium-ui.css adds a bottom margin on top of the sheet's own
+   gap; that second gap is the dead band above Primary. */
+.n99-modal .nxp-detail-anat{margin-bottom:0}
+.n99-modal .nxp-detail-anat .nxa{height:190px;max-height:190px}
+.n99-modal .nxp-detail-swap{
+  display:flex;align-items:center;
+  width:100%;min-height:44px;
+  margin:var(--vn-s2) 0 0;padding:0;
+  border:0;border-radius:0;
+  background:none;box-shadow:none;
+  color:var(--vn-ink-2);
+  font:inherit;font-size:14.5px;font-weight:540;
+  text-align:left;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ==========================================================================
+   Phase 2C — Progress / Weight (#weightPage)
+   Flagship analytical surface. Recent trajectory + separate Cut journey.
+   ========================================================================== */
+
+#weightPage{
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(139,92,246,.07), transparent 55%),
+    var(--vn-canvas);
+  color:var(--vn-ink);
+}
+#weightPage .vn-progress{
+  padding-bottom:var(--vn-s8);
+  color:var(--vn-ink);
+}
+#weightPage .vn-progress-chrome,
+#weightPage .nxp-progress-chrome{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:var(--vn-s3);padding:var(--vn-s3) 0 var(--vn-s4);
+}
+#weightPage .vn-progress-chrome h1,
+#weightPage .nxp-progress-chrome h1{
+  margin:0;font-size:26px;font-weight:640;letter-spacing:-.022em;color:var(--vn-ink);
+}
+#weightPage .vn-progress-chrome p,
+#weightPage .nxp-progress-chrome p{
+  margin:4px 0 0;font-size:12.5px;color:var(--vn-ink-3);
+}
+#weightPage .vn-progress-tabs,
+#weightPage .nxp-progress-tabs{
+  display:flex;gap:4px;margin:0 0 var(--vn-s5);
+  padding:3px;border-radius:var(--vn-r-control);
+  background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--vn-line);
+}
+#weightPage .vn-progress-tabs button,
+#weightPage .nxp-progress-tabs button{
+  flex:1;min-height:44px;border:0;border-radius:10px;
+  background:transparent;color:var(--vn-ink-3);
+  font:inherit;font-size:13.5px;font-weight:560;cursor:pointer;
+}
+#weightPage .vn-progress-tabs button.active,
+#weightPage .vn-progress-tabs button[aria-pressed="true"],
+#weightPage .nxp-progress-tabs button.active,
+#weightPage .nxp-progress-tabs button[aria-pressed="true"]{
+  background:var(--vn-violet-dim);color:var(--vn-violet-lift);
+  box-shadow:inset 0 0 0 1px var(--vn-violet-line);
+}
+
+#weightPage .vn-weight{
+  display:block;padding:0;margin:0;background:none;border:0;box-shadow:none;
+}
+#weightPage .vn-h-sect{
+  font-size:13px;font-weight:600;letter-spacing:.01em;color:var(--vn-ink-2);margin:0;
+}
+#weightPage .vn-h-sub{
+  font-size:19px;font-weight:600;letter-spacing:-.012em;margin:0;color:var(--vn-ink);
+}
+#weightPage .vn-meta{font-size:12.5px;font-weight:500;color:var(--vn-ink-3);margin:0;line-height:1.45}
+#weightPage .vn-tiny{font-size:11.5px;font-weight:500;color:var(--vn-ink-4);margin:0}
+#weightPage .vn-mt2{margin-top:var(--vn-s2)}
+#weightPage .vn-mt3{margin-top:var(--vn-s3)}
+#weightPage .vn-mt4{margin-top:var(--vn-s4)}
+#weightPage .vn-num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+#weightPage .vn-ink-3{color:var(--vn-ink-3);font-weight:500}
+
+#weightPage .vn-read{padding-bottom:var(--vn-s4)}
+#weightPage .vn-read .vn-h-sub{margin-top:var(--vn-s2)}
+
+/* Stable metric header — fixed slots, no reflow on scrub */
+#weightPage .vn-mhead{
+  min-height:72px;padding-block:var(--vn-s3);
+  border-top:1px solid var(--vn-line);
+}
+#weightPage .vn-mhead-row{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:var(--vn-s4);
+}
+#weightPage .vn-mhead-cell{min-width:0;flex:1}
+#weightPage .vn-mhead-right{text-align:right}
+#weightPage .vn-metric-l{
+  display:block;font-size:11px;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--vn-ink-3);
+}
+#weightPage .vn-metric-v{
+  font-size:34px;font-weight:660;letter-spacing:-.03em;line-height:1.02;
+  color:var(--vn-ink);margin-top:4px;min-height:1.1em;
+}
+#weightPage .vn-metric-v em,
+#weightPage .vn-trend-val em{
+  font-style:normal;font-size:.44em;font-weight:560;color:var(--vn-ink-3);margin-left:3px;
+}
+#weightPage .vn-trend-val{
+  font-size:19px;font-weight:600;color:var(--vn-violet-lift);margin-top:4px;min-height:1.2em;
+}
+#weightPage .vn-mhead-post{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px;
+  margin-top:var(--vn-s3);min-height:28px;
+}
+#weightPage .vn-mhead-post[hidden]{display:none}
+#weightPage .vn-mhead-post b{font-size:14px;color:var(--vn-ink)}
+
+/* Range segments */
+#weightPage .vn-seg,
+#weightPage .n99-segments{
+  display:flex;gap:3px;padding:3px;border-radius:var(--vn-r-control);
+  background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--vn-line);
+}
+#weightPage .vn-seg button,
+#weightPage .n99-segments button{
+  flex:1;min-height:44px;border:0;border-radius:10px;
+  background:transparent;color:var(--vn-ink-3);
+  font:inherit;font-size:13px;font-weight:560;cursor:pointer;
+}
+#weightPage .vn-seg button.active,
+#weightPage .vn-seg button[aria-pressed="true"],
+#weightPage .n99-segments button.active,
+#weightPage .n99-segments button[aria-pressed="true"]{
+  background:var(--vn-surface-2);color:var(--vn-ink);
+  box-shadow:inset 0 0 0 1px var(--vn-line-2);
+}
+
+/* Chart frame — full-plot scrub; pan-y so vertical scroll still works.
+   Hair of horizontal inset so the latest selected point is not flush to the
+   SVG edge (cut-support right pad stays untouched). */
+#weightPage .vn-chart-wrap{
+  position:relative;margin-top:var(--vn-s3);
+  padding-inline:6px;
+  touch-action:pan-y;user-select:none;-webkit-user-select:none;
+  outline:none;
+}
+#weightPage .vn-chart-wrap:focus-visible{
+  outline:2px solid var(--vn-violet-lift);outline-offset:2px;border-radius:8px;
+}
+#weightPage .vn-chart-svg,
+#weightPage .n99-chart-svg{
+  display:block;width:100%;height:auto;overflow:hidden;
+}
+#weightPage .vn-chart-empty{
+  padding:var(--vn-s6) var(--vn-s4);text-align:center;color:var(--vn-ink-2);
+}
+
+#weightPage .vn-legend,
+#weightPage .n99-legend{
+  display:flex;flex-wrap:wrap;gap:var(--vn-s4);margin-top:var(--vn-s3);
+}
+#weightPage .vn-legend span,
+#weightPage .n99-legend span{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11.5px;color:var(--vn-ink-3);font-weight:520;
+}
+#weightPage .vn-key-trend,
+#weightPage .vn-key-raw,
+#weightPage .vn-key-post,
+#weightPage .vn-key-proj,
+#weightPage .n99-legend i{
+  display:inline-block;width:14px;height:8px;flex:none;
+}
+#weightPage .vn-key-trend,
+#weightPage .n99-legend i:not(.raw):not(.post):not(.dash):not(.target){
+  background:linear-gradient(90deg,transparent 0,var(--vn-violet) 0);
+  height:2.25px;border-radius:1px;align-self:center;
+}
+#weightPage .vn-key-raw,
+#weightPage .n99-legend i.raw{
+  width:6px;height:6px;border-radius:50%;background:#79818F;align-self:center;
+}
+#weightPage .vn-key-post,
+#weightPage .n99-legend i.post{
+  width:8px;height:8px;background:none;
+  box-shadow:inset 0 0 0 1.4px #79818F;
+  transform:rotate(45deg);align-self:center;
+}
+#weightPage .vn-key-proj,
+#weightPage .n99-legend i.dash{
+  height:0;border-top:2px dashed rgba(139,92,246,.55);background:none;align-self:center;
+}
+
+/* Series toggles */
+#weightPage .vn-togs{
+  display:flex;flex-wrap:wrap;gap:var(--vn-s2);margin-top:var(--vn-s4);
+}
+#weightPage .vn-tog{
+  display:inline-flex;align-items:center;gap:8px;min-height:44px;
+  padding:0 12px 0 10px;border:0;border-radius:var(--vn-r-control);
+  background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--vn-line-2);
+  color:var(--vn-ink-2);font:inherit;font-size:13.5px;font-weight:540;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:background var(--vn-t-state) var(--vn-ease), color var(--vn-t-state) var(--vn-ease);
+}
+#weightPage .vn-tog-box{
+  width:16px;height:16px;border-radius:5px;flex:none;display:grid;place-items:center;
+  box-shadow:inset 0 0 0 1.5px var(--vn-ink-4);font-size:10px;color:transparent;
+}
+#weightPage .vn-tog[aria-pressed="true"]{
+  background:var(--vn-violet-dim);color:var(--vn-ink);box-shadow:inset 0 0 0 1px var(--vn-violet-line);
+}
+#weightPage .vn-tog[aria-pressed="true"] .vn-tog-box{
+  background:var(--vn-violet);box-shadow:none;color:#fff;
+}
+#weightPage .vn-tog[aria-pressed="true"] .vn-tog-box::after{
+  content:"";width:8px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;
+  transform:rotate(-45deg) translate(1px,-1px);
+}
+#weightPage .vn-tog-key{margin-left:2px;opacity:.9}
+
+/* Journey rail — not a time series */
+#weightPage .vn-journey{
+  margin-top:var(--vn-s7);padding-top:var(--vn-s6);
+  border-top:1px solid var(--vn-line);
+}
+#weightPage .vn-sect-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:var(--vn-s3);margin-bottom:var(--vn-s4);
+}
+#weightPage .vn-journey-metrics{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:var(--vn-s4);
+}
+#weightPage .vn-journey-remain{text-align:right}
+#weightPage .vn-journey-remain .vn-h-sub{color:var(--vn-ink-2);margin-top:4px}
+#weightPage .vn-journey-rail{
+  position:relative;height:34px;margin-top:var(--vn-s4);
+}
+#weightPage .vn-journey-track{
+  position:absolute;top:13px;left:0;right:0;height:4px;border-radius:2px;
+  background:rgba(255,255,255,.07);
+}
+#weightPage .vn-journey-band{
+  position:absolute;top:8px;height:14px;border-radius:3px;
+  background:var(--vn-violet-dim);box-shadow:inset 0 0 0 1px var(--vn-violet-line);
+}
+#weightPage .vn-journey-travel{
+  position:absolute;top:13px;height:4px;border-radius:2px;background:#79818F;
+}
+#weightPage .vn-journey-now{
+  position:absolute;top:8px;width:14px;height:14px;border-radius:50%;
+  background:var(--vn-violet);box-shadow:0 0 0 3px var(--vn-canvas);
+  transform:translateX(-50%);
+}
+#weightPage .vn-journey-labels{
+  display:flex;justify-content:space-between;gap:var(--vn-s2);margin-top:var(--vn-s2);
+}
+#weightPage .vn-journey-now-l{color:var(--vn-violet-lift)}
+
+/* Evidence rows */
+#weightPage .vn-evidence{
+  margin-top:var(--vn-s7);padding-top:var(--vn-s6);
+  border-top:1px solid var(--vn-line);
+}
+#weightPage .vn-evidence > .vn-h-sect{margin-bottom:var(--vn-s3)}
+#weightPage .vn-rows{display:flex;flex-direction:column}
+#weightPage .vn-row{
+  display:flex;align-items:center;gap:var(--vn-s4);
+  min-height:52px;padding-block:var(--vn-s3);
+  width:100%;border:0;background:none;text-align:left;color:inherit;font:inherit;
+}
+#weightPage .vn-row + .vn-row{border-top:1px solid var(--vn-line)}
+#weightPage .vn-row-l{flex:1;min-width:0}
+#weightPage .vn-row-t{font-size:15px;font-weight:500;color:var(--vn-ink);display:block}
+#weightPage .vn-row-s{font-size:12.5px;color:var(--vn-ink-3);display:block;margin-top:1px}
+#weightPage .vn-row-v{font-size:15px;font-weight:600;color:var(--vn-ink);text-align:right;white-space:nowrap}
+#weightPage .vn-chev{color:var(--vn-ink-4);font-size:17px}
+#weightPage .vn-weighins{margin-top:var(--vn-s5);padding-inline:0;cursor:pointer}
+#weightPage .vn-weighins:active{background:rgba(255,255,255,.028)}
+
+#weightPage .vn-status{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:580}
+#weightPage .vn-status i{width:7px;height:7px;border-radius:50%;flex:none;display:block;background:var(--vn-ink-4)}
+#weightPage .vn-status.is-ok{color:var(--vn-violet-lift)}
+#weightPage .vn-status.is-ok i{background:var(--vn-violet)}
+#weightPage .vn-status.is-watch{color:var(--vn-review-lift)}
+#weightPage .vn-status.is-watch i{background:var(--vn-review);border-radius:1px;transform:rotate(45deg)}
+#weightPage .vn-status.is-neutral{color:var(--vn-ink-3)}
+
+#weightPage .vn-more-block{
+  margin-top:var(--vn-s5);border-top:1px solid var(--vn-line);
+}
+#weightPage .vn-more-block > summary{
+  list-style:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:space-between;
+  min-height:52px;padding-block:var(--vn-s3);
+  font-size:15px;font-weight:500;color:var(--vn-ink);
+}
+#weightPage .vn-more-block > summary::-webkit-details-marker{display:none}
+#weightPage .vn-more-block > summary::after{content:"›";color:var(--vn-ink-4);font-size:17px}
+#weightPage .vn-more-block[open] > summary::after{transform:rotate(90deg)}
+#weightPage .vn-more-block .n99-card,
+#weightPage .vn-more-block .n99-review{
+  background:var(--vn-surface);border-radius:var(--vn-r-surface);
+  padding:var(--vn-s5);margin:0 0 var(--vn-s3);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+}
+#weightPage .nxp-progress-tdee{margin-top:var(--vn-s5)}
+
+@media (max-width:359px){
+  #weightPage .vn-progress-chrome h1,
+  #weightPage .nxp-progress-chrome h1{font-size:23px}
+  #weightPage .vn-metric-v{font-size:30px}
+  #weightPage .vn-h-sub{font-size:17px}
+  #weightPage .vn-row{gap:var(--vn-s3)}
+  #weightPage .vn-seg button,
+  #weightPage .n99-segments button{font-size:12px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  #weightPage .vn-tog{transition:none}
+  #weightPage .n99-chart-svg.is-range-change,
+  #weightPage .n99-chart-svg.is-new-point{animation:none}
+}
+:root[data-nxp-motion="reduced"] #weightPage .vn-tog{transition:none}
+
+/* ==========================================================================
+   HISTORY  —  calendar-first audit trail. Scoped to #historyPage.
+   Protagonist: the calendar (native to the canvas — not a floating card).
+   Filters are secondary. Selection updates the day region only (JS).
+   ========================================================================== */
+
+#historyPage{
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(139,92,246,.07), transparent 55%),
+    var(--vn-canvas);
+  color:var(--vn-ink);
+  min-height:100%;
+}
+#historyPage .vn-history,
+#historyPage .nxp-history{
+  padding-inline:var(--vn-gutter);
+  padding-bottom:calc(var(--vn-s8) + 12px);
+  min-width:0;
+}
+
+/* Chrome: title + month summary. Filters sit beneath as a quiet scope. */
+#historyPage .vn-hist-chrome,
+#historyPage .nxp-history-chrome{
+  margin:var(--vn-s2) 0 var(--vn-s3);
+  padding:0;
+}
+#historyPage .vn-hist-chrome h1,
+#historyPage .nxp-history-chrome h1{
+  margin:0;font-size:26px;font-weight:650;letter-spacing:-.03em;
+  color:var(--vn-ink);line-height:1.15;
+}
+#historyPage .vn-hist-chrome p,
+#historyPage .nxp-history-chrome p,
+#historyPage #vn-hist-summary{
+  margin:4px 0 0;font-size:13.5px;font-weight:500;color:var(--vn-ink-3);
+}
+
+/* Filters — secondary. No bordered track competing with the calendar. */
+#historyPage .vn-hist-filters,
+#historyPage .nxp-history-filters{
+  display:flex;flex-wrap:wrap;gap:2px 2px;
+  margin:0 0 var(--vn-s5);padding:0;
+  border:0;border-radius:0;background:none;
+  width:auto;max-width:100%;
+}
+#historyPage .vn-hist-filters button,
+#historyPage .nxp-history-filters button{
+  flex:0 0 auto;min-width:44px;min-height:44px;
+  padding:0 10px;border:0;border-radius:var(--vn-r-control);
+  background:transparent;color:var(--vn-ink-4);
+  font-size:12.5px;font-weight:520;letter-spacing:.01em;
+  transition:color var(--vn-t-state) var(--vn-ease), background var(--vn-t-state) var(--vn-ease);
+}
+#historyPage .vn-hist-filters button.active,
+#historyPage .nxp-history-filters button.active{
+  background:transparent;color:var(--vn-ink-2);font-weight:600;
+  box-shadow:inset 0 -2px 0 var(--vn-violet);
+}
+#historyPage .vn-hist-filters button:focus-visible,
+#historyPage .nxp-history-filters button:focus-visible{
+  outline:2px solid var(--vn-violet-line);outline-offset:2px;
+}
+
+/* Calendar — native to the page. No raised card, no giant panel. */
+#historyPage .vn-hist-calendar,
+#historyPage .nxp-history-calendar{
+  margin:0 0 var(--vn-s6);
+  padding:0;
+  border:0;border-radius:0;
+  background:transparent;box-shadow:none;
+}
+#historyPage .nxp-cal-head{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:var(--vn-s2);margin:0 0 var(--vn-s3);padding:0;
+}
+#historyPage .nxp-cal-month{
+  margin:0;font-size:19px;font-weight:620;letter-spacing:-.02em;
+  color:var(--vn-ink);
+  /* Beat premium-ui `.nxp-cal-month { overflow-wrap:anywhere }` so the title stays one line. */
+  white-space:nowrap;overflow-wrap:normal;min-width:0;
+}
+#historyPage .nxp-cal-nav{display:flex;align-items:center;gap:2px}
+#historyPage .nxp-cal-nav button{
+  display:grid;place-items:center;
+  width:44px;height:44px;min-width:44px;min-height:44px;
+  border:0;border-radius:var(--vn-r-control);
+  background:transparent;color:var(--vn-ink-2);
+  font-size:18px;line-height:1;
+  transition:background var(--vn-t-touch) var(--vn-ease), color var(--vn-t-touch) var(--vn-ease);
+}
+#historyPage .nxp-cal-nav button.nxp-cal-today{
+  width:auto;min-width:44px;padding:0 12px;
+  font-size:13px;font-weight:540;
+}
+#historyPage .nxp-cal-nav button:active{background:rgba(255,255,255,.04)}
+#historyPage .nxp-cal-weekdays,
+#historyPage .nxp-cal-grid{
+  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;
+}
+#historyPage .nxp-cal-weekdays span{
+  padding:6px 0;text-align:center;
+  font-size:10.5px;font-weight:600;letter-spacing:.04em;color:var(--vn-ink-4);
+}
+#historyPage .nxp-cal-day{
+  position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;min-height:48px;padding:6px 0 8px;
+  border:0;border-radius:10px;background:transparent;
+  color:var(--vn-ink-2);font-variant-numeric:tabular-nums;
+  transition:background var(--vn-t-state) var(--vn-ease), color var(--vn-t-state) var(--vn-ease),
+    box-shadow var(--vn-t-state) var(--vn-ease);
+  -webkit-tap-highlight-color:transparent;
+}
+#historyPage .nxp-cal-day b{
+  font-size:13.5px;font-weight:520;line-height:1;color:inherit;
+}
+#historyPage .nxp-cal-day.is-outside{color:var(--vn-ink-4);opacity:.45}
+#historyPage .nxp-cal-day.has-lift{background:transparent}
+#historyPage .nxp-cal-day.is-today b{color:var(--vn-ink);font-weight:640}
+#historyPage .nxp-cal-day.is-today:not(.is-selected)::after{
+  content:"";position:absolute;bottom:5px;width:3px;height:3px;
+  border-radius:50%;background:var(--vn-ink-3);
+}
+/* I1 — violet is signal: selected date only. */
+#historyPage .nxp-cal-day.is-selected{
+  background:var(--vn-violet-dim);color:var(--vn-ink);
+  box-shadow:inset 0 0 0 1px var(--vn-violet-line);
+}
+#historyPage .nxp-cal-day.is-selected::after{display:none}
+#historyPage .nxp-cal-day.is-selected b{color:var(--vn-ink);font-weight:620}
+
+/*
+  Four record kinds, four shapes (I6 — never colour alone):
+    lift      — filled disc
+    cardio    — hollow ring
+    floorball — diamond (rotated square)
+    weigh-in  — horizontal bar
+  Compact enough for four marks at 320px; never drop a kind.
+*/
+#historyPage .nxp-cal-marks{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
+  gap:2px;max-width:100%;min-height:5px;height:auto;
+}
+#historyPage .nxp-cal-marks i,
+#historyPage .nxp-cal-legend span::before{
+  display:block;box-sizing:border-box;width:5px;height:5px;flex:none;
+}
+#historyPage .nxp-cal-marks i.lift,
+#historyPage .nxp-cal-legend span.lift::before{
+  border-radius:50%;background:var(--vn-violet);
+}
+#historyPage .nxp-cal-marks i.cond,
+#historyPage .nxp-cal-legend span.cond::before{
+  border-radius:50%;border:1.5px solid var(--vn-ink-3);background:transparent;
+}
+#historyPage .nxp-cal-marks i.floor,
+#historyPage .nxp-cal-legend span.floor::before{
+  width:4.5px;height:4.5px;border-radius:1px;
+  background:var(--vn-ink-2);transform:rotate(45deg);
+}
+#historyPage .nxp-cal-marks i.body,
+#historyPage .nxp-cal-legend span.body::before{
+  width:7px;height:2.5px;border-radius:1px;background:var(--vn-ink-3);
+}
+#historyPage .nxp-cal-legend{
+  display:flex;flex-wrap:wrap;gap:6px 14px;
+  margin:var(--vn-s4) 0 0;padding:0;
+  font-size:11.5px;font-weight:520;color:var(--vn-ink-3);
+}
+#historyPage .nxp-cal-legend span{
+  display:inline-flex;align-items:center;gap:6px;
+}
+#historyPage .nxp-cal-legend span::before{content:""}
+#historyPage .nxp-cal-legend span.floor::before{transform:rotate(45deg)}
+
+/* Day detail — resolves beneath the calendar; state-tier enter. */
+#historyPage .vn-hist-dayhost{min-width:0}
+#historyPage .vn-hist-dayhost.vn-enter .vn-hist-day{
+  animation:vn-hist-day-enter var(--vn-t-state) var(--vn-ease);
+}
+@keyframes vn-hist-day-enter{
+  from{opacity:0;transform:translateY(4px)}
+  to{opacity:1;transform:none}
+}
+#historyPage .vn-hist-day,
+#historyPage .nxp-history-selected{min-width:0;padding-bottom:var(--vn-s4)}
+#historyPage .nxp-history-selected-head{margin:0 0 var(--vn-s3);padding:0}
+#historyPage .nxp-history-weekday{
+  display:block;font-size:11.5px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--vn-ink-3);
+}
+#historyPage .nxp-history-selected-head h2{
+  margin:4px 0 0;font-size:19px;font-weight:620;letter-spacing:-.02em;color:var(--vn-ink);
+}
+#historyPage .nxp-history-selected-summary{
+  margin:6px 0 0;font-size:13.5px;color:var(--vn-ink-3);overflow-wrap:anywhere;
+}
+#historyPage .nxp-history-empty{
+  margin:var(--vn-s4) 0 0;font-size:14.5px;color:var(--vn-ink-3);
+}
+#historyPage .nxp-history-block,
+#historyPage .vn-hist-block{
+  margin-top:var(--vn-s5);padding:var(--vn-s4) 0 0;
+  border-top:1px solid var(--vn-line);
+}
+#historyPage .nxp-history-block-label{
+  display:block;font-size:11.5px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--vn-ink-4);
+}
+#historyPage .nxp-history-block-title{
+  margin:4px 0 0;font-size:15px;font-weight:560;color:var(--vn-ink);overflow-wrap:anywhere;
+}
+#historyPage .nxp-history-ex{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:10px;margin-top:var(--vn-s3);min-width:0;
+}
+#historyPage .nxp-history-ex b{
+  font-size:15px;font-weight:540;color:var(--vn-ink);overflow-wrap:anywhere;
+}
+#historyPage .nxp-history-ex span{
+  flex:0 0 auto;font-size:13px;color:var(--vn-ink-3);font-variant-numeric:tabular-nums;
+}
+#historyPage .nxp-history-sets{
+  display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:3px;
+  font-size:13.5px;color:var(--vn-ink-2);font-variant-numeric:tabular-nums;
+}
+#historyPage .nxp-history-meta{
+  margin:3px 0 0;font-size:12.5px;color:var(--vn-ink-3);overflow-wrap:anywhere;
+}
+#historyPage .nxp-history-edit{
+  display:inline-flex;align-items:center;gap:4px;
+  min-height:44px;margin-top:var(--vn-s2);padding:0;
+  border:0;background:transparent;color:var(--vn-violet-lift);
+  font-size:14px;font-weight:540;
+}
+
+/* Future State Engine lanes — present in the DOM, empty, no persistence. */
+#historyPage .vn-hist-audit{display:contents}
+#historyPage .vn-hist-lane[hidden]{display:none !important}
+
+@media (max-width:359px){
+  #historyPage .vn-history,
+  #historyPage .nxp-history{padding-inline:12px}
+  #historyPage .vn-hist-chrome h1,
+  #historyPage .nxp-history-chrome h1{font-size:23px}
+  #historyPage .nxp-cal-month{font-size:15px;white-space:nowrap;overflow-wrap:normal}
+  #historyPage .nxp-cal-day{min-height:46px;padding:5px 0 7px;gap:3px}
+  #historyPage .nxp-cal-day b{font-size:12.5px}
+  #historyPage .nxp-cal-marks{gap:1.5px}
+  #historyPage .nxp-cal-marks i,
+  #historyPage .nxp-cal-legend span::before{width:4.5px;height:4.5px}
+  #historyPage .nxp-cal-marks i.body,
+  #historyPage .nxp-cal-legend span.body::before{width:6px;height:2px}
+  #historyPage .nxp-cal-legend{gap:4px 10px;font-size:11px}
+  #historyPage .vn-hist-filters button,
+  #historyPage .nxp-history-filters button{padding:0 8px;font-size:12px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  #historyPage .vn-hist-dayhost.vn-enter .vn-hist-day{animation:none}
+  #historyPage .nxp-cal-day,
+  #historyPage .vn-hist-filters button,
+  #historyPage .nxp-history-filters button,
+  #historyPage .nxp-cal-nav button{transition:none}
+}
+:root[data-nxp-motion="reduced"] #historyPage .vn-hist-dayhost.vn-enter .vn-hist-day{animation:none}
+:root[data-nxp-motion="reduced"] #historyPage .nxp-cal-day,
+:root[data-nxp-motion="reduced"] #historyPage .vn-hist-filters button,
+:root[data-nxp-motion="reduced"] #historyPage .nxp-history-filters button,
+:root[data-nxp-motion="reduced"] #historyPage .nxp-cal-nav button{transition:none}
+
+/* ==========================================================================
+   SETTINGS  —  calm configuration. Scoped to #morePage.
+
+   Settings spans three visual generations behind one destination:
+     Tier 1  hub · appearance · data      owned by premium-ui.js, VNext here
+     Tier 2  goals · training · coach     V99 bodies in cut-support.js
+     Tier 3  body · notifications · app   V96 bodies in index.html
+   Neither cut-support.js nor index.html may be edited by this slice, so
+   Tier 2 gets page chrome only (header, back, canvas, spacing) and Tier 3 is
+   preserved as-is apart from accessibility floors. That is deliberate, not an
+   oversight — the redesign of those bodies belongs to later slices.
+
+   Protagonist: none. Configuration is not a dashboard, so under D1 the hub
+   claims no raised surface at all. Rows are typography, a hairline and a
+   chevron.
+   ========================================================================== */
+
+#morePage{
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(139,92,246,.06), transparent 55%),
+    var(--vn-canvas);
+  color:var(--vn-ink);
+  min-height:100%;
+}
+#morePage .vn-settings{
+  padding-inline:var(--vn-gutter);
+  padding-bottom:calc(var(--vn-s8) + 12px);
+  min-width:0;
+}
+
+/* ---- page + subview chrome ---------------------------------------------- */
+#morePage .vn-set-title{
+  margin:var(--vn-s3) 0 var(--vn-s2);
+  font-size:26px;font-weight:640;letter-spacing:-.022em;line-height:1.14;
+  color:var(--vn-ink);
+}
+#morePage .vn-set-head{
+  display:flex;flex-direction:column;align-items:flex-start;
+  margin:0 0 var(--vn-s5);padding:0;border:0;background:none;
+}
+#morePage .vn-set-head h1{
+  margin:var(--vn-s1) 0 0;
+  font-size:26px;font-weight:640;letter-spacing:-.022em;line-height:1.14;
+  color:var(--vn-ink);overflow-wrap:anywhere;
+}
+#morePage .vn-set-head p{
+  margin:5px 0 0;font-size:13.5px;font-weight:500;color:var(--vn-ink-3);
+}
+/* Back says where it goes. Never an unlabelled glyph (§3.4). */
+#morePage .vn-set-back,
+#morePage .vn-set-subhead .n99-button{
+  display:inline-flex;align-items:center;gap:4px;
+  min-height:44px;margin-inline-start:-4px;padding:0 4px;
+  width:auto;min-width:0;
+  border:0;border-radius:var(--vn-r-control);
+  background:none;box-shadow:none;
+  color:var(--vn-ink-2);font:inherit;
+  /* .n99-button declares font-size/weight !important, so the Tier 2 back
+     affordance can only be brought into line the same way. */
+  font-size:14.5px !important;font-weight:540 !important;
+  letter-spacing:0;text-align:left;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+#morePage .vn-set-back i{font-style:normal;font-size:17px;line-height:1;color:var(--vn-ink-4)}
+#morePage .vn-set-back:active,
+#morePage .vn-set-subhead .n99-button:active{opacity:.6;filter:none}
+
+/* Tier 2 chrome: the engine writes .n99-heading; this restacks it as a VNext
+   subview header (back above, title below) without touching its content. */
+#morePage .vn-set-subhead{
+  display:flex;flex-wrap:wrap;align-items:center;
+  gap:var(--vn-s1) var(--vn-s3);
+  margin:0 0 var(--vn-s5);padding:0;
+}
+#morePage .vn-set-subhead > div{order:2;flex:1 1 100%;min-width:0}
+#morePage .vn-set-subhead .n99-button{order:1;flex:0 0 auto}
+#morePage .vn-set-subhead .n99-eyebrow{
+  margin:0;font-size:11.5px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--vn-ink-4);
+}
+#morePage .vn-set-subhead h1{
+  margin:4px 0 0;
+  font-size:26px;font-weight:640;letter-spacing:-.022em;line-height:1.14;
+  color:var(--vn-ink);overflow-wrap:anywhere;
+}
+
+/* ---- account: typographic, on the canvas, no card ----------------------- */
+#morePage .vn-set-account{
+  margin:0 0 var(--vn-s3);padding:0 0 var(--vn-s5);
+  border-bottom:1px solid var(--vn-line);
+}
+#morePage .vn-set-eyebrow{
+  display:block;font-size:11.5px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--vn-ink-4);
+}
+#morePage .vn-set-account h2{
+  margin:5px 0 0;font-size:19px;font-weight:620;letter-spacing:-.02em;
+  color:var(--vn-ink);overflow-wrap:anywhere;
+}
+#morePage .vn-set-account p{
+  margin:4px 0 0;font-size:13.5px;font-weight:450;color:var(--vn-ink-3);
+  overflow-wrap:anywhere;
+}
+
+/* ---- groups: a quiet label, not a container ----------------------------- */
+#morePage .vn-set-group{padding-block:var(--vn-s5) var(--vn-s2)}
+#morePage .vn-set-group + .vn-set-group{border-top:1px solid var(--vn-line)}
+#morePage .vn-set-grp{
+  margin:0 0 var(--vn-s1);
+  font-size:13px;font-weight:600;letter-spacing:.01em;color:var(--vn-ink-2);
+}
+#morePage .vn-set-rows{display:flex;flex-direction:column}
+
+/* ---- the row: THE workhorse. No surface, no box, no tile. --------------- */
+#morePage .vn-set-row{
+  display:flex;align-items:center;gap:var(--vn-s3);
+  width:100%;min-height:56px;padding:var(--vn-s3) 0;
+  border:0;border-radius:0;background:none;box-shadow:none;
+  color:var(--vn-ink);text-align:left;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+#morePage .vn-set-row + .vn-set-row{border-top:1px solid var(--vn-line)}
+#morePage .vn-set-row:active{background:rgba(255,255,255,.028)}
+#morePage .vn-set-l{flex:1 1 auto;min-width:0}
+#morePage .vn-set-t{
+  display:block;font-size:15px;font-weight:520;color:var(--vn-ink);
+  overflow-wrap:anywhere;
+}
+#morePage .vn-set-s{
+  display:block;margin-top:2px;font-size:12.5px;font-weight:450;
+  color:var(--vn-ink-3);overflow-wrap:anywhere;
+}
+/* A value is an atomic token, not prose: it sizes to its content and never
+   breaks mid-phrase. The label's description absorbs the wrapping instead.
+   max-width + ellipsis guards a pathologically long value. */
+#morePage .vn-set-v{
+  flex:0 0 auto;min-width:0;max-width:58%;
+  font-size:14px;font-weight:540;color:var(--vn-ink-2);text-align:right;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#morePage .vn-chev{
+  flex:0 0 auto;font-style:normal;font-size:17px;line-height:1;
+  color:var(--vn-ink-4);margin-left:-4px;
+}
+
+/* ---- status: word first, colour second, shape third (I2 / I6) ----------- */
+#morePage .vn-set-flag{display:inline-flex;align-items:center;gap:6px;font-weight:580}
+#morePage .vn-set-flag i{width:7px;height:7px;flex:none;display:block;border-radius:50%}
+#morePage .vn-set-flag.is-calm{color:var(--vn-ink-2)}
+#morePage .vn-set-flag.is-calm i{display:none}
+#morePage .vn-set-flag.is-watch{color:var(--vn-review-lift)}
+#morePage .vn-set-flag.is-watch i{background:var(--vn-review);border-radius:1px;transform:rotate(45deg)}
+#morePage .vn-set-flag.is-concern{color:var(--vn-concern)}
+#morePage .vn-set-flag.is-concern i{background:var(--vn-concern);border-radius:1px}
+
+/* ---- account exit + footer ---------------------------------------------- */
+#morePage .vn-set-account-out{
+  margin-top:var(--vn-s5);padding-top:var(--vn-s4);
+  border-top:1px solid var(--vn-line);
+}
+#morePage .vn-set-text{
+  display:inline-flex;align-items:center;min-height:44px;padding:0;
+  border:0;background:none;color:var(--vn-ink-2);
+  font:inherit;font-size:14.5px;font-weight:540;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+#morePage .vn-set-text:active{opacity:.6}
+#morePage .vn-set-foot{
+  margin:var(--vn-s6) 0 0;font-size:11.5px;font-weight:500;color:var(--vn-ink-4);
+}
+
+/* ---- form language (established here; every later slice inherits it) ---- */
+#morePage .vn-set-form{display:block;margin:0}
+#morePage .vn-set-field{
+  padding-block:var(--vn-s4);
+  border-top:1px solid var(--vn-line);
+}
+#morePage .vn-set-field:first-child{border-top:0;padding-top:0}
+#morePage .vn-set-label{
+  display:block;margin:0 0 var(--vn-s3);
+  font-size:13px;font-weight:600;letter-spacing:.01em;color:var(--vn-ink-2);
+}
+#morePage .vn-set-help{
+  margin:var(--vn-s3) 0 0;font-size:12.5px;font-weight:450;line-height:1.5;
+  color:var(--vn-ink-3);
+}
+#morePage .vn-seg{
+  display:flex;flex-wrap:wrap;gap:var(--vn-s2);
+  margin:0;padding:0;background:none;border:0;
+}
+#morePage .vn-seg-opt{
+  flex:1 1 auto;min-width:96px;min-height:46px;padding:0 var(--vn-s4);
+  border:1px solid var(--vn-line-2);border-radius:var(--vn-r-control);
+  background:transparent;color:var(--vn-ink-2);
+  font:inherit;font-size:14.5px;font-weight:520;cursor:pointer;
+  transition:background var(--vn-t-state) var(--vn-ease),
+    color var(--vn-t-state) var(--vn-ease),
+    box-shadow var(--vn-t-state) var(--vn-ease);
+  -webkit-tap-highlight-color:transparent;
+}
+/* I1 — violet marks the chosen option and nothing else on this screen. */
+#morePage .vn-seg-opt.is-on{
+  background:var(--vn-violet-dim);color:var(--vn-ink);
+  border-color:transparent;box-shadow:inset 0 0 0 1px var(--vn-violet-line);
+}
+#morePage .vn-set-act{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;min-height:50px;margin-top:var(--vn-s5);padding:0 var(--vn-s5);
+  border:0;border-radius:var(--vn-r-control);
+  background:var(--vn-action-fill);
+  color:var(--vn-action-ink);font:inherit;font-size:16px;font-weight:580;letter-spacing:-.005em;
+  box-shadow:var(--vn-action-shadow);
+  transition:transform var(--vn-t-touch) var(--vn-ease), filter var(--vn-t-touch) var(--vn-ease);
+  -webkit-tap-highlight-color:transparent;cursor:pointer;
+}
+#morePage .vn-set-act.is-quiet{
+  background:var(--vn-surface-2);color:var(--vn-ink);
+  box-shadow:inset 0 0 0 1px var(--vn-line-2);
+}
+#morePage .vn-set-act:active{transform:scale(.982);filter:brightness(.94)}
+
+/* ---- Data & sync: sections by hairline, disclosures for advanced -------- */
+#morePage .vn-set-block{padding-block:var(--vn-s5)}
+#morePage .vn-set-block + .vn-set-block{border-top:1px solid var(--vn-line)}
+#morePage .vn-set-block > .vn-set-grp{margin-bottom:var(--vn-s3)}
+#morePage .vn-set-state{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:4px var(--vn-s3);
+  margin:0 0 var(--vn-s3);font-size:14px;color:var(--vn-ink-3);
+}
+#morePage .vn-set-body{
+  margin:0 0 var(--vn-s2);font-size:14.5px;font-weight:450;line-height:1.5;
+  color:var(--vn-ink-2);
+}
+#morePage .vn-set-note{
+  margin:var(--vn-s3) 0 0;font-size:12.5px;font-weight:450;line-height:1.5;
+  color:var(--vn-ink-3);
+}
+#morePage .vn-set-actions{
+  display:grid;gap:var(--vn-s2);margin-top:var(--vn-s4);
+}
+#morePage .vn-set-actions .vn-set-act{margin-top:0}
+#morePage .vn-set-disc{
+  margin-top:var(--vn-s4);padding-top:0;border-top:1px solid var(--vn-line);
+}
+#morePage .vn-set-disc > summary{
+  display:flex;align-items:center;justify-content:space-between;gap:var(--vn-s3);
+  min-height:48px;padding-block:var(--vn-s2);
+  list-style:none;cursor:pointer;
+  font-size:14.5px;font-weight:540;color:var(--vn-ink-2);
+}
+#morePage .vn-set-disc > summary::-webkit-details-marker{display:none}
+#morePage .vn-set-disc > summary::after{
+  content:"›";flex:0 0 auto;color:var(--vn-ink-4);font-size:17px;
+  transition:transform var(--vn-t-state) var(--vn-ease);
+}
+#morePage .vn-set-disc[open] > summary::after{transform:rotate(90deg)}
+
+/* ---- accessibility floors over legacy controls (I5) ---------------------
+   Additive only: these raise effective target size on markup this slice is
+   not allowed to edit. No legacy control is restyled or moved. */
+#morePage summary{min-height:44px}
+#morePage .apx96-chip{min-height:44px}
+/* The V96 reminder toggles are 48x28. Rather than resize a legacy control,
+   extend its hit area to 44pt with a transparent overlay. */
+#morePage .notify-row .toggle{position:relative}
+#morePage .notify-row .toggle::after{
+  content:"";position:absolute;inset:-8px -6px;border-radius:999px;
+}
+/* The danger zone stays a danger zone (§3.4). Legacy markup already carries
+   .apx96-danger / .btn.danger; this only keeps it separated on the VNext
+   canvas so it cannot read as one more row. */
+#morePage .apx96-danger{
+  margin-top:var(--vn-s6);
+  box-shadow:inset 3px 0 0 var(--vn-concern);
+}
+
+/* ---- visible focus ------------------------------------------------------ */
+#morePage :where(button,a,summary,input,select,textarea,[tabindex]):focus-visible{
+  outline:2px solid var(--vn-violet-line);outline-offset:2px;border-radius:8px;
+}
+
+/* ---- 320 IS A DESIGN STATE, NOT A SHRINK -------------------------------- */
+@media (max-width:359px){
+  #morePage .vn-settings{padding-inline:16px}
+  #morePage .vn-set-title,
+  #morePage .vn-set-head h1,
+  #morePage .vn-set-subhead h1{font-size:23px}
+  /* Value drops under the label rather than squeezing either of them. The
+     chevron stays on the title line so the row still reads as one target. */
+  #morePage .vn-set-row{flex-wrap:wrap;row-gap:2px;padding-block:var(--vn-s3)}
+  /* basis 0, not auto: a max-content label must not push the chevron to line 2 */
+  #morePage .vn-set-l{flex:1 1 0;min-width:0;order:1}
+  #morePage .vn-chev{order:2}
+  #morePage .vn-set-v{
+    flex:1 1 100%;order:3;max-width:none;text-align:left;
+    white-space:normal;overflow:visible;overflow-wrap:anywhere;
+  }
+  #morePage .vn-seg-opt{min-width:0;flex:1 1 calc(50% - var(--vn-s2))}
+}
+
+/* ---- REDUCED MOTION (I8) ------------------------------------------------ */
+@media (prefers-reduced-motion:reduce){
+  #morePage .vn-seg-opt,
+  #morePage .vn-set-act,
+  #morePage .vn-set-disc > summary::after{transition:none}
+  #morePage .vn-set-act:active{transform:none}
+}
+:root[data-nxp-motion="reduced"] #morePage .vn-seg-opt,
+:root[data-nxp-motion="reduced"] #morePage .vn-set-act,
+:root[data-nxp-motion="reduced"] #morePage .vn-set-disc > summary::after{transition:none}
+:root[data-nxp-motion="reduced"] #morePage .vn-set-act:active{transform:none}
+
+/* D12 — disabled primary. The shared .n99-button:disabled / .btn:disabled
+   opacity .42 (train CTA .45, bare button:disabled .5) composites white ink
+   over the page to about 2.7:1. Hold the darker stop at full opacity instead:
+   #6D28D9 vs #fff is 7.10:1. Quiet and secondary keep their own treatments. */
+#homePage .vn-act:disabled,
+#trainPage .vn-train-active .nxp-train-cta:disabled,
+#trainPage .vn-train-ready .n99-button:disabled,
+#trainPage .nxp-train-idle.vn-train .nxp-train-idle-actions .n99-button:not(.secondary):disabled,
+#trainPage .nxp-train-idle.vn-train .nxp-session-tools .n99-button:not(.secondary):disabled,
+#morePage .vn-set-act:not(.is-quiet):disabled,
+#morePage .vn-evo-act:disabled{
+  opacity:1;
+  background:var(--vn-action);
+  color:var(--vn-action-ink);
+  box-shadow:none;
+  filter:none;
+}
+
+/* ==========================================================================
+   EVOSCAN — body composition. Shared by Settings and Progress → Body.
+   One reading is the protagonist. Everything else is type, hairline and scale.
+   ========================================================================== */
+
+:is(#morePage, #weightPage) .vn-evo{
+  padding:var(--vn-s2) var(--vn-gutter) calc(var(--vn-s7) + env(safe-area-inset-bottom,0px));
+  min-width:0;
+  overflow-x:clip;
+  color:var(--vn-ink);
+}
+:is(#morePage, #weightPage) .vn-evo-page{min-width:0}
+:is(#morePage, #weightPage) .vn-evo-back{
+  display:inline-flex;align-items:center;gap:4px;
+  min-height:44px;margin:0 0 var(--vn-s3);padding:0 4px 0 0;
+  border:0;background:none;box-shadow:none;
+  color:var(--vn-ink-2);font:inherit;font-size:14.5px;font-weight:540;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+:is(#morePage, #weightPage) .vn-evo-back i{font-style:normal;color:var(--vn-ink-3);font-size:17px}
+:is(#morePage, #weightPage) .vn-evo-back:active{opacity:.6}
+:is(#morePage, #weightPage) .vn-evo-eye{
+  margin:0;font-size:12px;font-weight:620;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--vn-violet-lift);
+}
+:is(#morePage, #weightPage) .vn-evo h1{
+  margin:6px 0 0;
+  font-size:32px;font-weight:640;letter-spacing:-.03em;line-height:1.08;
+  color:var(--vn-ink);
+}
+:is(#morePage, #weightPage) .vn-evo-lead,
+:is(#morePage, #weightPage) .vn-evo-note,
+:is(#morePage, #weightPage) .vn-evo-ctx{
+  margin:10px 0 0;
+  font-size:14.5px;font-weight:450;line-height:1.45;color:var(--vn-ink-2);
+  overflow-wrap:anywhere;
+}
+:is(#morePage, #weightPage) .vn-evo-kicker{
+  margin:8px 0 0;font-size:13px;font-weight:560;letter-spacing:.02em;color:var(--vn-ink-3);
+}
+:is(#morePage, #weightPage) .vn-evo-hero{margin-top:var(--vn-s6)}
+:is(#morePage, #weightPage) .vn-evo-k{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  margin:0;font-size:13px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--vn-ink-3);
+}
+:is(#morePage, #weightPage) .vn-evo-num{
+  margin:2px 0 0;
+  font-size:56px;font-weight:620;letter-spacing:-.04em;line-height:.95;
+  font-variant-numeric:tabular-nums;color:var(--vn-ink);
+}
+:is(#morePage, #weightPage) .vn-evo-num small{
+  margin-left:6px;font-size:18px;font-weight:540;letter-spacing:0;color:var(--vn-ink-3);
+}
+:is(#morePage, #weightPage) .vn-evo-num .is-missing,
+:is(#morePage, #weightPage) .vn-evo-row-v .is-missing{
+  font-size:16px;font-weight:540;letter-spacing:0;color:var(--vn-ink-3);
+}
+:is(#morePage, #weightPage) .vn-evo-delta{
+  margin:8px 0 0;font-size:14px;font-weight:540;font-variant-numeric:tabular-nums;color:var(--vn-ink-2);
+}
+:is(#morePage, #weightPage) .vn-evo-kind{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11.5px;font-weight:620;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--vn-ink-2);
+}
+:is(#morePage, #weightPage) .vn-evo-kind i{width:7px;height:7px;flex:none;display:block}
+:is(#morePage, #weightPage) .vn-evo-kind.is-measured i{background:var(--vn-ink-2);border-radius:50%}
+:is(#morePage, #weightPage) .vn-evo-kind.is-estimated i{
+  width:6px;height:6px;background:transparent;border:1.5px solid var(--vn-review-lift);
+  border-radius:1px;transform:rotate(45deg);
+}
+:is(#morePage, #weightPage) .vn-evo-rows{margin-top:var(--vn-s5)}
+:is(#morePage, #weightPage) .vn-evo-row{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding:14px 0;border-top:1px solid var(--vn-line);
+}
+:is(#morePage, #weightPage) .vn-evo-row-l{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
+:is(#morePage, #weightPage) .vn-evo-row-l > span{font-size:15px;font-weight:540;color:var(--vn-ink)}
+:is(#morePage, #weightPage) .vn-evo-row-v{text-align:right;min-width:0}
+:is(#morePage, #weightPage) .vn-evo-row-v b{
+  display:block;font-size:20px;font-weight:600;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;color:var(--vn-ink);
+}
+:is(#morePage, #weightPage) .vn-evo-row-v b small{
+  margin-left:4px;font-size:12px;font-weight:540;color:var(--vn-ink-3);
+}
+:is(#morePage, #weightPage) .vn-evo-row-v em{
+  display:block;margin-top:3px;font-style:normal;font-size:12.5px;font-weight:500;
+  font-variant-numeric:tabular-nums;color:var(--vn-ink-3);
+}
+:is(#morePage, #weightPage) .vn-evo-sec{margin-top:var(--vn-s6);padding-top:var(--vn-s5);border-top:1px solid var(--vn-line)}
+:is(#morePage, #weightPage) .vn-evo-sec h2{
+  margin:0;font-size:13px;font-weight:620;letter-spacing:.08em;text-transform:uppercase;color:var(--vn-ink-3);
+}
+:is(#morePage, #weightPage) .vn-evo-comp-top{
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  margin-top:14px;font-size:14px;color:var(--vn-ink-2);
+}
+:is(#morePage, #weightPage) .vn-evo-comp-top b{color:var(--vn-ink);font-weight:600;font-variant-numeric:tabular-nums}
+:is(#morePage, #weightPage) .vn-evo-comp-kinds{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px}
+:is(#morePage, #weightPage) .vn-evo-bar{
+  height:14px;margin-top:10px;border-radius:7px;background:var(--vn-surface-3);overflow:hidden;
+}
+:is(#morePage, #weightPage) .vn-evo-bar > i{display:block;height:100%;background:var(--vn-violet);border-radius:7px}
+:is(#morePage, #weightPage) .vn-evo-bar.is-muscle{height:8px}
+:is(#morePage, #weightPage) .vn-evo-bar.is-muscle > i{background:var(--vn-ink-2)}
+:is(#morePage, #weightPage) .vn-evo-switch{
+  display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;
+}
+:is(#morePage, #weightPage) .vn-evo-switch button{
+  min-height:44px;padding:0 14px;border:1px solid var(--vn-line-2);border-radius:var(--vn-r-control);
+  background:transparent;color:var(--vn-ink-2);font:inherit;font-size:14.5px;font-weight:540;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+:is(#morePage, #weightPage) .vn-evo-switch button.is-on{
+  background:var(--vn-violet-dim);color:var(--vn-ink);border-color:transparent;
+  box-shadow:inset 0 0 0 1px var(--vn-violet-line);
+}
+:is(#morePage, #weightPage) .vn-evo-chart{margin-top:12px}
+:is(#morePage, #weightPage) .vn-evo-chart svg{display:block;width:100%;height:auto;overflow:visible}
+:is(#morePage, #weightPage) .vn-evo-chart line{stroke:var(--vn-line-2);stroke-width:1}
+:is(#morePage, #weightPage) .vn-evo-chart path{stroke:var(--vn-violet-lift);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+:is(#morePage, #weightPage) .vn-evo-chart circle{fill:var(--vn-canvas);stroke:var(--vn-violet-lift)}
+:is(#morePage, #weightPage) .vn-evo-chart circle:last-of-type{fill:var(--vn-violet-lift)}
+:is(#morePage, #weightPage) .vn-evo-chart text{fill:var(--vn-ink-3);font-size:12px;font-variant-numeric:tabular-nums}
+:is(#morePage, #weightPage) .vn-evo-sum{margin:8px 0 0;font-size:13.5px;line-height:1.4;color:var(--vn-ink-2)}
+:is(#morePage, #weightPage) .vn-evo-chg{margin-top:8px}
+:is(#morePage, #weightPage) .vn-evo-chg-row{
+  display:grid;grid-template-columns:minmax(0,1fr);gap:2px;
+  padding:12px 0;border-top:1px solid var(--vn-line);
+}
+:is(#morePage, #weightPage) .vn-evo-chg-row span{font-size:13px;color:var(--vn-ink-3)}
+:is(#morePage, #weightPage) .vn-evo-chg-row b{font-size:16px;font-weight:580;font-variant-numeric:tabular-nums;color:var(--vn-ink);overflow-wrap:anywhere}
+:is(#morePage, #weightPage) .vn-evo-chg-row em{font-style:normal;font-size:13.5px;color:var(--vn-ink-2);font-variant-numeric:tabular-nums}
+:is(#morePage, #weightPage) .vn-evo-hist{
+  display:flex;align-items:stretch;gap:8px;
+  border-top:1px solid var(--vn-line);
+}
+:is(#morePage, #weightPage) .vn-evo-hist-main{
+  flex:1 1 auto;min-width:0;min-height:64px;padding:12px 0;
+  border:0;background:none;text-align:left;color:var(--vn-ink);font:inherit;cursor:pointer;
+}
+:is(#morePage, #weightPage) .vn-evo-hist-main b{display:block;font-size:15px;font-weight:580}
+:is(#morePage, #weightPage) .vn-evo-hist-main span,
+:is(#morePage, #weightPage) .vn-evo-hist-main em{
+  display:block;margin-top:3px;font-style:normal;font-size:13px;color:var(--vn-ink-3);
+  font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
+}
+:is(#morePage, #weightPage) .vn-evo-hist-del{
+  flex:0 0 auto;align-self:center;min-height:44px;min-width:44px;padding:0 8px;
+  border:0;background:none;color:var(--vn-concern);font:inherit;font-size:14px;font-weight:560;
+  cursor:pointer;
+}
+:is(#morePage, #weightPage) .vn-evo-act,
+:is(#morePage, #weightPage) .vn-evo-quiet{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;min-height:50px;margin-top:10px;padding:0 16px;
+  border:0;border-radius:var(--vn-r-control);
+  font:inherit;font-size:16px;font-weight:580;letter-spacing:-.005em;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+:is(#morePage, #weightPage) .vn-evo-act{
+  background:var(--vn-action-fill);
+  color:var(--vn-action-ink);
+  box-shadow:var(--vn-action-shadow);
+}
+:is(#morePage, #weightPage) .vn-evo-act:active{transform:scale(.982);filter:brightness(.94)}
+:is(#morePage, #weightPage) .vn-evo-quiet{
+  background:var(--vn-surface-2);color:var(--vn-ink);
+  box-shadow:inset 0 0 0 1px var(--vn-line-2);
+}
+:is(#morePage, #weightPage) .vn-evo-quiet.is-danger{color:var(--vn-concern)}
+:is(#morePage, #weightPage) .vn-evo-quiet:active{opacity:.72}
+:is(#morePage, #weightPage) .vn-evo-actions{margin-top:var(--vn-s5)}
+:is(#morePage, #weightPage) .vn-evo-file{
+  position:relative;
+  display:flex;align-items:center;justify-content:center;
+  min-height:52px;margin-top:var(--vn-s5);padding:12px;
+  border:1px dashed var(--vn-line-3);border-radius:var(--vn-r-control);
+  color:var(--vn-ink);font-size:15px;font-weight:560;cursor:pointer;
+}
+:is(#morePage, #weightPage) .vn-evo-file input{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0;
+}
+:is(#morePage, #weightPage) .vn-evo-file:active{background:rgba(255,255,255,.03)}
+:is(#morePage, #weightPage) .vn-evo-preview{
+  display:block;width:100%;max-height:220px;object-fit:contain;margin-top:12px;
+  border-radius:var(--vn-r-control);background:var(--vn-surface);
+}
+:is(#morePage, #weightPage) .vn-evo-preview.is-open{max-height:none}
+:is(#morePage, #weightPage) .vn-evo-preview[hidden]{display:none}
+:is(#morePage, #weightPage) .vn-evo-stage{
+  margin:12px 0 0;min-height:22px;font-size:14.5px;font-weight:540;color:var(--vn-ink-2);
+}
+:is(#morePage, #weightPage) .vn-evo-stage[hidden]{display:none}
+:is(#morePage, #weightPage) .vn-evo-field{display:block;padding:14px 0;border-top:1px solid var(--vn-line)}
+:is(#morePage, #weightPage) .vn-evo-field-l{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;
+  font-size:14px;font-weight:560;color:var(--vn-ink);
+}
+:is(#morePage, #weightPage) .vn-evo-field-l small{color:var(--vn-ink-3);font-size:12px;font-weight:540}
+:is(#morePage, #weightPage) .vn-evo-input{
+  display:block;width:100%;min-height:48px;padding:12px 14px;box-sizing:border-box;
+  border:1px solid var(--vn-line-2);border-radius:var(--vn-r-input);
+  background:var(--vn-surface);color:var(--vn-ink);
+  font:inherit;font-size:16px;font-variant-numeric:tabular-nums;
+  color-scheme:dark;
+}
+:is(#morePage, #weightPage) .vn-evo-input::placeholder{color:var(--vn-ink-4)}
+:is(#morePage, #weightPage) textarea.vn-evo-input{min-height:88px;resize:vertical;line-height:1.4}
+:is(#morePage, #weightPage) .vn-evo-status{
+  display:inline-flex;align-items:center;gap:6px;margin:0 0 8px;
+  font-size:12px;font-weight:650;letter-spacing:.04em;
+}
+:is(#morePage, #weightPage) .vn-evo-status i{width:7px;height:7px;flex:none;display:block}
+:is(#morePage, #weightPage) .vn-evo-status.is-high{color:var(--vn-violet-lift)}
+:is(#morePage, #weightPage) .vn-evo-status.is-high i{background:var(--vn-violet);border-radius:50%}
+:is(#morePage, #weightPage) .vn-evo-status.is-check{color:var(--vn-review-lift)}
+:is(#morePage, #weightPage) .vn-evo-status.is-check i{background:var(--vn-review);border-radius:1px;transform:rotate(45deg)}
+:is(#morePage, #weightPage) .vn-evo-status.is-miss{color:var(--vn-concern)}
+:is(#morePage, #weightPage) .vn-evo-status.is-miss i{background:transparent;border:1.5px solid var(--vn-concern);border-radius:50%}
+:is(#morePage, #weightPage) .vn-evo-disc{margin-top:var(--vn-s4);border-top:1px solid var(--vn-line)}
+:is(#morePage, #weightPage) .vn-evo-disc summary{
+  min-height:44px;display:flex;align-items:center;
+  font-size:14.5px;font-weight:540;color:var(--vn-ink-2);cursor:pointer;
+}
+:is(#morePage, #weightPage) .vn-evo-disc p{margin:0 0 8px;font-size:13.5px;line-height:1.4;color:var(--vn-ink-2)}
+:is(#morePage, #weightPage) .vn-evo-disc b{color:var(--vn-ink);font-weight:580}
+:is(#morePage, #weightPage) .vn-evo-raw{
+  margin:0 0 8px;white-space:pre-wrap;overflow-wrap:anywhere;
+  font-size:12px;line-height:1.45;color:var(--vn-ink-3);
+}
+@media (max-width:359px){
+  :is(#morePage, #weightPage) .vn-evo{padding-inline:16px}
+  :is(#morePage, #weightPage) .vn-evo h1{font-size:28px}
+  :is(#morePage, #weightPage) .vn-evo-num{font-size:44px}
+  :is(#morePage, #weightPage) .vn-evo-row{flex-wrap:wrap}
+  :is(#morePage, #weightPage) .vn-evo-row-v{text-align:left}
+}
+@media (prefers-reduced-motion:reduce){
+  :is(#morePage, #weightPage) .vn-evo-act:active,
+  :is(#morePage, #weightPage) .vn-evo-quiet:active,
+  :is(#morePage, #weightPage) .vn-evo-switch button{transform:none;transition:none}
+}
+:root[data-nxp-motion="reduced"] :is(#morePage, #weightPage) .vn-evo-act:active{transform:none;filter:none}
+
+/* ==========================================================================
+   Phase 2H — Progress / Body (#weightPage)
+   The EvoScan rules above also match this page. Settings keeps its own
+   gutter padding; Progress already pads the canvas, so the block does not
+   indent a second time. No local action fill.
+   ========================================================================== */
+
+#weightPage .vn-evo{
+  padding:var(--vn-s4) 0 0;
+}
+#weightPage .nxp-progress-body{min-width:0;overflow-x:clip}
+#weightPage .nxp-progress-body .vn-evo-chart{min-width:0}
+#weightPage .nxp-progress-body .vn-evo-chart svg{max-width:100%}
+
+/* ==========================================================================
+   Phase 2G — Progress / Performance (#weightPage)
+   One list of comparisons. Rows and hairlines, not a card grid.
+   Status is a word, then a colour, then a shape. Each spark is its own scale.
+   ========================================================================== */
+
+#weightPage .vn-perf{
+  margin:0;padding:0;background:none;border:0;box-shadow:none;min-width:0;
+}
+#weightPage .vn-perf-lead{margin:0 0 var(--vn-s2);min-width:0}
+#weightPage .vn-perf-kicker{
+  margin:0;font-size:11.5px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--vn-ink-4);
+}
+#weightPage .vn-perf-intro{
+  margin:6px 0 0;font-size:14.5px;font-weight:450;line-height:1.45;
+  color:var(--vn-ink-2);overflow-wrap:anywhere;
+}
+#weightPage .vn-perf-rows{
+  list-style:none;margin:var(--vn-s3) 0 0;padding:0;min-width:0;
+}
+#weightPage .vn-perf-row{
+  display:grid;grid-template-columns:minmax(0,1fr) 96px;
+  column-gap:12px;align-items:start;
+  padding:14px 0;border-top:1px solid var(--vn-line);min-width:0;
+}
+#weightPage .vn-perf-main{min-width:0}
+#weightPage .vn-perf-name{
+  margin:0;font-size:15px;font-weight:560;line-height:1.3;
+  letter-spacing:-.01em;color:var(--vn-ink);overflow-wrap:anywhere;
+}
+#weightPage .vn-perf-meta{
+  margin:3px 0 0;font-size:12.5px;font-weight:450;line-height:1.4;
+  color:var(--vn-ink-3);overflow-wrap:anywhere;
+}
+#weightPage .vn-perf-statusline{
+  display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:6px 0 0;
+}
+#weightPage .vn-perf-read{
+  margin:2px 0 0;font-size:12.5px;font-weight:450;line-height:1.35;color:var(--vn-ink-3);
+}
+#weightPage .vn-perf-delta{
+  font-size:13px;font-weight:600;color:var(--vn-ink);
+  font-variant-numeric:tabular-nums;
+}
+/* Word, then colour, then shape. Six shapes so greyscale still separates them. */
+#weightPage .vn-perf-flag{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:13px;font-weight:600;line-height:1.3;color:var(--vn-ink-2);
+}
+#weightPage .vn-perf-flag i{
+  width:8px;height:8px;flex:none;display:block;
+}
+#weightPage .vn-perf-flag.is-improving{color:var(--vn-violet-lift)}
+#weightPage .vn-perf-flag.is-improving i{background:var(--vn-violet);border-radius:50%}
+#weightPage .vn-perf-flag.is-holding{color:var(--vn-violet-lift)}
+#weightPage .vn-perf-flag.is-holding i{background:var(--vn-violet);border-radius:1px}
+#weightPage .vn-perf-flag.is-review{color:var(--vn-review-lift)}
+#weightPage .vn-perf-flag.is-review i{
+  background:var(--vn-review);border-radius:1px;transform:rotate(45deg);
+}
+#weightPage .vn-perf-flag.is-watch{color:var(--vn-ink-2)}
+#weightPage .vn-perf-flag.is-watch i{
+  background:transparent;border-radius:1px;transform:rotate(45deg);
+  box-shadow:inset 0 0 0 1.5px var(--vn-ink-2);
+}
+#weightPage .vn-perf-flag.is-older{color:var(--vn-ink-2)}
+#weightPage .vn-perf-flag.is-older i{
+  width:10px;height:2px;border-radius:1px;background:var(--vn-ink-3);align-self:center;
+}
+#weightPage .vn-perf-flag.is-building{color:var(--vn-ink-2)}
+#weightPage .vn-perf-flag.is-building i{
+  background:transparent;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--vn-ink-2);
+}
+#weightPage .vn-perf-plot{position:relative;width:96px;min-width:0;margin-top:2px}
+#weightPage .vn-perf-spark{
+  display:block;width:100%;height:36px;max-width:none;flex:none;overflow:visible;
+}
+#weightPage .vn-perf-grid{stroke:var(--vn-line-3);stroke-width:1}
+#weightPage .vn-perf-line{fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+/* Line colour follows the engine tone. is-neutral is last on purpose: the
+   Watch status also carries is-watch for its hollow diamond, and that must
+   not turn the line amber. Amber is the Review tone. */
+#weightPage .vn-perf-line.is-good{stroke:var(--vn-violet)}
+#weightPage .vn-perf-line.is-watch{stroke:var(--vn-review)}
+#weightPage .vn-perf-line.is-neutral{stroke:var(--vn-ink-3)}
+#weightPage .vn-perf-line.is-older{stroke-dasharray:2.5 2.2}
+#weightPage .vn-perf-mark.is-improving{fill:var(--vn-violet)}
+#weightPage .vn-perf-mark.is-holding{fill:var(--vn-violet)}
+#weightPage .vn-perf-mark.is-review{fill:var(--vn-review)}
+#weightPage .vn-perf-mark.is-watch{fill:none;stroke:var(--vn-ink-2);stroke-width:1.4}
+#weightPage .vn-perf-mark.is-older{stroke:var(--vn-ink-3);stroke-width:2;stroke-linecap:round}
+#weightPage .vn-perf-mark.is-building{fill:none;stroke:var(--vn-ink-3);stroke-width:1.4}
+/* Text equivalent for the spark. Clipped, not removed, so it stays in the
+   accessibility tree and cannot widen the row. */
+#weightPage .vn-perf-eq{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;
+}
+#weightPage .vn-perf-note{
+  margin:var(--vn-s5) 0 0;padding-top:var(--vn-s4);
+  border-top:1px solid var(--vn-line);
+  font-size:12.5px;font-weight:450;line-height:1.45;color:var(--vn-ink-3);
+  overflow-wrap:anywhere;
+}
+#weightPage .nxp-progress-strength :where(button,a):focus-visible{
+  outline:2px solid var(--vn-violet-line);outline-offset:2px;border-radius:8px;
+}
+
+@media (max-width:359px){
+  #weightPage .vn-perf-row{grid-template-columns:minmax(0,1fr) 72px;column-gap:8px;padding:12px 0}
+  #weightPage .vn-perf-plot{width:72px}
+  #weightPage .vn-perf-spark{height:30px}
+  #weightPage .vn-perf-name{font-size:15px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  #weightPage .vn-perf-spark{animation:none}
+}
+:root[data-nxp-motion="reduced"] #weightPage .vn-perf-spark{animation:none}
+
+/* ==========================================================================
+   Shared date controls
+   Sheets live in #modalRoot, outside any page id, so this is not scoped.
+   iOS keeps the native date widget's intrinsic min-width, which width:100%
+   does not defeat, and the field spills its grid cell onto the neighbour.
+   appearance:none lets the control shrink. The input stays type=date, so
+   the native picker still opens. Text size is unchanged.
+   ========================================================================== */
+
+input[type="date"]{
+  appearance:none;
+  -webkit-appearance:none;
+  box-sizing:border-box;
+  display:block;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  min-inline-size:0;
+  min-height:44px;
+  overflow:hidden;
+}
+input[type="date"]::-webkit-datetime-edit,
+input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+input[type="date"]::-webkit-date-and-time-value{
+  min-width:0;
+  color:inherit;
+}
+:is(.n99-form-grid, .grid2, .bw-safe-row) > :has(input[type="date"]),
+label:has(> input[type="date"]){
+  min-width:0;
+}
+@media (max-width:375px){
+  .n99-form-grid:has(input[type="date"]),
+  .grid2:has(input[type="date"]),
+  .bw-safe-row:has(input[type="date"]){
+    grid-template-columns:1fr !important;
+  }
+}

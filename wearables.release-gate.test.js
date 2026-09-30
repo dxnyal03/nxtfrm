@@ -27,7 +27,7 @@ const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
 const fixtures = fs.readFileSync(path.join(ROOT, "wearables.fixtures.js"), "utf8");
 
 // Bump with each shipped release; the gate asserts the SW cache matches.
-const RELEASE_CACHE = "nxtfrm-v109-premium-cache";
+const RELEASE_CACHE = "nxtfrm-v110-premium-cache";
 
 test("index does not statically load fixtures on every host", function () {
   assert.ok(!/<script src="wearables\.fixtures\.js"><\/script>/.test(html));
@@ -136,7 +136,8 @@ test("Train lays out in document flow, not by coordinate", function () {
     .replace(/\/\*[\s\S]*?\*\//g, ""); // declarations only, not the prose
   assert.strictEqual(/position:\s*(fixed|absolute)/.test(scoped), false);
   // The CTA is a plain submit button inside the form.
-  assert.ok(ui.indexOf('type="submit" class="n99-button nxp-train-cta"') !== -1);
+  // D19: the button gained a presentation class (st-log); it is still a plain submit.
+  assert.ok(/type="submit" class="n99-button nxp-train-cta[^"]*"/.test(ui));
 });
 
 test("Train set controls stay reachable by the workout engine", function () {
@@ -368,12 +369,14 @@ test("the rest timer is a region of the page, not an overlay", function () {
 });
 
 test("exercise progress is shown without turning it into tiny targets", function () {
-  const rail = ui.slice(ui.indexOf('<div class="nxp-ex-rail">'), ui.indexOf('<section class="nxp-ex-head">'));
-  assert.ok(rail.indexOf('<ol aria-hidden="true">') !== -1, "the segments are presentation");
-  assert.strictEqual(/<li[^>]*><button/.test(rail), false,
+  /* D19 redesign: the rail is now .st-segbar and the nav .st-exnav. The intent
+     is unchanged: segments are presentation only, navigation stays full-size. */
+  const rail = ui.slice(ui.indexOf('<div class="st-segbar"'), ui.indexOf('${trainAlertHTML()}', ui.indexOf('<div class="st-segbar"')));
+  assert.ok(rail.indexOf('aria-hidden="true"') !== -1, "the segments are presentation");
+  assert.strictEqual(/<button/.test(rail), false,
     "a six-segment rail is six targets too small to hit; navigation stays full-size");
   // The full-size controls are still the way to move between exercises.
-  assert.ok(ui.indexOf('class="nxp-ex-nav"') !== -1);
+  assert.ok(ui.indexOf('class="st-exnav"') !== -1);
   assert.ok(ui.indexOf("NXP.goExercise(-1)") !== -1 && ui.indexOf("NXP.goExercise(1)") !== -1);
   // Nothing requires a swipe.
   assert.strictEqual(/addEventListener\('touchstart'|onswipe|swipeLeft/.test(ui), false,
@@ -464,7 +467,8 @@ test("Train shows only metadata the engine actually holds", function () {
   assert.ok(lib.indexOf("{ primary: [], secondary: [] }") !== -1,
     "an exercise the library does not know returns no muscles");
   // The equipment note is shown only when one was saved.
-  assert.ok(train.indexOf("${note?' · '+esc(note):''}") !== -1);
+  // D19: shown as its own line under the exercise, still only when saved.
+  assert.ok(train.indexOf("${note?`<p class=\"st-ex-note\">${esc(note)}</p>`:''}") !== -1);
   const detail = ui.slice(ui.indexOf("function exerciseDetails()"));
   assert.ok(detail.indexOf("note?`<section") !== -1, "an absent note shows nothing, not a placeholder");
 });
