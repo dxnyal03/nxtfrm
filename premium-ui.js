@@ -690,6 +690,8 @@ const NXP = (() => {
         ${fig?`<button type="button" class="st-ex-fig" onclick="NXP.exerciseDetails()" aria-label="Show exercise details">${fig}</button>`:''}
       </section>
 
+      ${!addOnActive()&&sessionDiffers()?`<button type="button" class="st-diff" onclick="NXP.saveTodayToRoutine()"><span><b>Changed for today only</b><small>Save this order and these exercises to your ${esc(N.label(state.dayType))} routine</small></span><em>Save</em></button>`:''}
+
       <aside class="nxp-rest st-rest${restLeft?' is-active':''}" aria-label="Rest timer"${restLeft?' role="timer"':''} ${restLeft?'':'hidden'} style="--pct:${restPct.toFixed(1)}">
         <span class="st-rest-l"><small>Rest</small><b id="apx96TimerValue" class="vn-num">${restLeft?apx96FormatTimer(restLeft):'Ready'}</b></span>
         ${restRail(restLeft,ui.restTotal||restPlan)}
@@ -721,6 +723,8 @@ const NXP = (() => {
       swap:'<path d="M4 7h11l-3-3M16 13H5l3 3"/>',
       list:'<path d="M7 5.5h9M7 10h9M7 14.5h9M3.8 5.5h.1M3.8 10h.1M3.8 14.5h.1"/>',
       undo:'<path d="M7 7L3.5 10.5 7 14"/><path d="M4 10.5h8a4 4 0 010 8h-2"/>',
+      save:'<path d="M5 3.5h8l3 3V16a.5.5 0 01-.5.5h-11A.5.5 0 014 16V4a.5.5 0 01.5-.5z"/><path d="M7 3.5v4h6v-4M7 16.5v-5h6v5"/>',
+      edit:'<path d="M13.5 3.5l3 3L7 16H4v-3z"/>',
       gear:'<circle cx="10" cy="10" r="2.6"/><path d="M10 2.8v2M10 15.2v2M17.2 10h-2M4.8 10h-2M15.1 4.9l-1.4 1.4M6.3 13.7l-1.4 1.4M15.1 15.1l-1.4-1.4M6.3 6.3L4.9 4.9"/>'
     };
     const row=(i,label,sub,fn,danger)=>`<button type="button" class="st-mrow${danger?' is-danger':''}" onclick="${esc(fn)}"><span class="st-mrow-i"><svg viewBox="0 0 20 20" aria-hidden="true">${ico[i]}</svg></span><span class="st-mrow-l"><b>${esc(label)}</b>${sub?`<small>${esc(sub)}</small>`:''}</span><i aria-hidden="true">›</i></button>`;
@@ -730,6 +734,10 @@ const NXP = (() => {
         ${row('info','Exercise details','Muscles, history and equipment','NXP.exerciseDetails()')}
         ${row('swap','Swap exercise','Replace it for today only','closeModal();showSubstituteSheet()')}
         ${row('list','All exercises','Jump or reorder','NXP.queue()')}
+      </div>
+      <div class="st-mgroup">
+        ${row('save','Save to routine',sessionDiffers()?'Keep today’s changes for next time':'Today matches your routine','NXP.saveTodayToRoutine()')}
+        ${row('edit','Edit '+N.label(state.dayType)+' routine','Exercises, sets and rep ranges',`closeModal();NXP.editRoutine('${state.dayType}')`)}
       </div>
       <div class="st-mgroup">
         ${row('undo','Undo last set','','closeModal();apx96UndoLastSet()')}
@@ -1341,6 +1349,182 @@ const NXP = (() => {
     if(signedOut&&hasData&&!(typeof lastCloudSyncAt!=='undefined'&&lastCloudSyncAt)&&!dismissed)return {word:'Not backed up',tone:'watch',sub:'Your records exist on this device only'};
     return calm;
   }
+  /* ---- Training: split + routines (D22) ------------------------------------
+     A routine is the saved programme for one workout type at one gym
+     (cfg().templates[gym+'__'+type], validated by NXT.validTemplate). The
+     editor works on a draft and writes only on Save, after a safety snapshot.
+     Today's workout is re-seeded from the new routine when nothing has been
+     logged in it yet, so an edit shows up immediately. */
+  const NON_LIFT=['Rest','Zone2','Floorball'];
+  const DAY_ORDER=[1,2,3,4,5,6,0],DAY_SHORT=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],DAY_LONG=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  function liftTypes(){return N.typeNames().filter(x=>!NON_LIFT.includes(x));}
+  function gyms(){const g=['Gym A','Gym B'];if(state.gym&&!g.includes(state.gym))g.push(state.gym);return g;}
+  function routineGym(){return ui.routineGym||state.gym||'Gym A';}
+  function daysFor(type){return DAY_ORDER.filter(d=>settings.weeklyPlan&&settings.weeklyPlan[d]===type).map(d=>DAY_SHORT[d]);}
+  function typeShort(t){return ({FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Floorball:'Floorball',Pump:'Legs+',Rest:'Rest'})[t]||N.label(t);}
+  function trainingView(){
+    syncTrainNav(false);
+    const gym=routineGym(),plan=settings.weeklyPlan||{};
+    const used=[...new Set(DAY_ORDER.map(d=>plan[d]).filter(x=>x&&!NON_LIFT.includes(x)))];
+    const others=liftTypes().filter(x=>!used.includes(x));
+    const week=DAY_ORDER.map(d=>{const ty=plan[d]||'Rest',lift=!NON_LIFT.includes(ty);return `<button type="button" class="st-wd${lift?' is-lift':''}${d===new Date(N.dateMs(state.date)).getUTCDay()?' is-today':''}" onclick="NXP.pickDay(${d})" aria-label="${DAY_LONG[d]}: ${esc(N.label(ty))}. Change"><small>${DAY_SHORT[d].slice(0,1)}</small><b>${esc(typeShort(ty))}</b></button>`;}).join('');
+    const card=ty=>{const rows=N.templateFor(ty,gym),sets=rows.reduce((a,e)=>a+Number(e.sets),0),days=daysFor(ty);
+      return `<button type="button" class="st-rt" onclick="NXP.editRoutine('${ty}')"><span class="st-rt-l"><b>${esc(N.label(ty))}</b><small>${rows.length} exercises · ${sets} sets${days.length?' · '+days.join(', '):''}</small><span class="st-rt-p">${esc(rows.slice(0,3).map(e=>e.name).join(' · '))}${rows.length>3?' …':''}</span></span><i aria-hidden="true">›</i></button>`;};
+    document.getElementById('morePage').innerHTML=shell(`${settingsHead('Training','Your split, routines and gyms')}
+      <section class="st-set-sec"><div class="st-set-h"><h2>Your week</h2><span>Tap a day to change it</span></div><div class="st-week7">${week}</div></section>
+      <section class="st-set-sec"><div class="st-set-h"><h2>Routines</h2>
+        <div class="st-gymseg" role="group" aria-label="Gym">${gyms().map(g=>`<button type="button" class="${g===gym?'is-on':''}" aria-pressed="${g===gym}" onclick="NXP.setRoutineGym('${esc(g)}')">${esc(g)}</button>`).join('')}</div></div>
+        <p class="st-set-note">Each gym keeps its own routines, so loads and machines stay comparable.</p>
+        <div class="st-rts">${used.map(card).join('')||'<p class="st-set-note">No lifting days in your week yet.</p>'}</div>
+        ${others.length?`<details class="st-more-rt"><summary>Other routines · ${others.length}</summary><div class="st-rts">${others.map(card).join('')}</div></details>`:''}
+      </section>`,'vn-settings st-settings');
+  }
+  function setRoutineGym(g){ui.routineGym=g;trainingView();}
+  function pickDay(d){
+    const cur=(settings.weeklyPlan||{})[d];
+    N.modal(DAY_LONG[d],`<div class="st-mgroup">${N.typeNames().map(ty=>`<button type="button" class="st-mrow st-pick${ty===cur?' is-on':''}" onclick="NXP.setDay(${d},'${ty}')"><span class="st-mrow-l"><b>${esc(N.label(ty))}</b>${NON_LIFT.includes(ty)?'':`<small>${N.templateFor(ty,routineGym()).length} exercises</small>`}</span><i aria-hidden="true">${ty===cur?'✓':''}</i></button>`).join('')}</div>`);
+  }
+  function setDay(d,ty){
+    if(!N.typeNames().includes(ty))return;
+    const plan={...(settings.weeklyPlan||{})};if(plan[d]===ty){closeModal();return;}
+    if(!N.snapshot('Before weekly plan change'))return;
+    N.cfg().previousWeeklyPlan=N.copy(settings.weeklyPlan||{});
+    plan[d]=ty;settings.weeklyPlan=plan;state.dayType=N.typeFor(state.date);
+    closeModal();N.commit(DAY_LONG[d]+' set to '+N.label(ty));
+  }
+  function editRoutine(type){
+    const gym=routineGym();
+    ui.routine={type,gym,rows:N.copy(N.templateFor(type,gym)),dirty:false,both:false};
+    N.more('routine');
+  }
+  function routineView(){
+    syncTrainNav(false);
+    const r=ui.routine;if(!r){N.more('training');return;}
+    const sets=r.rows.reduce((a,e)=>a+Number(e.sets),0),days=daysFor(r.type);
+    const other=gyms().filter(g=>g!==r.gym)[0];
+    const rows=r.rows.map((e,i)=>`<div class="st-rx">
+        <span class="st-rx-n">${i+1}</span>
+        <button type="button" class="st-rx-main" onclick="NXP.routineEdit(${i})"><b>${esc(e.name||'Choose exercise')}</b><small>${e.sets} × ${e.reps[0]}–${e.reps[1]}${Number(e.inc)>0?' · +'+trimNum(e.inc)+' kg':''}</small></button>
+        <span class="st-rx-mv"><button type="button" ${i===0?'disabled':''} aria-label="Move ${esc(e.name)} up" onclick="NXP.routineMove(${i},-1)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5L10 7.5l5 5"/></svg></button><button type="button" ${i===r.rows.length-1?'disabled':''} aria-label="Move ${esc(e.name)} down" onclick="NXP.routineMove(${i},1)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5l5 5 5-5"/></svg></button></span>
+      </div>`).join('');
+    document.getElementById('morePage').innerHTML=shell(`<header class="vn-set-head"><button type="button" class="vn-set-back" aria-label="Back to Training" onclick="NXP.routineBack()"><i aria-hidden="true">‹</i>Training</button>
+        <h1>${esc(N.label(r.type))}</h1><p>${esc(r.gym)} · ${r.rows.length} exercises · ${sets} sets${days.length?' · '+days.join(', '):''}</p></header>
+      <div class="st-rxs">${rows}
+        <button type="button" class="st-rx-add" onclick="NXP.routinePick(-1)"><span aria-hidden="true">+</span>Add exercise</button>
+      </div>
+      ${other?`<label class="st-both"><input type="checkbox" ${r.both?'checked':''} onchange="NXP.routineBoth(this.checked)"><span><b>Also save to ${esc(other)}</b><small>Overwrites ${esc(other)}’s ${esc(N.label(r.type))} routine</small></span></label>`:''}
+      <button type="button" class="st-rx-reset" onclick="NXP.routineDefault()">Restore default exercises</button>
+      <div class="st-savebar${r.dirty?' is-dirty':''}"><span>${r.dirty?'Unsaved changes':'All changes saved'}</span><button type="button" class="st-save" ${r.dirty?'':'disabled'} onclick="NXP.routineSave()">Save routine</button></div>`,'vn-settings st-settings st-routine');
+  }
+  function routineBack(){
+    const r=ui.routine;
+    if(r&&r.dirty&&!confirm('Discard unsaved changes to this routine?'))return;
+    ui.routine=null;N.more('training');
+  }
+  function routineTouch(){ui.routine.dirty=true;routineView();}
+  function routineMove(i,dir){const rows=ui.routine.rows,j=i+dir;if(j<0||j>=rows.length)return;[rows[i],rows[j]]=[rows[j],rows[i]];routineTouch();}
+  function routineBoth(on){ui.routine.both=!!on;ui.routine.dirty=true;routineView();}
+  function routineDefault(){
+    const r=ui.routine,def=N.copy(N.defaults[r.type]||TEMPLATES[r.type]||[]);
+    if(!def.length)return toast('No default exists for this routine.');
+    if(!confirm('Replace this draft with the default exercises? Nothing is saved until you tap Save.'))return;
+    r.rows=def;routineTouch();
+  }
+  /* Edit sheet: steppers write straight into the draft row. */
+  function routineEdit(i){
+    const e=ui.routine.rows[i];if(!e)return;
+    const step=(k,label,val,sub)=>`<div class="st-es"><span><b>${label}</b>${sub?`<small>${sub}</small>`:''}</span><div class="st-es-c"><button type="button" aria-label="Decrease ${label}" onclick="NXP.routineStep(${i},'${k}',-1)">−</button><output class="vn-num" id="st-es-${k}">${val}</output><button type="button" aria-label="Increase ${label}" onclick="NXP.routineStep(${i},'${k}',1)">+</button></div></div>`;
+    N.modal(e.name||'Exercise',`<div class="st-menu">
+      <div class="st-mgroup">
+        ${step('sets','Working sets',e.sets,'')}
+        ${step('lo','Min reps',e.reps[0],'Bottom of the rep range')}
+        ${step('hi','Max reps',e.reps[1],'Hit this on every set to earn the next load')}
+        ${step('inc','Load step',trimNum(e.inc)+' kg','How much the weight goes up')}
+      </div>
+      <div class="st-mgroup">
+        <button type="button" class="st-mrow" onclick="NXP.routinePick(${i})"><span class="st-mrow-l"><b>Change exercise</b><small>Keep these sets and reps</small></span><i aria-hidden="true">›</i></button>
+        <button type="button" class="st-mrow is-danger" onclick="NXP.routineRemove(${i})"><span class="st-mrow-l"><b>Remove from routine</b></span></button>
+      </div>
+      <button type="button" class="st-cta" onclick="closeModal()">Done</button>
+    </div>`);
+  }
+  const INC_STEPS=[0,1,1.25,2,2.5,5,10];
+  function routineStep(i,k,dir){
+    const e=ui.routine.rows[i];if(!e)return;
+    if(k==='sets')e.sets=Math.max(1,Math.min(8,Number(e.sets)+dir));
+    else if(k==='lo'){e.reps=[Math.max(1,Math.min(e.reps[1],e.reps[0]+dir)),e.reps[1]];}
+    else if(k==='hi'){e.reps=[e.reps[0],Math.max(e.reps[0],Math.min(30,e.reps[1]+dir))];}
+    else if(k==='inc'){const ix=Math.max(0,INC_STEPS.findIndex(x=>x>=Number(e.inc)-1e-9));e.inc=INC_STEPS[Math.max(0,Math.min(INC_STEPS.length-1,ix+dir))];}
+    const out=document.getElementById('st-es-'+k);
+    if(out)out.textContent=k==='sets'?e.sets:k==='lo'?e.reps[0]:k==='hi'?e.reps[1]:trimNum(e.inc)+' kg';
+    ui.routine.dirty=true;routineView();
+  }
+  function routineRemove(i){
+    if(ui.routine.rows.length<=1)return toast('Keep at least one exercise.');
+    ui.routine.rows.splice(i,1);closeModal();routineTouch();
+  }
+  /* Exercise picker: search the shipped library plus every name in use. */
+  function routinePick(i){
+    ui.pickIndex=i;
+    N.modal(i<0?'Add exercise':'Change exercise',`<div class="st-picker"><input id="st-pick-q" class="st-pick-q" type="search" placeholder="Search exercises" autocomplete="off" oninput="NXP.routineFilter(this.value)"><div id="st-pick-list" class="st-mgroup st-pick-list">${pickList('')}</div></div>`);
+  }
+  function pickList(q){
+    const have=new Set(ui.routine.rows.map(e=>e.name)),s=String(q||'').trim().toLowerCase();
+    const names=v88AllExerciseNames().filter(n=>!s||n.toLowerCase().includes(s)).slice(0,80);
+    const mus=n=>{try{if(typeof NXTLIB==='undefined')return '';const m=NXTLIB.musclesFor(n);return m.primary.map(id=>NXTANAT.label(id)).join(' · ');}catch(e){return '';}};
+    const custom=s&&!names.some(n=>n.toLowerCase()===s)?`<button type="button" class="st-mrow" data-name="${esc(q.trim())}" onclick="NXP.routineChoose(this.dataset.name)"><span class="st-mrow-l"><b>Use “${esc(q.trim())}”</b><small>Custom exercise</small></span><i aria-hidden="true">+</i></button>`:'';
+    return names.map(n=>`<button type="button" class="st-mrow${have.has(n)?' is-in':''}" data-name="${esc(n)}" ${have.has(n)?'disabled':''} onclick="NXP.routineChoose(this.dataset.name)"><span class="st-mrow-l"><b>${esc(n)}</b>${mus(n)?`<small>${esc(mus(n))}</small>`:''}</span><i aria-hidden="true">${have.has(n)?'In routine':'+'}</i></button>`).join('')+custom;
+  }
+  function routineFilter(q){const el=document.getElementById('st-pick-list');if(el)el.innerHTML=pickList(q);}
+  function routineChoose(name){
+    name=String(name||'').trim().slice(0,100);if(!name)return;
+    const r=ui.routine;
+    if(r.rows.some((e,j)=>e.name===name&&j!==ui.pickIndex))return toast('Already in this routine.');
+    if(ui.pickIndex<0){
+      if(r.rows.length>=15)return toast('A routine can hold up to 15 exercises.');
+      const d=typeof exerciseDefByName==='function'?exerciseDefByName(name,r.type):null;
+      r.rows.push({name,sets:Number(d&&d.sets)||3,reps:Array.isArray(d&&d.reps)?[Number(d.reps[0]),Number(d.reps[1])]:[8,12],inc:Number.isFinite(Number(d&&d.inc))?Number(d.inc):2.5});
+    }else{
+      r.rows[ui.pickIndex]={...r.rows[ui.pickIndex],name};
+    }
+    closeModal();routineTouch();
+  }
+  function reseedToday(type,gym){
+    /* Only a session that has not started is re-seeded: logged sets are never
+       orphaned, and a workout in progress keeps its queue. */
+    const key=sessionKey(type,state.date,gym);
+    const logged=(state.logs||[]).some(x=>x&&x.date===state.date&&(x.gym||'Gym A')===gym&&(!x.dayType||x.dayType===type));
+    if(logged)return false;
+    state.sessionPlans=state.sessionPlans||{};
+    state.sessionPlans[key]=N.templateFor(type,gym).map(e=>e.name);
+    N.cfg().sessionTargets[key]=N.copy(N.templateFor(type,gym));
+    if(type===state.dayType&&gym===state.gym)state.exercise=state.sessionPlans[key][0]||'';
+    return true;
+  }
+  function routineSave(){
+    const r=ui.routine;if(!r)return;
+    r.rows=r.rows.map(e=>({...e,name:String(e.name||'').trim(),sets:Math.round(Number(e.sets)),reps:[Math.round(Number(e.reps[0])),Math.round(Number(e.reps[1]))],inc:Number(e.inc)}));
+    if(!N.validTemplate(r.rows))return toast('Check names are filled in and not repeated.');
+    if(!N.snapshot('Before routine edit'))return;
+    const targets=[r.gym].concat(r.both?gyms().filter(g=>g!==r.gym):[]);
+    let live=false;
+    targets.forEach(g=>{N.cfg().templates[g+'__'+r.type]=N.copy(r.rows);if(reseedToday(r.type,g)&&g===state.gym&&r.type===state.dayType)live=true;});
+    r.dirty=false;r.both=false;
+    N.commit(N.label(r.type)+' saved'+(live?' · today’s workout updated':''));
+  }
+  /* Train: when today's queue differs from the routine, offer to keep it. */
+  function sessionDiffers(){
+    const names=template().map(e=>e.name),base=N.templateFor().map(e=>e.name);
+    return names.length!==base.length||names.some((n,i)=>n!==base[i]);
+  }
+  function saveTodayToRoutine(){
+    const rows=template().map(e=>({name:e.name,sets:Number(e.sets),reps:[Number(e.reps[0]),Number(e.reps[1])],inc:Number(e.inc)}));
+    if(!N.validTemplate(rows))return toast('Check this workout in Settings › Training first.');
+    if(!N.snapshot('Before saving workout to routine'))return;
+    N.cfg().templates[state.gym+'__'+state.dayType]=N.copy(rows);
+    if(typeof closeModal==='function')closeModal();
+    N.commit(N.label(state.dayType)+' routine updated');
+  }
   function evoScanView() {
     const page=document.getElementById('morePage');
     if(!page)return;
@@ -1357,6 +1541,8 @@ const NXP = (() => {
     if(view==='appearance'){appearanceView();return;}
     if(view==='data'){dataView();return;}
     if(view==='body'){evoScanView();return;}
+    if(view==='training'){page.classList.add('nxp-settings-page');trainingView();return;}
+    if(view==='routine'){page.classList.add('nxp-settings-page');routineView();return;}
     if(view!=='hub'){base.more();subviewChrome();return;}
     const lifts=Object.values(settings.weeklyPlan||{}).filter(t=>!['Rest','Zone2','Floorball'].includes(t)).length;
     const waist=N.cleanRows(c.waist,'cm').length;
@@ -2040,7 +2226,7 @@ const NXP = (() => {
   }
   bindSteppers();
   bindKeyboardDock();
-  return {ui,useAim,trainMenu,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom};
+  return {ui,useAim,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;
