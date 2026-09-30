@@ -570,13 +570,36 @@ const NXT = (() => {
     logSuggestion({kind:"progression",subject:ex||null,payload:{weight:out.weight,label:out.label,action:suggestionAction(out.label)}});
     return out;
   }
-  function snapshot(reason) {
+  /* Recovery copy before a risky edit. If the first write fails (typically a full
+     device quota, because the copy is a second full backup), the previous copy is the
+     only thing that can be freed, so it is dropped and the write retried; the old copy
+     is put back if that also fails. The reason is kept in N.snapshotIssue so callers
+     can say why instead of guessing. opts.quiet skips the toast for callers that ask. */
+  function snapshotFail(stage,e,opts) {
+    let used=0;try{used=Object.keys(localStorage).reduce((a,k)=>a+k.length+(localStorage.getItem(k)||"").length,0);}catch(_){}
+    const full=/quota/i.test(String(e&&e.name)+" "+String(e&&e.message));
+    snapshot.issue={stage,name:e&&e.name||"Error",full,usedKB:Math.round(used/1024)};
+    if(!(opts&&opts.quiet))toast("Could not make a safety copy"+(full?" (device storage is full)":"")+". Export a backup before continuing.");
+    return false;
+  }
+  function snapshot(reason,opts) {
+    snapshot.issue=null;
+    const key="nxtfrm_recovery_snapshot";
+    let payload;
     try {
       const data=old.getFullBackup();
       delete data.localStorageDump.apm_recovery_backup;
-      localStorage.setItem("nxtfrm_recovery_snapshot",JSON.stringify({reason,createdAt:new Date().toISOString(),data}));
-      return true;
-    } catch(e) { toast("Could not make a safety copy. Export a backup before continuing.");return false; }
+      payload=JSON.stringify({reason,createdAt:new Date().toISOString(),data});
+    } catch(e) { return snapshotFail("build",e,opts); }
+    try { localStorage.setItem(key,payload);return true; }
+    catch(e1) {
+      let prev=null;
+      try { prev=localStorage.getItem(key);localStorage.removeItem(key);localStorage.setItem(key,payload);return true; }
+      catch(e2) {
+        try { if(prev!==null)localStorage.setItem(key,prev); } catch(_) {}
+        return snapshotFail("write",e2,opts);
+      }
+    }
   }
   function repaint() { document.activeElement?.blur?.();window.__apexTyping=false;state.typingWeight=false;render(); }
   function commit(message) { try{persist();}catch(e){toast('Could not save on this device. Export a backup and free storage before retrying.');return false;}old.closeModal();repaint();if(message)toast(message);return true; }

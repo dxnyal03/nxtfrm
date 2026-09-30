@@ -1520,11 +1520,17 @@ const NXP = (() => {
     if(type===state.dayType&&gym===state.gym)state.exercise=state.sessionPlans[key][0]||'';
     return true;
   }
+  /* Routine edits only rewrite the saved workout template; logs, weights and scans are not touched.
+     If the local safety copy cannot be made, say why and let the person choose. */
+  function confirmNoSafetyCopy(){
+    const i=N.snapshot.issue||{};
+    return confirm('Could not make a safety copy'+(i.full?' because this device\u2019s storage is full':'')+'. Saving this routine only changes the workout list; your logs, weights and scans are not touched.\n\nSave anyway? Export a backup from Settings \u203a Data when you can.');
+  }
   function routineSave(){
     const r=ui.routine;if(!r)return;
     r.rows=r.rows.map(e=>({...e,name:String(e.name||'').trim(),sets:Math.round(Number(e.sets)),reps:[Math.round(Number(e.reps[0])),Math.round(Number(e.reps[1]))],inc:Number(e.inc)}));
     if(!N.validTemplate(r.rows))return toast('Check names are filled in and not repeated.');
-    if(!N.snapshot('Before routine edit'))return;
+    if(!N.snapshot('Before routine edit',{quiet:true})&&!confirmNoSafetyCopy())return;
     const targets=[r.gym].concat(r.both?gyms().filter(g=>g!==r.gym):[]);
     let live=false;
     targets.forEach(g=>{N.cfg().templates[g+'__'+r.type]=N.copy(r.rows);if(reseedToday(r.type,g)&&g===state.gym&&r.type===state.dayType)live=true;});
@@ -1539,7 +1545,7 @@ const NXP = (() => {
   function saveTodayToRoutine(){
     const rows=template().map(e=>({name:e.name,sets:Number(e.sets),reps:[Number(e.reps[0]),Number(e.reps[1])],inc:Number(e.inc)}));
     if(!N.validTemplate(rows))return toast('Check this workout in Settings › Training first.');
-    if(!N.snapshot('Before saving workout to routine'))return;
+    if(!N.snapshot('Before saving workout to routine',{quiet:true})&&!confirmNoSafetyCopy())return;
     N.cfg().templates[state.gym+'__'+state.dayType]=N.copy(rows);
     if(typeof closeModal==='function')closeModal();
     N.commit(N.label(state.dayType)+' routine updated');
