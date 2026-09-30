@@ -1244,3 +1244,26 @@ body,button,input{-webkit-font-smoothing:antialiased}
 #weightPage .vn-weighins .vn-row-s{font:400 13px/1.3 var(--st-font);color:var(--st-ink-3)}
 #morePage .vn-set-eyebrow{display:none !important}
 #weightPage details.nxp-disclosure>summary{font-weight:550 !important}
+
+/* Body tab: folded sections read as quiet accordion rows. */
+#weightPage .vn-evo-sec>h2[data-st-fold]{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;min-height:44px;margin:0 !important;-webkit-tap-highlight-color:transparent;border-radius:12px}
+#weightPage .vn-evo-sec>h2[data-st-fold]::after{content:"›";font:400 20px/1 var(--st-font);color:var(--st-ink-3);transform:rotate(90deg);transition:transform .3s var(--st-out)}
+#weightPage .vn-evo-sec.is-collapsed>h2[data-st-fold]::after{transform:rotate(0)}
+#weightPage .vn-evo-sec>h2[data-st-fold]:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:2px}
+#weightPage .vn-evo-sec.is-collapsed>*:not(h2){display:none !important}
+#weightPage .vn-evo-sec:not(.is-collapsed)>h2[data-st-fold]+*{animation:st-fade-in .35s var(--st-out) backwards}
+@keyframes st-fade-in{from{opacity:0;transform:translateY(-4px)}}
+@media (prefers-reduced-motion:reduce){#weightPage .vn-evo-sec>h2[data-st-fold]::after,#weightPage .vn-evo-sec>h2[data-st-fold]+*{transition:none;animation:none !important}}
+/* Empty "All readings" and the scan note become tile rows, not loose text. */
+#weightPage .nxp-progress-body-section:has(> .nxp-progress-body-empty){padding:16px 18px;border-radius:var(--st-r);border:1px solid var(--st-tile-line);background:var(--st-tile),var(--st-tile-bg);box-shadow:var(--st-tile-hl)}
+
+/* Body tab, on the Today voice: real section titles, quiet labels, light hero numeral. */
+#weightPage h2.nxp-progress-body-heading{margin:4px 0 10px !important;font:590 18px/1.25 var(--st-font) !important;letter-spacing:-.01em !important;text-transform:none !important;color:var(--st-ink) !important}
+#weightPage .vn-evo-k,#weightPage .vn-evo-kind{text-transform:none !important;letter-spacing:0 !important;font:550 13px/1.3 var(--st-font) !important;color:var(--st-ink-3) !important}
+#weightPage .vn-evo-kind{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;margin-left:6px;border-radius:999px;background:rgba(var(--st-hl),.06);font-size:12px !important}
+#weightPage .vn-evo-num{font-weight:300 !important;font-size:52px !important;letter-spacing:-.03em !important;font-variant-numeric:tabular-nums}
+#weightPage .vn-evo-num small,#weightPage .vn-evo-num span{font-weight:400 !important}
+@media (max-width:359px){
+  .st-h1{font-size:24px !important}
+  #weightPage .vn-evo-num{font-size:44px !important}
+}

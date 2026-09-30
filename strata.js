@@ -271,6 +271,24 @@ const STRATA = (() => {
      The engine's rows and order are untouched. When there is recent history the
      older-history rows tuck behind one button; when everything is old, only the
      first six show. Nothing is removed, and the button says how many are hidden. */
+  /* Body tab: the latest scan and its composition stay open; the deeper sections fold
+     behind their own headings and remember their state across re-renders. */
+  const bodyOpen = { "What changed": true };
+  function foldBody(page) {
+    if (page.id !== "weightPage") return;
+    page.querySelectorAll(".nxp-progress-body-section .vn-evo-sec").forEach(sec => {
+      const h = sec.querySelector(":scope > h2");
+      if (!h || !/^(Trend|What changed|Scan history)$/.test(h.textContent.trim()) || h.dataset.stFold) return;
+      const name = h.textContent.trim();
+      h.dataset.stFold = "1";
+      h.setAttribute("role", "button"); h.tabIndex = 0;
+      const set = open => { sec.classList.toggle("is-collapsed", !open); h.setAttribute("aria-expanded", open ? "true" : "false"); bodyOpen[name] = open; };
+      set(!!bodyOpen[name]);
+      const toggle = () => set(sec.classList.contains("is-collapsed"));
+      h.addEventListener("click", toggle);
+      h.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+    });
+  }
   function foldPerf(page) {
     const list = page.querySelector(".vn-perf-rows");
     if (!list || list.parentNode.querySelector(".st-fold")) return;
@@ -542,6 +560,7 @@ const STRATA = (() => {
     dressProgress(page);
     dressWeeks(page, entering);
     foldPerf(page);
+    foldBody(page);
     if (page.id === "trainPage") bindTrain(page, entering);
     bindProgressReplay(page);
     syncDock();

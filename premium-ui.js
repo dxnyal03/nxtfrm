@@ -78,7 +78,7 @@ const NXP = (() => {
     const work=N.workRows();
     const lastLift=[...new Set(work.map(row=>row.date))].sort().at(-1);
     const lastLiftRow=lastLift?work.find(row=>row.date===lastLift):null;
-    const lastLiftLine=lastLiftRow?(lastLift===state.date?(finished?'Logged today':'In progress today'):`${N.label(lastLiftRow.dayType||state.dayType)} · ${N.shortDate(lastLift)}`):'';
+    const lastLiftLine=lastLiftRow?(lastLift===state.date?(finished?'Logged today':'In progress today'):(()=>{const n=work.filter(row=>row.date===lastLift).length,ago=Math.round((N.dateMs(state.date)-N.dateMs(lastLift))/864e5),when=ago===1?'yesterday':ago>1?ago+' days ago':N.shortDate(lastLift);return `Last lifted · ${N.label(lastLiftRow.dayType||state.dayType)}, ${when}${n?` · ${n} ${n===1?'set':'sets'}`:''}`;})()):'';
     const plateau=N.detectPlateau();
     const trendEv=plateau.weeklyRate===null?(s.change===null?'—':N.signed(s.change)+' kg/wk'):N.signed(plateau.weeklyRate)+' kg/wk';
     const confEv=!plateau.confidence||plateau.confidence==='none'?'—':plateau.confidence;
