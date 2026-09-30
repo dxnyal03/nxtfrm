@@ -526,15 +526,41 @@ const NXT = (() => {
     if(row&&row.status)return `<p class="n99-small">Today’s calories: ${labels[row.status]||row.status}</p>`;
     return `<div class="n99-quick" role="group" aria-label="Calorie adherence">${button("Hit target",'NXT.logAdherence("yes")',true)}${button("Close",'NXT.logAdherence("close")',true)}${button("Missed",'NXT.logAdherence("no")',true)}${button("Way over",'NXT.logAdherence("over")',true)}</div>`;
   }
+  /* D20 — a session is judged by its best working set: the heaviest load, and
+     at that load the most reps. The first set of a session is often a
+     ramp-up, so it understated what was actually lifted. */
+  function bestSet(sets) {
+    let best=null;
+    for(const r of sets||[]) {
+      const w=Number(r&&r.weight),n=Number(r&&r.reps);
+      if(!Number.isFinite(w)||!Number.isFinite(n))continue;
+      if(!best||w>Number(best.weight)||(w===Number(best.weight)&&n>Number(best.reps)))best=r;
+    }
+    return best;
+  }
+  /* What "beating last time" means for the next working set, derived from the
+     same double-progression rule cue() applies: add a rep at the best load until
+     the top of the range, then the load moves up only once cue() says so. */
+  function aimFor(ex) {
+    const t=targetFor(ex),all=sessionRows(ex,state.gym,state.date,100),last=all.at(-1);
+    if(!last)return null;
+    const best=bestSet(last.sets);if(!best)return null;
+    const c=cue(ex),w=Number(best.weight),n=Number(best.reps);
+    if(Number(c.weight)>w)return {best,date:last.date,weight:Number(c.weight),reps:t.reps[0],kind:"load"};
+    if(n<t.reps[1])return {best,date:last.date,weight:w,reps:n+1,kind:"rep"};
+    return {best,date:last.date,weight:w,reps:n,kind:"match"};
+  }
   function cue(ex) {
     const t=targetFor(ex),all=sessionRows(ex,state.gym,state.date,100),last=all.at(-1),prev=all.at(-2);
     let out;
     if(!last)out={label:"Set your baseline",weight:0,text:"Choose a manageable load and leave around two reps in reserve. Your first session establishes the baseline."};
     else {
-      const weight=Number(last.sets[0].weight),recent=last.date>=dateAdd(state.date,-28);
+      const weight=Number(bestSet(last.sets).weight),recent=last.date>=dateAdd(state.date,-28);
       if(!recent)out={label:"Re-establish your baseline",weight:0,text:"This exercise history is over four weeks old. Choose a manageable starting load for today."};
       else {
-        const top=s=>s&&s.sets.length>=t.sets&&s.sets.slice(0,t.sets).every(r=>Number(r.reps)>=t.reps[1]&&Number(r.weight)===weight);
+        /* Top-set double progression (D20): a session "tops out" when its best
+           set, at this load, reached the top of the rep range. */
+        const top=s=>{const b=s&&bestSet(s.sets);return !!b&&Number(b.weight)===weight&&Number(b.reps)>=t.reps[1];};
         const effortOkay=last.sets.every(r=>r.rir===null||r.rir===undefined||r.rir===""||Number(r.rir)>=2);
         const r=cfg().recovery[state.date],tired=r&&(Number(r.energy)<=2&&r.energy!==""||Number(r.soreness)>=4);
         if(!tired&&top(last)&&top(prev)&&effortOkay&&Number(t.inc)>0)out={label:"Ready to consider an increase",weight:weight+Number(t.inc),text:"You reached the top of the rep range in two sessions. Use the next increment only if today’s warm-up feels controlled."};
@@ -686,7 +712,7 @@ const NXT = (() => {
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any target change stays your choice.</p><div class="n99-stack">${button('Review calorie guide','NXT.openCalories()',true)}${button('Update recovery check-in','apx96OpenReadiness()',true)}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
@@ -964,7 +990,7 @@ Object.assign(NXT, (()=>{
       const s=3.4;
       return `<path class="vn-post-mark" d="M${px(pt.x)} ${px(pt.y-s)}L${px(pt.x+s)} ${px(pt.y)}L${px(pt.x)} ${px(pt.y+s)}L${px(pt.x-s)} ${px(pt.y)}Z" fill="none" stroke="${CHART.inkSecondary}" stroke-width="1.5" pointer-events="none"/>`;
     }).join('');
-    const trendPaths=segments.map(seg=>`${seg.length>1?`<path d="${smoothPath(seg)} L ${seg.at(-1).x} ${baseline} L ${seg[0].x} ${baseline} Z" fill="url(#n99-chart-fill)" pointer-events="none"/>`:''}<path class="vn-trend-line" d="${smoothPath(seg)}" fill="none" stroke="${CHART.ink}" stroke-width="${CHART.line}" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>${seg.length===1?`<circle cx="${seg[0].x}" cy="${seg[0].y}" r="${CHART.point}" fill="${CHART.ink}" pointer-events="none"/>`:''}`).join('');
+    const trendPaths=segments.map(seg=>`${seg.length>1?`<path d="${smoothPath(seg)} L ${seg.at(-1).x} ${baseline} L ${seg[0].x} ${baseline} Z" fill="url(#n99-chart-fill)" pointer-events="none"/>`:''}<path class="vn-trend-line" d="${smoothPath(seg)}" filter="url(#st-glow)" pathLength="1" fill="none" stroke="${CHART.ink}" stroke-width="${CHART.line}" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>${seg.length===1?`<circle cx="${seg[0].x}" cy="${seg[0].y}" r="${CHART.point}" fill="${CHART.ink}" pointer-events="none"/>`:''}`).join('');
     const dateLabel=isLatest?'Latest morning':N.shortDate(p.date);
     const postRow=postByDate.get(p.date);
     const xLabs=(()=>{
@@ -1009,7 +1035,7 @@ Object.assign(NXT, (()=>{
           <small class="vn-tiny" id="n99-chart-post-delta">${esc(postDelta(p,postRow))}</small>
         </div>
       </div>
-      <div class="vn-mt4">${rangeBtns}</div>
+      <div class="vn-mt4 st-range-row">${rangeBtns}<button type="button" class="st-replay" data-st-chart-replay aria-label="Replay this range"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.8v10.4L13 8z" fill="currentColor"/></svg><span>Replay</span></button></div>
       <div class="vn-chart-wrap" id="vn-chart-wrap" tabindex="0" role="application"
         aria-label="Weight trend chart. Drag to inspect a day. Use left and right arrow keys; Escape returns to latest."
         onpointerdown="NXT.scrub(event)" onpointermove="if(event.buttons)NXT.scrub(event)"
@@ -1018,8 +1044,8 @@ Object.assign(NXT, (()=>{
           <title id="n99-chart-title">Morning weight and smoothed trend${forecast?' with model projection':''}</title>
           <desc id="n99-chart-desc">${points.length} weigh-ins. Circles are morning readings. The solid line is the smoothed trend. Diamonds are post-workout when enabled. ${forecast?'A dashed faded line is a model projection, not a measurement. ':''}Y-axis covers recent readings only — the long-term goal is on Cut journey below.</desc>
           <defs>
-            <clipPath id="vn-chart-clip"><rect x="${left}" y="${top}" width="${W-left-right}" height="${H-top-bottom}"/></clipPath>
-            <linearGradient id="n99-chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".12"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity="0"/></linearGradient>
+            <clipPath id="vn-chart-clip"><rect id="vn-chart-clip-r" x="${left}" y="${top}" width="${W-left-right}" height="${H-top-bottom}"/></clipPath>
+            <linearGradient id="n99-chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".34"/><stop offset=".7" stop-color="${CHART.ink}" stop-opacity=".06"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity="0"/></linearGradient><filter id="st-glow" x="-10%" y="-40%" width="120%" height="180%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             <linearGradient id="n99-chart-cone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".10"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity=".02"/></linearGradient>
           </defs>
           ${narrowTicks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}" pointer-events="none"/><text x="${left-8}" y="${t.y+3.5}" text-anchor="end" fill="${CHART.axisText}" font-size="11" pointer-events="none">${Number(t.value.toFixed(1))}</text>`).join('')}
@@ -1027,6 +1053,7 @@ Object.assign(NXT, (()=>{
             ${today}${cone}${bandFill}${trendPaths}${forecastLine}${postSeries}
             ${points.map(pt=>`<circle class="vn-raw-dot" cx="${pt.x}" cy="${pt.y}" r="2.1" fill="${CHART.raw}" fill-opacity=".85"/>`).join('')}
             <line id="n99-chart-cursor" x1="${p.x}" x2="${p.x}" y1="${top}" y2="${baseline}" stroke="${CHART.cursor}" stroke-opacity=".38" stroke-dasharray="3 4"/>
+            <circle id="st-chart-halo" class="st-halo" cx="${p.x}" cy="${p.y}" r="11" fill="${CHART.ink}"/>
             <circle id="n99-chart-active" cx="${p.x}" cy="${p.y}" r="${CHART.pointActive}" fill="${CHART.active}" stroke="${CHART.activeRing}" stroke-width="2"/>
             ${anchor&&forecast?`<circle cx="${px(anchor.x)}" cy="${px(anchor.y)}" r="4" fill="${CHART.ink}" stroke="${CHART.activeRing}" stroke-width="2"/>`:''}
           </g>
@@ -1065,6 +1092,7 @@ Object.assign(NXT, (()=>{
     text('n99-chart-post-delta',postDelta(p,postRow));
     const line=document.getElementById('n99-chart-cursor'),dot=document.getElementById('n99-chart-active'),slider=document.getElementById('n99-chart-slider');
     line?.setAttribute('x1',p.x);line?.setAttribute('x2',p.x);dot?.setAttribute('cx',p.x);dot?.setAttribute('cy',p.y);
+    const halo=document.getElementById('st-chart-halo');halo?.setAttribute('cx',p.x);halo?.setAttribute('cy',p.y);
     if(slider){slider.value=index;slider.setAttribute('aria-valuetext',N.shortDate(p.date)+', '+p.weight+' kilograms');}
   }
   function scrub(event) {

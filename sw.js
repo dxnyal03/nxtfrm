@@ -11,6 +11,8 @@ const VERSIONED = [
   'premium-ui.js',
   'premium-ui.css',
   'vnext.css',
+  'strata.css',
+  'strata.js',
   'wearables.js',
   'wearables.adapters.js',
   'wearables.ingest.js',

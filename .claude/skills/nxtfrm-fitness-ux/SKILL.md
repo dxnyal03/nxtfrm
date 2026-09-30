@@ -12,7 +12,7 @@ Use real training semantics. Do not invent metrics or scores.
 - Respect split/day structure and Gym A/B context.
 - Workout queue and session progression stay attached to the planned day.
 - Distinguish working sets from warm-up sets.
-- Log load, reps, and RIR against previous performance. Double progression is the progression model.
+- Log load, reps, and RIR against previous performance. Double progression is the progression model, applied to the best set of a session (D20: heaviest load, then most reps). Show Best last time → Aim.
 - Rest timer and set logging belong to the current set.
 - Exercise substitutions are explicit. Optional add-on lifting must not overwrite planned day semantics.
 - Rest, Zone2, and Floorball days keep their own meaning.
@@ -30,7 +30,7 @@ Use real training semantics. Do not invent metrics or scores.
 - Current set is the protagonist.
 - Coaching copy is concise. No motivational fluff. No fake readiness score.
 - Queue can live in a sheet or contextual layer.
-- Session completion summarizes real outcomes.
+- Session completion summarizes real outcomes. When every planned set is logged, Train says so and offers Finish (D21).
 
 ## Body Intelligence
 

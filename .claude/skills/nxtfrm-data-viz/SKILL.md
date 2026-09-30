@@ -20,7 +20,7 @@ One chart = one question. Generic chart and accessibility skills still apply; fo
 - The whole plot should be easy to scrub.
 - The selected value updates a stable metric header.
 - Critical interpretation is visible without interaction.
-- No chart clutter. No unnecessary gradients.
+- No chart clutter. Gradient area and gradient trend stroke are the house style (D19); week bands, an end-value label and a scrub tooltip are allowed. Replay reveals the series left to right and drives the same readout as scrubbing.
 
 ## Performance
 
