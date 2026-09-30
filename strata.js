@@ -407,9 +407,54 @@ const STRATA = (() => {
     const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
     root.style.minHeight = Math.max(560, Math.round(vh - top)) + "px";
   }
+  /* Live read of the set you are about to log against Best last time (D20: heaviest
+     load, then most reps). It compares two numbers already on screen; nothing is stored. */
+  function syncVs() {
+    const refs = document.querySelector("#trainPage .st-refs");
+    if (!refs) return;
+    let el = document.getElementById("st-vs");
+    if (!el || !el.isConnected) {
+      el = document.createElement("p"); el.id = "st-vs"; el.className = "st-vs"; el.setAttribute("role", "status");
+      refs.insertAdjacentElement("beforebegin", el);
+    }
+    const best = refs.querySelector(".st-refc[data-w]");
+    const wi = document.getElementById("weightInput"), ri = document.getElementById("repsInput"), ty = document.getElementById("n99-set-type");
+    const w = wi && wi.value !== "" ? Number(wi.value) : NaN, r = ri && ri.value !== "" ? Number(ri.value) : NaN;
+    let kind = "", text = "";
+    if (best && Number.isFinite(w) && Number.isFinite(r) && (!ty || ty.value !== "warmup")) {
+      const pw = Number(best.dataset.w), pr = Number(best.dataset.r), fmt = n => String(Math.round(n * 100) / 100);
+      if (w > pw) { kind = "up"; text = `+${fmt(w - pw)} kg on your best last time`; }
+      else if (w === pw && r > pr) { kind = "up"; text = `+${r - pr} ${r - pr === 1 ? "rep" : "reps"} on your best last time`; }
+      else if (w === pw && r === pr) { kind = "eq"; text = "Matches your best last time"; }
+      else { kind = "dn"; text = "Below your best last time"; }
+    }
+    el.dataset.k = kind; el.textContent = text;
+  }
+  /* Hold a stepper to keep stepping: starts after a beat, then speeds up. */
+  function bindHold() {
+    let t = 0, iv = 0, n = 0, btn = null, swallow = 0;
+    const stop = () => { clearTimeout(t); clearInterval(iv); btn = null; };
+    const tick = () => {
+      if (!btn) return;
+      n++; swallow = Date.now(); btn.click();
+      if (n === 10) { clearInterval(iv); iv = setInterval(tick, 90); }
+    };
+    document.addEventListener("pointerdown", e => {
+      const b = e.target && e.target.closest && e.target.closest("#trainPage .nxp-step");
+      if (!b || (e.pointerType === "mouse" && e.button !== 0)) return;
+      stop(); btn = b; n = 0;
+      t = setTimeout(() => { iv = setInterval(tick, 160); tick(); }, 450);
+    }, true);
+    ["pointerup", "pointercancel", "pointerleave"].forEach(ev => document.addEventListener(ev, e => { if (btn && (ev !== "pointerleave" || e.target === btn)) stop(); }, true));
+    document.addEventListener("contextmenu", e => { if (e.target && e.target.closest && e.target.closest("#trainPage .nxp-step")) e.preventDefault(); }, true);
+    document.addEventListener("click", e => {
+      if (swallow && e.isTrusted && Date.now() - swallow < 400) { e.stopPropagation(); e.preventDefault(); swallow = 0; }
+    }, true);
+  }
   function bindTrain(page, entering) {
     fitTrain();
     fitNums();
+    syncVs();
     const ex = page.querySelector(".st-train-active .st-ex");
     if (ex && !ex.__stSwipe) {
       ex.__stSwipe = true;
@@ -595,6 +640,8 @@ const STRATA = (() => {
       NXT.selectPoint.__strata = true;
     }
     bindCalSwipe();
+    bindHold();
+    ['input','click','pointerup'].forEach(ev=>document.addEventListener(ev,e=>{ if(e.target&&e.target.closest&&e.target.closest('#trainPage .st-entry,#trainPage .st-refc,#trainPage .nxp-seg'))setTimeout(syncVs,0); },true));
     document.addEventListener("pointerup", e => {
       const w = e.target && e.target.closest && e.target.closest("#vn-chart-wrap");
       if (w) setTimeout(() => { const t = w.querySelector(".st-tip"); if (t) t.hidden = true; }, 1400);

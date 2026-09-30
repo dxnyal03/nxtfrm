@@ -658,7 +658,7 @@ const NXP = (() => {
         <div class="st-dots" role="img" aria-label="${done} of ${t.sets} working sets logged">${dots}</div>
         ${chips?`<div class="st-chips" aria-label="Logged sets">${chips}</div>`:''}
         <div class="st-entry">
-          ${stepper('weightInput','kg','',`<input id="weightInput" type="number" min="0" max="1000" step="0.1" inputmode="decimal" enterkeyhint="done" autocomplete="off" required placeholder="0" value="${esc(weight)}" aria-labelledby="weightInput-label" oninput="NXP.rememberInput(this)">`,trimNum(t.inc||2.5),`weight by ${trimNum(t.inc||2.5)} kilograms`)}
+          ${stepper('weightInput','kg','',`<input id="weightInput" type="number" min="0" max="1000" step="0.1" inputmode="decimal" enterkeyhint="done" autocomplete="off" required placeholder="${esc(trimNum(aim?aim.weight:prev?prev.weight:0))}" value="${esc(weight)}" aria-labelledby="weightInput-label" oninput="NXP.rememberInput(this)">`,trimNum(t.inc||2.5),`weight by ${trimNum(t.inc||2.5)} kilograms`)}
           <span class="st-x" aria-hidden="true">×</span>
           ${stepper('repsInput','reps','',`<input id="repsInput" type="number" min="1" max="100" step="1" inputmode="numeric" enterkeyhint="done" autocomplete="off" required placeholder="${aim?aim.reps:prev?prev.reps:t.reps[0]}" value="${esc(draft.repsInput??'')}" aria-labelledby="repsInput-label" oninput="NXP.rememberInput(this)">`,'1','reps by one')}
         </div>
@@ -666,7 +666,7 @@ const NXP = (() => {
           ${aim?`<button type="button" class="st-refc is-aim" onclick="NXP.useAim()" aria-label="Aim ${esc(trimNum(aim.weight))} kilograms for ${aim.reps}. Tap to fill">
             <small>Aim <em>Tap to fill</em></small><b class="vn-num">${esc(trimNum(aim.weight))} × ${esc(aim.reps)}</b><span>${esc(aimText)}</span></button>`
           :`<div class="st-refc is-aim"><small>Aim</small><b class="vn-num">${t.reps[0]}–${t.reps[1]} reps</b><span>Set a baseline</span></div>`}
-          <div class="st-refc"><small>Best last time</small><b class="vn-num">${prev?`${esc(trimNum(prev.weight))} × ${esc(prev.reps)}`:'—'}</b><span>${previous?esc(N.shortDate(previous.date)):'No history yet'}</span></div>
+          <div class="st-refc"${prev?` data-w="${esc(prev.weight)}" data-r="${esc(prev.reps)}"`:''}><small>Best last time</small><b class="vn-num">${prev?`${esc(trimNum(prev.weight))} × ${esc(prev.reps)}`:'—'}</b><span>${previous?esc(N.shortDate(previous.date)):'No history yet'}</span></div>
         </div>
         <input type="hidden" id="n99-set-type" value="${setType}">
         <input type="hidden" id="n99-rir" value="${esc(rir)}">
