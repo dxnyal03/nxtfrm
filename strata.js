@@ -323,7 +323,17 @@ const STRATA = (() => {
   }
 
   /* ---- Train: swipe between exercises, bump steppers, tick the count ------ */
+  function fitTrain() {
+    const root = document.querySelector("#trainPage .st-train-active");
+    if (!root) return;
+    root.style.minHeight = "";
+    const top = root.getBoundingClientRect().top + window.scrollY;
+    const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+    root.style.minHeight = Math.max(560, Math.round(vh - top)) + "px";
+  }
   function bindTrain(page, entering) {
+    fitTrain();
+    fitNums();
     const ex = page.querySelector(".st-train-active .st-ex");
     if (ex && !ex.__stSwipe) {
       ex.__stSwipe = true;
@@ -350,7 +360,17 @@ const STRATA = (() => {
       state0.lastCount = n;
     }
   }
+  /* Long values (72.5, 102.5) step down in size so they never collide. */
+  function fitNum(input) {
+    if (!input) return;
+    const s = String(input.value || input.placeholder || "");
+    input.setAttribute("data-len", String(Math.min(5, Math.max(1, s.length))));
+  }
+  function fitNums() { ["weightInput", "repsInput"].forEach(id => fitNum(document.getElementById(id))); }
   function bindStepBump() {
+    document.addEventListener("input", e => { if (e.target && (e.target.id === "weightInput" || e.target.id === "repsInput")) fitNum(e.target); }, true);
+    document.addEventListener("click", e => { if (e.target && e.target.closest && e.target.closest("#trainPage .nxp-step, #trainPage .st-refc")) setTimeout(fitNums, 0); }, true);
+    document.addEventListener("pointerup", e => { if (e.target && e.target.closest && e.target.closest("#trainPage .nxp-step")) setTimeout(fitNums, 0); }, true);
     document.addEventListener("pointerdown", e => {
       const btn = e.target && e.target.closest && e.target.closest("#trainPage .nxp-step");
       if (!btn || reduced()) return;
@@ -415,6 +435,7 @@ const STRATA = (() => {
       if (odo) odoSet(odo, odo.dataset.stOdo, entering);
       drawHero(t, entering);
     });
+    page.querySelectorAll("[data-st-odo]").forEach(o => { if (!o.closest("[data-st-hero]")) odoSet(o, o.dataset.stOdo, entering); });
     page.querySelectorAll("[data-st-cmap]").forEach(h => drawCompMap(h, entering));
     if (entering) page.querySelectorAll("[data-st-count]").forEach(countUp);
     dressProgress(page);
@@ -461,6 +482,7 @@ const STRATA = (() => {
       rt = setTimeout(() => {
         document.querySelectorAll("[data-st-hero]").forEach(t => drawHero(t, false));
         document.querySelectorAll("[data-st-cmap]").forEach(h => drawCompMap(h, false));
+        fitTrain();
       }, 150);
     });
     document.documentElement.classList.add("st-on");
