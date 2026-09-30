@@ -212,26 +212,84 @@ const STRATA = (() => {
     const defs = svg.querySelector("defs");
     if (defs) defs.insertAdjacentHTML("beforeend", `<linearGradient id="st-tg" x1="${m.left}" y1="0" x2="${m.W - m.right}" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7C5CFF" stop-opacity=".55"/><stop offset=".55" stop-color="#B49AFF"/><stop offset="1" stop-color="#F3EEFF"/></linearGradient>`);
     svg.querySelectorAll(".vn-trend-line").forEach(l => l.setAttribute("stroke", "url(#st-tg)"));
-    const g = svg.querySelector("g[clip-path]");
-    if (g && typeof m.x === "function") {
-      const first = m.points[0].date, lastD = typeof state === "object" ? state.date : m.points[m.points.length - 1].date;
-      let d = first, n = 0, html = "";
-      const back = (new Date(dms(d)).getUTCDay() + 6) % 7;
-      let ms = dms(d) - back * DAY;
-      while (ms <= dms(lastD)) {
-        const a = new Date(ms).toISOString().slice(0, 10), b = new Date(ms + 7 * DAY).toISOString().slice(0, 10);
-        if (n % 2) html += `<rect class="st-band" x="${Math.max(m.left, m.x(a)).toFixed(1)}" y="${m.top}" width="${Math.max(0, Math.min(m.W - m.right, m.x(b)) - Math.max(m.left, m.x(a))).toFixed(1)}" height="${m.H - m.top - m.bottom}" rx="4"/>`;
-        ms += 7 * DAY; n++;
-      }
-      g.insertAdjacentHTML("afterbegin", html);
-    }
     const seg = m.segments && m.segments[m.segments.length - 1], tail = seg && seg[seg.length - 1];
     if (tail && !m.forecast) {
       const txt = Number(tail.avg).toFixed(2), w = 14 + txt.length * 6.6, px = Math.min(m.W - m.right - w, tail.x - w / 2);
       svg.insertAdjacentHTML("beforeend", `<g class="st-pillg is-end"><rect x="${px.toFixed(1)}" y="${(tail.y - 30).toFixed(1)}" width="${w.toFixed(1)}" height="20" rx="10"/><text x="${(px + w / 2).toFixed(1)}" y="${(tail.y - 16).toFixed(1)}" text-anchor="middle">${txt}</text></g>`);
     }
+    const read = page.querySelector("#vn-traj-read");
+    if (read && /^no plateau detected\.?$/i.test(read.textContent.trim())) read.hidden = true;
     const wrapEl = page.querySelector("#vn-chart-wrap");
     if (wrapEl && !wrapEl.querySelector(".st-tip")) { wrapEl.style.position = "relative"; wrapEl.insertAdjacentHTML("beforeend", `<div class="st-tip" hidden></div>`); }
+  }
+  /* ---- Week by week ------------------------------------------------------
+     The last five Monday-to-Sunday averages of the morning weigh-ins, one row
+     per week on a shared scale so the descent is visible at a glance. Every
+     figure is the engine's own NXT.windowStats over NXT.weights(), the same
+     call the old Today tile used; nothing is computed here beyond a bar
+     length. Scrubbing the chart lights the row that holds the selected day. -- */
+  function dressWeeks(page, entering) {
+    const m = typeof NXT === "object" && NXT.ui && NXT.ui.chart, anchor = page.querySelector(".vn-togs") || page.querySelector("#vn-chart-wrap");
+    if (!m || !anchor || page.querySelector(".st-weeks") || typeof NXT.windowStats !== "function") return;
+    const rows = NXT.weights(), today = state.date, ws = NXT.weekStart(today), weeks = [];
+    for (let i = 4; i >= 0; i--) {
+      const st = NXT.dateAdd(ws, -7 * i), part = i === 0, end = part ? today : NXT.dateAdd(st, 6);
+      const days = part ? Math.round((NXT.dateMs(today) - NXT.dateMs(st)) / 86400000) + 1 : 7;
+      const w = NXT.windowStats(rows, end, days);
+      weeks.push({ st, end: NXT.dateAdd(st, 6), avg: w.avg, n: w.n, part });
+    }
+    const have = weeks.filter(w => w.avg !== null && w.avg !== undefined);
+    if (have.length < 2) return;
+    const lo = Math.min(...have.map(w => w.avg)) - 0.5, hi = Math.max(...have.map(w => w.avg)) + 0.15;
+    let prev = null;
+    const li = weeks.map((w, i) => {
+      if (w.avg === null || w.avg === undefined) return "";
+      const d = prev === null ? null : w.avg - prev; prev = w.avg;
+      const dTxt = d === null ? "" : `${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}`;
+      const name = w.part ? "This week" : shortDate(w.st);
+      const say = `${w.part ? "This week so far" : "Week of " + shortDate(w.st)}: ${w.avg.toFixed(1)} kilograms${d === null ? "" : d === 0 ? ", unchanged" : `, ${d < 0 ? "down" : "up"} ${Math.abs(d).toFixed(1)}`}`;
+      return `<li class="st-wk${w.part ? " is-now" : ""}" data-a="${w.st}" data-b="${w.end}" style="--i:${i};--w:${Math.max(.06, (w.avg - lo) / (hi - lo)).toFixed(3)}" aria-label="${esc(say)}">
+        <span class="st-wk-d">${esc(name)}${w.part ? `<small>${w.n} ${w.n === 1 ? "day" : "days"}</small>` : ""}</span>
+        <span class="st-wk-t" aria-hidden="true"><i></i></span>
+        <b class="st-wk-v" aria-hidden="true">${w.avg.toFixed(1)}</b>
+        <span class="st-wk-c${d !== null && d > 0 ? " is-up" : ""}" aria-hidden="true">${dTxt}</span>
+      </li>`;
+    }).join("");
+    const host = document.createElement("section");
+    host.className = "st-weeks" + (entering && !reduced() ? " is-draw" : "");
+    host.setAttribute("aria-label", "Week by week average morning weight");
+    host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Morning average, Mon–Sun</small></div><ol class="st-wk-l">${li}</ol>`;
+    anchor.insertAdjacentElement("afterend", host);
+    weeksSync(m.points.length - 1);
+  }
+  function weeksSync(index) {
+    const host = document.querySelector(".st-weeks"), m = NXT.ui && NXT.ui.chart, p = m && m.points && m.points[index];
+    if (!host || !p) return;
+    host.querySelectorAll(".st-wk").forEach(r => r.classList.toggle("is-on", p.date >= r.dataset.a && p.date <= r.dataset.b));
+  }
+  /* ---- Performance list: fold the long tail ------------------------------
+     The engine's rows and order are untouched. When there is recent history the
+     older-history rows tuck behind one button; when everything is old, only the
+     first six show. Nothing is removed, and the button says how many are hidden. */
+  function foldPerf(page) {
+    const list = page.querySelector(".vn-perf-rows");
+    if (!list || list.parentNode.querySelector(".st-fold")) return;
+    const rows = [...list.querySelectorAll(":scope > .vn-perf-row")];
+    const older = rows.filter(r => r.dataset.status === "Older history"), recent = rows.length - older.length;
+    const hide = recent > 0 ? (older.length > 3 ? older : []) : (rows.length > 6 ? rows.slice(6) : []);
+    if (!hide.length) return;
+    hide.forEach(r => r.classList.add("is-fold"));
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "st-fold"; btn.setAttribute("aria-expanded", "false");
+    const label = recent > 0 ? `Show ${hide.length} older ${hide.length === 1 ? "lift" : "lifts"}` : `Show all ${rows.length} lifts`;
+    btn.innerHTML = `<span>${label}</span><i aria-hidden="true">›</i>`;
+    btn.onclick = () => {
+      const open = btn.getAttribute("aria-expanded") === "true";
+      hide.forEach(r => r.classList.toggle("is-fold", open));
+      btn.setAttribute("aria-expanded", open ? "false" : "true");
+      btn.firstChild.textContent = open ? label : "Show fewer";
+    };
+    list.insertAdjacentElement("afterend", btn);
   }
   function progressTip(index, opts) {
     const m = NXT.ui.chart, wrapEl = document.getElementById("vn-chart-wrap"), svg = document.getElementById("n99-chart-svg");
@@ -439,6 +497,8 @@ const STRATA = (() => {
     page.querySelectorAll("[data-st-cmap]").forEach(h => drawCompMap(h, entering));
     if (entering) page.querySelectorAll("[data-st-count]").forEach(countUp);
     dressProgress(page);
+    dressWeeks(page, entering);
+    foldPerf(page);
     if (page.id === "trainPage") bindTrain(page, entering);
     bindProgressReplay(page);
     syncDock();
@@ -469,7 +529,7 @@ const STRATA = (() => {
     bindSheets();
     if (typeof NXT === "object" && typeof NXT.selectPoint === "function" && !NXT.selectPoint.__strata) {
       const sp = NXT.selectPoint;
-      NXT.selectPoint = function (index, opts) { const o = sp.apply(this, arguments); try { progressTip(index, opts); } catch (e) {} return o; };
+      NXT.selectPoint = function (index, opts) { const o = sp.apply(this, arguments); try { progressTip(index, opts); weeksSync(index); } catch (e) {} return o; };
       NXT.selectPoint.__strata = true;
     }
     document.addEventListener("pointerup", e => {

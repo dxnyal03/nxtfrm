@@ -1076,3 +1076,80 @@ body,button,input{-webkit-font-smoothing:antialiased}
 :root[data-nxp-motion="reduced"] .is-draw *{animation:none !important;opacity:1 !important;stroke-dashoffset:0 !important}
 :root[data-nxp-motion="reduced"] .st-od-s,
 :root[data-nxp-motion="reduced"] .tabs .tabs-inner.st-dock::before{transition:none !important}
+
+/* =====================================================================================
+   CHARTS v2 — critique pass. Presentation only: everything here reads what the
+   engine already renders; no calculation, key or record changes.
+   ===================================================================================== */
+
+/* -- Calmer labels: sentence case, no tracked caps, no glow dots (kickers above
+      headings were the app's most repeated template chrome). Category dots stay
+      only on the three Today minis, where colour is what tells them apart. ---------- */
+.st-eyebrow,.nxp-history-weekday,.vn-h-sect{text-transform:none !important;letter-spacing:0 !important;font:500 14px/1.25 var(--st-font) !important;color:var(--st-ink-3) !important}
+.st-cat{text-transform:none !important;letter-spacing:0 !important;font:560 13px/1.2 var(--st-font) !important;color:var(--st-ink-2) !important}
+.st-cat::before{display:none !important}
+.st-mini .st-cat{font-size:12.5px !important;gap:7px}
+.st-mini .st-cat::before{display:inline-block !important;width:6px !important;height:6px !important;background:var(--c,var(--st-accent-lift)) !important;box-shadow:none !important}
+.st-done .st-cat{justify-content:center}
+
+/* -- Progress · Weight: chart runs to the card's edge; the morning-vs-trend strip sits under it -- */
+#weightPage #vn-chart-wrap{margin-inline:-10px}
+.st-weeks{margin:18px 0 6px;padding-top:16px;border-top:1px solid rgba(var(--st-hl),.07)}
+.st-wk-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 10px}
+.st-wk-h h3{margin:0 !important;font:600 15px/1.2 var(--st-font) !important;letter-spacing:0 !important;text-transform:none !important;color:var(--st-ink) !important}
+.st-wk-h small{font:450 12px/1.2 var(--st-font) !important;color:var(--st-ink-3) !important;white-space:nowrap}
+.st-wk-l{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.st-wk{display:grid;grid-template-columns:70px minmax(0,1fr) 42px 34px;align-items:center;gap:10px;min-height:34px;padding:0 8px;margin:0 -8px;border-radius:12px;transition:background .2s ease}
+.st-wk.is-on{background:rgba(var(--st-hl),.055)}
+.st-wk-d{font:500 13px/1.15 var(--st-font) !important;color:var(--st-ink-2) !important;white-space:nowrap}
+.st-wk-d small{display:block;font:450 11px/1.1 var(--st-font) !important;color:var(--st-ink-3) !important;margin-top:2px}
+.st-wk-t{position:relative;display:block;height:8px;border-radius:99px;background:rgba(var(--st-hl),.06);overflow:hidden}
+.st-wk-t i{position:absolute;inset:0 auto 0 0;width:calc(var(--w) * 100%);border-radius:99px;background:linear-gradient(90deg,rgba(124,92,255,.5),#B49AFF);transform-origin:0 50%;transition:filter .2s ease}
+.st-wk.is-on .st-wk-t i{background:linear-gradient(90deg,#8B7CFF,#F3EEFF);filter:drop-shadow(0 0 6px rgba(180,154,255,.55))}
+.st-wk-v{font:550 14px/1 var(--st-font) !important;color:var(--st-ink) !important;text-align:right;font-variant-numeric:tabular-nums}
+.st-wk-c{font:500 12.5px/1 var(--st-font) !important;color:var(--st-ink-3) !important;text-align:right;font-variant-numeric:tabular-nums}
+.st-wk-c.is-up{color:var(--st-floor) !important}
+.st-weeks.is-draw .st-wk-t i{animation:st-wk-grow .7s var(--st-out) calc(var(--i) * 70ms) both}
+@keyframes st-wk-grow{from{transform:scaleX(0)}to{transform:none}}
+
+/* -- History · 12-week rhythm ------------------------------------------------------- */
+#historyPage .st-rhythm{margin:0 0 12px;padding:14px 14px 12px;border-radius:var(--st-r);border:1px solid var(--st-tile-line);background:var(--st-tile),var(--st-tile-bg);box-shadow:var(--st-tile-hl),var(--st-shadow)}
+.st-rh-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 2px 10px}
+#historyPage .st-rh-h h2{margin:0 !important;font:600 15px/1.2 var(--st-font) !important;letter-spacing:0 !important;text-transform:none !important;color:var(--st-ink) !important;white-space:nowrap}
+#historyPage .st-rh-k{margin:12px 2px 0 !important;display:flex;flex-wrap:wrap;gap:6px 14px;font:500 11px/1 var(--st-font) !important;color:var(--st-ink-3) !important;white-space:nowrap}
+#historyPage .st-rh-k span{font:inherit !important;color:inherit !important;letter-spacing:0 !important;text-transform:none !important}
+.st-rh-k span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:3px;margin-right:5px;vertical-align:-.5px;background:var(--k)}
+.st-rh-k .lift{--k:var(--st-lift)}.st-rh-k .cond{--k:var(--st-cardio)}.st-rh-k .floor{--k:var(--st-floor)}.st-rh-k .body{--k:rgba(180,154,255,.38)}
+.st-rh-g{display:grid;grid-template-columns:11px repeat(12,minmax(0,1fr));gap:3px}
+.st-rh-col{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:12px repeat(7,15px);gap:3px;min-width:0}
+.st-rh-m{display:block;width:0;overflow:visible;font:550 10px/12px var(--st-font);color:var(--st-ink-3);white-space:nowrap}
+.st-rh-dows span{font:550 9.5px/15px var(--st-font);color:var(--st-ink-3);text-align:center}
+.st-rh-c{display:block;border-radius:4.5px;background:rgba(var(--st-hl),.045);cursor:pointer;touch-action:manipulation}
+.st-rh-c.is-fut{opacity:0;pointer-events:none}
+.st-rh-c.k-w{background:rgba(180,154,255,.17)}
+.st-rh-c.k-lift{background:var(--st-lift);box-shadow:0 0 10px -3px rgba(139,124,255,.8)}
+.st-rh-c.k-cardio{background:var(--st-cardio)}
+.st-rh-c.k-floor{background:var(--st-floor)}
+.st-rh-c.k-lift.has-x{background:linear-gradient(135deg,var(--st-lift) 58%,var(--st-cardio) 58%)}
+.st-rh-c.is-sel{outline:2px solid var(--st-ink);outline-offset:1px}
+#historyPage.st-enter .st-rh-c:not(.is-fut){animation:st-rh-in .45s var(--st-out) both;animation-delay:calc(var(--i,0) * 5ms)}
+@keyframes st-rh-in{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:none}}
+/* Weigh-in dashes on the calendar: quieter, so lifting and cardio marks are what you see. */
+#historyPage .nxp-cal-marks i.body{opacity:.32}
+
+@media (prefers-reduced-motion:reduce){
+  .st-weeks.is-draw .st-wk-t i,#historyPage.st-enter .st-rh-c{animation:none !important}
+  .st-wk,.st-wk-t i{transition:none}
+}
+:root[data-nxp-motion="reduced"] .st-weeks.is-draw .st-wk-t i,:root[data-nxp-motion="reduced"] #historyPage.st-enter .st-rh-c{animation:none !important}
+@media (max-width:359px){
+  .st-wk{grid-template-columns:62px minmax(0,1fr) 38px 30px;gap:8px}
+  .st-wk-h small{display:none}
+}
+
+/* -- Performance: folded long tail -------------------------------------------------- */
+.vn-perf-row.is-fold{display:none !important}
+.st-fold{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:48px;margin-top:6px;padding:0 14px;border:1px solid rgba(var(--st-hl),.08);border-radius:14px;background:rgba(var(--st-hl),.04);color:var(--st-ink-2);font:550 14px var(--st-font);cursor:pointer;touch-action:manipulation;transition:background .2s ease,transform .15s var(--st-out)}
+.st-fold i{font-style:normal;color:var(--st-ink-3);transition:transform .25s var(--st-out)}
+.st-fold[aria-expanded="true"] i{transform:rotate(90deg)}
+.st-fold:active{transform:scale(.985)}
