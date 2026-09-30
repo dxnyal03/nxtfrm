@@ -1799,38 +1799,6 @@ const NXP = (() => {
   function historyMarkHTML(marks) {
     return `${marks.lift?'<i class="lift"></i>':''}${marks.cardio?'<i class="cond"></i>':''}${marks.floorball?'<i class="floor"></i>':''}${marks.body?'<i class="body"></i>':''}`;
   }
-  /* Twelve weeks at a glance: one small square per day, coloured by what was
-     logged. It reads the same marks as the calendar (historyMarks) and obeys the
-     same filter, so it can never disagree with the grid below it. The calendar
-     stays the accessible control (44pt cells, keyboard, labels); this strip is
-     an extra way in, so it is hidden from assistive tech and given a summary. */
-  function historyRhythmHTML(scope,selected) {
-    const today=localToday(),start=N.dateAdd(N.weekStart(today),-7*11),cols=[],counts={lift:0,cardio:0,floor:0,body:0};
-    let lastMonth='';
-    for(let w=0;w<12;w++){
-      const wStart=N.dateAdd(start,7*w),mo=wStart.slice(0,7);
-      let cells='';
-      for(let d=0;d<7;d++){
-        const key=N.dateAdd(wStart,d);
-        if(key>today){cells+='<i class="st-rh-c is-fut"></i>';continue;}
-        const mk=historyMarks(key,scope);
-        if(mk.lift)counts.lift++;if(mk.cardio)counts.cardio++;if(mk.floorball)counts.floor++;if(mk.body)counts.body++;
-        const kind=mk.lift?'lift':mk.cardio?'cardio':mk.floorball?'floor':mk.body?'w':'none';
-        const both=mk.lift&&(mk.cardio||mk.floorball)?' has-x':'';
-        cells+=`<i class="st-rh-c k-${kind}${both}${key===selected?' is-sel':''}" data-date="${key}" style="--i:${w*7+d}"></i>`;
-      }
-      const label=mo!==lastMonth?new Date(`${wStart}T12:00:00`).toLocaleDateString('en-SG',{month:'short'}):'';
-      lastMonth=mo;
-      cols.push(`<div class="st-rh-col"><span class="st-rh-m">${esc(label)}</span>${cells}</div>`);
-    }
-    const said=[scope.lift?historyPlural(counts.lift,'lifting day'):'',scope.cond?historyPlural(counts.cardio,'cardio day'):'',scope.cond&&counts.floor?historyPlural(counts.floor,'floorball day'):'',scope.body?historyPlural(counts.body,'weigh-in'):''].filter(Boolean).join(', ');
-    const key=[scope.lift?'<span class="lift">Lifting</span>':'',scope.cond?'<span class="cond">Cardio</span><span class="floor">Floorball</span>':'',scope.body?'<span class="body">Weigh-in</span>':''].join('');
-    return `<section class="st-rhythm" id="vn-hist-rhythm" onclick="NXP.historyRhythmTap(event)"><div class="st-rh-h"><h2>Last 12 weeks</h2></div><div class="st-rh-g" aria-hidden="true"><div class="st-rh-col st-rh-dows"><span class="st-rh-m"></span>${['M','','W','','F','','S'].map(x=>`<span>${x}</span>`).join('')}</div>${cols.join('')}</div><p class="st-rh-k" aria-hidden="true">${key}</p><p class="st-sr">In the last 12 weeks: ${esc(said||'no records')}. Use the calendar below to open a day.</p></section>`;
-  }
-  function historyRhythmTap(e) {
-    const c=e&&e.target&&e.target.closest&&e.target.closest('[data-date]');
-    if(c&&!c.classList.contains('is-fut'))historySelect(c.getAttribute('data-date'));
-  }
   function historyFiltersHTML(filter) {
     return `<div class="nxp-history-filters vn-hist-filters" id="vn-hist-filters" role="group" aria-label="Activity type">${HISTORY_TABS.map(([k,t])=>`<button type="button" aria-pressed="${filter===k?'true':'false'}" class="${filter===k?'active':''}" onclick="NXP.setHistoryFilter('${k}')">${t}</button>`).join('')}</div>`;
   }
@@ -1839,9 +1807,9 @@ const NXP = (() => {
     const first=new Date(year,monthNum-1,1,12,0,0);
     /* ≤359px: long "September 2026" + 44pt nav controls wrap the title. Short month stays one line. */
     const narrow=typeof matchMedia==='function'&&matchMedia('(max-width:480px)').matches;
-    const title=first.toLocaleDateString('en-SG',{month:narrow?'short':'long',year:'numeric'});
+    const monthName=first.toLocaleDateString('en-SG',{month:narrow?'short':'long'}),yearNum=String(year),title=monthName+' '+yearNum;
     const firstDow=(first.getDay()+6)%7,days=new Date(year,monthNum,0).getDate(),prevDays=new Date(year,monthNum-1,0).getDate();
-    const total=Math.ceil((firstDow+days)/7)*7,today=localToday(),cells=[];
+    const total=Math.ceil((firstDow+days)/7)*7,today=localToday(),cells=[],counts={lift:0,cardio:0,floor:0,body:0};
     for(let i=0;i<total;i++){
       const offset=i-firstDow+1;
       let y=year,m=monthNum,d=offset,outside=false;
@@ -1856,10 +1824,13 @@ const NXP = (() => {
       if(marks.cardio)cls.push('has-cardio');
       if(marks.floorball)cls.push('has-floor');
       const kinds=[marks.lift?'lifting':'',marks.cardio?'cardio':'',marks.floorball?'floorball':'',marks.body?'weigh-in':''].filter(Boolean);
+      const kind=marks.lift?'lift':marks.cardio?'cardio':marks.floorball?'floor':marks.body?'w':'none';
+      const second=marks.lift?(marks.cardio?'cardio':marks.floorball?'floor':''):(marks.cardio&&marks.floorball?'floor':'');
+      if(!outside){if(marks.lift)counts.lift++;if(marks.cardio)counts.cardio++;if(marks.floorball)counts.floor++;if(marks.body)counts.body++;}
       const label=new Date(`${key}T12:00:00`).toLocaleDateString('en-SG',{day:'numeric',month:'long'})+(kinds.length?`, ${kinds.join(', ')}`:', no records');
-      cells.push(`<button type="button" class="${cls.join(' ')}" data-date="${key}" aria-label="${esc(label)}" aria-pressed="${key===selected?'true':'false'}"${key===today?' aria-current="date"':''} onclick="NXP.historySelect('${key}')"><b${d===1?' class="is-m1"':''}>${d===1?d+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]:d}</b><span class="nxp-cal-marks" aria-hidden="true">${historyMarkHTML(marks)}</span></button>`);
+      cells.push(`<button type="button" class="${cls.join(' ')}" data-date="${key}" data-k="${kind}"${second?` data-k2="${second}"`:''} style="--i:${i}" aria-label="${esc(label)}" aria-pressed="${key===selected?'true':'false'}"${key===today?' aria-current="date"':''} onclick="NXP.historySelect('${key}')"><b${d===1?' class="is-m1"':''}>${d===1?d+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]:d}</b><span class="nxp-cal-marks" aria-hidden="true">${historyMarkHTML(marks)}</span></button>`);
     }
-    return `<section class="nxp-history-calendar vn-hist-calendar" id="vn-hist-calendar"><div class="nxp-cal-head" id="vn-hist-calhead"><h2 class="nxp-cal-month">${esc(title)}</h2><div class="nxp-cal-nav"><button type="button" aria-label="Previous month" onclick="NXP.historyShiftMonth(-1)">‹</button><button type="button" class="nxp-cal-today" aria-label="Jump to current month" onclick="NXP.historyThisMonth()">Today</button><button type="button" aria-label="Next month" onclick="NXP.historyShiftMonth(1)">›</button></div></div><div class="nxp-cal-weekdays" aria-hidden="true">${['M','T','W','T','F','S','S'].map(x=>`<span>${x}</span>`).join('')}</div><div class="nxp-cal-grid" id="vn-hist-grid">${cells.join('')}</div><p class="nxp-cal-legend"><span class="lift">Lifting</span><span class="cond">Cardio</span><span class="floor">Floorball</span><span class="body">Weigh-in</span></p></section>`;
+    return `<section class="nxp-history-calendar vn-hist-calendar" id="vn-hist-calendar"><div class="nxp-cal-head" id="vn-hist-calhead"><h2 class="nxp-cal-month" aria-label="${esc(title)}"><span>${esc(monthName)}</span> <em>${yearNum}</em></h2><div class="nxp-cal-nav"><button type="button" aria-label="Previous month" onclick="NXP.historyShiftMonth(-1)">‹</button><button type="button" class="nxp-cal-today" aria-label="Jump to current month" onclick="NXP.historyThisMonth()">Today</button><button type="button" aria-label="Next month" onclick="NXP.historyShiftMonth(1)">›</button></div></div><div class="nxp-cal-weekdays" aria-hidden="true">${['M','T','W','T','F','S','S'].map(x=>`<span>${x}</span>`).join('')}</div><div class="nxp-cal-grid" id="vn-hist-grid">${cells.join('')}</div><p class="nxp-cal-legend st-cal-stats" aria-label="This month">${scope.lift?`<span class="lift${counts.lift?'':' is-zero'}"><i></i>Lifting<b>${counts.lift}</b></span>`:''}${scope.cond?`<span class="cond${counts.cardio?'':' is-zero'}"><i></i>Cardio<b>${counts.cardio}</b></span><span class="floor${counts.floor?'':' is-zero'}"><i></i>Floorball<b>${counts.floor}</b></span>`:''}${scope.body?`<span class="body${counts.body?'':' is-zero'}"><i></i>Weigh-in<b>${counts.body}</b></span>`:''}</p></section>`;
   }
   function historyLiftingBlock(date,logs) {
     const order=[],groups=new Map();
@@ -1925,7 +1896,7 @@ const NXP = (() => {
        summary line would just repeat "82 kg". */
     if(parts.length===1&&scope.body&&r.bw&&!(scope.lift&&r.logs.length)&&!(scope.cond&&(r.cardio.length||r.floorball.length)))parts.length=0;
     const emptyCopy=filter==='strength'?'No lifting logged on this date.':filter==='conditioning'?'No cardio logged on this date.':filter==='body'?'No weigh-in recorded on this date.':'No training or measurements logged.';
-    return `<section class="nxp-history-selected vn-hist-day"><header class="nxp-history-selected-head"><span class="nxp-history-weekday">${esc(when.toLocaleDateString('en-SG',{weekday:'long'}))}</span><h2>${esc(when.toLocaleDateString('en-SG',{day:'numeric',month:'long',year:'numeric'}))}</h2>${parts.length?`<p class="nxp-history-selected-summary">${esc(parts.join(' · '))}</p>`:''}</header>${blocks.length?blocks.join(''):`<p class="nxp-history-empty">${esc(emptyCopy)}</p>`}${historyAuditLanes()}</section>`;
+    return `<section class="nxp-history-selected vn-hist-day"><header class="nxp-history-selected-head"><span class="nxp-history-weekday">${esc(when.toLocaleDateString('en-SG',{weekday:'long'}))}</span><h2>${esc(when.toLocaleDateString('en-SG',{day:'numeric',month:'long',year:'numeric'}))}</h2>${parts.length?`<p class="nxp-history-selected-summary">${esc(parts.join(' · '))}</p>`:''}${(()=>{const k=[scope.lift&&r.logs.length?'<span class="lift"><i></i>Lifting</span>':'',scope.cond&&r.cardio.length?'<span class="cond"><i></i>Cardio</span>':'',scope.cond&&r.floorball.length?'<span class="floor"><i></i>Floorball</span>':'',scope.body&&r.bw?'<span class="body"><i></i>Weigh-in</span>':''].join('');return k?`<p class="st-day-k" aria-hidden="true">${k}</p>`:'';})()}</header>${blocks.length?blocks.join(''):`<p class="nxp-history-empty">${esc(emptyCopy)}</p>`}${historyAuditLanes()}</section>`;
   }
   function historyPaintDay(date) {
     const host=document.getElementById('vn-hist-dayhost');
@@ -1946,18 +1917,13 @@ const NXP = (() => {
     }
     const next=root.querySelector(`.nxp-cal-day[data-date="${to}"]`);
     if(next){next.classList.add('is-selected');next.setAttribute('aria-pressed','true');}
-    const rh=document.getElementById('vn-hist-rhythm');
-    if(rh){
-      rh.querySelectorAll('.st-rh-c.is-sel').forEach(c=>c.classList.remove('is-sel'));
-      const c=rh.querySelector(`.st-rh-c[data-date="${to}"]`);if(c)c.classList.add('is-sel');
-    }
   }
   function history() {
     applyAppearance();
     syncTrainNav(false);
     const month=calendarMonthState(),filter=state.historyFilter||'all',scope=historyScope(filter),selected=historySelectedDate(month,scope);
     state.historyDate=selected;
-    document.getElementById('historyPage').innerHTML=`<div class="n99 nxp nxp-history vn-history"><header class="nxp-heading nxp-history-chrome vn-hist-chrome" id="vn-hist-chrome"><div><h1>History</h1><p id="vn-hist-summary">${esc(historyMonthSummary(month,filter,scope))}</p></div></header>${historyFiltersHTML(filter)}${historyRhythmHTML(scope,selected)}<div id="vn-hist-calhost">${historyCalendar(month,scope,selected)}</div><div id="vn-hist-dayhost" class="vn-hist-dayhost">${historyDayView(selected,filter,scope)}</div></div>`;
+    document.getElementById('historyPage').innerHTML=`<div class="n99 nxp nxp-history vn-history"><header class="nxp-heading nxp-history-chrome vn-hist-chrome" id="vn-hist-chrome"><div><h1>History</h1><p id="vn-hist-summary">${esc(historyMonthSummary(month,filter,scope))}</p></div></header>${historyFiltersHTML(filter)}<div id="vn-hist-calhost">${historyCalendar(month,scope,selected)}</div><div id="vn-hist-dayhost" class="vn-hist-dayhost">${historyDayView(selected,filter,scope)}</div></div>`;
   }
   function setHistoryFilter(filter) {
     state.historyFilter=filter;
@@ -1988,6 +1954,8 @@ const NXP = (() => {
     const [y,m]=calendarMonthState().split('-').map(Number),d=new Date(y,m-1+delta,1,12,0,0);
     state.historyMonth=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     history();
+    const g=document.getElementById('vn-hist-grid');
+    if(g)g.classList.add(delta>0?'st-slide-n':'st-slide-p');
   }
   function historyThisMonth() {
     const today=localToday(),month=today.slice(0,7);
@@ -2286,7 +2254,7 @@ const NXP = (() => {
   }
   bindSteppers();
   bindKeyboardDock();
-  return {ui,useAim,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,historyRhythmTap,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom};
+  return {ui,useAim,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;

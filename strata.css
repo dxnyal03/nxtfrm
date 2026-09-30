@@ -1112,36 +1112,14 @@ body,button,input{-webkit-font-smoothing:antialiased}
 .st-weeks.is-draw .st-wk-t i{animation:st-wk-grow .7s var(--st-out) calc(var(--i) * 70ms) both}
 @keyframes st-wk-grow{from{transform:scaleX(0)}to{transform:none}}
 
-/* -- History · 12-week rhythm ------------------------------------------------------- */
-#historyPage .st-rhythm{margin:0 0 12px;padding:14px 14px 12px;border-radius:var(--st-r);border:1px solid var(--st-tile-line);background:var(--st-tile),var(--st-tile-bg);box-shadow:var(--st-tile-hl),var(--st-shadow)}
-.st-rh-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 2px 10px}
-#historyPage .st-rh-h h2{margin:0 !important;font:600 15px/1.2 var(--st-font) !important;letter-spacing:0 !important;text-transform:none !important;color:var(--st-ink) !important;white-space:nowrap}
-#historyPage .st-rh-k{margin:12px 2px 0 !important;display:flex;flex-wrap:wrap;gap:6px 14px;font:500 11px/1 var(--st-font) !important;color:var(--st-ink-3) !important;white-space:nowrap}
-#historyPage .st-rh-k span{font:inherit !important;color:inherit !important;letter-spacing:0 !important;text-transform:none !important}
-.st-rh-k span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:3px;margin-right:5px;vertical-align:-.5px;background:var(--k)}
-.st-rh-k .lift{--k:var(--st-lift)}.st-rh-k .cond{--k:var(--st-cardio)}.st-rh-k .floor{--k:var(--st-floor)}.st-rh-k .body{--k:rgba(180,154,255,.38)}
-.st-rh-g{display:grid;grid-template-columns:11px repeat(12,minmax(0,1fr));gap:3px}
-.st-rh-col{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:12px repeat(7,15px);gap:3px;min-width:0}
-.st-rh-m{display:block;width:0;overflow:visible;font:550 10px/12px var(--st-font);color:var(--st-ink-3);white-space:nowrap}
-.st-rh-dows span{font:550 9.5px/15px var(--st-font);color:var(--st-ink-3);text-align:center}
-.st-rh-c{display:block;border-radius:4.5px;background:rgba(var(--st-hl),.045);cursor:pointer;touch-action:manipulation}
-.st-rh-c.is-fut{opacity:0;pointer-events:none}
-.st-rh-c.k-w{background:rgba(180,154,255,.17)}
-.st-rh-c.k-lift{background:var(--st-lift);box-shadow:0 0 10px -3px rgba(139,124,255,.8)}
-.st-rh-c.k-cardio{background:var(--st-cardio)}
-.st-rh-c.k-floor{background:var(--st-floor)}
-.st-rh-c.k-lift.has-x{background:linear-gradient(135deg,var(--st-lift) 58%,var(--st-cardio) 58%)}
-.st-rh-c.is-sel{outline:2px solid var(--st-ink);outline-offset:1px}
-#historyPage.st-enter .st-rh-c:not(.is-fut){animation:st-rh-in .45s var(--st-out) both;animation-delay:calc(var(--i,0) * 5ms)}
-@keyframes st-rh-in{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:none}}
 /* Weigh-in dashes on the calendar: quieter, so lifting and cardio marks are what you see. */
 #historyPage .nxp-cal-marks i.body{opacity:.32}
 
 @media (prefers-reduced-motion:reduce){
-  .st-weeks.is-draw .st-wk-t i,#historyPage.st-enter .st-rh-c{animation:none !important}
+  .st-weeks.is-draw .st-wk-t i{animation:none !important}
   .st-wk,.st-wk-t i{transition:none}
 }
-:root[data-nxp-motion="reduced"] .st-weeks.is-draw .st-wk-t i,:root[data-nxp-motion="reduced"] #historyPage.st-enter .st-rh-c{animation:none !important}
+:root[data-nxp-motion="reduced"] .st-weeks.is-draw .st-wk-t i{animation:none !important}
 @media (max-width:359px){
   .st-wk{grid-template-columns:62px minmax(0,1fr) 38px 30px;gap:8px}
   .st-wk-h small{display:none}
@@ -1153,3 +1131,116 @@ body,button,input{-webkit-font-smoothing:antialiased}
 .st-fold i{font-style:normal;color:var(--st-ink-3);transition:transform .25s var(--st-out)}
 .st-fold[aria-expanded="true"] i{transform:rotate(90deg)}
 .st-fold:active{transform:scale(.985)}
+
+/* =====================================================================================
+   HISTORY calendar v3 — tinted day tiles, live legend, springy selection, swipe.
+   Marks keep their four shapes (I6): dot, ring, diamond, dash. Colour now also
+   says what happened, so a month reads at a glance. Presentation only.
+   ===================================================================================== */
+#historyPage .nxp-cal-month{display:flex;align-items:baseline;gap:8px}
+#historyPage .nxp-cal-month span{font-weight:650}
+#historyPage .nxp-cal-month em{font-style:normal;font-weight:400;font-size:.8em;letter-spacing:0;color:var(--st-ink-3)}
+#historyPage .nxp-cal-grid{gap:7px !important;touch-action:pan-y;will-change:transform}
+#historyPage .nxp-cal-grid.is-dragging{transition:none}
+#historyPage .nxp-cal-grid.is-settling{transition:transform .38s var(--st-out)}
+
+#historyPage .nxp-cal-day{
+  position:relative;border-radius:14px !important;overflow:hidden;
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07) !important;
+  transition:transform .36s cubic-bezier(.34,1.5,.64,1),background .25s ease,box-shadow .25s ease !important;
+}
+/* Quiet, like the Today tiles: hairline glass; one violet wash says "something happened";
+   the marks (dot / ring / diamond / dash) and their hues say what. No rainbow fills. */
+#historyPage .nxp-cal-day{border:1px solid var(--st-tile-line) !important;background:var(--st-tile),rgba(20,19,30,.5) !important;box-shadow:var(--st-tile-hl) !important}
+#historyPage .nxp-cal-day[data-k]:not([data-k="none"]):not([data-k="w"]){background:radial-gradient(120% 100% at 100% 0%,rgba(139,124,255,.22),transparent 62%),var(--st-tile),rgba(24,22,38,.6) !important;border-color:rgba(180,154,255,.2) !important}
+#historyPage .nxp-cal-day[data-k="lift"] b,#historyPage .nxp-cal-day[data-k="cardio"] b,#historyPage .nxp-cal-day[data-k="floor"] b{color:var(--st-ink) !important;font-weight:600 !important}
+#historyPage .nxp-cal-day[data-k] .nxp-cal-marks i.lift{background:var(--st-lift) !important;box-shadow:0 0 6px rgba(139,124,255,.7) !important}
+#historyPage .nxp-cal-day[data-k] .nxp-cal-marks i.cond{background:transparent !important;border-color:var(--st-cardio) !important}
+#historyPage .nxp-cal-day[data-k] .nxp-cal-marks i.floor{background:var(--st-floor) !important}
+#historyPage .nxp-cal-day[data-k] .nxp-cal-marks i.body{background:rgba(200,180,255,.7) !important;opacity:.4}
+#historyPage .nxp-cal-day[data-k].is-today{outline:0;box-shadow:inset 0 0 0 1.5px var(--st-accent-lift) !important;color:var(--st-ink) !important}
+#historyPage .nxp-cal-day[data-k].is-selected{
+  background:linear-gradient(180deg,rgba(139,92,246,.72),rgba(109,40,217,.42)) !important;border-color:rgba(255,255,255,.22) !important;transform:scale(1.05);z-index:2;
+  box-shadow:0 10px 22px -10px rgba(139,92,246,.9),inset 0 1px 0 rgba(255,255,255,.3) !important;
+}
+#historyPage .nxp-cal-day[data-k].is-selected b{color:#fff !important;font-weight:650 !important}
+#historyPage .nxp-cal-day[data-k].is-selected .nxp-cal-marks i{background-color:#fff !important;border-color:#fff !important;box-shadow:none !important;opacity:.95}
+#historyPage .nxp-cal-day[data-k].is-selected .nxp-cal-marks i.cond{background:transparent !important}
+
+/* Live legend: what this month holds. Same shapes as the marks. */
+#historyPage .st-cal-stats,#historyPage .st-day-k{display:flex;flex-wrap:wrap;gap:8px !important;margin:16px 0 0 !important;padding:0}
+#historyPage .st-day-k{margin:12px 0 0 !important}
+#historyPage .st-cal-stats span,#historyPage .st-day-k span{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 11px 0 10px;border-radius:999px;background:rgba(var(--st-hl),.055);font:500 12.5px/1 var(--st-font) !important;letter-spacing:0 !important;text-transform:none !important;color:var(--st-ink-2) !important;white-space:nowrap}
+#historyPage .st-cal-stats span b{font:650 12.5px/1 var(--st-font) !important;color:var(--st-ink) !important;font-variant-numeric:tabular-nums;margin-left:1px}
+#historyPage .st-cal-stats span.is-zero{opacity:.42}
+#historyPage .st-cal-stats span i,#historyPage .st-day-k span i{display:block;flex:none;box-sizing:border-box;width:8px;height:8px;background:var(--k)}
+#historyPage .st-cal-stats .lift,#historyPage .st-day-k .lift{--k:var(--st-lift)}
+#historyPage .st-cal-stats .lift i,#historyPage .st-day-k .lift i{border-radius:50%;box-shadow:0 0 8px rgba(139,124,255,.8)}
+#historyPage .st-cal-stats .cond i,#historyPage .st-day-k .cond i{border-radius:50%;background:transparent;border:2px solid var(--st-cardio)}
+#historyPage .st-cal-stats .floor i,#historyPage .st-day-k .floor i{--k:var(--st-floor);transform:rotate(45deg) scale(.86);border-radius:1.5px}
+#historyPage .st-cal-stats .body i,#historyPage .st-day-k .body i{--k:rgba(200,180,255,.7);width:10px;height:3px;border-radius:2px}
+
+/* Motion: the month cascades in on entering the tab and slides the way you moved. */
+#historyPage.st-enter .nxp-cal-day,#historyPage .nxp-cal-grid.st-slide-n .nxp-cal-day,#historyPage .nxp-cal-grid.st-slide-p .nxp-cal-day{animation:st-cal-in .5s var(--st-out) calc(var(--i,0) * 9ms) backwards}
+@keyframes st-cal-in{from{opacity:0;transform:translateY(9px) scale(.86)}}
+#historyPage .nxp-cal-grid.st-slide-n{animation:st-cal-sn .42s var(--st-out) backwards}
+#historyPage .nxp-cal-grid.st-slide-p{animation:st-cal-sp .42s var(--st-out) backwards}
+@keyframes st-cal-sn{from{transform:translateX(28px)}}
+@keyframes st-cal-sp{from{transform:translateX(-28px)}}
+@media (prefers-reduced-motion:reduce){
+  #historyPage.st-enter .nxp-cal-day,#historyPage .nxp-cal-grid.st-slide-n,#historyPage .nxp-cal-grid.st-slide-p,#historyPage .nxp-cal-grid.st-slide-n .nxp-cal-day,#historyPage .nxp-cal-grid.st-slide-p .nxp-cal-day{animation:none !important}
+  #historyPage .nxp-cal-day{transition:none !important}
+}
+:root[data-nxp-motion="reduced"] #historyPage .nxp-cal-day,:root[data-nxp-motion="reduced"] #historyPage .nxp-cal-grid{animation:none !important;transition:none !important}
+@media (max-width:359px){
+  #historyPage .st-cal-stats span,#historyPage .st-day-k span{height:28px;padding:0 9px;font-size:11.5px !important;gap:6px}
+  #historyPage .st-cal-stats span b{font-size:11.5px !important}
+}
+
+/* History v3 finishing: single legend marker, sentence-case block labels */
+#historyPage .st-cal-stats span::before,#historyPage .st-day-k span::before{content:none !important;display:none !important}
+#historyPage .nxp-history-block-label{text-transform:none !important;letter-spacing:0 !important;font:600 13px/1.2 var(--st-font) !important;color:var(--st-ink-2) !important}
+@media (max-width:359px){
+  #historyPage .nxp-cal-head{gap:4px}
+  #historyPage .nxp-cal-month{min-width:0;flex:1 1 auto;font-size:22px !important;white-space:nowrap}
+  #historyPage .nxp-cal-month em{font-size:.78em}
+  #historyPage .nxp-cal-nav{gap:4px !important}
+  #historyPage .nxp-cal-nav button{width:36px;height:36px;min-width:36px}
+  #historyPage .nxp-cal-nav button.nxp-cal-today{padding:0 10px !important;font-size:12.5px !important}
+  #historyPage .nxp-cal-day .nxp-cal-num small,#historyPage .nxp-cal-day small{font-size:9px !important}
+}
+@media (max-width:359px){
+  #historyPage .nxp-cal-nav{flex:none !important}
+  #historyPage .nxp-cal-nav button{flex:none !important}
+  #historyPage .nxp-cal-day b.is-m1{font-size:9.5px !important;letter-spacing:-.02em !important;white-space:nowrap}
+}
+
+/* =====================================================================================
+   STANDARD v4 — one theme, taken from Today.
+   Page title 28/640 · hero statement 22/590 · section 18/590 · row 15.5/550 · labels are
+   sentence-case 13px muted (no uppercase kickers). Surfaces are the Today tile: hairline
+   glass with one soft violet corner. Presentation only.
+   ===================================================================================== */
+#weightPage h1,#historyPage h1,#morePage h1,#morePage .vn-set-title,#trainPage h1{font:640 28px/1.1 var(--st-font-d) !important;letter-spacing:-.02em !important;color:var(--st-ink) !important}
+#weightPage .vn-h-sub,#trainPage .st-mt2,#historyPage .nxp-history-selected-head h2,#morePage .vn-set-head h2{font:590 22px/1.2 var(--st-font) !important;letter-spacing:-.015em !important}
+#trainPage .st-sect,#weightPage h3,#weightPage h2,#historyPage .nxp-cal-month{font:590 18px/1.25 var(--st-font) !important;letter-spacing:-.01em !important;text-transform:none !important;color:var(--st-ink) !important}
+#historyPage .nxp-cal-month span{font-weight:590 !important}
+/* Labels: no uppercase, no tracking, one muted voice. */
+.nxp-caption,.nxp-progress-body-heading,.vn-perf-kicker,.vn-set-eyebrow,.vn-metric-l,.st-eyebrow,.st-hero-eb,#trainPage small,.vn-h-sect{text-transform:none !important;letter-spacing:0 !important;font:550 13px/1.3 var(--st-font) !important;color:var(--st-ink-3) !important}
+.st-mm-f small{text-transform:none !important;letter-spacing:0 !important;font-size:11px !important}
+/* Rows that sat loose on the canvas become Today-style tiles. */
+#weightPage details.nxp-disclosure,#weightPage .vn-weighins{
+  position:relative;border-radius:var(--st-r) !important;border:1px solid var(--st-tile-line) !important;
+  background:radial-gradient(110% 90% at 100% 0%,rgba(139,92,246,.11),transparent 60%),var(--st-tile),var(--st-tile-bg) !important;
+  box-shadow:var(--st-tile-hl),var(--st-shadow) !important;-webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3);
+}
+#weightPage details.nxp-disclosure>summary,#weightPage .vn-weighins{padding:16px 18px !important;font:550 15.5px/1.3 var(--st-font) !important;color:var(--st-ink) !important}
+#weightPage .vn-weighins{width:100%;box-sizing:border-box;margin-top:12px}
+#weightPage details.nxp-disclosure{margin-top:12px}
+#weightPage details.nxp-disclosure[open]>summary{border-bottom:1px solid var(--st-tile-line)}
+#morePage .vn-set-grp{font:590 14px/1.3 var(--st-font) !important;letter-spacing:0 !important;text-transform:none !important;color:var(--st-ink-2) !important}
+#weightPage .vn-weighins .vn-row-t{font:550 15.5px/1.3 var(--st-font)}
+#weightPage .vn-weighins .vn-row-s{font:400 13px/1.3 var(--st-font);color:var(--st-ink-3)}
+#morePage .vn-set-eyebrow{display:none !important}
+#weightPage details.nxp-disclosure>summary{font-weight:550 !important}

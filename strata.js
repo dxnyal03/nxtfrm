@@ -479,6 +479,49 @@ const STRATA = (() => {
   }
 
   /* ---- Hydrate after every paint ------------------------------------------ */
+  /* History calendar: horizontal swipe changes month. Delegated, installed once.
+     Vertical intent is left to the browser (grid is touch-action:pan-y). */
+  function bindCalSwipe() {
+    let s = null, swallow = 0;
+    const reduce = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document.addEventListener("pointerdown", e => {
+      const g = e.target && e.target.closest && e.target.closest(".nxp-cal-grid");
+      if (!g || (e.pointerType === "mouse" && e.button !== 0)) return;
+      s = { g, x: e.clientX, y: e.clientY, id: e.pointerId, on: false };
+    }, true);
+    document.addEventListener("pointermove", e => {
+      if (!s || e.pointerId !== s.id) return;
+      const dx = e.clientX - s.x, dy = e.clientY - s.y;
+      if (!s.on) {
+        if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.4) { if (Math.abs(dy) > 14) s = null; return; }
+        s.on = true; s.g.classList.add("is-dragging");
+        try { s.g.setPointerCapture(e.pointerId); } catch (x) {}
+      }
+      if (!reduce()) s.g.style.transform = "translateX(" + Math.max(-70, Math.min(70, dx * 0.45)) + "px)";
+    }, true);
+    const end = e => {
+      if (!s || (e && e.pointerId !== s.id)) return;
+      const cur = s; s = null;
+      if (!cur.on) return;
+      const dx = (e && e.clientX != null ? e.clientX : cur.x) - cur.x;
+      cur.g.classList.remove("is-dragging");
+      swallow = Date.now();
+      const go = e && e.type === "pointerup" && Math.abs(dx) >= 56;
+      if (go && typeof NXP === "object" && NXP.historyShiftMonth) {
+        cur.g.style.transform = "";
+        NXP.historyShiftMonth(dx < 0 ? 1 : -1);
+      } else {
+        cur.g.classList.add("is-settling");
+        cur.g.style.transform = "";
+        setTimeout(() => cur.g.classList.remove("is-settling"), 260);
+      }
+    };
+    document.addEventListener("pointerup", end, true);
+    document.addEventListener("pointercancel", end, true);
+    document.addEventListener("click", e => {
+      if (swallow && Date.now() - swallow < 350) { e.stopPropagation(); e.preventDefault(); swallow = 0; }
+    }, true);
+  }
   function hydrate(page) {
     if (!page) return;
     const tab = (typeof state === "object" && state && state.tab) || "home";
@@ -532,6 +575,7 @@ const STRATA = (() => {
       NXT.selectPoint = function (index, opts) { const o = sp.apply(this, arguments); try { progressTip(index, opts); weeksSync(index); } catch (e) {} return o; };
       NXT.selectPoint.__strata = true;
     }
+    bindCalSwipe();
     document.addEventListener("pointerup", e => {
       const w = e.target && e.target.closest && e.target.closest("#vn-chart-wrap");
       if (w) setTimeout(() => { const t = w.querySelector(".st-tip"); if (t) t.hidden = true; }, 1400);
