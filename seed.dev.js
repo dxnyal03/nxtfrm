@@ -1,6 +1,17 @@
-/* Local-only fake data for NXTFRM. Does nothing off localhost. */
+/* Fake data for NXTFRM. Runs on localhost and on Netlify deploy previews
+   (deploy-preview-N--site.netlify.app) only — never on the production host.
+   On a preview, cloud sync is switched off so fixture data cannot reach a
+   real account. */
 (function () {
-  if (location.hostname !== 'localhost') return;
+  const PREVIEW = /^deploy-preview-\d+--[a-z0-9-]+\.netlify\.app$/i.test(location.hostname);
+  if (location.hostname !== 'localhost' && !PREVIEW) return;
+  if (PREVIEW) {
+    const off = function () { if (typeof toast === 'function') toast('Cloud sync is off on this preview link — it uses test data.'); return false; };
+    ['cloudLogin', 'cloudSignup', 'saveCloudNow', 'loadCloudNow', 'scheduleCloudSave', 'openCloudLoginFromBanner'].forEach(function (name) {
+      try { if (typeof window[name] === 'function') window[name] = name === 'scheduleCloudSave' ? function () {} : off; } catch (e) {}
+    });
+    try { localStorage.setItem('nxtfrm_cloud_banner_dismissed', '1'); } catch (e) {}
+  }
 
   const KEYS = {
     logs: 'apm_logs',
@@ -311,6 +322,14 @@
     else if (typeof render === 'function') render();
   }
 
+  /* Five Evo scans a few days apart, same shape the scan form saves. */
+  function buildScans() {
+    const rows = [[-20, 87.8, 27.6, 35.2, 24.2, 1743, 2684], [-16, 87.2, 27.9, 34.7, 24.3, 1728, 2661], [-9, 86.6, 26.9, 35.0, 23.3, 1737, 2674], [-5, 86.0, 26.7, 34.8, 23.0, 1730, 2664], [-2, 84.7, 26.2, 34.6, 22.2, 1720, 2648]];
+    return rows.map(function (r) {
+      return { id: uid(), date: dateFromToday(r[0]), image: '', weight: r[1], bodyFat: r[2], muscleMass: r[3], fatMass: r[4], bmr: r[5], tdee: r[6], notes: '', context: 'EVOSCAN', _seed: true };
+    });
+  }
+
   function seed() {
     const logs = buildLogs();
     const bws = buildBws();
@@ -355,10 +374,11 @@
       localStorage.setItem(KEYS.bws, JSON.stringify(bws));
       localStorage.setItem(KEYS.cardio, JSON.stringify(cardio));
       localStorage.setItem(KEYS.floorball, JSON.stringify(floorball));
-      localStorage.setItem(KEYS.scans, JSON.stringify([]));
+      localStorage.setItem(KEYS.scans, JSON.stringify(buildScans()));
       localStorage.setItem(KEYS.rest, JSON.stringify([]));
-      Object.assign(written, { logs, bws, cardio, floorball, scans: [], rest: [] });
+      Object.assign(written, { logs, bws, cardio, floorball, scans: JSON.parse(localStorage.getItem(KEYS.scans)), rest: [] });
     } else {
+      if (writeIfAllowed(KEYS.scans, buildScans())) written.scans = JSON.parse(localStorage.getItem(KEYS.scans));
       if (writeIfAllowed(KEYS.logs, logs)) written.logs = logs;
       if (writeIfAllowed(KEYS.bws, bws)) written.bws = bws;
       if (writeIfAllowed(KEYS.cardio, cardio)) written.cardio = cardio;

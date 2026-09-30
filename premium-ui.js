@@ -90,7 +90,7 @@ const NXP = (() => {
     const nextLine=`Next session · ${N.label(N.typeFor(nextDate))} tomorrow`;
     const weekLogged=N.completedWeek();
     const weekStart=N.weekStart();
-    const weekShort={FullA:'A',FullB:'B',FullC:'C',Zone2:'Walk',Rest:'Rest',Floorball:'FB'};
+    const weekShort={FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Rest:'Rest',Floorball:'FB',Push:'Push',Pull:'Pull',Legs:'Legs',Pump:'Legs+'};
     const weekStrip=`<div class="vn-week" role="list">${Array.from({length:7},(_,i)=>{
       const d=N.dateAdd(weekStart,i),t=N.typeFor(d),complete=work.some(row=>row.date===d),isToday=d===state.date;
       const short=weekShort[t]||String(t).slice(0,3);
@@ -109,10 +109,11 @@ const NXP = (() => {
             <h2 class="st-h2">${esc(N.label(state.dayType))}</h2>
             <p class="st-meta">${list.length} exercises · ${sets} working sets · ${esc(state.gym||'Gym')}</p>
           </div>
-          ${ringHTML(logged,sets,'sets','var(--st-lift)')}
+          ${logged?ringHTML(logged,sets,'sets','var(--st-lift)'):''}
         </div>
         <button type="button" class="st-cta" onclick="${esc(finished?"switchTab('train')":action)}">${esc(title)}<span aria-hidden="true">›</span></button>
-        ${lastLiftLine?`<p class="st-meta st-mt3">${esc(lastLiftLine)}</p>`:''}
+        ${lastLiftLine?`<p class="st-meta st-mt2 st-center">${esc(lastLiftLine)}</p>`:''}
+        <div class="st-tweek"><div class="st-tweek-h"><span>This week · ${weekLogged} lifting ${weekLogged===1?'day':'days'}</span>${textAct('Edit plan ›',"NXT.more('training')",true)}</div>${weekStrip}</div>
       </article>`:`
       <article class="st-tile st-t-train" style="--c:${state.dayType==='Zone2'?'var(--st-cardio)':state.dayType==='Floorball'?'var(--st-floor)':'var(--st-rest)'}">
         <div class="st-tile-head"><span class="st-cat">Today</span>${textAct('Change','showSessionSheet()',true)}</div>
@@ -133,6 +134,7 @@ const NXP = (() => {
           </button>`:''}
         </div>
         <p class="st-meta st-mt3">${esc(nextLine)}</p>
+        <div class="st-tweek"><div class="st-tweek-h"><span>This week · ${weekLogged} lifting ${weekLogged===1?'day':'days'}</span>${textAct('Edit plan ›',"NXT.more('training')",true)}</div>${weekStrip}</div>
       </article>`;
     document.getElementById('homePage').innerHTML=`<div class="vn-today st-today">
       <div class="vn-pad">
@@ -144,32 +146,29 @@ const NXP = (() => {
           ${lift?`<button type="button" class="st-chip" onclick="cycleGym()">${esc(state.gym||'Gym')}<span aria-hidden="true">⇄</span></button>`:''}
         </header>
         <div class="st-bento">
+          ${trainTile}
+          <div class="st-minis">
+            ${weightTileHTML()}
+            <button type="button" class="st-tile st-mini" style="--c:var(--st-cardio)" onclick="showCardioSheet()">
+              <span class="st-cat">Cardio</span>
+              <span class="st-mini-v"><b class="vn-num">${cardioMins}</b><small>/${cardioTarget}</small></span>
+              <span class="st-mini-bar"><i style="width:${Math.min(100,cardioTarget?cardioMins/cardioTarget*100:0).toFixed(0)}%"></i></span>
+              <span class="st-meta">min · week</span>
+            </button>
+            <button type="button" class="st-tile st-mini" style="--c:var(--st-lift)" onclick="NXT.ui.view='strength';switchTab('weight')">
+              <span class="st-cat">Lifts</span>
+              <span class="st-mini-v st-mini-w">${esc(perfLabel)}</span>
+              <span class="st-meta">${lifts.length} tracked</span>
+            </button>
+          </div>
           <section class="st-tile st-t-dec${toneClass}" aria-labelledby="vn-dec-h" style="--c:var(--st-accent)">
-            <span class="st-cat">NXTFRM decision</span>
-            <h2 class="st-h3 st-mt2" id="vn-dec-h">${esc(r.title)}</h2>
+            <div class="st-tile-head"><span class="st-cat">NXTFRM decision</span><button type="button" class="st-link" onclick="NXT.openReview()">Why<span aria-hidden="true">›</span></button></div>
+            <h2 class="st-h3" id="vn-dec-h">${esc(r.title)}</h2>
             ${support?`<p class="st-body st-mt2">${esc(support)}</p>`:''}
             <div class="st-evid st-mt3">
               <span>Trend<b class="vn-num">${esc(trendEv)}</b></span>
               <span>Confidence<b>${esc(confEv)}</b></span>
             </div>
-            <button type="button" class="st-link st-mt3" onclick="NXT.openReview()">Why this call<span aria-hidden="true">›</span></button>
-          </section>
-          ${trainTile}
-          ${weightTileHTML()}
-          <button type="button" class="st-tile st-half st-t-cardio" style="--c:var(--st-cardio)" onclick="showCardioSheet()">
-            <span class="st-cat">Cardio</span>
-            <div class="st-half-body">${ringHTML(cardioMins,cardioTarget,'min','var(--st-cardio)')}</div>
-            <p class="st-meta">${cardioMins} of ${cardioTarget} min this week</p>
-          </button>
-          <button type="button" class="st-tile st-rowtile st-t-perf" style="--c:var(--st-lift)" onclick="NXT.ui.view='strength';switchTab('weight')">
-            <span class="st-rowtile-l"><span class="st-cat">Performance</span><span class="st-word">${esc(perfLabel)}</span><span class="st-meta">${esc(perfSub)}</span></span>
-            <span class="vn-status ${perfTone}"><i aria-hidden="true"></i>${esc(perfLabel==='Improving'||perfLabel==='Holding'?'On track':perfLabel==='Review'||perfLabel==='Watch'?'Worth a look':'Building')}</span>
-            <i class="st-rowtile-c" aria-hidden="true">›</i>
-          </button>
-          <section class="st-tile st-t-week" style="--c:var(--st-accent)">
-            <div class="st-tile-head"><span class="st-cat">Your week</span><span class="st-meta">${weekLogged} lifting ${weekLogged===1?'day':'days'} logged</span></div>
-            ${weekStrip}
-            <div class="st-tile-foot">${textAct('Edit plan ›',"NXT.more('training')",true)}</div>
           </section>
           ${bodyTileHTML()}
         </div>
@@ -196,12 +195,11 @@ const NXP = (() => {
      N.weights() (the same canonical rows chartModel() plots), weekly means are
      N.windowStats(), scans come from the saved Evo records. Nothing here
      computes a new statistic or a score. */
+  /* Progress as a number with a thin bar under it (no rings: they read as
+     empty at a glance). */
   function ringHTML(value,target,unit,color) {
-    const v=Math.max(0,Number(value)||0),tg=Math.max(1,Number(target)||1),pct=Math.min(1,v/tg);
-    const r=26,c=2*Math.PI*r;
-    return `<span class="st-ring" style="--rc:${color}" role="img" aria-label="${v} of ${tg} ${esc(unit)}">
-      <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="${r}" class="st-ring-bg"/><circle cx="32" cy="32" r="${r}" class="st-ring-fg" stroke-dasharray="${c.toFixed(2)}" style="--off:${(c*(1-pct)).toFixed(2)};--len:${c.toFixed(2)}"/></svg>
-      <b class="vn-num">${v}</b><small>/ ${tg}</small></span>`;
+    const v=Math.max(0,Number(value)||0),tg=Math.max(1,Number(target)||1),pct=Math.min(100,v/tg*100);
+    return `<span class="st-count" style="--rc:${color}" role="img" aria-label="${v} of ${tg} ${esc(unit)}"><span class="st-count-v"><b class="vn-num">${v}</b><small>/${tg}</small></span><span class="st-count-u">${esc(unit)}</span><span class="st-count-bar"><i style="width:${pct.toFixed(0)}%"></i></span></span>`;
   }
   function heroTileHTML() {
     const rows=N.weights();
@@ -238,14 +236,14 @@ const NXP = (() => {
      The chart itself lives on Progress. */
   function weightTileHTML() {
     const rows=N.weights();
-    if(!rows.length)return `<button type="button" class="st-tile st-half st-t-weight" style="--c:var(--st-weight)" onclick="apx95OpenQuickWeight()"><span class="st-cat">Weight</span><div class="st-half-body"><span class="st-word">—</span></div><p class="st-meta">Log your first morning weigh-in</p></button>`;
+    if(!rows.length)return `<button type="button" class="st-tile st-mini" style="--c:var(--st-weight)" onclick="apx95OpenQuickWeight()"><span class="st-cat">Weight</span><span class="st-mini-v">—</span><span class="st-meta">Log a weigh-in</span></button>`;
     const s=N.trend(rows).filter(p=>p.avg!==null).at(-1);
     const v=s?s.avg:rows.at(-1).weight;
     const pl=N.detectPlateau(rows),rate=N.finite(pl&&pl.weeklyRate);
-    return `<button type="button" class="st-tile st-half st-t-weight" style="--c:var(--st-weight)" onclick="NXT.ui.view='overview';switchTab('weight')">
+    return `<button type="button" class="st-tile st-mini" style="--c:var(--st-weight)" onclick="NXT.ui.view='overview';switchTab('weight')">
       <span class="st-cat">Weight</span>
-      <div class="st-half-body"><span class="st-wbig"><span class="st-odo st-odo-sm" data-st-odo="${v.toFixed(1)}">${v.toFixed(1)}</span><small>kg</small></span></div>
-      <p class="st-meta">${rate!==null&&pl.ok?`<b class="vn-num">${N.signed(rate)}</b> kg/wk · trend`:'7-day trend'}</p>
+      <span class="st-mini-v"><b class="st-odo st-odo-sm" data-st-odo="${v.toFixed(1)}">${v.toFixed(1)}</b><small>kg</small></span>
+      <span class="st-meta">${rate!==null&&pl.ok?`${N.signed(rate)}/wk`:'7-day trend'}</span>
     </button>`;
   }
   function weeklyTileHTML() {
@@ -296,12 +294,11 @@ const NXP = (() => {
     const cell=(k,label,unit,c)=>{
       const v=N.finite(L[k]);if(v===null)return '';
       const pv=P?N.finite(P[k]):null,d=pv===null?null:v-pv;
-      return `<span class="st-scan-c" style="--c:${c}"><small>${label}</small><b class="vn-num">${v.toFixed(1)}<em>${unit}</em></b>${d===null?'':`<span class="st-meta">${d>0?'+':d<0?'−':'±'}${Math.abs(d).toFixed(1)}${unit==='%'?' pp':' '+unit} vs previous</span>`}</span>`;
+      return `<span class="st-scan-c" style="--c:${c}"><small>${label}</small><b class="vn-num">${v.toFixed(1)}<em>${unit}</em></b>${d===null?'':`<span class="st-scan-d${d<0?' is-dn':d>0?' is-up':''}">${d>0?'+':d<0?'−':'±'}${Math.abs(d).toFixed(1)}</span>`}</span>`;
     };
     return `<button type="button" class="st-tile st-t-body" style="--c:var(--st-fat)" onclick="NXT.ui.view='body';switchTab('weight')">
-      <div class="st-tile-head"><span class="st-cat">Latest Evo scan</span><span class="st-meta">${esc(N.shortDate(L.date))}</span></div>
-      <div class="st-scan-g">${cell('bodyFat','Body fat','%','var(--st-fat)')}${cell('fatMass','Fat mass','kg','var(--st-fat)')}${cell('muscleMass','Muscle mass','kg','var(--st-lean)')}${cell('weight','Scan weight','kg','var(--st-weight)')}</div>
-      <p class="st-meta">Scan estimates at the time of the scan — not your morning weigh-in.</p>
+      <div class="st-tile-head"><span class="st-cat">Latest Evo scan</span><span class="st-meta">${esc(N.shortDate(L.date))}${P?`<span class="st-scan-vs"> · vs ${esc(N.shortDate(P.date))}</span>`:''}</span></div>
+      <div class="st-scan-g">${cell('bodyFat','Fat %','%','var(--st-fat)')}${cell('fatMass','Fat mass','kg','var(--st-fat)')}${cell('muscleMass','Muscle','kg','var(--st-lean)')}${cell('weight','Weight','kg','var(--st-weight)')}</div>
     </button>`;
   }
   function linkSignal(label,value,action) {return `<button type="button" class="nxp-home-signal" onclick="${esc(action)}"><small>${esc(label)}</small><strong>${esc(value)}</strong></button>`;}
@@ -375,7 +372,7 @@ const NXP = (() => {
   }
   function trainGuidanceHTML() {
     const training=currentTraining(currentIntegrated());
-    if(!training||training.state==='no_recovery_signal')return '';
+    if(!training||training.state==='no_recovery_signal'||training.state==='proceed')return '';
     const detail=training.guidance&&training.guidance.detail?`<small>${esc(training.guidance.detail)}</small>`:'';
     return `<aside class="nxp-train-rec" data-state="${esc(training.state)}"><span class="nxp-caption">Recovery guidance</span><strong>${esc(training.guidance.message)}</strong>${detail}</aside>`;
   }
@@ -436,6 +433,26 @@ const NXP = (() => {
   }
   /* Strength-day overview before entering focused mode. Session data is
      untouched — leave/enter only toggles presentation (D6). */
+  /* ---- Anatomy, two ways -------------------------------------------------
+     Lens: a zoom onto the worked region of one exercise, ringed by that
+     exercise's set progress. Map: front and back of the whole session, so the
+     day's focus is readable at a glance. Both reuse NXTANAT; muscles are
+     always named in text beside them. */
+  function bleedHTML(name){
+    if(typeof NXTLIB==='undefined'||typeof NXTANAT==='undefined')return '';
+    const m=NXTLIB.musclesFor(name);if(!m.primary.length)return '';
+    const view=NXTANAT.viewFor(m.primary,[]);
+    /* Widen the engine's tight crop so the muscle reads in context. */
+    const fig=NXTANAT.figure({primary:m.primary,secondary:m.secondary,view}).replace(/viewBox="([\d.\-]+) ([\d.\-]+) ([\d.]+) ([\d.]+)"/,(s,x,y,w,h)=>{x=+x;y=+y;w=+w;h=+h;const px=w*.3,py=h*.2;return `viewBox="${(x-px).toFixed(0)} ${Math.max(0,y-py).toFixed(0)} ${(w+2*px).toFixed(0)} ${(h+2*py).toFixed(0)}"`;});
+    return `<span class="st-bleed" aria-hidden="true">${fig}</span>`;
+  }
+  function muscleMapHTML(names,title,sub){
+    if(typeof NXTLIB==='undefined'||typeof NXTANAT==='undefined')return '';
+    const f=NXTLIB.focusFor(names);if(!f.primary.length)return '';
+    const figs=['front','back'].map(v=>`<div class="st-mm-f">${NXTANAT.figure({primary:f.primary,secondary:f.secondary,view:v,crop:false})}<small>${v==='front'?'Front':'Back'}</small></div>`).join('');
+    const chips=f.primary.slice(0,6).map(id=>`<span class="st-mchip is-p">${esc(NXTANAT.label(id))}</span>`).join('')+(f.primary.length>6?`<span class="st-mchip">+${f.primary.length-6}</span>`:'');
+    return `<section class="st-mm" aria-label="${esc(title)}"><p class="st-mm-h">${esc(title)}</p><div class="st-mm-figs" aria-hidden="true">${figs}</div><div class="st-mchips">${chips}</div><p class="st-mm-k"><span><i class="is-p"></i>Worked directly</span><span><i></i>Assists</span></p></section>`;
+  }
   function trainLiftIdle(list) {
     const logs=N.sessionLogs(),working=logs.filter(r=>r.setType!=='warmup');
     const sets=list.reduce((a,e)=>a+Number(e.sets),0);
@@ -463,12 +480,12 @@ const NXP = (() => {
           <div><span class="st-cat">${working.length?'In progress':'Ready when you are'}</span>
           <h2 class="st-h2 st-mt2">${list.length} exercises</h2>
           <p class="st-meta">${sets} working sets${working.length?` · ${working.length} logged`:''}</p></div>
-          ${ringHTML(logged,sets,'sets','var(--st-lift)')}
+          ${logged?ringHTML(logged,sets,'sets','var(--st-lift)'):''}
         </div>
+        ${muscleMapHTML(list.map(e=>e.name),'Today’s focus','')}
         <button type="button" class="st-cta" onclick="NXP.enterTrain()">${esc(title)}<span aria-hidden="true">›</span></button>
       </section>
-      <section class="st-plan"><h2 class="st-sect">Session plan</h2>${plan}</section>
-      <div class="nxp-session-tools">${button('Session options','NXP.sessionMenu()',true)}</div>
+      <section class="st-plan"><div class="st-plan-h"><h2 class="st-sect">Session plan</h2><button type="button" class="st-link" onclick="NXP.sessionMenu()">Options<span aria-hidden="true">›</span></button></div>${plan}</section>
     </div>`;
   }
   /* ---- Train: shared presentation helpers --------------------------------
@@ -524,13 +541,13 @@ const NXP = (() => {
     });
     const nextDate=N.dateAdd(state.date,1);
     const compare=compared?`<div class="st-outcome">
-      <div style="--c:var(--st-lean)"><b class="vn-num" data-st-count="${up}">${up}</b><span>Beat last time</span></div>
+      <div style="--c:var(--st-lean)"><b class="vn-num" data-st-count="${up}">${up}</b><span>Beat</span></div>
       <div style="--c:var(--st-accent)"><b class="vn-num" data-st-count="${same}">${same}</b><span>Matched</span></div>
-      <div style="--c:var(--st-fat)"><b class="vn-num" data-st-count="${down}">${down}</b><span>Below last time</span></div>
+      <div style="--c:var(--st-fat)"><b class="vn-num" data-st-count="${down}">${down}</b><span>Below</span></div>
     </div>`:'';
     return `<p class="st-meta st-mt2">${working.length} working sets · ${Object.keys(byEx).length} exercises</p>
       ${compare}
-      <p class="st-meta st-mt3">Compared by your best set per exercise against last session. Next · ${esc(N.label(N.typeFor(nextDate)))} tomorrow</p>`;
+      <p class="st-meta st-mt3">Best set vs last session, per exercise · Next: ${esc(N.label(N.typeFor(nextDate)))} tomorrow</p>`;
   }
   function training() {
     applyAppearance();
@@ -597,6 +614,7 @@ const NXP = (() => {
           <span class="st-cat">Workout saved</span>
           <h2 class="st-h2 st-mt2">${esc(N.label(state.dayType))} · ${esc(state.gym||'Gym')}</h2>
           ${sessionOutcomeHTML()}
+          ${muscleMapHTML([...new Set(N.sessionLogs().filter(r=>r.setType!=='warmup').map(r=>r.exercise))],'What you trained','')}
           <div class="st-done-acts"><button type="button" class="st-cta" onclick="NXP.sessionSummary()">View session<span aria-hidden="true">›</span></button><button type="button" class="st-ghost" onclick="NXT.resume()">Resume workout</button></div>
         </section>
         <button type="button" class="st-row-btn" onclick="NXP.queue()"><span>Workout queue</span><small>${list.length} exercises</small><i aria-hidden="true">›</i></button>
@@ -662,9 +680,9 @@ const NXP = (() => {
     page.innerHTML=`<div class="${outer} st-train-active${justLogged?' is-just-logged':''}${focused?' is-mode':''}${allDone?' is-all-done':''}">
       <header class="st-tbar">
         <button type="button" class="st-icon" onclick="NXP.leaveTrain()" aria-label="Leave workout"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/></svg></button>
-        <div class="st-bar-mid">
-          <p class="st-bar-t">${esc(N.label(state.dayType))}</p>
-          <p class="st-bar-s"><b class="vn-num">${count}</b> of ${total} sets</p>
+        <div class="st-tbar-mid">
+          <p class="st-tbar-t">${esc(N.label(state.dayType))}</p>
+          <p class="st-tbar-s"><b class="vn-num">${count}</b> of ${total} sets</p>
         </div>
         <button type="button" class="st-icon" onclick="NXP.trainMenu()" aria-label="Workout options"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4.5" cy="10" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="15.5" cy="10" r="1.5"/></svg></button>
         <button type="button" class="st-tfinish${allDone?' is-ready':''}" onclick="NXT.finish()">Finish</button>
@@ -687,7 +705,7 @@ const NXP = (() => {
           <h2><button type="button" class="st-ex-title" onclick="NXP.exerciseDetails()">${esc(ex)}</button></h2>
           <p class="st-ex-mus">${esc(m.primary.map(id=>NXTANAT.label(id)).join(' · ')||muscleLine(ex))} <span>· ${t.reps[0]}–${t.reps[1]} reps</span></p>
         </div>
-        ${fig?`<button type="button" class="st-ex-fig" onclick="NXP.exerciseDetails()" aria-label="Show exercise details">${fig}</button>`:''}
+        ${bleedHTML(ex)}
       </section>
 
       ${!addOnActive()&&sessionDiffers()?`<button type="button" class="st-diff" onclick="NXP.saveTodayToRoutine()"><span><b>Changed for today only</b><small>Save this order and these exercises to your ${esc(N.label(state.dayType))} routine</small></span><em>Save</em></button>`:''}
@@ -1786,7 +1804,7 @@ const NXP = (() => {
     const [year,monthNum]=month.split('-').map(Number);
     const first=new Date(year,monthNum-1,1,12,0,0);
     /* ≤359px: long "September 2026" + 44pt nav controls wrap the title. Short month stays one line. */
-    const narrow=typeof matchMedia==='function'&&matchMedia('(max-width:359px)').matches;
+    const narrow=typeof matchMedia==='function'&&matchMedia('(max-width:480px)').matches;
     const title=first.toLocaleDateString('en-SG',{month:narrow?'short':'long',year:'numeric'});
     const firstDow=(first.getDay()+6)%7,days=new Date(year,monthNum,0).getDate(),prevDays=new Date(year,monthNum-1,0).getDate();
     const total=Math.ceil((firstDow+days)/7)*7,today=localToday(),cells=[];
