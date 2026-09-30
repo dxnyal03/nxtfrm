@@ -322,12 +322,91 @@ const STRATA = (() => {
     }, { passive: true });
   }
 
+  /* ---- Train: swipe between exercises, bump steppers, tick the count ------ */
+  function bindTrain(page, entering) {
+    const ex = page.querySelector(".st-train-active .st-ex");
+    if (ex && !ex.__stSwipe) {
+      ex.__stSwipe = true;
+      let x0 = null, y0 = 0, id = null;
+      ex.addEventListener("pointerdown", e => { if (e.pointerType === "mouse" && e.button !== 0) return; x0 = e.clientX; y0 = e.clientY; id = e.pointerId; });
+      ex.addEventListener("pointermove", e => {
+        if (x0 === null || e.pointerId !== id) return;
+        const dx = e.clientX - x0, dy = e.clientY - y0;
+        if (Math.abs(dy) > 30) { x0 = null; ex.style.transform = ""; return; }
+        if (Math.abs(dx) > 8 && !reduced()) ex.style.transform = `translateX(${dx * .35}px)`;
+      });
+      const end = e => {
+        if (x0 === null) return;
+        const dx = e.clientX - x0; x0 = null; ex.style.transform = "";
+        if (Math.abs(dx) > 60 && typeof NXP === "object") NXP.goExercise(dx < 0 ? 1 : -1);
+      };
+      ex.addEventListener("pointerup", end);
+      ex.addEventListener("pointercancel", () => { x0 = null; ex.style.transform = ""; });
+    }
+    const b = page.querySelector(".st-tr-count b");
+    if (b) {
+      const n = Number(b.textContent), prev = state0.lastCount;
+      if (!entering && Number.isFinite(prev) && n > prev && !reduced()) { b.classList.remove("st-tick"); void b.offsetWidth; b.classList.add("st-tick"); }
+      state0.lastCount = n;
+    }
+  }
+  function bindStepBump() {
+    document.addEventListener("pointerdown", e => {
+      const btn = e.target && e.target.closest && e.target.closest("#trainPage .nxp-step");
+      if (!btn || reduced()) return;
+      const input = document.getElementById(btn.dataset.stepTarget);
+      if (!input) return;
+      const cls = Number(btn.dataset.step) > 0 ? "st-bump-up" : "st-bump-dn";
+      input.classList.remove("st-bump-up", "st-bump-dn"); void input.offsetWidth; input.classList.add(cls);
+      clearTimeout(input.__stBump); input.__stBump = setTimeout(() => input.classList.remove(cls), 260);
+    }, true);
+  }
+
+  /* ---- Sheets: the page behind recedes; drag the sheet down to close ------ */
+  function bindSheets() {
+    const root = document.getElementById("modalRoot");
+    if (!root) return;
+    const sync = () => {
+      const sheet = root.querySelector(".n99-modal .sheet");
+      document.documentElement.classList.toggle("st-sheet-open", !!sheet);
+      if (!sheet || sheet.__stDrag) return;
+      sheet.__stDrag = true;
+      let y0 = null, dy = 0, t0 = 0;
+      sheet.addEventListener("pointerdown", e => {
+        const r = sheet.getBoundingClientRect();
+        const onGrip = e.clientY - r.top < 56;
+        if (!onGrip && sheet.scrollTop > 0) return;
+        if (!onGrip && e.target.closest("input,textarea,select,button,a,label,[role=slider]")) return;
+        y0 = e.clientY; dy = 0; t0 = performance.now();
+      });
+      sheet.addEventListener("pointermove", e => {
+        if (y0 === null) return;
+        dy = Math.max(0, e.clientY - y0);
+        if (dy > 4) { sheet.style.transition = "none"; sheet.style.transform = `translateY(${dy}px)`; }
+      });
+      const end = () => {
+        if (y0 === null) return;
+        const v = dy / Math.max(1, performance.now() - t0);
+        y0 = null; sheet.style.transition = "";
+        if (dy > 120 || (dy > 40 && v > .6)) {
+          sheet.style.transform = "translateY(110%)";
+          setTimeout(() => { if (typeof closeModal === "function") closeModal(); }, 200);
+        } else sheet.style.transform = "";
+      };
+      sheet.addEventListener("pointerup", end);
+      sheet.addEventListener("pointercancel", end);
+    };
+    new MutationObserver(sync).observe(root, { childList: true });
+    sync();
+  }
+
   /* ---- Hydrate after every paint ------------------------------------------ */
   function hydrate(page) {
     if (!page) return;
     const tab = (typeof state === "object" && state && state.tab) || "home";
     const entering = state0.lastTab !== tab;
     state0.lastTab = tab;
+    document.documentElement.setAttribute("data-st-tab", tab);
     stopReplay();
     page.classList.toggle("st-enter", entering && !reduced());
     if (entering && !reduced()) setTimeout(() => page.classList.remove("st-enter"), 1400);
@@ -339,6 +418,7 @@ const STRATA = (() => {
     page.querySelectorAll("[data-st-cmap]").forEach(h => drawCompMap(h, entering));
     if (entering) page.querySelectorAll("[data-st-count]").forEach(countUp);
     dressProgress(page);
+    if (page.id === "trainPage") bindTrain(page, entering);
     bindProgressReplay(page);
     syncDock();
   }
@@ -364,6 +444,8 @@ const STRATA = (() => {
       if (typeof renderMore === "function" && !renderMore.__strata) { const f = renderMore; renderMore = function () { const o = f.apply(this, arguments); hydrate(document.getElementById("morePage")); return o; }; renderMore.__strata = true; }
     } catch (e) { void wrap; console.error(e); }
     bindSpotlight();
+    bindStepBump();
+    bindSheets();
     if (typeof NXT === "object" && typeof NXT.selectPoint === "function" && !NXT.selectPoint.__strata) {
       const sp = NXT.selectPoint;
       NXT.selectPoint = function (index, opts) { const o = sp.apply(this, arguments); try { progressTip(index, opts); } catch (e) {} return o; };

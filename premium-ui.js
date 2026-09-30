@@ -607,39 +607,47 @@ const NXP = (() => {
     const restPct=restLeft&&(ui.restTotal||restPlan)?Math.max(0,Math.min(100,restLeft/(ui.restTotal||restPlan)*100)):0;
     /* Set chips: warm-ups, then one chip per planned working set (extras are
        appended). Logged chips open the same edit sheet as before. */
-    const workingLogged=current.map((r,i)=>({r,i})).filter(x=>x.r.setType!=='warmup');
-    const warmLogged=current.map((r,i)=>({r,i})).filter(x=>x.r.setType==='warmup');
-    const slots=Math.max(Number(t.sets),workingLogged.length+(allDone?0:0));
     const freshId=justLogged&&loggedEntry&&loggedEntry.exercise===ex?loggedEntry.id:null;
-    const setChips=warmLogged.map(({r,i})=>`<button type="button" class="st-sc is-warm${r.id===freshId?' is-fresh':''}" onclick="NXP.editCurrentSet(${i})" aria-label="Warm-up ${esc(trimNum(r.weight))} kilograms for ${esc(r.reps)}, edit"><small>W</small><b>${esc(trimNum(r.weight))}<em>×</em>${esc(r.reps)}</b></button>`).join('')
-      +Array.from({length:slots},(_,k)=>{
-        const lg=workingLogged[k];
-        if(lg){
-          const c=cmpBest(lg.r);
-          return `<button type="button" class="st-sc is-done${c==='up'?' is-up':''}${lg.r.id===freshId?' is-fresh':''}" onclick="NXP.editCurrentSet(${lg.i})" aria-label="Set ${k+1}: ${esc(trimNum(lg.r.weight))} kilograms for ${esc(lg.r.reps)}${c==='up'?', beat last time':c==='eq'?', matched last time':''}. Edit"><small>Set ${k+1}${c==='up'?' · beat':''}</small><b>${esc(trimNum(lg.r.weight))}<em>×</em>${esc(lg.r.reps)}</b></button>`;
-        }
-        const now=k===workingLogged.length;
-        return `<div class="st-sc${now?' is-now':' is-todo'}" aria-label="Set ${k+1}${now?', next':''}"><small>Set ${k+1}</small><b>${now?'Next':'—'}</b></div>`;
-      }).join('');
-    const entryLabel=setType==='warmup'?'Warm-up':(done>=Number(t.sets)?`Extra set ${done+1}`:`Set ${done+1} of ${t.sets}`);
-    const form=`<form id="nxp-set-form" class="st-form" onsubmit="event.preventDefault();NXP.logSet()">
-        <p class="st-entry-head">${esc(entryLabel)}</p>
+    /* Progress dots for this exercise's planned working sets. */
+    const dots=Array.from({length:Number(t.sets)},(_,k)=>`<i class="${k<done?'is-done':k===done?'is-now':''}"></i>`).join('');
+    const entryLabel=setType==='warmup'?'Warm-up set':(done>=Number(t.sets)?`Extra set · ${done+1}`:`Set ${done+1} of ${t.sets}`);
+    /* Logged sets, newest last. Each compares with the best set last time (D20). */
+    const loggedRows=current.map((r,i)=>{
+      const c=cmpBest(r),warm=r.setType==='warmup';
+      const rirLabel=r.rir===null||r.rir===undefined||r.rir===''?'':Number(r.rir)===4?'4+ in reserve':r.rir+' in reserve';
+      return `<button type="button" class="st-lr${warm?' is-warm':''}${r.id===freshId?' is-fresh':''}" onclick="NXP.editCurrentSet(${i})" aria-label="Edit ${warm?'warm-up':'set '+r.setNum}">
+        <span class="st-lr-n">${warm?'W':r.setNum}</span>
+        <span class="st-lr-v vn-num">${esc(trimNum(r.weight))}<em>kg</em> <i>×</i> ${esc(r.reps)}</span>
+        <span class="st-lr-m">${rirLabel?esc(rirLabel):''}</span>
+        ${c==='up'?'<span class="st-tag is-up">Beat</span>':c==='eq'?'<span class="st-tag">Matched</span>':''}
+      </button>`;
+    }).join('');
+    const form=`<form id="nxp-set-form" class="st-card" onsubmit="event.preventDefault();NXP.logSet()">
+        <div class="st-card-head">
+          <div><p class="st-card-t">${esc(entryLabel)}</p><div class="st-dots" aria-label="${done} of ${t.sets} working sets logged">${dots}</div></div>
+          <fieldset class="nxp-seg-block nxp-seg-type">
+            <legend class="st-sr">Set type</legend>
+            <div class="nxp-seg" role="group">${[['working','Working'],['warmup','Warm-up']].map(([v,l])=>`<button type="button" class="${setType===v?'is-on':''}" aria-pressed="${setType===v}" onclick="NXP.setSetType('${v}')">${l}</button>`).join('')}</div>
+          </fieldset>
+        </div>
         <div class="st-steppers">
-          ${stepper('weightInput','Weight','kg',`<input id="weightInput" type="number" min="0" max="1000" step="0.1" inputmode="decimal" enterkeyhint="done" autocomplete="off" required placeholder="0" value="${esc(weight)}" aria-labelledby="weightInput-label" oninput="NXP.rememberInput(this)">`,trimNum(t.inc||2.5),`weight by ${trimNum(t.inc||2.5)} kilograms`)}
-          ${stepper('repsInput','Reps','',`<input id="repsInput" type="number" min="1" max="100" step="1" inputmode="numeric" enterkeyhint="done" autocomplete="off" required placeholder="${aim?aim.reps:prev?prev.reps:t.reps[0]}" value="${esc(draft.repsInput??'')}" aria-labelledby="repsInput-label" oninput="NXP.rememberInput(this)">`,'1','reps by one')}
+          ${stepper('weightInput','kg','',`<input id="weightInput" type="number" min="0" max="1000" step="0.1" inputmode="decimal" enterkeyhint="done" autocomplete="off" required placeholder="0" value="${esc(weight)}" aria-labelledby="weightInput-label" oninput="NXP.rememberInput(this)">`,trimNum(t.inc||2.5),`weight by ${trimNum(t.inc||2.5)} kilograms`)}
+          ${stepper('repsInput','reps','',`<input id="repsInput" type="number" min="1" max="100" step="1" inputmode="numeric" enterkeyhint="done" autocomplete="off" required placeholder="${aim?aim.reps:prev?prev.reps:t.reps[0]}" value="${esc(draft.repsInput??'')}" aria-labelledby="repsInput-label" oninput="NXP.rememberInput(this)">`,'1','reps by one')}
+        </div>
+        <div class="st-ref">
+          <button type="button" class="st-ref-r is-aim" ${aim?'onclick="NXP.useAim()"':'disabled'}>
+            <span>Aim</span><b class="vn-num">${aim?`${esc(trimNum(aim.weight))} × ${esc(aim.reps)}`:`${t.reps[0]}–${t.reps[1]} reps`}</b><small>${esc(aimText)}</small>${aim?'<em>Use</em>':''}
+          </button>
+          <div class="st-ref-r">
+            <span>Best last time</span><b class="vn-num">${prev?`${esc(trimNum(prev.weight))} × ${esc(prev.reps)}`:'—'}</b><small>${previous?esc(N.shortDate(previous.date)):'No history yet'}</small>
+          </div>
         </div>
         <input type="hidden" id="n99-set-type" value="${setType}">
         <input type="hidden" id="n99-rir" value="${esc(rir)}">
-        <div class="st-segs">
-          <fieldset class="nxp-seg-block nxp-seg-type">
-            <legend>Set type</legend>
-            <div class="nxp-seg" role="group">${[['working','Working'],['warmup','Warm-up']].map(([v,l])=>`<button type="button" class="${setType===v?'is-on':''}" aria-pressed="${setType===v}" onclick="NXP.setSetType('${v}')">${l}</button>`).join('')}</div>
-          </fieldset>
-          <fieldset class="nxp-seg-block nxp-seg-rir">
-            <legend>Reps left <small>optional</small></legend>
-            <div class="nxp-seg" role="group">${[['','—'],['0','0'],['1','1'],['2','2'],['3','3'],['4','4+']].map(([v,l])=>`<button type="button" class="${rir===v?'is-on':''}" aria-pressed="${rir===v}" aria-label="${v===''?'Not recorded':v==='4'?'4 or more reps left':v+' reps left'}" onclick="NXP.setRir('${v}')">${l}</button>`).join('')}</div>
-          </fieldset>
-        </div>
+        <fieldset class="nxp-seg-block nxp-seg-rir">
+          <legend>Reps in reserve <small>optional</small></legend>
+          <div class="nxp-seg" role="group">${[['','—'],['0','0'],['1','1'],['2','2'],['3','3'],['4','4+']].map(([v,l])=>`<button type="button" class="${rir===v?'is-on':''}" aria-pressed="${rir===v}" aria-label="${v===''?'Not recorded':v==='4'?'4 or more reps left':v+' reps left'}" onclick="NXP.setRir('${v}')">${l}</button>`).join('')}</div>
+        </fieldset>
         <button id="nxp-log-button" type="submit" class="n99-button nxp-train-cta st-log" data-idle-label="${esc(idleLabel)}">${justLogged?`<span class="nxp-cta-check" aria-hidden="true">✓</span>${esc(confirmLabel)}`:esc(idleLabel)}</button>
       </form>`;
 
@@ -648,7 +656,7 @@ const NXP = (() => {
         <button type="button" class="st-icon" onclick="NXP.leaveTrain()" aria-label="Leave workout"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg></button>
         <div class="st-tr-id">
           <p class="st-tr-name">${esc(N.label(state.dayType))}</p>
-          <p class="st-tr-count"><b class="vn-num">${count}</b> of ${total} sets</p>
+          <p class="st-tr-count"><b class="vn-num">${count}</b>/${total} sets</p>
         </div>
         <details class="st-tools vn-train-tools">
           <summary class="st-icon" aria-label="Session tools"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4.5" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="15.5" cy="10" r="1.6"/></svg></summary>
@@ -664,7 +672,10 @@ const NXP = (() => {
         </details>
         <button type="button" class="st-finish${allDone?' is-ready':''}" onclick="NXT.finish()">Finish</button>
       </header>
-      <div class="st-tr-bar" aria-hidden="true"><span style="width:${total?Math.min(100,count/total*100):0}%"></span></div>
+      <div class="st-segbar" aria-hidden="true">${list.map((e,i)=>{
+        const d=Math.min(N.done(e.name),Number(e.sets));
+        return `<span class="${i===index?'is-current':''}"><i style="width:${e.sets?Math.round(d/e.sets*100):0}%"></i></span>`;
+      }).join('')}</div>
 
       ${trainAlertHTML()}
 
@@ -675,27 +686,12 @@ const NXP = (() => {
 
       <section class="st-ex${exMove}">
         <div class="st-ex-info">
-          <p class="st-ex-pos">Exercise ${index+1} of ${list.length}</p>
+          <p class="st-ex-pos">${index+1} of ${list.length}</p>
           <h2><button type="button" class="st-ex-title" onclick="NXP.exerciseDetails()">${esc(ex)}</button></h2>
-          <p class="st-ex-mus">${esc(muscleLine(ex))||`${t.sets} sets · ${t.reps[0]}–${t.reps[1]} reps`}</p>
+          <p class="st-ex-mus">${esc(m.primary.map(id=>NXTANAT.label(id)).join(' · ')||muscleLine(ex))}</p>
         </div>
         ${fig?`<button type="button" class="st-ex-fig" onclick="NXP.exerciseDetails()" aria-label="Show exercise details">${fig}</button>`:''}
       </section>
-
-      <div class="st-target">
-        <div class="st-target-c">
-          <small>Best last time</small>
-          <b class="vn-num">${prev?loadLine(prev.weight,prev.reps):'—'}</b>
-          <span>${previous?esc(N.shortDate(previous.date)):'No history yet'}</span>
-        </div>
-        <button type="button" class="st-target-c is-aim" ${aim?'onclick="NXP.useAim()" aria-label="Aim '+esc(trimNum(aim.weight))+' kilograms for '+aim.reps+'. Tap to fill"':'disabled'}>
-          <small>Aim${aim?' · tap to fill':''}</small>
-          <b class="vn-num">${aim?loadLine(aim.weight,aim.reps):`${t.reps[0]}–${t.reps[1]}<em>reps</em>`}</b>
-          <span>${esc(aimText)}</span>
-        </button>
-      </div>
-
-      <div class="st-sets-row" role="list" aria-label="Sets for this exercise">${setChips}</div>
 
       <aside class="nxp-rest st-rest${restLeft?' is-active':''}" aria-label="Rest timer"${restLeft?' role="timer"':''} ${restLeft?'':'hidden'} style="--pct:${restPct.toFixed(1)}">
         <span class="st-rest-l"><small>Rest</small><b id="apx96TimerValue" class="vn-num">${restLeft?apx96FormatTimer(restLeft):'Ready'}</b></span>
@@ -705,9 +701,11 @@ const NXP = (() => {
 
       ${allDone?`<details class="st-extra"><summary>Log an extra set</summary>${form}</details>`:form}
 
+      ${loggedRows?`<section class="st-logged" aria-label="Logged sets"><p class="st-logged-t">Logged</p>${loggedRows}</section>`:''}
+
       <nav class="st-exnav" aria-label="Exercise navigation">
-        <button type="button" ${index<=0?'disabled':''} onclick="NXP.goExercise(-1)" aria-label="Previous exercise"><span aria-hidden="true">‹</span> Prev</button>
-        <button type="button" class="nxp-queue-open" onclick="NXP.queue()" aria-label="Open workout queue">${index+1} / ${list.length}</button>
+        <button type="button" ${index<=0?'disabled':''} onclick="NXP.goExercise(-1)" aria-label="Previous exercise"><span aria-hidden="true">‹</span> Previous</button>
+        <button type="button" class="nxp-queue-open" onclick="NXP.queue()" aria-label="Open workout queue">All exercises</button>
         <button type="button" ${lastMove?'disabled':''} onclick="NXP.goExercise(1)" aria-label="Next exercise">Next <span aria-hidden="true">›</span></button>
       </nav>
     </div>`;
@@ -732,7 +730,7 @@ const NXP = (() => {
       if(root)root.classList.remove('is-just-logged');
       const btn=document.getElementById('nxp-log-button');
       if(btn&&btn.dataset.idleLabel)btn.textContent=btn.dataset.idleLabel;
-      document.querySelectorAll('.nxp-set-row.is-fresh,.st-sc.is-fresh').forEach(el=>el.classList.remove('is-fresh'));
+      document.querySelectorAll('.nxp-set-row.is-fresh,.st-lr.is-fresh').forEach(el=>el.classList.remove('is-fresh'));
     },1200);
   }
   /* Only surfaces recovery guidance that asks for a change of plan. When the
