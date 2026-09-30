@@ -653,14 +653,30 @@ button.st-ref-r:disabled{cursor:default}
   padding:18px 14px 14px;border-radius:var(--st-r);border:1px solid var(--st-tile-line);
   background:radial-gradient(110% 60% at 100% 0%,rgba(60,200,230,.1),transparent 58%),var(--st-tile),var(--st-tile-bg);box-shadow:var(--st-tile-hl),var(--st-shadow);
 }
-#historyPage .nxp-cal-day{border-radius:13px !important;transition:transform .15s var(--st-out),background .2s}
+/* History calendar in the Strata tile style: rounded day cells, today ringed,
+   selected filled, future dimmed. Marks keep their shapes (I6). */
+#historyPage .nxp-cal-weekdays span{font:600 12px var(--st-font) !important;letter-spacing:0 !important;color:var(--st-ink-3) !important;padding:4px 0 8px !important}
+#historyPage .nxp-cal-grid{gap:6px !important}
+#historyPage .nxp-cal-day{
+  min-height:54px !important;padding:6px 0 !important;gap:3px !important;border-radius:12px !important;min-width:0;overflow:hidden;
+  background:rgba(var(--st-hl),.04) !important;color:var(--st-ink-2) !important;box-shadow:none !important;
+  transition:transform .15s var(--st-out),background .2s !important;
+}
+#historyPage .nxp-cal-day b{font:600 13px/1 var(--st-font) !important;white-space:nowrap;letter-spacing:-.01em}
+#historyPage .nxp-cal-day b.is-m1{font-size:10px !important;letter-spacing:-.02em}
 #historyPage .nxp-cal-day:active{transform:scale(.92)}
-#historyPage .nxp-cal-day.has-w{background:rgba(180,154,255,.07)}
-#historyPage .nxp-cal-day.has-lift{background:rgba(139,124,255,.2) !important}
-#historyPage .nxp-cal-day.has-floor{background:rgba(255,194,74,.13)}
-#historyPage .nxp-cal-day.is-selected{background:linear-gradient(180deg,rgba(139,92,246,.55),rgba(139,92,246,.3)) !important;box-shadow:0 8px 20px -8px rgba(139,92,246,.8),inset 0 0 0 1px rgba(var(--st-hl),.2) !important}
-#historyPage .nxp-cal-day .st-cal-w{display:block;font:600 9.5px/1 var(--st-font);font-style:normal;color:var(--st-ink-3);margin-top:1px;font-variant-numeric:tabular-nums}
+#historyPage .nxp-cal-day.is-outside{opacity:.4 !important}
+#historyPage .nxp-cal-day.is-future{opacity:.35}
+#historyPage .nxp-cal-day.has-w{background:rgba(180,154,255,.07) !important}
+#historyPage .nxp-cal-day.has-lift{background:rgba(139,124,255,.18) !important;color:var(--st-ink) !important}
+#historyPage .nxp-cal-day.has-floor{background:rgba(255,194,74,.12) !important}
+#historyPage .nxp-cal-day.is-today{box-shadow:inset 0 0 0 2px var(--st-accent-lift) !important;color:var(--st-ink) !important}
+#historyPage .nxp-cal-day.is-today::after{display:none !important}
+#historyPage .nxp-cal-day.is-selected{background:linear-gradient(180deg,rgba(139,92,246,.6),rgba(139,92,246,.32)) !important;color:#fff !important;box-shadow:0 8px 20px -8px rgba(139,92,246,.8),inset 0 0 0 1px rgba(var(--st-hl),.2) !important}
+#historyPage .nxp-cal-day.is-selected.is-today{box-shadow:0 8px 20px -8px rgba(139,92,246,.8),inset 0 0 0 2px #fff !important}
+#historyPage .nxp-cal-day .st-cal-w{display:block;font:600 9.5px/1 var(--st-font);font-style:normal;color:var(--st-ink-3);font-variant-numeric:tabular-nums}
 #historyPage .nxp-cal-day.is-selected .st-cal-w{color:#fff}
+#historyPage .nxp-cal-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:14px !important;font:500 13px var(--st-font) !important;color:var(--st-ink-2) !important}
 #historyPage .nxp-cal-marks i.lift{background:var(--st-lift) !important;box-shadow:0 0 6px var(--st-lift)}
 #historyPage .nxp-cal-marks i.cond{border-color:var(--st-cardio) !important}
 #historyPage .nxp-cal-marks i.floor{background:var(--st-floor) !important}
