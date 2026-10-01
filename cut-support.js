@@ -1841,6 +1841,7 @@ function updateCloudSyncStatus(){
   }
   updateCloudLocalBanner();
 }
+let cloudErrDismissed=null;
 function updateCloudLocalBanner(){
   const el=document.getElementById('cloudLocalBanner');
   if(!el)return;
@@ -1850,19 +1851,40 @@ function updateCloudLocalBanner(){
   try{dismissed=localStorage.getItem('nxtfrm_cloud_banner_dismissed')==='1';}catch(e){}
   try{configured=!!((localStorage.getItem('apm_sb_url')||'').trim()&&(localStorage.getItem('apm_sb_key')||'').trim());}catch(e){}
   const signedOut=!cloudUser&&!hasStoredSbAuthToken();
-  const syncFail=!!lastCloudError; // A — always actionable
+  /* A failed save while signed in is its own condition: say so and offer Retry, rather than telling a signed-in user to log in. */
+  const saveFailed=!!lastCloudError&&!signedOut&&lastCloudError!==cloudErrDismissed;
+  const syncFail=!!lastCloudError&&signedOut; // A — always actionable
   const cloudButSignedOut=configured&&signedOut; // B — always actionable
   const hasData=(Array.isArray(state.logs)&&state.logs.length>0)||(Array.isArray(state.bws)&&state.bws.length>0);
   const unsyncedAtRisk=signedOut&&hasData&&!lastCloudSyncAt&&!dismissed; // C — dismissible
-  const show=syncFail||cloudButSignedOut||unsyncedAtRisk;
+  const show=saveFailed||syncFail||cloudButSignedOut||unsyncedAtRisk;
+  const text=document.getElementById('cloudLocalBannerText'),act=document.getElementById('cloudLocalBannerAction');
+  if(text&&act){
+    if(saveFailed){
+      text.textContent='The last cloud save did not go through. Your data is safe on this device.';
+      act.textContent='Retry';act.disabled=false;act.setAttribute('onclick','retryCloudSave()');
+    }else{
+      text.textContent='Your data is local-only on this device. iOS may wipe it. Log in to sync.';
+      act.textContent='Log in';act.disabled=false;act.setAttribute('onclick','openCloudLoginFromBanner()');
+    }
+  }
   if(show)el.removeAttribute('hidden');else el.setAttribute('hidden','');
 }
+/* Same save the Settings button runs, started by the lifter from the banner. */
+async function retryCloudSave(){
+  const act=document.getElementById('cloudLocalBannerAction');
+  if(act){act.disabled=true;act.textContent='Retrying…';}
+  try{await saveCloudNow(true);}catch(e){}
+  updateCloudSyncStatus();
+}
 function dismissCloudLocalBanner(){
-  try{localStorage.setItem('nxtfrm_cloud_banner_dismissed','1');}catch(e){}
+  if(lastCloudError&&(cloudUser||hasStoredSbAuthToken()))cloudErrDismissed=lastCloudError;
+  else try{localStorage.setItem('nxtfrm_cloud_banner_dismissed','1');}catch(e){}
   updateCloudLocalBanner();
 }
 function openCloudLoginFromBanner(){switchTab('more');NXT.more('data');}
 window.dismissCloudLocalBanner=dismissCloudLocalBanner;
+window.retryCloudSave=retryCloudSave;
 window.openCloudLoginFromBanner=openCloudLoginFromBanner;
 const _render=render;
 render=function(){_render.apply(this,arguments);updateCloudSyncStatus();readiness();};
