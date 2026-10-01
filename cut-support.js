@@ -283,12 +283,23 @@ const NXT = (() => {
     }
     if(check&&(Number(check.energy)<=2&&check.energy!==""||Number(check.soreness)>=4))return {...base,title:"Give recovery some attention",message:"Your check-in suggests low energy or high soreness. Consider a shorter session or rest, and review how you feel before adding work.",action:"Review recovery",reason:"Based on today’s check-in",tone:"watch"};
     if(lifts.filter(x=>x.status==="Review").length>=2)return {...base,title:"Review your training load",message:"Several comparable lifts are down across repeated sessions. Check recovery and technique before changing calories or adding cardio.",action:"Review recovery",reason:"Repeated declines in two or more lifts",tone:"watch"};
-    if(s.change===null)return base;
-    if(s.percent < -1)return {...base,title:"Weight is moving quickly",message:"Check energy, hunger and strength before pushing further. Early water changes can contribute; this is a review prompt, not a diagnosis.",action:"Review your target",tone:"watch"};
+    // One rate drives both the headline and the evidence chip on Today: the four-week trend when
+    // it is available (it ignores a single noisy week), otherwise the week-on-week change.
+    const pl=detectPlateau(rows),rate=pl.ok&&finite(pl.weeklyRate)!==null?pl.weeklyRate:s.change;
+    if(rate===null)return base;
+    const ref=(pl.ok&&finite(pl.lastAvg)!==null?pl.lastAvg:s.previous.avg)||s.current.avg,pct=ref?rate/ref*100:s.percent;
+    const kg=v=>(v>0?"+":"")+v.toFixed(2)+" kg/wk";
+    const fresh=lifts.filter(x=>x.delta!==null),holding=fresh.filter(x=>x.status==="Improving"||x.status==="Holding steady").length;
+    const slipping=fresh.some(x=>x.status==="Watch"||x.status==="Review");
+    const strengthLine=fresh.length?`${holding} of ${fresh.length} tracked lift${fresh.length===1?" is":"s are"} holding or improving.`:"Strength history is still building, so muscle retention is not yet assessable.";
+    const fc=forecastGoal(rows),eta=fc.ok&&fc.weeks>0?` At this pace your goal range is about ${fc.weeks} week${fc.weeks===1?"":"s"} away.`:"";
+    const why=`${kg(rate)} over ${pl.ok?"four weeks":"the last week"} · ${Math.abs(pct).toFixed(1)}% of body weight`;
+    if(pct < -1)return {...base,title:slipping?"Losing fast, and lifts are slipping":"Losing quickly",message:slipping?"Weight is dropping faster than usual while some lifts are down. Consider easing the deficit before strength suffers; this is a review prompt, not a diagnosis.":"Check energy, hunger and strength before pushing further. "+strengthLine+" Early water changes can contribute; this is a review prompt, not a diagnosis.",action:"Review your target",reason:why,change:rate,tone:"watch"};
     const c=cfg(),target=c.targetConfirmed?{low:goalLow(),high:goalHigh()}:null;
-    if(target&&s.current.avg>=target.low&&s.current.avg<=target.high&&s.previous.avg>=target.low&&s.previous.avg<=target.high)return {...base,title:"Your trend is in your goal range",message:"Two weekly averages are within your chosen range. Consider maintaining if you are happy with your progress; nothing changes automatically.",action:"Review your goal",tone:"good"};
-    if(s.change<-.15)return {...base,title:"Your weight trend is moving down",message:lifts.some(x=>x.delta!==null)?"Keep your current plan if energy and performance feel manageable. Stable strength is useful progress.":"Keep the plan steady if recovery feels manageable. Strength history is still building, so muscle retention is not yet assessable.",action:"Stay consistent",tone:"good"};
-    if(Math.abs(s.change)<.2&&s.priorChange!==null&&Math.abs(s.priorChange)<.2) {
+    if(target&&s.current.avg!==null&&s.previous.avg!==null&&s.current.avg>=target.low&&s.current.avg<=target.high&&s.previous.avg>=target.low&&s.previous.avg<=target.high)return {...base,title:"Your trend is in your goal range",message:"Two weekly averages are within your chosen range. Consider maintaining if you are happy with your progress; nothing changes automatically.",action:"Review your goal",reason:why,change:rate,tone:"good"};
+    if(rate<-PLATEAU_FLAT_KG_WEEK)return {...base,title:slipping?"Losing steadily, watch your lifts":holding&&holding===fresh.length?"Cutting steadily, strength holding":"Cutting steadily",message:(slipping?"Weight is moving at a comfortable pace, but some lifts are down. Keep an eye on recovery. ":"Keep your current plan if energy feels manageable. ")+strengthLine+eta,action:slipping?"Review recovery":"Stay consistent",reason:why,change:rate,tone:slipping?"watch":"good"};
+    if(rate>PLATEAU_FLAT_KG_WEEK&&(pl.status==="gaining"||(s.change!==null&&s.change>.15&&s.priorChange!==null&&s.priorChange>0)))return {...base,title:"Your weight is trending up",message:"The recent trend is rising, not flat. Check measurement conditions and consistency before changing anything; food intake is not logged, so the app cannot name the cause.",action:"Review consistency",reason:why,change:rate,tone:"watch"};
+    if(s.change!==null&&Math.abs(s.change)<.2&&s.priorChange!==null&&Math.abs(s.priorChange)<.2) {
       const waistDown=waist.length>=2&&waist.at(-1).date>=dateAdd(state.date,-14)&&waist.at(-1).cm<waist.at(-2).cm-.5;
       return {...base,title:waistDown?"Look beyond the scale":"Time for a small review",message:waistDown?"Scale averages are fairly flat, while your recent waist measurement is lower. Keep measuring consistently before changing the plan.":"Recent weekly averages are fairly flat. Check consistency, measurement conditions and recovery. Food intake is not logged, so the app cannot identify the cause or calculate your deficit.",action:waistDown?"Keep observing":"Review your plan",tone:"neutral"};
     }

@@ -176,13 +176,10 @@ const NXP = (() => {
             </button>
           </div>
           <section class="st-tile st-t-dec${toneClass}" aria-labelledby="vn-dec-h" style="--c:var(--st-accent)">
-            <div class="st-tile-head"><span class="st-cat">NXTFRM decision</span><button type="button" class="st-link" onclick="NXT.openReview()">Why<span aria-hidden="true">›</span></button></div>
+            <div class="st-tile-head"><span class="st-cat">NXTFRM decision</span><button type="button" class="st-link st-why" onclick="NXT.openReview()">Why<span aria-hidden="true">›</span></button></div>
             <h2 class="st-h3" id="vn-dec-h">${esc(r.title)}</h2>
             ${support?`<p class="st-body st-mt2">${esc(support)}</p>`:''}
-            <div class="st-evid st-mt3">
-              <span>Trend<b class="vn-num">${esc(trendEv)}</b></span>
-              <span>Confidence<b>${esc(confEv)}</b></span>
-            </div>
+            ${decEvidenceHTML(trendEv,confEv,plateau)}
           </section>
           ${bodyTileHTML()}
         </div>
@@ -248,6 +245,26 @@ const NXP = (() => {
   }
   /* Compact weight: the canonical 7-day trend and the engine's weekly rate.
      The chart itself lives on Progress. */
+  function decEvidenceHTML(trendEv,confEv,plateau) {
+    const rate=N.finite(plateau&&plateau.weeklyRate);
+    const dir=rate===null?'flat':rate<-0.05?'down':rate>0.05?'up':'flat';
+    const pts=N.trend(N.weights()).filter(p=>p.avg!==null).slice(-21).map(p=>p.avg);
+    let spark='';
+    if(pts.length>=4){
+      const lo=Math.min(...pts),hi=Math.max(...pts),span=(hi-lo)||1,W=64,H=24,pad=3;
+      const xy=pts.map((v,i)=>[(i/(pts.length-1))*(W-pad*2)+pad,H-pad-((v-lo)/span)*(H-pad*2)]);
+      const d=xy.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+      const e=xy[xy.length-1];
+      spark=`<svg class="st-dec-spark" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true" focusable="false"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${e[0].toFixed(1)}" cy="${e[1].toFixed(1)}" r="2.4" fill="currentColor"/></svg>`;
+    }
+    const arrow={down:'M12 5v13M6.5 12.5 12 18l5.5-5.5',up:'M12 19V6M6.5 11.5 12 6l5.5 5.5',flat:'M5 12h14'}[dir];
+    const lvl={low:1,medium:2,high:3}[String(confEv).toLowerCase()]||0;
+    const bars=lvl?`<span class="st-dec-bars" aria-hidden="true">${[1,2,3].map(i=>`<i class="${i<=lvl?'on':''}"></i>`).join('')}</span>`:'';
+    return `<div class="st-dec-ev">
+      <div class="st-dec-chip st-dec-trend is-${dir}"><span class="st-dec-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${arrow}"/></svg></span><span class="st-dec-txt"><small>Trend</small><b class="vn-num">${esc(trendEv)}</b></span>${spark}</div>
+      <div class="st-dec-chip st-dec-conf"><span class="st-dec-txt"><small>Confidence</small><b>${esc(confEv)}</b></span>${bars}</div>
+    </div>`;
+  }
   function weightTileHTML() {
     const rows=N.weights();
     if(!rows.length)return `<button type="button" class="st-tile st-mini" style="--c:var(--st-weight)" onclick="apx95OpenQuickWeight()"><span class="st-cat">Weight</span><span class="st-mini-v">—</span><span class="st-meta">Log a weigh-in</span></button>`;
