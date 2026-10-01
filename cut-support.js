@@ -983,7 +983,8 @@ Object.assign(NXT, (()=>{
     const max=Math.max(seed,cur,hi)+0.6,min=Math.min(lo,cur)-1.2,span=Math.max(0.8,max-min);
     const pct=v=>Math.max(0,Math.min(100,((max-v)/span)*100));
     const done=seed-cur,remain=Math.max(0,cur-hi);
-    const first=rows[0]?.date;
+    const cs=typeof settings!=='undefined'&&settings&&Number.isFinite(N.dateMs(settings.cutStart))&&settings.cutStart<=state.date?settings.cutStart:null;
+    const first=cs||rows[0]?.date;
     const elapsed=first?Math.round((N.dateMs(state.date)-N.dateMs(first))/86400000):0;
     const leftTrav=Math.min(pct(seed),pct(cur)),widthTrav=Math.abs(pct(cur)-pct(seed));
     const leftBand=Math.min(pct(lo),pct(hi)),widthBand=Math.abs(pct(lo)-pct(hi));
@@ -1399,7 +1400,15 @@ Object.assign(NXT, (()=>{
   }
   function goalsHTML() {
     const c=N.cfg();
-    return N.calorieCard()+N.card('Your goal range',`<p>Optional. Set a checkpoint you can review alongside waist and strength. There is no deadline or automatic push to keep losing weight.</p>${!c.targetConfirmed?'<p class="n99-small">The values below come from your previous app settings. Save to confirm or change them.</p>':''}<form onsubmit="event.preventDefault();NXT.saveGoal()"><div class="n99-form-grid"><label>Lower weight · kg<input id="n99-goal-low" type="number" min="40" max="300" step="0.1" required value="${goalLow()}"></label><label>Upper weight · kg<input id="n99-goal-high" type="number" min="40" max="300" step="0.1" required value="${goalHigh()}"></label></div><button type="submit" class="n99-button">Save goal range</button></form>`)+N.card('How your advice works',`<p>Weight averages, repeated strength comparisons and dated check-ins inform your review. Recommendations explain their evidence; calorie changes are never automatic.</p>${N.button('Open weekly review','NXT.openReview()',true)}`);
+    return N.calorieCard()+N.card('Your goal range',`<p>Optional. Set a checkpoint you can review alongside waist and strength. There is no deadline or automatic push to keep losing weight.</p>${!c.targetConfirmed?'<p class="n99-small">The values below come from your previous app settings. Save to confirm or change them.</p>':''}<form onsubmit="event.preventDefault();NXT.saveGoal()"><div class="n99-form-grid"><label>Lower weight · kg<input id="n99-goal-low" type="number" min="40" max="300" step="0.1" required value="${goalLow()}"></label><label>Upper weight · kg<input id="n99-goal-high" type="number" min="40" max="300" step="0.1" required value="${goalHigh()}"></label></div><button type="submit" class="n99-button">Save goal range</button></form>`)+N.card('Cut start',`<p>When your cut began and your weight that day. Used for the “down so far” line and the cut journey.</p><form onsubmit="event.preventDefault();NXT.saveCutStart()"><label>Start date<input id="n99-cut-date" type="date" max="${state.date}" value="${esc(settings.cutStart||'')}"></label><label>Start weight · kg<input id="n99-cut-weight" type="number" min="30" max="300" step="0.1" inputmode="decimal" value="${Number(settings.startWeight)||''}"></label><button type="submit" class="n99-button">Save cut start</button></form>`)+N.card('How your advice works',`<p>Weight averages, repeated strength comparisons and dated check-ins inform your review. Recommendations explain their evidence; calorie changes are never automatic.</p>${N.button('Open weekly review','NXT.openReview()',true)}`);
+  }
+  /* Cut start (D31): the day the cut began and the weight that day. Display and
+     "down so far" only; no trend, forecast or calorie calculation reads it. */
+  function saveCutStart() {
+    const d=val('n99-cut-date'),w=N.finite(val('n99-cut-weight'));
+    if(!Number.isFinite(N.dateMs(d))||d>state.date)return toast('Choose the day your cut started.');
+    if(w===null||w<30||w>300)return toast('Enter your start weight in kg.');
+    settings.cutStart=d;settings.startWeight=w;START_WEIGHT=w;N.commit('Cut start saved');
   }
   function saveGoal() {
     const lo=N.finite(val('n99-goal-low')),hi=N.finite(val('n99-goal-high')),height=Number(N.cfg().profile.height)||176;
@@ -1539,7 +1548,7 @@ Object.assign(NXT, (()=>{
     // Once per app load; the function itself skips a day already recorded.
     N.maybeSnapshotTDEE();
   }
-  return {more,moreView,goalsHTML,saveGoal,programmeHTML,saveWeek,restoreWeek,editTemplate,captureDraft,drawTemplate,draftMove,draftRemove,draftAdd,validTemplate,saveTemplate,defaultTemplate,saveQueueAsTemplate,coachHTML,saveCardioGoal,history,exportSafety,restoreSafety,validateBackup,restoreData,resetData,install};
+  return {more,moreView,goalsHTML,saveGoal,saveCutStart,programmeHTML,saveWeek,restoreWeek,editTemplate,captureDraft,drawTemplate,draftMove,draftRemove,draftAdd,validTemplate,saveTemplate,defaultTemplate,saveQueueAsTemplate,coachHTML,saveCardioGoal,history,exportSafety,restoreSafety,validateBackup,restoreData,resetData,install};
 })());
 
 // Existing routes, records and advanced tools are retained behind the new working surfaces.
