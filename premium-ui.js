@@ -125,9 +125,9 @@ const NXP = (() => {
           </div>
           ${logged?ringHTML(logged,sets,'sets','var(--st-lift)'):''}
         </div>
+        <div class="st-tweek st-tweek-top"><div class="st-tweek-h"><span>This week · ${weekLogged} lifting ${weekLogged===1?'day':'days'}</span>${textAct('Edit plan ›',"NXT.more('training')",true)}</div>${weekStrip}</div>
         <button type="button" class="st-cta" onclick="${esc(finished?"switchTab('train')":action)}">${esc(title)}<span aria-hidden="true">›</span></button>
         ${lastLiftLine?`<p class="st-meta st-mt2 st-center">${esc(lastLiftLine)}</p>`:''}
-        <div class="st-tweek"><div class="st-tweek-h"><span>This week · ${weekLogged} lifting ${weekLogged===1?'day':'days'}</span>${textAct('Edit plan ›',"NXT.more('training')",true)}</div>${weekStrip}</div>
       </article>`:`
       <article class="st-tile st-t-train" style="--c:${state.dayType==='Zone2'?'var(--st-cardio)':state.dayType==='Floorball'?'var(--st-floor)':'var(--st-rest)'}">
         <div class="st-tile-head"><span class="st-cat">Today</span>${textAct('Change','showSessionSheet()',true)}</div>
