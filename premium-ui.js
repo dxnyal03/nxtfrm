@@ -1163,6 +1163,29 @@ const NXP = (() => {
   }
   function sessionMenu() {N.modal('Session options',row('Session',N.label(state.dayType),'showSessionSheet()')+row('Gym',state.gym,'closeModal();cycleGym()')+row('Equipment note',v88NoteFor(state.exercise)?'Saved':'Add note','NXP.equipmentNote()')+row('Recovery','Check-in','apx96OpenReadiness()')+row('Shorter session','First 3 exercises','NXT.shorter()')+row('Full session','Restore queue','NXT.fullSession()')+button('Finish workout','NXT.finish()',true));}
   function equipmentNote() {v88OpenNoteModal(state.exercise);}
+  /* Weight highlights (D28): facts read straight from the weigh-ins, shown only
+     when true — a new lowest reading, and weeks of falling averages in a row.
+     No score, nothing stored. */
+  function weightHighlights(){
+    const rows=N.weights().filter(r=>r.date<=state.date&&Number.isFinite(Number(r.weight)));
+    const out=[];
+    if(rows.length>=5){
+      const last=rows.at(-1),min=Math.min(...rows.map(r=>Number(r.weight)));
+      const ago=Math.round((N.dateMs(state.date)-N.dateMs(last.date))/864e5);
+      if(Number(last.weight)<=min&&ago<=7&&rows.slice(0,-1).some(r=>Number(r.weight)>min))out.push({k:'low',t:`Lowest weigh-in yet · ${Number(last.weight).toFixed(1)} kg`});
+    }
+    const byWeek=new Map();
+    rows.forEach(r=>{const w=N.weekStart(r.date),a=byWeek.get(w)||[];a.push(Number(r.weight));byWeek.set(w,a);});
+    const avgs=[...byWeek.entries()].sort((a,b)=>a[0].localeCompare(b[0])).filter(([,a])=>a.length>=3).map(([,a])=>a.reduce((x,y)=>x+y,0)/a.length);
+    let down=0;
+    for(let i=avgs.length-1;i>0&&avgs[i]<avgs[i-1];i--)down+=1;
+    if(down>=2)out.push({k:'down',t:`${down} weeks of falling averages in a row`});
+    return out;
+  }
+  function weightHighlightsHTML(){
+    const h=weightHighlights();
+    return h.length?`<ul class="st-wchips" aria-label="Highlights">${h.map(x=>`<li class="is-${x.k}"><i aria-hidden="true"></i><span>${esc(x.t)}</span></li>`).join('')}</ul>`:'';
+  }
   function progress() {
     applyAppearance();
     syncTrainNav(false);
@@ -1185,7 +1208,7 @@ const NXP = (() => {
     }
     /* Phase 2C — Weight owns its layout inside chartHTML (trajectory + journey).
        TDEE and weigh-in history are demoted below, not deleted. */
-    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${N.chartHTML()}<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details><button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${N.weights().length} readings</span></span><span class="vn-chev">›</span></button></div>`;
+    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${N.chartHTML().replace('<div class="vn-mhead"',weightHighlightsHTML()+'<div class="vn-mhead"')}<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details><button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${N.weights().length} readings</span></span><span class="vn-chev">›</span></button></div>`;
   }
   function syncLatestControl() {
     const btn=document.getElementById('nxp-progress-latest');
