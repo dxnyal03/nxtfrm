@@ -636,9 +636,15 @@ const NXP = (() => {
     const aimText=aim?(aim.kind==='reentry'?'Ease back in · lighter':aim.kind==='load'?`+${trimNum(aim.weight-Number(prev.weight))} kg`:aim.kind==='rep'?(/^Under /.test(aim.why||'')?aim.why:'One more rep'):(aim.why||'Match your best')):'Set a baseline';
     /* D25 coach: note + a target for every planned set. Tapping a target fills the fields; nothing is logged. */
     const coach=N.coachFor(ex),tg=n=>esc(trimNum(n));
-    const coachHTML=coach?`<section class="st-coach${exMove?' is-enter':''}" aria-label="Coach">
-          <p class="st-coach-k">Coach${coach.sets&&coach.sets.length?'<em>Tap a set to fill</em>':''}</p>
-          <h3 class="st-coach-h">${esc(coach.headline)}</h3>
+    const pillTxt=(()=>{if(!coach)return '';
+      if(coach.kind==='load'&&prev)return `+${tg(coach.weight-Number(prev.weight))} kg`;
+      return ({rep:'+1 rep',reentry:'Ease in',stall:'Stalled',tired:'Easy day',rebuild:'Rebuild',hold:'Hold',new:'Baseline',baseline:'Baseline'})[coach.kind]||'';})();
+    const coachHTML=coach?`<section class="st-coach is-${coach.kind}${exMove?' is-enter':''}" aria-label="Coach">
+          <div class="st-coach-top">
+            <span class="st-coach-ico" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 2.4l1.8 5.3 5.3 1.8-5.3 1.8L10 16.6l-1.8-5.3L2.9 9.5l5.3-1.8z"/></svg></span>
+            <div class="st-coach-tt"><p class="st-coach-k">Coach</p><h3 class="st-coach-h">${esc(coach.headline)}</h3></div>
+            ${pillTxt?`<span class="st-coach-pill">${esc(pillTxt)}</span>`:''}
+          </div>
           <p class="st-coach-n">${esc(coach.note)}</p>
           ${coach.sets&&coach.sets.length?`<div class="st-coach-sets" role="group" aria-label="Target for each set">${coach.sets.map((x,k)=>`<button type="button" class="st-cs${setType==='working'&&k===done?' is-now':''}${k<done?' is-done':''}" onclick="NXP.useTarget(${k})" aria-label="Set ${x.n}: ${tg(x.weight)} kilograms for ${x.reps} reps. Tap to fill"><small>Set ${x.n}</small><b class="vn-num">${tg(x.weight)} × ${x.reps}</b></button>`).join('')}</div>`:''}
         </section>`:'';
