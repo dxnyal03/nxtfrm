@@ -104,7 +104,7 @@ const NXP = (() => {
     const nextLine=`Next session · ${N.label(N.typeFor(nextDate))} tomorrow`;
     const weekLogged=N.completedWeek();
     const weekStart=N.weekStart();
-    const weekShort={FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Rest:'Rest',Floorball:'FB',Push:'Push',Pull:'Pull',Legs:'Legs',Pump:'Legs+'};
+    const weekShort={FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Rest:'Rest',Floorball:'FB',Push:'Push',Pull:'Pull',Legs:'Legs',Pump:'Legs'};
     const weekStrip=`<div class="vn-week" role="list">${Array.from({length:7},(_,i)=>{
       const d=N.dateAdd(weekStart,i),t=N.typeFor(d),complete=work.some(row=>row.date===d),isToday=d===state.date;
       const short=weekShort[t]||String(t).slice(0,3);
@@ -1525,7 +1525,7 @@ const NXP = (() => {
   function gyms(){const g=['Gym A','Gym B'];if(state.gym&&!g.includes(state.gym))g.push(state.gym);return g;}
   function routineGym(){return ui.routineGym||state.gym||'Gym A';}
   function daysFor(type){return DAY_ORDER.filter(d=>settings.weeklyPlan&&settings.weeklyPlan[d]===type).map(d=>DAY_SHORT[d]);}
-  function typeShort(t){return ({FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Floorball:'Floorball',Pump:'Legs+',Rest:'Rest'})[t]||N.label(t);}
+  function typeShort(t){return ({FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Floorball:'Floorball',Pump:'Legs',Rest:'Rest'})[t]||N.label(t);}
   function trainingView(){
     syncTrainNav(false);
     const gym=routineGym(),plan=settings.weeklyPlan||{};

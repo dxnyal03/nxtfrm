@@ -2621,10 +2621,10 @@ textarea:disabled {
 <!-- Presentation layers load in <head> so the first paint is already NXTFRM V109.
      These were previously <link>ed at the end of <body>, which let the legacy
      in-head CSS paint the old chrome before the current styles arrived. -->
-<link rel="stylesheet" href="cut-support.css?v=133">
-<link rel="stylesheet" href="premium-ui.css?v=133">
-<link rel="stylesheet" href="vnext.css?v=133">
-<link rel="stylesheet" href="strata.css?v=133">
+<link rel="stylesheet" href="cut-support.css?v=134">
+<link rel="stylesheet" href="premium-ui.css?v=134">
+<link rel="stylesheet" href="vnext.css?v=134">
+<link rel="stylesheet" href="strata.css?v=134">
 
 </head>
 <body>
@@ -2713,7 +2713,7 @@ const PLAN={
   1:{type:"Push",label:"Push Day",icon:"🔥"},
   2:{type:"Pull",label:"Pull",icon:"💪"},
   3:{type:"Floorball",label:"Floorball only",icon:"🏑"},
-  4:{type:"Pump",label:"Legs + Core + Ab Crunch",icon:"⚡"},
+  4:{type:"Pump",label:"Legs",icon:"⚡"},
   5:{type:"Floorball",label:"Floorball only",icon:"🏑"},
   6:{type:"Legs",label:"Legs Day",icon:"🦵"},
   0:{type:"Rest",label:"Full rest",icon:"🌙"}
@@ -5644,7 +5644,7 @@ function planMeta(type){
   const map={
     Push:{type:"Push",label:"Push Day",icon:"🔥"},
     Pull:{type:"Pull",label:"Pull Day",icon:"💪"},
-    Pump:{type:"Pump",label:"Legs + Core",icon:"🦵"},
+    Pump:{type:"Pump",label:"Legs",icon:"🦵"},
     Legs:{type:"Legs",label:"Legs Day",icon:"🦵"},
     Floorball:{type:"Floorball",label:"Floorball",icon:"🏑"},
     Rest:{type:"Rest",label:"Rest Day",icon:"🌙"}
@@ -7199,7 +7199,7 @@ function renderWeight(){
 
 function dayTypeLabel(type){
   const t=normalizeDayType(type||state.dayType);
-  if(t==="Pump")return "Legs + Core";
+  if(t==="Pump")return "Legs";
   if(t==="Zone2")return "Zone 2 / Rest";
   return planMeta(t).label || t;
 }
@@ -7927,25 +7927,25 @@ document.addEventListener("focusout",function(e){
 },true);
 </script>
 
-<script src="cut-support.js?v=133"></script>
-<script src="wearables.js?v=133"></script>
-<script src="wearables.adapters.js?v=133"></script>
-<script src="wearables.ingest.js?v=133"></script>
-<script src="wearables.canonical.js?v=133"></script>
-<script src="wearables.days.js?v=133"></script>
-<script src="wearables.snapshots.js?v=133"></script>
-<script src="wearables.resolution.js?v=133"></script>
-<script src="wearables.recovery.js?v=133"></script>
-<script src="wearables.recovery-integration.js?v=133"></script>
-<script src="wearables.training-readiness.js?v=133"></script>
-<script src="wearables.store.js?v=133"></script>
-<script src="wearables.provider-garmin.js?v=133"></script>
-<script src="wearables.sync.js?v=133"></script>
-<script src="train-anatomy.js?v=133"></script>
-<script src="premium-ui.js?v=133"></script>
-<script src="strata.js?v=133"></script>
-<script src="seed.dev.js?v=133"></script>
-<script src="seed.scenarios.js?v=133"></script>
+<script src="cut-support.js?v=134"></script>
+<script src="wearables.js?v=134"></script>
+<script src="wearables.adapters.js?v=134"></script>
+<script src="wearables.ingest.js?v=134"></script>
+<script src="wearables.canonical.js?v=134"></script>
+<script src="wearables.days.js?v=134"></script>
+<script src="wearables.snapshots.js?v=134"></script>
+<script src="wearables.resolution.js?v=134"></script>
+<script src="wearables.recovery.js?v=134"></script>
+<script src="wearables.recovery-integration.js?v=134"></script>
+<script src="wearables.training-readiness.js?v=134"></script>
+<script src="wearables.store.js?v=134"></script>
+<script src="wearables.provider-garmin.js?v=134"></script>
+<script src="wearables.sync.js?v=134"></script>
+<script src="train-anatomy.js?v=134"></script>
+<script src="premium-ui.js?v=134"></script>
+<script src="strata.js?v=134"></script>
+<script src="seed.dev.js?v=134"></script>
+<script src="seed.scenarios.js?v=134"></script>
 <script>
 (function loadWearableFixturesDevOnly(){
   var host=String(location.hostname||"");
