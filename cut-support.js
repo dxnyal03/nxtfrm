@@ -35,8 +35,9 @@ const NXT = (() => {
     FullC:[exercise("Leg Press",2,10,15,5),exercise("Machine Shoulder Press",2,8,12),exercise("Unilateral Seated Row",3,8,12),exercise("Hamstring Curl",2,10,15),exercise("Tricep Pushdown",2,10,15),exercise("Ab Crunch",2,12,20)]
   };
   const split = {0:"Rest",1:"FullA",2:"Zone2",3:"FullB",4:"Zone2",5:"FullC",6:"Zone2"};
-  const names = {FullA:"Full Body A",FullB:"Full Body B",FullC:"Full Body C",Push:"Push",Pull:"Pull",Pump:"Legs & Core",Legs:"Legs",Zone2:"Easy cardio",Rest:"Rest",Floorball:"Floorball"};
-  const typeNames = () => Object.keys(names);
+  const names = {FullA:"Full Body A",FullB:"Full Body B",FullC:"Full Body C",Push:"Push",Pull:"Pull",Pump:"Legs",Legs:"Legs",Zone2:"Easy cardio",Rest:"Rest",Floorball:"Floorball"};
+  /* D33: one legs session. The plain "Legs" type is folded into Pump (shown as "Legs"); it stays in names only so old records still label. */
+  const typeNames = () => Object.keys(names).filter(k=>k!=="Legs");
   const ui = {view:"overview", range:30, showGoal:false, showPost:false, showForecast:false, selected:null, draft:null, lastFocus:null};
   function cfg() {
     if(!settings.cutSupport || typeof settings.cutSupport!=="object" || Array.isArray(settings.cutSupport))settings.cutSupport={};
@@ -1526,6 +1527,26 @@ Object.assign(NXT, (()=>{
     } catch (e) {}
     reload();
   }
+  /* D33: fold the plain "Legs" session into Pump (shown as "Legs"). Idempotent; moves
+     plan entries, date overrides, saved routines and per-day queues across, and never
+     overwrites an existing Pump routine. Logged records are not rewritten. */
+  function mergeLegsIntoPump() {
+    const c=N.cfg();let changed=false;
+    const swap=o=>{if(o&&typeof o==='object'&&!Array.isArray(o))for(const k of Object.keys(o))if(o[k]==='Legs'){o[k]='Pump';changed=true;}};
+    swap(settings.weeklyPlan);swap(settings.dayOverrides);swap(c.previousWeeklyPlan);
+    if(state.dayType==='Legs'){state.dayType='Pump';changed=true;}
+    const moveKeys=(obj)=>{
+      if(!obj||typeof obj!=='object'||Array.isArray(obj))return;
+      for(const k of Object.keys(obj)){
+        if(!k.endsWith('__Legs'))continue;
+        const to=k.slice(0,-6)+'__Pump';
+        if(obj[to]===undefined){obj[to]=obj[k];delete obj[k];changed=true;}
+      }
+    };
+    moveKeys(c.templates);moveKeys(c.sessionTargets);moveKeys(c.sessions);moveKeys(state.sessionPlans);
+    if(changed){try{persist();}catch(e){}}
+    return changed;
+  }
   function install(migrate=true) {
     for(const [type,rows] of Object.entries(N.defaults))TEMPLATES[type]=N.copy(rows);
     const c=N.cfg();
@@ -1542,6 +1563,7 @@ Object.assign(NXT, (()=>{
     }
     // Loading an older backup is not permission to replace its programme.
     if(!c.version)c.version=99;
+    mergeLegsIntoPump();
     settings.weeklyPlan={...N.split,...settings.weeklyPlan};
     state.dayType=N.typeFor(state.date);state.exercise=N.templateFor()[0]?.name||'';
     persist();

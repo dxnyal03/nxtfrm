@@ -104,12 +104,12 @@ const NXP = (() => {
     const nextLine=`Next session · ${N.label(N.typeFor(nextDate))} tomorrow`;
     const weekLogged=N.completedWeek();
     const weekStart=N.weekStart();
-    const weekShort={FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Rest:'Rest',Floorball:'FB',Push:'Push',Pull:'Pull',Legs:'Legs',Pump:'Legs+'};
+    const weekShort={FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Rest:'Rest',Floorball:'FB',Push:'Push',Pull:'Pull',Legs:'Legs',Pump:'Legs'};
     const weekStrip=`<div class="vn-week" role="list">${Array.from({length:7},(_,i)=>{
       const d=N.dateAdd(weekStart,i),t=N.typeFor(d),complete=work.some(row=>row.date===d),isToday=d===state.date;
       const short=weekShort[t]||String(t).slice(0,3);
       const day=Number.isFinite(N.dateMs(d))?new Date(N.dateMs(d)).toLocaleDateString('en-SG',{weekday:'narrow',timeZone:'UTC'}):['M','T','W','T','F','S','S'][i];
-      return `<button type="button" class="vn-week-c${isToday?' is-today':''}${liftDays(t)?' is-lift':''}" role="listitem" onclick="NXT.openDay('${d}')" aria-label="${esc(N.shortDate(d)+' · '+N.label(t))}" ${isToday?'aria-current="date"':''}><span class="vn-week-d">${esc(day)}</span><span class="vn-week-t">${esc(short)}</span><span class="vn-week-m" aria-hidden="true">${complete?'<i></i>':''}</span></button>`;
+      return `<button type="button" class="vn-week-c${isToday?' is-today':''}${liftDays(t)?' is-lift':''} is-k-${({FullA:'full',FullB:'full',FullC:'full',Push:'push',Pull:'pull',Legs:'legs',Pump:'legs',Zone2:'walk',Floorball:'fb',Rest:'rest'})[t]||(liftDays(t)?'full':'rest')}" role="listitem" onclick="NXT.openDay('${d}')" aria-label="${esc(N.shortDate(d)+' · '+N.label(t))}" ${isToday?'aria-current="date"':''}><span class="vn-week-d">${esc(day)}</span><span class="vn-week-t">${esc(short)}</span><span class="vn-week-m" aria-hidden="true">${complete?'<i></i>':''}</span></button>`;
     }).join('')}</div>`;
     function liftDays(t){return !['Rest','Zone2','Floorball'].includes(t);}
     const textAct=(label,fn,mute)=>`<button type="button" class="vn-text${mute?' is-mute':''}" onclick="${esc(fn)}">${label}</button>`;
@@ -125,9 +125,9 @@ const NXP = (() => {
           </div>
           ${logged?ringHTML(logged,sets,'sets','var(--st-lift)'):''}
         </div>
+        <div class="st-tweek st-tweek-top"><div class="st-tweek-h"><span>This week · ${weekLogged} lifting ${weekLogged===1?'day':'days'}</span>${textAct('Edit plan ›',"NXT.more('training')",true)}</div>${weekStrip}</div>
         <button type="button" class="st-cta" onclick="${esc(finished?"switchTab('train')":action)}">${esc(title)}<span aria-hidden="true">›</span></button>
         ${lastLiftLine?`<p class="st-meta st-mt2 st-center">${esc(lastLiftLine)}</p>`:''}
-        <div class="st-tweek"><div class="st-tweek-h"><span>This week · ${weekLogged} lifting ${weekLogged===1?'day':'days'}</span>${textAct('Edit plan ›',"NXT.more('training')",true)}</div>${weekStrip}</div>
       </article>`:`
       <article class="st-tile st-t-train" style="--c:${state.dayType==='Zone2'?'var(--st-cardio)':state.dayType==='Floorball'?'var(--st-floor)':'var(--st-rest)'}">
         <div class="st-tile-head"><span class="st-cat">Today</span>${textAct('Change','showSessionSheet()',true)}</div>
@@ -1525,7 +1525,7 @@ const NXP = (() => {
   function gyms(){const g=['Gym A','Gym B'];if(state.gym&&!g.includes(state.gym))g.push(state.gym);return g;}
   function routineGym(){return ui.routineGym||state.gym||'Gym A';}
   function daysFor(type){return DAY_ORDER.filter(d=>settings.weeklyPlan&&settings.weeklyPlan[d]===type).map(d=>DAY_SHORT[d]);}
-  function typeShort(t){return ({FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Floorball:'Floorball',Pump:'Legs+',Rest:'Rest'})[t]||N.label(t);}
+  function typeShort(t){return ({FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Floorball:'Floorball',Pump:'Legs',Rest:'Rest'})[t]||N.label(t);}
   function trainingView(){
     syncTrainNav(false);
     const gym=routineGym(),plan=settings.weeklyPlan||{};

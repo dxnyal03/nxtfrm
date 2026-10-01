@@ -1531,3 +1531,86 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 
 .st-slow{margin:0 0 16px}
 #weightPage .st-slow{font:450 14px/1.45 var(--st-font) !important;color:var(--st-ink-3) !important}
+.st-tweek-top{margin-top:16px;margin-bottom:14px}
+
+/* Week strip: a glass rail with a glowing today. Same markup; styling only. */
+#homePage .st-tweek{border-top:0;padding-top:0}
+#homePage .st-tweek-h{margin-bottom:10px}
+#homePage .st-tweek .vn-week{position:relative;padding:6px !important;gap:3px !important;border-radius:22px;
+  background:linear-gradient(160deg,rgba(255,255,255,.075),rgba(255,255,255,.02) 55%,rgba(124,77,255,.06));
+  -webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -10px 24px rgba(0,0,0,.18),0 8px 24px rgba(0,0,0,.22)}
+#homePage .st-tweek .vn-week::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
+  background:linear-gradient(150deg,rgba(255,255,255,.34),rgba(255,255,255,.05) 38%,rgba(177,138,255,.28));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+#homePage .st-tweek .vn-week-c{position:relative;border-radius:16px !important;background:transparent;box-shadow:none;transition:background .25s ease,box-shadow .25s ease}
+#homePage .st-tweek .vn-week-c:not(.is-lift) .vn-week-t{color:var(--st-ink-3) !important;font-weight:500 !important}
+#homePage .st-tweek .vn-week-c.is-lift .vn-week-t{color:var(--st-ink) !important}
+#homePage .st-tweek .vn-week-c.is-today{
+  background:linear-gradient(180deg,rgba(168,128,255,.46),rgba(98,58,228,.28)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.34),inset 0 0 0 1px rgba(196,166,255,.6),0 6px 22px rgba(124,77,255,.5),0 0 34px rgba(124,77,255,.28) !important}
+#homePage .st-tweek .vn-week-c.is-today .vn-week-d{color:#fff !important}
+#homePage .st-tweek .vn-week-c.is-today .vn-week-t{color:#fff !important;font-weight:650 !important}
+#homePage .st-tweek .vn-week-m i{width:6px;height:6px;background:var(--st-accent-lift,#b18aff);box-shadow:0 0 9px rgba(177,138,255,.9),0 0 2px #fff}
+@media (prefers-reduced-transparency:reduce){#homePage .st-tweek .vn-week{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(40,36,60,.9)}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){#homePage .st-tweek .vn-week{background:rgba(40,36,60,.85)}}
+@media (max-width:359px){#homePage .st-tweek .vn-week{padding:4px !important;gap:1px !important}}
+
+
+/* Week rail: roomier cells */
+#homePage .st-tweek .vn-week{padding:8px !important;gap:4px !important}
+#homePage .st-today .st-tweek .vn-week-c{min-height:72px !important;justify-content:center;gap:7px}
+#homePage .st-tweek .vn-week-m{height:6px}
+@media (max-width:359px){#homePage .st-tweek .vn-week{padding:6px !important;gap:2px !important}#homePage .st-today .st-tweek .vn-week-c{min-height:68px !important}}
+
+/* Week rail: every session type has its own hue, and always its own text label (never colour alone) */
+#homePage .st-tweek .vn-week-c{--k:#8b5cf6}
+#homePage .st-tweek .vn-week-c.is-k-full{--k:#8b5cf6}
+#homePage .st-tweek .vn-week-c.is-k-push{--k:#ff7b54}
+#homePage .st-tweek .vn-week-c.is-k-pull{--k:#4da3ff}
+#homePage .st-tweek .vn-week-c.is-k-legs{--k:#3ddc97}
+#homePage .st-tweek .vn-week-c.is-k-walk{--k:#2dd4d4}
+#homePage .st-tweek .vn-week-c.is-k-fb{--k:#f5c542}
+#homePage .st-tweek .vn-week-c.is-k-rest{--k:#8a879c}
+#homePage .st-tweek .vn-week-c:not(.is-k-rest):not(.is-today){background:linear-gradient(180deg,color-mix(in srgb,var(--k) 22%,transparent),color-mix(in srgb,var(--k) 6%,transparent));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--k) 32%,transparent)}
+#homePage .st-tweek .vn-week-c:not(.is-k-rest) .vn-week-t{color:color-mix(in srgb,var(--k) 42%,#fff) !important}
+#homePage .st-tweek .vn-week-c:not(.is-k-rest) .vn-week-d{color:color-mix(in srgb,var(--k) 70%,#9a97aa) !important}
+#homePage .st-tweek .vn-week-c.is-k-rest:not(.is-today){background:transparent;box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.05)}
+#homePage .st-tweek .vn-week-c.is-k-rest .vn-week-t{color:var(--st-ink-4,#6b6880) !important;font-weight:450 !important}
+#homePage .st-tweek .vn-week-c .vn-week-m i{background:var(--k);box-shadow:0 0 9px color-mix(in srgb,var(--k) 80%,transparent),0 0 2px #fff}
+/* Today keeps the glow, in its own hue */
+#homePage .st-tweek .vn-week-c.is-today{background:linear-gradient(180deg,color-mix(in srgb,var(--k) 55%,transparent),color-mix(in srgb,var(--k) 26%,transparent)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.34),inset 0 0 0 1px color-mix(in srgb,var(--k) 70%,#fff),0 6px 22px color-mix(in srgb,var(--k) 55%,transparent),0 0 34px color-mix(in srgb,var(--k) 30%,transparent) !important}
+#homePage .st-tweek .vn-week-c.is-today .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-d{color:#fff !important}
+
+/* ── Week rail polish: glossy cells, lit today, clearer done marker (D32) ── */
+#homePage .st-tweek .vn-week{
+  background:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.02) 55%,rgba(0,0,0,.18)),rgba(24,21,38,.55) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -12px 24px rgba(0,0,0,.22),0 14px 34px rgba(0,0,0,.35) !important;
+  padding:9px !important;gap:5px !important;border-radius:26px}
+#homePage .st-today .st-tweek .vn-week-c{min-height:86px !important;border-radius:18px !important;gap:9px;overflow:hidden;isolation:isolate}
+#homePage .st-tweek .vn-week-c::after{content:"";position:absolute;left:0;right:0;top:0;height:46%;z-index:-1;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.14),transparent);opacity:.9}
+#homePage .st-tweek .vn-week-c.is-k-rest::after{opacity:.25}
+#homePage .st-tweek .vn-week-d{font-size:11px !important;font-weight:700 !important;letter-spacing:.08em !important}
+#homePage .st-tweek .vn-week-t{font-size:13px !important;letter-spacing:-.01em}
+/* done marker: a lit bar along the base instead of a tiny dot */
+#homePage .st-tweek .vn-week-m{height:5px;width:100%;justify-content:center}
+#homePage .st-tweek .vn-week-c .vn-week-m i{width:60%;height:4px;border-radius:3px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--k) 70%,#fff),var(--k));
+  box-shadow:0 0 10px color-mix(in srgb,var(--k) 85%,transparent),0 0 2px #fff}
+/* today: lifted, brighter, with a soft halo */
+#homePage .st-tweek .vn-week-c.is-today{transform:translateY(-2px);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--k) 62%,#fff 6%),color-mix(in srgb,var(--k) 30%,transparent)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 0 0 1px color-mix(in srgb,var(--k) 60%,#fff),0 10px 26px color-mix(in srgb,var(--k) 55%,transparent),0 0 40px color-mix(in srgb,var(--k) 32%,transparent) !important}
+#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:13.5px !important}
+#homePage .st-tweek .vn-week-c.is-today .vn-week-m i{background:#fff;box-shadow:0 0 10px rgba(255,255,255,.9)}
+@media (prefers-reduced-motion:no-preference){#homePage .st-tweek .vn-week-c{transition:transform .25s ease,box-shadow .25s ease,background .25s ease}}
+@media (max-width:359px){#homePage .st-today .st-tweek .vn-week-c{min-height:76px !important}#homePage .st-tweek .vn-week-t{font-size:11.5px !important}}
+@media (max-width:359px){#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:10.5px !important;letter-spacing:-.03em}#homePage .st-tweek .vn-week{padding:7px !important;gap:3px !important}}
+
+/* Week rail: give the labels room (cells were ~37px wide and the text touched the edges) */
+#homePage .st-tweek .vn-week{margin-left:-10px !important;margin-right:-10px !important;padding:6px !important;gap:3px !important;border-radius:24px}
+#homePage .st-today .st-tweek .vn-week-c{min-height:78px !important;border-radius:15px !important;gap:8px;padding:0 2px !important}
+#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:12px !important;font-weight:600 !important;letter-spacing:0 !important;white-space:nowrap}
+#homePage .st-tweek .vn-week-c:not(.is-lift) .vn-week-t{font-weight:500 !important}
+@media (max-width:359px){#homePage .st-tweek .vn-week{margin-left:-8px !important;margin-right:-8px !important;padding:5px !important;gap:2px !important}#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:10.5px !important;letter-spacing:-.02em !important}#homePage .st-today .st-tweek .vn-week-c{min-height:70px !important}}
