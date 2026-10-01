@@ -1751,3 +1751,44 @@ button.st-dec-chip:active{transform:scale(.975)}
 @keyframes st-sweep{0%{opacity:1;background-position:120% 0}100%{opacity:0;background-position:-40% 0}}
 @keyframes st-watch{0%,100%{box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),0 0 0 0 rgba(184,132,42,0)}50%{box-shadow:inset 0 0 0 1px rgba(184,132,42,.45),0 0 26px rgba(184,132,42,.16)}}
 @media (prefers-reduced-motion:reduce){.st-rv{opacity:1;transform:none;transition:none}.st-ripple{display:none}}
+
+/* ── Canvas polish (D39) ───────────────────────────────────────────────────
+   Same aurora, more depth: a second field drifts the other way on a different clock so the light
+   never moves as one slab, a sparse dust of stars twinkles above it, a violet horizon sits under the
+   dock for the glass to refract, and the whole thing eases with scroll. Compositor-only motion. */
+html::before{
+  content:"";position:fixed;inset:-14%;z-index:-3;pointer-events:none;
+  background:
+    radial-gradient(30% 22% at 84% 64%,color-mix(in srgb,var(--st-a2) 85%,transparent),transparent 72%),
+    radial-gradient(34% 24% at 6% 58%,color-mix(in srgb,var(--st-a3) 90%,transparent),transparent 72%),
+    radial-gradient(26% 18% at 50% 8%,color-mix(in srgb,var(--st-a1) 55%,transparent),transparent 72%),
+    radial-gradient(1.3px 1.3px at 12% 18%,rgba(255,255,255,.75),transparent 60%),
+    radial-gradient(1px 1px at 31% 42%,rgba(210,195,255,.7),transparent 60%),
+    radial-gradient(1.4px 1.4px at 47% 12%,rgba(255,255,255,.6),transparent 60%),
+    radial-gradient(1px 1px at 63% 33%,rgba(255,255,255,.65),transparent 60%),
+    radial-gradient(1.3px 1.3px at 78% 21%,rgba(190,170,255,.75),transparent 60%),
+    radial-gradient(1px 1px at 91% 47%,rgba(255,255,255,.6),transparent 60%),
+    radial-gradient(1.2px 1.2px at 22% 71%,rgba(255,255,255,.55),transparent 60%),
+    radial-gradient(1px 1px at 56% 66%,rgba(210,195,255,.6),transparent 60%),
+    radial-gradient(1.3px 1.3px at 84% 83%,rgba(255,255,255,.6),transparent 60%),
+    radial-gradient(1px 1px at 40% 90%,rgba(190,170,255,.6),transparent 60%);
+  translate:0 calc(var(--st-sy,0) * -.035px);
+}
+/* horizon under the dock + a touch more depth at the top edge */
+body::after{
+  background:
+    radial-gradient(90% 26% at 50% 104%,rgba(139,92,246,.2),transparent 70%),
+    radial-gradient(120% 22% at 50% -6%,rgba(255,255,255,.035),transparent 70%),
+    radial-gradient(120% 80% at 50% 120%,rgba(0,0,0,.5),transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") !important;
+}
+body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
+@media (prefers-reduced-motion:no-preference){
+  html::before{animation:st-aurora-b 52s ease-in-out infinite alternate,st-dust 7s ease-in-out infinite alternate}
+}
+@keyframes st-aurora-b{
+  0%{transform:translate3d(0,0,0) scale(1.02) rotate(0deg)}
+  50%{transform:translate3d(-5vw,-3vh,0) scale(1.1) rotate(-5deg)}
+  100%{transform:translate3d(3vw,-5vh,0) scale(1.05) rotate(3deg)}
+}
+@keyframes st-dust{from{opacity:.78}to{opacity:1}}
