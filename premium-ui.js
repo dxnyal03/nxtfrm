@@ -109,7 +109,7 @@ const NXP = (() => {
       const d=N.dateAdd(weekStart,i),t=N.typeFor(d),complete=work.some(row=>row.date===d),isToday=d===state.date;
       const short=weekShort[t]||String(t).slice(0,3);
       const day=Number.isFinite(N.dateMs(d))?new Date(N.dateMs(d)).toLocaleDateString('en-SG',{weekday:'narrow',timeZone:'UTC'}):['M','T','W','T','F','S','S'][i];
-      return `<button type="button" class="vn-week-c${isToday?' is-today':''}${liftDays(t)?' is-lift':''}" role="listitem" onclick="NXT.openDay('${d}')" aria-label="${esc(N.shortDate(d)+' · '+N.label(t))}" ${isToday?'aria-current="date"':''}><span class="vn-week-d">${esc(day)}</span><span class="vn-week-t">${esc(short)}</span><span class="vn-week-m" aria-hidden="true">${complete?'<i></i>':''}</span></button>`;
+      return `<button type="button" class="vn-week-c${isToday?' is-today':''}${liftDays(t)?' is-lift':''} is-k-${({FullA:'full',FullB:'full',FullC:'full',Push:'push',Pull:'pull',Legs:'legs',Pump:'legs',Zone2:'walk',Floorball:'fb',Rest:'rest'})[t]||(liftDays(t)?'full':'rest')}" role="listitem" onclick="NXT.openDay('${d}')" aria-label="${esc(N.shortDate(d)+' · '+N.label(t))}" ${isToday?'aria-current="date"':''}><span class="vn-week-d">${esc(day)}</span><span class="vn-week-t">${esc(short)}</span><span class="vn-week-m" aria-hidden="true">${complete?'<i></i>':''}</span></button>`;
     }).join('')}</div>`;
     function liftDays(t){return !['Rest','Zone2','Floorball'].includes(t);}
     const textAct=(label,fn,mute)=>`<button type="button" class="vn-text${mute?' is-mute':''}" onclick="${esc(fn)}">${label}</button>`;
