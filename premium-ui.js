@@ -1477,8 +1477,9 @@ const NXP = (() => {
     const records=(state.logs||[]).length+(state.bws||[]).length;
     const stale=records>=10&&(age===null||age>30);
     const nearFull=pct>=70;
-    const sub=(nearFull?'Getting full \u2014 export a backup. ':pct+'% of roughly 5 MB. ')+'Backup: '+(ts?backupLabel()+(stale?' \u2014 over a month ago':''):'none recorded yet');
-    return {used,sub,tone:(nearFull||stale)?'watch':''};
+    const ph=scanPhotoStats();
+    const sub=(ph.bytes>262144?'Scan photos use '+(ph.bytes/1048576).toFixed(1)+' MB \u2014 open to remove them. ':nearFull?'Getting full \u2014 export a backup. ':pct+'% of roughly 5 MB. ')+'Backup: '+(ts?backupLabel()+(stale?' \u2014 over a month ago':''):'none recorded yet');
+    return {used,sub,tone:(nearFull||stale||ph.bytes>262144)?'watch':''};
   }
   function setRow(title,value,action,sub='',tone='') {
     return `<button type="button" class="vn-set-row" onclick="${esc(action)}">`
@@ -1813,6 +1814,24 @@ const NXP = (() => {
       label.setAttribute('for',field.id);
     });
   }
+  /* D30: scan photos are no longer stored. This removes the ones already saved;
+     the readings (weight, body fat, muscle, etc.) are kept. */
+  function scanPhotoStats(){
+    const withImg=(state.scans||[]).filter(x=>x&&typeof x.image==='string'&&x.image.length>0);
+    return {count:withImg.length,bytes:withImg.reduce((a,x)=>a+x.image.length,0)};
+  }
+  function removeScanPhotos(){
+    const st=scanPhotoStats();
+    if(!st.count)return toast('No scan photos are saved.');
+    const mb=(st.bytes/1048576).toFixed(1);
+    if(!confirm('Remove '+st.count+(st.count===1?' saved scan photo':' saved scan photos')+' ('+mb+' MB)?\n\nYour scan readings stay. The photos are deleted from this phone and from your online copy, and cannot be brought back. Export a backup first if you want to keep them.'))return;
+    const now=Date.now();
+    state.scans=state.scans.map(x=>(x&&typeof x.image==='string'&&x.image.length)?{...x,image:'',ts:now}:x);
+    const ok=N.commit('Scan photos removed · '+mb+' MB freed');
+    /* Replace the old recovery copy, which still holds the photos. */
+    try{N.snapshot('After removing scan photos',{quiet:true});}catch(e){}
+    if(ok)more();
+  }
   function dataView() {
     const settingsHTML=cloudCardHTML().replace(/>Online</g,'>Signed in<').replace(/>Connected</g,'>Signed in<').replace('Supabase Anon Public Key','Supabase publishable / anon key').replace('id="sbKey" class="input"','id="sbKey" type="password" autocomplete="off" class="input"');
     const cloud=cloudSignal();
@@ -1834,6 +1853,7 @@ const NXP = (() => {
         <details class="vn-set-disc nxp-advanced"><summary>Restore a backup</summary>${backupRestoreHTML()}</details>
         <details class="vn-set-disc nxp-advanced"><summary>Local safety copy</summary><p class="vn-set-body">Recovery copy made before a restore, cloud load or reset. It is not an independent backup.</p><div class="vn-set-actions"><button type="button" class="vn-set-act is-quiet" onclick="NXT.exportSafety()">Download safety copy</button><button type="button" class="vn-set-act is-quiet" onclick="NXT.restoreSafety()">Restore safety copy</button></div></details>
       </section>
+      ${(()=>{const st=scanPhotoStats();return st.count?`<section class="vn-set-block"><h2 class="vn-set-grp">Scan photos</h2><p class="vn-set-body">${st.count} saved ${st.count===1?'photo is':'photos are'} using ${(st.bytes/1048576).toFixed(1)} MB, most of your storage. Your scan readings are kept in the body views, so the photos are not needed.</p><div class="vn-set-actions"><button type="button" class="vn-set-act" onclick="NXP.removeScanPhotos()">Remove scan photos</button></div></section>`:'';})()}
       <section class="vn-set-block">
         <h2 class="vn-set-grp">Advanced</h2>
         <details class="vn-set-disc nxp-advanced"><summary>Advanced cloud setup</summary>${supabaseSQLHelpHTML()}</details>
@@ -2412,7 +2432,7 @@ const NXP = (() => {
   }
   bindSteppers();
   bindKeyboardDock();
-  return {nameSheet,saveName,ui,useAim,useTarget,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom};
+  return {removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;

@@ -4661,7 +4661,7 @@ function saveEvoScan(){
   const scan={
     id:uid(),
     date:val("scanDate")||draft.date||state.date,
-    image:state.currentScanImage||draft.image||"",
+    image:"", /* the reader uses the photo while you capture; it is no longer stored (D30) */
     weight:metrics.weight,
     bodyFat:metrics.bodyFat,
     muscleMass:metrics.muscleMass,
