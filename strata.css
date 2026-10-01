@@ -1671,3 +1671,10 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 @media (prefers-reduced-transparency:reduce){#homePage .st-tweek .vn-week{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(40,36,60,.9) !important}#homePage .st-tweek .vn-week-d{-webkit-backdrop-filter:none;backdrop-filter:none}}
 @media (max-width:359px){#homePage .st-tweek .vn-week{padding:10px 4px 8px !important}#homePage .st-tweek .vn-week::after{top:27px}}
 #homePage .st-tweek .vn-week::after{display:none}
+
+/* Week rail + day sheet: one type scale with the rest of Today (family, sizes, weights) */
+#homePage .st-tweek .vn-week-d{font-size:var(--fs-cap,12.5px) !important;font-weight:var(--fw-semi,600) !important}
+#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t,#homePage .st-tweek .vn-week-c.is-lift .vn-week-t,#homePage .st-tweek .vn-week-c:not(.is-lift) .vn-week-t,#homePage .st-tweek .vn-week-c.is-k-rest .vn-week-t{font-size:var(--fs-micro,11px) !important;font-weight:var(--fw-med,550) !important;letter-spacing:0 !important}
+#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-weight:var(--fw-semi,600) !important}
+.n99-picker button{font-weight:600}
+@media (max-width:359px){#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:10px !important;letter-spacing:-.02em !important}}
