@@ -1367,8 +1367,19 @@ Object.assign(NXT, (()=>{
     const r={sleep:sleep??'',energy:energy??'',soreness:soreness??'',date:state.date};state.read=r;N.cfg().recovery[state.date]=r;N.commit('Check-in saved');
   }
   function openDay(date) {
-    const current=N.typeFor(date);
-    N.modal(N.shortDate(date),`<p>${N.label(current)}. Moving a session swaps it with another date; it does not add an extra workout.</p><form onsubmit="event.preventDefault();NXT.moveDay('${date}')"><label>Move / swap with<input id="n99-move-date" type="date" min="${state.date}" required value="${N.dateAdd(state.date,1)}"></label><button class="n99-button" type="submit">Swap sessions</button></form>${date===state.date?N.button('Choose a different session','showSessionSheet()',true):''}`);
+    const current=N.typeFor(date),dow=new Date(N.dateMs(date)).getUTCDay(),dn=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][dow];
+    const logged=(state.logs||[]).some(r=>r.date===date);
+    N.modal(N.shortDate(date),`<p>${esc(N.label(current))}. Pick what this day should be.</p>${logged?'<p class="n99-small">This day already has logged sets, so it can’t be changed.</p>':`<div class="n99-picker">${N.typeNames().map(t=>N.button(N.label(t),`NXT.setDayType('${date}','${t}')`,t!==current)).join('')}</div><label class="n99-check"><input type="checkbox" id="n99-day-every"> Make every ${dn} this</label>`}${date===state.date?N.button('Choose a different session','showSessionSheet()',true):''}`);
+  }
+  function setDayType(date,type) {
+    if(!N.typeNames().includes(type))return;
+    if((state.logs||[]).some(r=>r.date===date))return toast('This day already has logged sets.');
+    const every=!!document.getElementById('n99-day-every')?.checked,dow=new Date(N.dateMs(date)).getUTCDay();
+    settings.dayOverrides=settings.dayOverrides||{};
+    if(every){settings.weeklyPlan=settings.weeklyPlan||{};settings.weeklyPlan[dow]=type;delete settings.dayOverrides[date];}
+    else settings.dayOverrides[date]=type;
+    state.dayType=N.typeFor(state.date);state.exercise=N.templateFor()[0]?.name||'';
+    N.commit(every?'Weekly plan updated':'Day updated');
   }
   function moveDay(from) {
     const to=val('n99-move-date');if(!Number.isFinite(N.dateMs(to))||to<state.date||to===from)return toast('Choose a different current or future date.');
@@ -1376,7 +1387,7 @@ Object.assign(NXT, (()=>{
     const a=N.typeFor(from),b=N.typeFor(to);settings.dayOverrides=settings.dayOverrides||{};settings.dayOverrides[from]=b;settings.dayOverrides[to]=a;
     state.dayType=N.typeFor(state.date);state.exercise=N.templateFor()[0]?.name||'';N.commit('Sessions swapped');
   }
-  return {sessionLogs,training,selectExercise,nextExercise,logSet,finish,openFinishSummary,resume,shorter,fullSession,undo,sessionPicker,chooseSession,cardioModal,saveCardio,cardioCard,recoveryDay,recoveryModal,saveRecovery,openDay,moveDay};
+  return {sessionLogs,training,selectExercise,nextExercise,logSet,finish,openFinishSummary,resume,shorter,fullSession,undo,sessionPicker,chooseSession,cardioModal,saveCardio,cardioCard,recoveryDay,recoveryModal,saveRecovery,openDay,setDayType,moveDay};
 })());
 
 Object.assign(NXT, (()=>{
@@ -1418,7 +1429,7 @@ Object.assign(NXT, (()=>{
     TARGET_LOW=lo;TARGET_HIGH=hi;settings.targetLow=lo;settings.targetHigh=hi;settings.goalLow=lo;settings.goalHigh=hi;N.cfg().targetConfirmed=true;N.commit('Goal range saved');
   }
   function programmeHTML() {
-    return N.card('Your weekly plan',`<p>Three full-body sessions, easy cardio between them, and a rest day. All routines remain editable.</p><form onsubmit="event.preventDefault();NXT.saveWeek()"><div class="n99-week-editor">${[1,2,3,4,5,6,0].map(d=>`<label>${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d]}<select id="n99-day-${d}">${N.typeNames().map(t=>`<option value="${t}" ${settings.weeklyPlan[d]===t?'selected':''}>${N.label(t)}</option>`).join('')}</select></label>`).join('')}</div><button type="submit" class="n99-button">Save weekly plan</button></form><p class="n99-small">Need to move a session? Tap its day on Home to swap dates without adding extra work.</p>`)+N.card('Saved workouts',`<p>Edits apply to future sessions at the selected gym. Logged history and current workout queues are preserved.</p><button class="n99-chip" onclick="cycleGym()">${esc(state.gym)} · switch gym</button><div class="n99-stack">${['FullA','FullB','FullC'].map(t=>N.button(`${N.label(t)} · ${N.templateFor(t).length} exercises`,`NXT.editTemplate('${t}')`,true)).join('')}</div><details><summary>Other saved routines</summary><div class="n99-stack">${['Push','Pull','Pump','Legs'].map(t=>N.button(N.label(t),`NXT.editTemplate('${t}')`,true)).join('')}</div></details>`)+`<details class="n99-card"><summary>Gym names & equipment</summary>${gymSettingsHTML()}</details>`+N.card('Programme defaults',`<p>Restore the A/B/C weekly rhythm or return to the weekly plan saved before this upgrade.</p><div class="n99-stack">${N.button('Use A/B/C weekly rhythm','NXT.restoreWeek(false)',true)}${N.button('Use my previous weekly plan','NXT.restoreWeek(true)',true)}</div>`);
+    return N.card('Your weekly plan',`<p>Three full-body sessions, easy cardio between them, and a rest day. All routines remain editable.</p><form onsubmit="event.preventDefault();NXT.saveWeek()"><div class="n99-week-editor">${[1,2,3,4,5,6,0].map(d=>`<label>${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d]}<select id="n99-day-${d}">${N.typeNames().map(t=>`<option value="${t}" ${settings.weeklyPlan[d]===t?'selected':''}>${N.label(t)}</option>`).join('')}</select></label>`).join('')}</div><button type="submit" class="n99-button">Save weekly plan</button></form><p class="n99-small">Tap any day on Home to change what it is.</p>`)+N.card('Saved workouts',`<p>Edits apply to future sessions at the selected gym. Logged history and current workout queues are preserved.</p><button class="n99-chip" onclick="cycleGym()">${esc(state.gym)} · switch gym</button><div class="n99-stack">${['FullA','FullB','FullC'].map(t=>N.button(`${N.label(t)} · ${N.templateFor(t).length} exercises`,`NXT.editTemplate('${t}')`,true)).join('')}</div><details><summary>Other saved routines</summary><div class="n99-stack">${['Push','Pull','Pump','Legs'].map(t=>N.button(N.label(t),`NXT.editTemplate('${t}')`,true)).join('')}</div></details>`)+`<details class="n99-card"><summary>Gym names & equipment</summary>${gymSettingsHTML()}</details>`+N.card('Programme defaults',`<p>Restore the A/B/C weekly rhythm or return to the weekly plan saved before this upgrade.</p><div class="n99-stack">${N.button('Use A/B/C weekly rhythm','NXT.restoreWeek(false)',true)}${N.button('Use my previous weekly plan','NXT.restoreWeek(true)',true)}</div>`);
   }
   function saveWeek() {
     const plan={};for(let i=0;i<7;i++){const t=val('n99-day-'+i);if(!N.typeNames().includes(t))return toast('Choose a session for every day.');plan[i]=t;}
