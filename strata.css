@@ -1581,3 +1581,29 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 /* Today keeps the glow, in its own hue */
 #homePage .st-tweek .vn-week-c.is-today{background:linear-gradient(180deg,color-mix(in srgb,var(--k) 55%,transparent),color-mix(in srgb,var(--k) 26%,transparent)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.34),inset 0 0 0 1px color-mix(in srgb,var(--k) 70%,#fff),0 6px 22px color-mix(in srgb,var(--k) 55%,transparent),0 0 34px color-mix(in srgb,var(--k) 30%,transparent) !important}
 #homePage .st-tweek .vn-week-c.is-today .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-d{color:#fff !important}
+
+/* ── Week rail polish: glossy cells, lit today, clearer done marker (D32) ── */
+#homePage .st-tweek .vn-week{
+  background:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.02) 55%,rgba(0,0,0,.18)),rgba(24,21,38,.55) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -12px 24px rgba(0,0,0,.22),0 14px 34px rgba(0,0,0,.35) !important;
+  padding:9px !important;gap:5px !important;border-radius:26px}
+#homePage .st-today .st-tweek .vn-week-c{min-height:86px !important;border-radius:18px !important;gap:9px;overflow:hidden;isolation:isolate}
+#homePage .st-tweek .vn-week-c::after{content:"";position:absolute;left:0;right:0;top:0;height:46%;z-index:-1;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.14),transparent);opacity:.9}
+#homePage .st-tweek .vn-week-c.is-k-rest::after{opacity:.25}
+#homePage .st-tweek .vn-week-d{font-size:11px !important;font-weight:700 !important;letter-spacing:.08em !important}
+#homePage .st-tweek .vn-week-t{font-size:13px !important;letter-spacing:-.01em}
+/* done marker: a lit bar along the base instead of a tiny dot */
+#homePage .st-tweek .vn-week-m{height:5px;width:100%;justify-content:center}
+#homePage .st-tweek .vn-week-c .vn-week-m i{width:60%;height:4px;border-radius:3px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--k) 70%,#fff),var(--k));
+  box-shadow:0 0 10px color-mix(in srgb,var(--k) 85%,transparent),0 0 2px #fff}
+/* today: lifted, brighter, with a soft halo */
+#homePage .st-tweek .vn-week-c.is-today{transform:translateY(-2px);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--k) 62%,#fff 6%),color-mix(in srgb,var(--k) 30%,transparent)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 0 0 1px color-mix(in srgb,var(--k) 60%,#fff),0 10px 26px color-mix(in srgb,var(--k) 55%,transparent),0 0 40px color-mix(in srgb,var(--k) 32%,transparent) !important}
+#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:13.5px !important}
+#homePage .st-tweek .vn-week-c.is-today .vn-week-m i{background:#fff;box-shadow:0 0 10px rgba(255,255,255,.9)}
+@media (prefers-reduced-motion:no-preference){#homePage .st-tweek .vn-week-c{transition:transform .25s ease,box-shadow .25s ease,background .25s ease}}
+@media (max-width:359px){#homePage .st-today .st-tweek .vn-week-c{min-height:76px !important}#homePage .st-tweek .vn-week-t{font-size:11.5px !important}}
+@media (max-width:359px){#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:10.5px !important;letter-spacing:-.03em}#homePage .st-tweek .vn-week{padding:7px !important;gap:3px !important}}
