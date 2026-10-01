@@ -539,6 +539,42 @@ const NXP = (() => {
   }
   /* Real outcomes only — progressed/maintained/below appear solely when each
      exercise has a previous session to compare against. No invented score. */
+  /* Finish moments (D27). Everything here is derived from the logs on the fly:
+     nothing is stored, no score is invented. A moment only appears when it is true. */
+  function sessionMoments(){
+    const out=[];
+    const working=N.sessionLogs().filter(r=>r.setType!=='warmup');
+    const byEx={};working.forEach(r=>{(byEx[r.exercise]=byEx[r.exercise]||[]).push(r);});
+    const rows=N.workRows(),prior=rows.filter(r=>r.date<state.date);
+    const bests=[];
+    Object.entries(byEx).forEach(([name,sets])=>{
+      const hist=prior.filter(r=>(r.exercise||r.name)===name&&Number(r.weight)>0);
+      if(!hist.length)return;
+      const a=N.bestSet(sets),b=N.bestSet(hist);
+      if(!a||!b)return;
+      const dw=Number(a.weight)-Number(b.weight),dr=Number(a.reps)-Number(b.reps);
+      if(dw>0||(dw===0&&dr>0))bests.push({name,a,dw,dr});
+    });
+    bests.sort((x,y)=>y.dw-x.dw||y.dr-x.dr).slice(0,2).forEach(x=>out.push({k:'best',t:`New best · ${x.name} ${trimNum(x.a.weight)} kg × ${x.a.reps}`}));
+    const days=new Set(rows.filter(r=>r.date<=state.date).map(r=>r.date)).size;
+    if(days===10||days===25||days===75||(days>=50&&days%50===0))out.push({k:'count',t:`Workout ${days} logged`});
+    /* Streak: consecutive weeks (Mon–Sun) with at least as many lifting days
+       logged as the current plan has. The current week counts once it is met. */
+    const planned=Object.values(settings.weeklyPlan||{}).filter(t=>!['Rest','Zone2','Floorball'].includes(t)).length;
+    if(planned>0){
+      const perWeek={};
+      new Set(rows.map(r=>r.date)).forEach(d=>{const w=N.weekStart(d);perWeek[w]=(perWeek[w]||0)+1;});
+      let w=N.weekStart(),streak=0;
+      if((perWeek[w]||0)>=planned)streak=1;
+      for(let i=0;i<104;i++){w=N.dateAdd(w,-7);if((perWeek[w]||0)>=planned)streak+=1;else break;}
+      if(streak>=2)out.push({k:'streak',t:`${streak} weeks in a row hitting your lifting days`});
+    }
+    return out;
+  }
+  function momentsHTML(){
+    const m=sessionMoments();
+    return m.length?`<ul class="st-moments" aria-label="Highlights">${m.map(x=>`<li class="is-${x.k}"><i aria-hidden="true"></i><span>${esc(x.t)}</span></li>`).join('')}</ul>`:'';
+  }
   function sessionOutcomeHTML() {
     const working=N.sessionLogs().filter(r=>r.setType!=='warmup');
     const byEx={};
@@ -627,6 +663,7 @@ const NXP = (() => {
           <div class="st-done-badge" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="21"/><path d="M15 24.5l6 6 12-13"/></svg></div>
           <span class="st-cat">Workout saved</span>
           <h2 class="st-h2 st-mt2">${esc(N.label(state.dayType))} · ${esc(state.gym||'Gym')}</h2>
+          ${momentsHTML()}
           ${sessionOutcomeHTML()}
           ${muscleMapHTML([...new Set(N.sessionLogs().filter(r=>r.setType!=='warmup').map(r=>r.exercise))],'What you trained','')}
           <div class="st-done-acts"><button type="button" class="st-cta" onclick="NXP.sessionSummary()">View session<span aria-hidden="true">›</span></button><button type="button" class="st-ghost" onclick="NXT.resume()">Resume workout</button></div>
