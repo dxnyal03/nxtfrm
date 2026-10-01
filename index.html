@@ -2621,28 +2621,45 @@ textarea:disabled {
 <!-- Presentation layers load in <head> so the first paint is already NXTFRM V109.
      These were previously <link>ed at the end of <body>, which let the legacy
      in-head CSS paint the old chrome before the current styles arrived. -->
-<link rel="stylesheet" href="cut-support.css?v=130">
-<link rel="stylesheet" href="premium-ui.css?v=130">
-<link rel="stylesheet" href="vnext.css?v=130">
-<link rel="stylesheet" href="strata.css?v=130">
+<link rel="stylesheet" href="cut-support.css?v=131">
+<link rel="stylesheet" href="premium-ui.css?v=131">
+<link rel="stylesheet" href="vnext.css?v=131">
+<link rel="stylesheet" href="strata.css?v=131">
 
 </head>
 <body>
 <script>
-/* Launch greeting: once per app launch, about a second, tap to skip. Display only. */
+/* Launch screen: the N draws itself, the tip flares, the greeting settles in, then it
+   lifts away. Once per app launch, tap to skip. Display only; no effect on data. */
 (function(){try{
   if(sessionStorage.getItem('nxSplash'))return;sessionStorage.setItem('nxSplash','1');
   var st={};try{st=JSON.parse(localStorage.getItem('apm_settings')||'{}')||{};}catch(e){}
   var n=st.name===undefined?'Dan':String(st.name||'').trim(),hr=new Date().getHours();
   var part=hr<5?'Late night':hr<12?'Morning':hr<18?'Afternoon':'Evening';
+  var reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
   var el=document.createElement('div');el.id='nxSplash';el.setAttribute('aria-hidden','true');
-  el.innerHTML='<img src="logo-mark.svg" alt="" width="64" height="64"><p></p>';
-  el.lastChild.textContent=n?part+', '+n:part;
+  el.innerHTML='<i class="nxs-glow"></i><svg class="nxs-mark" viewBox="96 84 320 340" width="132" height="140"><defs><linearGradient id="nxsv" gradientUnits="userSpaceOnUse" x1="140" y1="400" x2="400" y2="110"><stop offset="0" stop-color="#7c4dff"/><stop offset=".6" stop-color="#b18aff"/><stop offset="1" stop-color="#f1e9ff"/></linearGradient></defs><path class="nxs-n" pathLength="1" d="M146 378V134L366 378V134" fill="none" stroke="url(#nxsv)" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/><circle class="nxs-ring" cx="366" cy="134" r="14" fill="none" stroke="#e9ddff" stroke-width="3"/><circle class="nxs-tip" cx="366" cy="134" r="12" fill="#fff"/></svg><p class="nxs-hi"></p><small class="nxs-wm">NXTFRM</small>';
+  el.querySelector('.nxs-hi').textContent=n?part+', '+n:part;
   var css=document.createElement('style');
-  css.textContent='#nxSplash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#0a0a0f;color:#f2f2f7;transition:opacity .45s ease}#nxSplash p{margin:0;font:600 22px/1.2 -apple-system,system-ui,sans-serif;letter-spacing:-.02em}#nxSplash.is-out{opacity:0;pointer-events:none}@media (prefers-reduced-motion:reduce){#nxSplash{transition:none}}';
+  css.textContent='#nxSplash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#08080d;color:#f2f2f7;overflow:hidden;transition:opacity .55s ease,transform .55s cubic-bezier(.2,.7,.2,1),filter .55s ease}'
+   +'#nxSplash.is-out{opacity:0;transform:scale(1.06);filter:blur(6px);pointer-events:none}'
+   +'#nxSplash .nxs-glow{position:absolute;left:50%;top:44%;width:120vmax;height:120vmax;margin:-60vmax 0 0 -60vmax;background:radial-gradient(closest-side,rgba(124,77,255,.38),rgba(124,77,255,.12) 38%,transparent 70%);opacity:0;transform:scale(.4);animation:nxs-bloom 1.3s cubic-bezier(.2,.7,.2,1) .05s forwards}'
+   +'#nxSplash .nxs-mark{position:relative;overflow:visible;filter:drop-shadow(0 0 22px rgba(140,92,255,.6))}'
+   +'#nxSplash .nxs-n{stroke-dasharray:1;stroke-dashoffset:1;animation:nxs-draw .85s cubic-bezier(.65,0,.2,1) .15s forwards}'
+   +'#nxSplash .nxs-tip{opacity:0;transform-box:fill-box;transform-origin:center;animation:nxs-pop .45s cubic-bezier(.2,1.4,.4,1) .95s forwards}'
+   +'#nxSplash .nxs-ring{opacity:0;transform-box:fill-box;transform-origin:center;animation:nxs-ring .8s ease-out .95s forwards}'
+   +'#nxSplash .nxs-hi{position:relative;margin:10px 0 0;font:600 24px/1.2 -apple-system,system-ui,sans-serif;letter-spacing:.08em;opacity:0;transform:translateY(10px);filter:blur(6px);animation:nxs-in .7s cubic-bezier(.2,.7,.2,1) 1.05s forwards}'
+   +'#nxSplash .nxs-wm{position:relative;font:600 11px/1 -apple-system,system-ui,sans-serif;letter-spacing:.42em;color:#9a8bd0;opacity:0;animation:nxs-wm .6s ease 1.3s forwards}'
+   +'@keyframes nxs-draw{to{stroke-dashoffset:0}}'
+   +'@keyframes nxs-bloom{to{opacity:1;transform:scale(1)}}'
+   +'@keyframes nxs-pop{0%{opacity:0;transform:scale(.2)}100%{opacity:1;transform:scale(1)}}'
+   +'@keyframes nxs-ring{0%{opacity:.8;transform:scale(1)}100%{opacity:0;transform:scale(4.2)}}'
+   +'@keyframes nxs-in{to{opacity:1;transform:none;filter:none;letter-spacing:-.01em}}'
+   +'@keyframes nxs-wm{to{opacity:.85}}'
+   +'@media (prefers-reduced-motion:reduce){#nxSplash,#nxSplash *{animation:none!important;transition:none!important}#nxSplash .nxs-glow{opacity:.7;transform:none}#nxSplash .nxs-n{stroke-dashoffset:0}#nxSplash .nxs-tip{opacity:1}#nxSplash .nxs-hi{opacity:1;transform:none;filter:none;letter-spacing:-.01em}#nxSplash .nxs-wm{opacity:.85}#nxSplash .nxs-ring{display:none}}';
   document.head.appendChild(css);document.body.appendChild(el);
-  var gone=function(){el.classList.add('is-out');setTimeout(function(){el.remove();},500);};
-  el.addEventListener('click',gone);setTimeout(gone,matchMedia('(prefers-reduced-motion:reduce)').matches?400:1000);
+  var gone=function(){el.classList.add('is-out');setTimeout(function(){el.remove();},600);};
+  el.addEventListener('click',gone);setTimeout(gone,reduce?500:1900);
 }catch(e){}})();
 </script>
 <div class="toast" id="toast"></div>
@@ -7910,25 +7927,25 @@ document.addEventListener("focusout",function(e){
 },true);
 </script>
 
-<script src="cut-support.js?v=130"></script>
-<script src="wearables.js?v=130"></script>
-<script src="wearables.adapters.js?v=130"></script>
-<script src="wearables.ingest.js?v=130"></script>
-<script src="wearables.canonical.js?v=130"></script>
-<script src="wearables.days.js?v=130"></script>
-<script src="wearables.snapshots.js?v=130"></script>
-<script src="wearables.resolution.js?v=130"></script>
-<script src="wearables.recovery.js?v=130"></script>
-<script src="wearables.recovery-integration.js?v=130"></script>
-<script src="wearables.training-readiness.js?v=130"></script>
-<script src="wearables.store.js?v=130"></script>
-<script src="wearables.provider-garmin.js?v=130"></script>
-<script src="wearables.sync.js?v=130"></script>
-<script src="train-anatomy.js?v=130"></script>
-<script src="premium-ui.js?v=130"></script>
-<script src="strata.js?v=130"></script>
-<script src="seed.dev.js?v=130"></script>
-<script src="seed.scenarios.js?v=130"></script>
+<script src="cut-support.js?v=131"></script>
+<script src="wearables.js?v=131"></script>
+<script src="wearables.adapters.js?v=131"></script>
+<script src="wearables.ingest.js?v=131"></script>
+<script src="wearables.canonical.js?v=131"></script>
+<script src="wearables.days.js?v=131"></script>
+<script src="wearables.snapshots.js?v=131"></script>
+<script src="wearables.resolution.js?v=131"></script>
+<script src="wearables.recovery.js?v=131"></script>
+<script src="wearables.recovery-integration.js?v=131"></script>
+<script src="wearables.training-readiness.js?v=131"></script>
+<script src="wearables.store.js?v=131"></script>
+<script src="wearables.provider-garmin.js?v=131"></script>
+<script src="wearables.sync.js?v=131"></script>
+<script src="train-anatomy.js?v=131"></script>
+<script src="premium-ui.js?v=131"></script>
+<script src="strata.js?v=131"></script>
+<script src="seed.dev.js?v=131"></script>
+<script src="seed.scenarios.js?v=131"></script>
 <script>
 (function loadWearableFixturesDevOnly(){
   var host=String(location.hostname||"");
