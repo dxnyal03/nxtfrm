@@ -711,6 +711,13 @@ const STRATA = (() => {
       io.observe(el);
     });
   }
+
+  /* Scroll position feeds the canvas parallax (a CSS variable, so no per-frame layout). */
+  function bindParallax() {
+    let raf = 0;
+    const set = () => { raf = 0; document.documentElement.style.setProperty("--st-sy", String(Math.round(window.scrollY || 0))); };
+    window.addEventListener("scroll", () => { if (!raf && !reduced()) raf = requestAnimationFrame(set); }, { passive: true });
+  }
   function bindRipple() {
     const SEL = ".st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row,.st-dec-chip";
     document.addEventListener("pointerdown", e => {
@@ -786,6 +793,7 @@ const STRATA = (() => {
     bindIcons();
     bindHold();
     bindRipple();
+    bindParallax();
     ['input','click','pointerup'].forEach(ev=>document.addEventListener(ev,e=>{ if(e.target&&e.target.closest&&e.target.closest('#trainPage .st-entry,#trainPage .st-refc,#trainPage .nxp-seg'))setTimeout(syncVs,0); },true));
     document.addEventListener("pointerup", e => {
       const w = e.target && e.target.closest && e.target.closest("#vn-chart-wrap");
