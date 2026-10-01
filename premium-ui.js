@@ -53,6 +53,20 @@ const NXP = (() => {
     const ts=Number(N.cfg().backupExportRequestedAt);
     return ts?new Date(ts).toLocaleDateString('en-SG',{day:'numeric',month:'short'}):'No export recorded';
   }
+  /* Greeting. The name is a plain display string in settings (default "Dan");
+     it never feeds a calculation. Time of day comes from the device clock. */
+  function userName(){const n=typeof settings.name==='string'?settings.name.trim():'';return settings.name===undefined?'Dan':n;}
+  function greeting(){
+    const h=new Date().getHours(),part=h<5?'Late night':h<12?'Morning':h<18?'Afternoon':'Evening',n=userName();
+    return n?`${part}, ${n}`:part;
+  }
+  function nameSheet(){
+    N.modal('Your name',`<form onsubmit="event.preventDefault();NXP.saveName()"><label>What should the app call you?<input id="nxp-name" type="text" maxlength="24" autocomplete="given-name" autocapitalize="words" value="${esc(userName())}"></label><p class="n99-small">Shown in the greeting on Today. Leave it empty for no name.</p><button type="submit" class="n99-button">Save</button></form>`);
+  }
+  function saveName(){
+    const v=(document.getElementById('nxp-name')?.value||'').replace(/\s+/g,' ').trim().slice(0,24);
+    settings.name=v;N.commit('Name saved');
+  }
   function home() {
     applyAppearance();
     syncTrainNav(false);
@@ -140,8 +154,8 @@ const NXP = (() => {
       <div class="vn-pad">
         <header class="st-head">
           <div>
-            <p class="st-eyebrow">${esc(weekday)}</p>
-            <h1 class="st-h1">${esc(dateLine)}</h1>
+            <p class="st-eyebrow">${esc(weekday)} · ${esc(dateLine)}</p>
+            <h1 class="st-h1">${esc(greeting())}</h1>
           </div>
           ${lift?`<button type="button" class="st-chip" onclick="cycleGym()">${esc(state.gym||'Gym')}<span aria-hidden="true">⇄</span></button>`:''}
         </header>
@@ -1613,7 +1627,8 @@ const NXP = (() => {
         +setRow('Training',lifts+(lifts===1?' lifting day':' lifting days'),"NXT.more('training')",'Weekly plan, saved workouts and gyms')
         +setRow('Cardio & recovery',(Number(settings.zone2WeeklyTarget)||90)+' min / week',"NXT.more('coach')",'Weekly minutes and recovery check-ins'))}
       ${setGroup('Preferences',
-        setRow('Appearance',look,"NXT.more('appearance')",'Text size and motion')
+        setRow('Your name',userName()||'Not set',"NXP.nameSheet()",'Used in the greeting on Today')
+        +setRow('Appearance',look,"NXT.more('appearance')",'Text size and motion')
         +setRow('Reminders',state.notifs?.enabled?'On':'Off',"NXT.more('notifications')",'Weigh-in, cardio and backup prompts'))}
       ${setGroup('Body',
         setRow('Body & scans',waist?waist+(waist===1?' waist entry':' waist entries'):'None yet',"NXT.more('body')",'Evo scans and measurements'))}
@@ -2300,7 +2315,7 @@ const NXP = (() => {
   }
   bindSteppers();
   bindKeyboardDock();
-  return {ui,useAim,useTarget,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom};
+  return {nameSheet,saveName,ui,useAim,useTarget,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;
