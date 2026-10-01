@@ -1614,3 +1614,30 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 #homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:12px !important;font-weight:600 !important;letter-spacing:0 !important;white-space:nowrap}
 #homePage .st-tweek .vn-week-c:not(.is-lift) .vn-week-t{font-weight:500 !important}
 @media (max-width:359px){#homePage .st-tweek .vn-week{margin-left:-8px !important;margin-right:-8px !important;padding:5px !important;gap:2px !important}#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:10.5px !important;letter-spacing:-.02em !important}#homePage .st-today .st-tweek .vn-week-c{min-height:70px !important}}
+
+/* Week rail v2 — "timeline": a ring per day on a thin line, label underneath (D34) */
+#homePage .st-tweek .vn-week{margin-left:0 !important;margin-right:0 !important;padding:2px 0 0 !important;gap:0 !important;border-radius:0;
+  background:none !important;box-shadow:none !important;-webkit-backdrop-filter:none;backdrop-filter:none;position:relative}
+#homePage .st-tweek .vn-week::before{inset:auto;left:7%;right:7%;top:21px;height:2px;padding:0;border-radius:2px;-webkit-mask:none;mask:none;
+  background:linear-gradient(90deg,#ff7b54,#4da3ff,#2dd4d4,#3ddc97,#8b5cf6,#f5c542,#8a879c);opacity:.28}
+#homePage .st-today .st-tweek .vn-week-c{min-height:0 !important;padding:0 !important;border-radius:0 !important;background:none !important;box-shadow:none !important;transform:none;
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:7px;overflow:visible;position:relative}
+#homePage .st-tweek .vn-week-c::after{display:none}
+#homePage .st-tweek .vn-week-c:not(.is-k-rest):not(.is-today),#homePage .st-tweek .vn-week-c.is-k-rest:not(.is-today){background:none !important;box-shadow:none !important}
+#homePage .st-tweek .vn-week-d{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:14px !important;font-weight:700 !important;letter-spacing:0 !important;
+  background:color-mix(in srgb,var(--k) 16%,#14121f);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1.5px color-mix(in srgb,var(--k) 55%,transparent);
+  color:color-mix(in srgb,var(--k) 55%,#fff) !important}
+#homePage .st-tweek .vn-week-c.is-k-rest .vn-week-d{background:#14121f;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.1);color:var(--st-ink-4,#6b6880) !important}
+#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:11px !important;font-weight:600 !important;letter-spacing:0 !important;white-space:nowrap}
+#homePage .st-tweek .vn-week-c.is-today .vn-week-d{transform:scale(1.14);color:#fff !important;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--k) 85%,#fff 8%),color-mix(in srgb,var(--k) 55%,#000));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 0 3px color-mix(in srgb,var(--k) 28%,transparent),0 8px 22px color-mix(in srgb,var(--k) 60%,transparent),0 0 30px color-mix(in srgb,var(--k) 38%,transparent) !important}
+/* done: a small check badge on the ring */
+#homePage .st-tweek .vn-week-m{position:absolute;top:-3px;right:calc(50% - 26px);height:16px;width:16px;display:block}
+#homePage .st-tweek .vn-week-c .vn-week-m i{width:16px;height:16px;border-radius:50%;background:var(--k);box-shadow:0 0 0 2px #14121f,0 0 10px color-mix(in srgb,var(--k) 80%,transparent);position:relative}
+#homePage .st-tweek .vn-week-c .vn-week-m i::after{content:"";position:absolute;left:5px;top:3.5px;width:4px;height:7px;border:solid #0d0b16;border-width:0 2px 2px 0;transform:rotate(40deg)}
+#homePage .st-tweek .vn-week-c.is-today .vn-week-m i{background:#fff}
+@media (max-width:359px){#homePage .st-tweek .vn-week-d{width:34px;height:34px;font-size:12.5px !important}#homePage .st-tweek .vn-week::before{top:18px}#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:10px !important;letter-spacing:-.02em !important}#homePage .st-tweek .vn-week-m{right:calc(50% - 22px)}}
+#homePage .st-tweek .vn-week-m{top:-2px;right:calc(50% - 20px);width:14px;height:14px}
+#homePage .st-tweek .vn-week-c .vn-week-m i{width:14px;height:14px}
+#homePage .st-tweek .vn-week-c .vn-week-m i::after{left:4.5px;top:2.5px}
