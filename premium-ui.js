@@ -53,6 +53,20 @@ const NXP = (() => {
     const ts=Number(N.cfg().backupExportRequestedAt);
     return ts?new Date(ts).toLocaleDateString('en-SG',{day:'numeric',month:'short'}):'No export recorded';
   }
+  /* Greeting. The name is a plain display string in settings (default "Dan");
+     it never feeds a calculation. Time of day comes from the device clock. */
+  function userName(){const n=typeof settings.name==='string'?settings.name.trim():'';return settings.name===undefined?'Dan':n;}
+  function greeting(){
+    const h=new Date().getHours(),part=h<5?'Late night':h<12?'Morning':h<18?'Afternoon':'Evening',n=userName();
+    return n?`${part}, ${n}`:part;
+  }
+  function nameSheet(){
+    N.modal('Your name',`<form onsubmit="event.preventDefault();NXP.saveName()"><label>What should the app call you?<input id="nxp-name" type="text" maxlength="24" autocomplete="given-name" autocapitalize="words" value="${esc(userName())}"></label><p class="n99-small">Shown in the greeting on Today. Leave it empty for no name.</p><button type="submit" class="n99-button">Save</button></form>`);
+  }
+  function saveName(){
+    const v=(document.getElementById('nxp-name')?.value||'').replace(/\s+/g,' ').trim().slice(0,24);
+    settings.name=v;N.commit('Name saved');
+  }
   function home() {
     applyAppearance();
     syncTrainNav(false);
@@ -140,8 +154,8 @@ const NXP = (() => {
       <div class="vn-pad">
         <header class="st-head">
           <div>
-            <p class="st-eyebrow">${esc(weekday)}</p>
-            <h1 class="st-h1">${esc(dateLine)}</h1>
+            <p class="st-eyebrow">${esc(weekday)} · ${esc(dateLine)}</p>
+            <h1 class="st-h1">${esc(greeting())}</h1>
           </div>
           ${lift?`<button type="button" class="st-chip" onclick="cycleGym()">${esc(state.gym||'Gym')}<span aria-hidden="true">⇄</span></button>`:''}
         </header>
@@ -525,6 +539,42 @@ const NXP = (() => {
   }
   /* Real outcomes only — progressed/maintained/below appear solely when each
      exercise has a previous session to compare against. No invented score. */
+  /* Finish moments (D27). Everything here is derived from the logs on the fly:
+     nothing is stored, no score is invented. A moment only appears when it is true. */
+  function sessionMoments(){
+    const out=[];
+    const working=N.sessionLogs().filter(r=>r.setType!=='warmup');
+    const byEx={};working.forEach(r=>{(byEx[r.exercise]=byEx[r.exercise]||[]).push(r);});
+    const rows=N.workRows(),prior=rows.filter(r=>r.date<state.date);
+    const bests=[];
+    Object.entries(byEx).forEach(([name,sets])=>{
+      const hist=prior.filter(r=>(r.exercise||r.name)===name&&Number(r.weight)>0);
+      if(!hist.length)return;
+      const a=N.bestSet(sets),b=N.bestSet(hist);
+      if(!a||!b)return;
+      const dw=Number(a.weight)-Number(b.weight),dr=Number(a.reps)-Number(b.reps);
+      if(dw>0||(dw===0&&dr>0))bests.push({name,a,dw,dr});
+    });
+    bests.sort((x,y)=>y.dw-x.dw||y.dr-x.dr).slice(0,2).forEach(x=>out.push({k:'best',t:`New best · ${x.name} ${trimNum(x.a.weight)} kg × ${x.a.reps}`}));
+    const days=new Set(rows.filter(r=>r.date<=state.date).map(r=>r.date)).size;
+    if(days===10||days===25||days===75||(days>=50&&days%50===0))out.push({k:'count',t:`Workout ${days} logged`});
+    /* Streak: consecutive weeks (Mon–Sun) with at least as many lifting days
+       logged as the current plan has. The current week counts once it is met. */
+    const planned=Object.values(settings.weeklyPlan||{}).filter(t=>!['Rest','Zone2','Floorball'].includes(t)).length;
+    if(planned>0){
+      const perWeek={};
+      new Set(rows.map(r=>r.date)).forEach(d=>{const w=N.weekStart(d);perWeek[w]=(perWeek[w]||0)+1;});
+      let w=N.weekStart(),streak=0;
+      if((perWeek[w]||0)>=planned)streak=1;
+      for(let i=0;i<104;i++){w=N.dateAdd(w,-7);if((perWeek[w]||0)>=planned)streak+=1;else break;}
+      if(streak>=2)out.push({k:'streak',t:`${streak} weeks in a row hitting your lifting days`});
+    }
+    return out;
+  }
+  function momentsHTML(){
+    const m=sessionMoments();
+    return m.length?`<ul class="st-moments" aria-label="Highlights">${m.map(x=>`<li class="is-${x.k}"><i aria-hidden="true"></i><span>${esc(x.t)}</span></li>`).join('')}</ul>`:'';
+  }
   function sessionOutcomeHTML() {
     const working=N.sessionLogs().filter(r=>r.setType!=='warmup');
     const byEx={};
@@ -613,6 +663,7 @@ const NXP = (() => {
           <div class="st-done-badge" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="21"/><path d="M15 24.5l6 6 12-13"/></svg></div>
           <span class="st-cat">Workout saved</span>
           <h2 class="st-h2 st-mt2">${esc(N.label(state.dayType))} · ${esc(state.gym||'Gym')}</h2>
+          ${momentsHTML()}
           ${sessionOutcomeHTML()}
           ${muscleMapHTML([...new Set(N.sessionLogs().filter(r=>r.setType!=='warmup').map(r=>r.exercise))],'What you trained','')}
           <div class="st-done-acts"><button type="button" class="st-cta" onclick="NXP.sessionSummary()">View session<span aria-hidden="true">›</span></button><button type="button" class="st-ghost" onclick="NXT.resume()">Resume workout</button></div>
@@ -1112,6 +1163,66 @@ const NXP = (() => {
   }
   function sessionMenu() {N.modal('Session options',row('Session',N.label(state.dayType),'showSessionSheet()')+row('Gym',state.gym,'closeModal();cycleGym()')+row('Equipment note',v88NoteFor(state.exercise)?'Saved':'Add note','NXP.equipmentNote()')+row('Recovery','Check-in','apx96OpenReadiness()')+row('Shorter session','First 3 exercises','NXT.shorter()')+row('Full session','Restore queue','NXT.fullSession()')+button('Finish workout','NXT.finish()',true));}
   function equipmentNote() {v88OpenNoteModal(state.exercise);}
+  /* Weight highlights (D28): facts read straight from the weigh-ins, shown only
+     when true — a new lowest reading, and weeks of falling averages in a row.
+     No score, nothing stored. */
+  function weightHighlights(){
+    const rows=N.weights().filter(r=>r.date<=state.date&&Number.isFinite(Number(r.weight)));
+    const out=[];
+    if(rows.length>=5){
+      const last=rows.at(-1),min=Math.min(...rows.map(r=>Number(r.weight)));
+      const ago=Math.round((N.dateMs(state.date)-N.dateMs(last.date))/864e5);
+      if(Number(last.weight)<=min&&ago<=7&&rows.slice(0,-1).some(r=>Number(r.weight)>min))out.push({k:'low',t:`Lowest weigh-in yet · ${Number(last.weight).toFixed(1)} kg`});
+    }
+    const byWeek=new Map();
+    rows.forEach(r=>{const w=N.weekStart(r.date),a=byWeek.get(w)||[];a.push(Number(r.weight));byWeek.set(w,a);});
+    const avgs=[...byWeek.entries()].sort((a,b)=>a[0].localeCompare(b[0])).filter(([,a])=>a.length>=3).map(([,a])=>a.reduce((x,y)=>x+y,0)/a.length);
+    let down=0;
+    for(let i=avgs.length-1;i>0&&avgs[i]<avgs[i-1];i--)down+=1;
+    if(down>=2)out.push({k:'down',t:`${down} weeks of falling averages in a row`});
+    return out;
+  }
+  /* "Down so far": the same facts the Cut journey card uses (start weight, current
+     trend, goal range), brought to the top. Only when a goal is confirmed. */
+  function downSoFarHTML(){
+    if(!N.cfg().targetConfirmed)return '';
+    const rows=N.weights(),start=N.finite(typeof START_WEIGHT!=='undefined'?START_WEIGHT:null);
+    const seed=start!==null?start:(rows[0]?rows[0].weight:null);
+    const pl=N.detectPlateau(rows),cur=N.finite(pl.lastAvg)!==null?pl.lastAvg:(rows.at(-1)?rows.at(-1).weight:null);
+    const hi=typeof goalHigh==='function'?Number(goalHigh()):NaN;
+    if(seed===null||cur===null||!Number.isFinite(hi))return '';
+    const done=seed-cur,remain=Math.max(0,cur-hi);
+    if(done<=0)return '';
+    return `<p class="st-down"><b class="vn-num">${done.toFixed(1)} kg</b> down${remain>0?` · <b class="vn-num">${remain.toFixed(1)} kg</b> to your goal range`:' · in your goal range'}</p>`;
+  }
+  function weeklyAvgs(){
+    const rows=N.weights().filter(r=>r.date<=state.date&&Number.isFinite(Number(r.weight)));
+    const by=new Map();
+    rows.forEach(r=>{const w=N.weekStart(r.date),a=by.get(w)||[];a.push(Number(r.weight));by.set(w,a);});
+    return [...by.entries()].sort((a,b)=>a[0].localeCompare(b[0])).filter(([,a])=>a.length>=3).map(([w,a])=>({week:w,avg:a.reduce((x,y)=>x+y,0)/a.length}));
+  }
+  /* A flat or up week, said plainly with the real numbers. Shown only when this
+     week's average is above last week's AND the longer trend is still down. */
+  function slowWeekHTML(){
+    const w=weeklyAvgs();
+    if(w.length<2)return '';
+    const cur=w.at(-1),prev=w.at(-2);
+    if(cur.week!==N.weekStart()||prev.week!==N.dateAdd(cur.week,-7))return '';
+    const up=cur.avg-prev.avg,pl=N.detectPlateau(),rate=N.finite(pl&&pl.weeklyRate);
+    if(!(up>=0.05)||rate===null||!(rate<0))return '';
+    return `<p class="st-slow">This week’s average is ${up.toFixed(1)} kg above last week. Your trend is still down ${Math.abs(rate).toFixed(2)} kg a week. Daily weight moves around; the trend is what counts.</p>`;
+  }
+  /* The projection already says "~N weeks to goal"; this adds the date it points to. */
+  function withGoalDate(html){
+    const f=N.cfg().targetConfirmed?N.forecastGoal():null;
+    if(!f||!f.ok||!(f.weeks>0))return html;
+    const d=N.shortDate(N.dateAdd(state.date,f.weeks*7));
+    return html.replace(/(~\d+ weeks? to goal(?: \(range \d+–\d+\))?)/,`$1 · around ${d}`);
+  }
+  function weightHighlightsHTML(){
+    const h=weightHighlights();
+    return h.length?`<ul class="st-wchips" aria-label="Highlights">${h.map(x=>`<li class="is-${x.k}"><i aria-hidden="true"></i><span>${esc(x.t)}</span></li>`).join('')}</ul>`:'';
+  }
   function progress() {
     applyAppearance();
     syncTrainNav(false);
@@ -1134,7 +1245,7 @@ const NXP = (() => {
     }
     /* Phase 2C — Weight owns its layout inside chartHTML (trajectory + journey).
        TDEE and weigh-in history are demoted below, not deleted. */
-    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${N.chartHTML()}<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details><button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${N.weights().length} readings</span></span><span class="vn-chev">›</span></button></div>`;
+    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${withGoalDate(N.chartHTML()).replace('<div class="vn-mhead"',downSoFarHTML()+weightHighlightsHTML()+slowWeekHTML()+'<div class="vn-mhead"')}<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details><button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${N.weights().length} readings</span></span><span class="vn-chev">›</span></button></div>`;
   }
   function syncLatestControl() {
     const btn=document.getElementById('nxp-progress-latest');
@@ -1613,7 +1724,8 @@ const NXP = (() => {
         +setRow('Training',lifts+(lifts===1?' lifting day':' lifting days'),"NXT.more('training')",'Weekly plan, saved workouts and gyms')
         +setRow('Cardio & recovery',(Number(settings.zone2WeeklyTarget)||90)+' min / week',"NXT.more('coach')",'Weekly minutes and recovery check-ins'))}
       ${setGroup('Preferences',
-        setRow('Appearance',look,"NXT.more('appearance')",'Text size and motion')
+        setRow('Your name',userName()||'Not set',"NXP.nameSheet()",'Used in the greeting on Today')
+        +setRow('Appearance',look,"NXT.more('appearance')",'Text size and motion')
         +setRow('Reminders',state.notifs?.enabled?'On':'Off',"NXT.more('notifications')",'Weigh-in, cardio and backup prompts'))}
       ${setGroup('Body',
         setRow('Body & scans',waist?waist+(waist===1?' waist entry':' waist entries'):'None yet',"NXT.more('body')",'Evo scans and measurements'))}
@@ -2300,7 +2412,7 @@ const NXP = (() => {
   }
   bindSteppers();
   bindKeyboardDock();
-  return {ui,useAim,useTarget,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom};
+  return {nameSheet,saveName,ui,useAim,useTarget,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;

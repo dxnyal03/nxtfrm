@@ -1506,3 +1506,28 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 #trainPage .st-coach .st-coach-k{font-size:12px !important;font-weight:590 !important;line-height:1 !important}
 #trainPage .st-coach .st-coach-hint{font-size:11.5px !important;line-height:1 !important}
 #trainPage .st-coach .st-coach-n{font-size:13.5px !important;line-height:1.4 !important}
+
+
+/* D27 finish moments: quiet, factual, only when true */
+.st-moments{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.st-moments li{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(var(--st-hl),.05);font:520 14px/1.3 var(--st-font);color:var(--st-ink)}
+.st-moments li i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--st-accent);box-shadow:0 0 10px var(--st-accent)}
+.st-moments li.is-best i{background:var(--st-lean);box-shadow:0 0 10px var(--st-lean)}
+.st-moments li.is-streak{color:var(--st-ink-2)}
+#trainPage .st-moments li{text-align:left !important}
+#trainPage .st-moments li span{font:520 14px/1.3 var(--st-font) !important;text-align:left !important;color:inherit !important}
+
+
+/* D28 weight highlights */
+.st-wchips{list-style:none;margin:14px 0 18px;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.st-wchips li{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(var(--st-hl),.06);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.08)}
+.st-wchips li i{flex:none;width:7px;height:7px;border-radius:50%;background:var(--st-accent);box-shadow:0 0 8px var(--st-accent)}
+.st-wchips li.is-low i{background:var(--st-lean);box-shadow:0 0 8px var(--st-lean)}
+#weightPage .st-wchips li span{font:550 13px/1.2 var(--st-font) !important;color:var(--st-ink) !important;text-transform:none !important;letter-spacing:0 !important}
+
+.st-down{margin:12px 0 0}
+#weightPage .st-down,#weightPage .st-down b{font:520 15px/1.35 var(--st-font) !important;color:var(--st-ink-2) !important}
+#weightPage .st-down b{font-weight:640 !important;color:var(--st-ink) !important}
+
+.st-slow{margin:0 0 16px}
+#weightPage .st-slow{font:450 14px/1.45 var(--st-font) !important;color:var(--st-ink-3) !important}

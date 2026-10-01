@@ -2621,13 +2621,30 @@ textarea:disabled {
 <!-- Presentation layers load in <head> so the first paint is already NXTFRM V109.
      These were previously <link>ed at the end of <body>, which let the legacy
      in-head CSS paint the old chrome before the current styles arrived. -->
-<link rel="stylesheet" href="cut-support.css?v=123">
-<link rel="stylesheet" href="premium-ui.css?v=123">
-<link rel="stylesheet" href="vnext.css?v=123">
-<link rel="stylesheet" href="strata.css?v=123">
+<link rel="stylesheet" href="cut-support.css?v=128">
+<link rel="stylesheet" href="premium-ui.css?v=128">
+<link rel="stylesheet" href="vnext.css?v=128">
+<link rel="stylesheet" href="strata.css?v=128">
 
 </head>
 <body>
+<script>
+/* Launch greeting: once per app launch, about a second, tap to skip. Display only. */
+(function(){try{
+  if(sessionStorage.getItem('nxSplash'))return;sessionStorage.setItem('nxSplash','1');
+  var st={};try{st=JSON.parse(localStorage.getItem('apm_settings')||'{}')||{};}catch(e){}
+  var n=st.name===undefined?'Dan':String(st.name||'').trim(),hr=new Date().getHours();
+  var part=hr<5?'Late night':hr<12?'Morning':hr<18?'Afternoon':'Evening';
+  var el=document.createElement('div');el.id='nxSplash';el.setAttribute('aria-hidden','true');
+  el.innerHTML='<img src="logo-mark.svg" alt="" width="64" height="64"><p></p>';
+  el.lastChild.textContent=n?part+', '+n:part;
+  var css=document.createElement('style');
+  css.textContent='#nxSplash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#0a0a0f;color:#f2f2f7;transition:opacity .45s ease}#nxSplash p{margin:0;font:600 22px/1.2 -apple-system,system-ui,sans-serif;letter-spacing:-.02em}#nxSplash.is-out{opacity:0;pointer-events:none}@media (prefers-reduced-motion:reduce){#nxSplash{transition:none}}';
+  document.head.appendChild(css);document.body.appendChild(el);
+  var gone=function(){el.classList.add('is-out');setTimeout(function(){el.remove();},500);};
+  el.addEventListener('click',gone);setTimeout(gone,matchMedia('(prefers-reduced-motion:reduce)').matches?400:1000);
+}catch(e){}})();
+</script>
 <div class="toast" id="toast"></div>
 <div id="modalRoot"></div>
 
@@ -7881,25 +7898,25 @@ document.addEventListener("focusout",function(e){
 },true);
 </script>
 
-<script src="cut-support.js?v=123"></script>
-<script src="wearables.js?v=123"></script>
-<script src="wearables.adapters.js?v=123"></script>
-<script src="wearables.ingest.js?v=123"></script>
-<script src="wearables.canonical.js?v=123"></script>
-<script src="wearables.days.js?v=123"></script>
-<script src="wearables.snapshots.js?v=123"></script>
-<script src="wearables.resolution.js?v=123"></script>
-<script src="wearables.recovery.js?v=123"></script>
-<script src="wearables.recovery-integration.js?v=123"></script>
-<script src="wearables.training-readiness.js?v=123"></script>
-<script src="wearables.store.js?v=123"></script>
-<script src="wearables.provider-garmin.js?v=123"></script>
-<script src="wearables.sync.js?v=123"></script>
-<script src="train-anatomy.js?v=123"></script>
-<script src="premium-ui.js?v=123"></script>
-<script src="strata.js?v=123"></script>
-<script src="seed.dev.js?v=123"></script>
-<script src="seed.scenarios.js?v=123"></script>
+<script src="cut-support.js?v=128"></script>
+<script src="wearables.js?v=128"></script>
+<script src="wearables.adapters.js?v=128"></script>
+<script src="wearables.ingest.js?v=128"></script>
+<script src="wearables.canonical.js?v=128"></script>
+<script src="wearables.days.js?v=128"></script>
+<script src="wearables.snapshots.js?v=128"></script>
+<script src="wearables.resolution.js?v=128"></script>
+<script src="wearables.recovery.js?v=128"></script>
+<script src="wearables.recovery-integration.js?v=128"></script>
+<script src="wearables.training-readiness.js?v=128"></script>
+<script src="wearables.store.js?v=128"></script>
+<script src="wearables.provider-garmin.js?v=128"></script>
+<script src="wearables.sync.js?v=128"></script>
+<script src="train-anatomy.js?v=128"></script>
+<script src="premium-ui.js?v=128"></script>
+<script src="strata.js?v=128"></script>
+<script src="seed.dev.js?v=128"></script>
+<script src="seed.scenarios.js?v=128"></script>
 <script>
 (function loadWearableFixturesDevOnly(){
   var host=String(location.hostname||"");
