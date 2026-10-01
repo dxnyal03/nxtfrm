@@ -633,7 +633,7 @@ const NXP = (() => {
     };
     const m=typeof NXTLIB!=='undefined'?NXTLIB.musclesFor(ex):{primary:[],secondary:[]};
     const fig=(typeof NXTANAT!=='undefined'&&m.primary.length)?NXTANAT.figure({primary:m.primary,secondary:m.secondary,view:NXTANAT.viewFor(m.primary,[]),crop:false}):'';
-    const aimText=aim?(aim.kind==='load'?`+${trimNum(aim.weight-Number(prev.weight))} kg · next increment`:aim.kind==='rep'?'One more rep':'Match your best'):'Set a baseline';
+    const aimText=aim?(aim.kind==='load'?`+${trimNum(aim.weight-Number(prev.weight))} kg · next increment`:aim.kind==='rep'?(/^Under /.test(aim.why||'')?aim.why:'One more rep'):(aim.why||'Match your best')):'Set a baseline';
     const restPct=restLeft&&(ui.restTotal||restPlan)?Math.max(0,Math.min(100,restLeft/(ui.restTotal||restPlan)*100)):0;
     /* Set chips: warm-ups, then one chip per planned working set (extras are
        appended). Logged chips open the same edit sheet as before. */

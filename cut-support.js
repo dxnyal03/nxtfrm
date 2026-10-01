@@ -547,8 +547,8 @@ const NXT = (() => {
     const best=bestSet(last.sets);if(!best)return null;
     const c=cue(ex),w=Number(best.weight),n=Number(best.reps);
     if(Number(c.weight)>w)return {best,date:last.date,weight:Number(c.weight),reps:t.reps[0],kind:"load"};
-    if(n<t.reps[1])return {best,date:last.date,weight:w,reps:n+1,kind:"rep"};
-    return {best,date:last.date,weight:w,reps:n,kind:"match"};
+    if(n<t.reps[1])return {best,date:last.date,weight:w,reps:n+1,kind:"rep",why:c.why||""};
+    return {best,date:last.date,weight:w,reps:n,kind:"match",why:c.why||""};
   }
   function cue(ex) {
     const t=targetFor(ex),all=sessionRows(ex,state.gym,state.date,100),last=all.at(-1),prev=all.at(-2);
@@ -561,10 +561,17 @@ const NXT = (() => {
         /* Top-set double progression (D20): a session "tops out" when its best
            set, at this load, reached the top of the rep range. */
         const top=s=>{const b=s&&bestSet(s.sets);return !!b&&Number(b.weight)===weight&&Number(b.reps)>=t.reps[1];};
+        /* D24: going past the top of the range is proof on its own; exactly reaching it still needs a second session. */
+        const over=s=>{const b=s&&bestSet(s.sets);return !!b&&Number(b.weight)===weight&&Number(b.reps)>t.reps[1];};
         const effortOkay=last.sets.every(r=>r.rir===null||r.rir===undefined||r.rir===""||Number(r.rir)>=2);
         const r=cfg().recovery[state.date],tired=r&&(Number(r.energy)<=2&&r.energy!==""||Number(r.soreness)>=4);
-        if(!tired&&top(last)&&top(prev)&&effortOkay&&Number(t.inc)>0)out={label:"Ready to consider an increase",weight:weight+Number(t.inc),text:"You reached the top of the rep range in two sessions. Use the next increment only if today’s warm-up feels controlled."};
-        else out={label:tired?"Keep today manageable":"Hold load · build clean reps",weight,text:tired?"Your check-in suggests fatigue. Keep the session manageable; use the shorter option if needed.":"Match your recent load within the rep range. Maintaining performance while cutting counts; an increase is optional."};
+        const earned=top(last)&&(top(prev)||over(last)),step=Number(t.inc)>0;
+        if(!tired&&earned&&effortOkay&&step)out={label:"Ready to consider an increase",weight:weight+Number(t.inc),text:over(last)&&!top(prev)?"You went past the top of the rep range last time. Use the next increment only if today’s warm-up feels controlled.":"You reached the top of the rep range in two sessions. Use the next increment only if today’s warm-up feels controlled."};
+        else {
+          const lb=bestSet(last.sets),lowReps=lb&&Number(lb.reps)<t.reps[0];
+          const why=tired?"Tired today · hold":earned&&!effortOkay?"Low reserve · hold":earned&&!step?"No kg step set":top(last)?"Top once · repeat to add":lowReps?`Under ${t.reps[0]} · rebuild`:"";
+          out={label:tired?"Keep today manageable":"Hold load · build clean reps",weight,why,text:tired?"Your check-in suggests fatigue. Keep the session manageable; use the shorter option if needed.":"Match your recent load within the rep range. Maintaining performance while cutting counts; an increase is optional."};
+        }
       }
     }
     logSuggestion({kind:"progression",subject:ex||null,payload:{weight:out.weight,label:out.label,action:suggestionAction(out.label)}});
