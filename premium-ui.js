@@ -307,15 +307,15 @@ const NXP = (() => {
     let cells='';
     for(let i=0;i<35;i++){
       const d=N.dateAdd(start,i),fut=d>state.date,dn=Number(d.slice(8,10));
-      const marks=(work.has(d)?'<i class="m-lift"></i>':'')+(cardio.has(d)?'<i class="m-cardio"></i>':'')+(floor.has(d)?'<i class="m-floor"></i>':'');
-      const any=work.has(d)||cardio.has(d)||floor.has(d);
+      const marks=(work.has(d)?'<i class="m-lift"></i>':'')+(cardio.has(d)?'<i class="m-cardio"></i>':'');
+      const any=work.has(d)||cardio.has(d);
       cells+=`<span class="st-cal-d${fut?' is-fut':''}${d===state.date?' is-today':''}${any?' is-active':''}${weigh.has(d)?' is-w':''}" style="--i:${i}"><em>${dn===1?esc(N.shortDate(d)):dn}</em><span class="st-cal-m">${marks}</span></span>`;
     }
     const n=[...work].filter(d=>d>=start&&d<=state.date).length;
     return `<button type="button" class="st-tile st-t-cal" style="--c:var(--st-cardio)" onclick="switchTab('history')">
       <div class="st-tile-head"><span class="st-cat">Last 5 weeks</span><span class="st-meta">${n} lifting ${n===1?'day':'days'}</span></div>
       <div class="st-cal">${dows.map(x=>`<span class="st-cal-h">${x}</span>`).join('')}${cells}</div>
-      <div class="st-cal-k"><span><i class="m-lift"></i>Lifting</span><span><i class="m-cardio"></i>Cardio</span><span><i class="m-floor"></i>Floorball</span><span><i class="m-w"></i>Weigh-in</span></div>
+      <div class="st-cal-k"><span><i class="m-lift"></i>Lifting</span><span><i class="m-cardio"></i>Cardio</span><span><i class="m-w"></i>Weigh-in</span></div>
     </button>`;
   }
   function bodyTileHTML() {
@@ -1964,14 +1964,14 @@ const NXP = (() => {
     return {
       lift:scope.lift&&r.logs.length>0,
       cardio:scope.cond&&r.cardio.length>0,
-      floorball:scope.cond&&r.floorball.length>0,
+      floorball:false,/* floorball is no longer drawn on the calendar; the records stay in the day detail */
       body:scope.body&&!!r.bw
     };
   }
   function historyMonthDates(month,scope) {
     const seen=new Set(),add=arr=>(arr||[]).forEach(r=>{const d=r&&r.date;if(typeof d==='string'&&d.startsWith(month)&&Number.isFinite(N.dateMs(d)))seen.add(d);});
     if(scope.lift)add(state.logs);
-    if(scope.cond){add(state.cardio);add(state.floorball);}
+    if(scope.cond){add(state.cardio);}
     if(scope.body)add(state.bws);
     return [...seen].sort();
   }
@@ -2025,7 +2025,7 @@ const NXP = (() => {
       const label=new Date(`${key}T12:00:00`).toLocaleDateString('en-SG',{day:'numeric',month:'long'})+(kinds.length?`, ${kinds.join(', ')}`:', no records');
       cells.push(`<button type="button" class="${cls.join(' ')}" data-date="${key}" data-k="${kind}"${second?` data-k2="${second}"`:''} style="--i:${i}" aria-label="${esc(label)}" aria-pressed="${key===selected?'true':'false'}"${key===today?' aria-current="date"':''} onclick="NXP.historySelect('${key}')"><b${d===1?' class="is-m1"':''}>${d===1?d+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]:d}</b><span class="nxp-cal-marks" aria-hidden="true">${historyMarkHTML(marks)}</span></button>`);
     }
-    return `<section class="nxp-history-calendar vn-hist-calendar" id="vn-hist-calendar"><div class="nxp-cal-head" id="vn-hist-calhead"><h2 class="nxp-cal-month" aria-label="${esc(title)}"><span>${esc(monthName)}</span> <em>${yearNum}</em></h2><div class="nxp-cal-nav"><button type="button" aria-label="Previous month" onclick="NXP.historyShiftMonth(-1)">‹</button><button type="button" class="nxp-cal-today" aria-label="Jump to current month" onclick="NXP.historyThisMonth()">Today</button><button type="button" aria-label="Next month" onclick="NXP.historyShiftMonth(1)">›</button></div></div><div class="nxp-cal-weekdays" aria-hidden="true">${['M','T','W','T','F','S','S'].map(x=>`<span>${x}</span>`).join('')}</div><div class="nxp-cal-grid" id="vn-hist-grid">${cells.join('')}</div><p class="nxp-cal-legend st-cal-stats" aria-label="This month">${scope.lift?`<span class="lift${counts.lift?'':' is-zero'}"><i></i>Lifting<b>${counts.lift}</b></span>`:''}${scope.cond?`<span class="cond${counts.cardio?'':' is-zero'}"><i></i>Cardio<b>${counts.cardio}</b></span><span class="floor${counts.floor?'':' is-zero'}"><i></i>Floorball<b>${counts.floor}</b></span>`:''}${scope.body?`<span class="body${counts.body?'':' is-zero'}"><i></i>Weigh-in<b>${counts.body}</b></span>`:''}</p></section>`;
+    return `<section class="nxp-history-calendar vn-hist-calendar" id="vn-hist-calendar"><div class="nxp-cal-head" id="vn-hist-calhead"><h2 class="nxp-cal-month" aria-label="${esc(title)}"><span>${esc(monthName)}</span> <em>${yearNum}</em></h2><div class="nxp-cal-nav"><button type="button" aria-label="Previous month" onclick="NXP.historyShiftMonth(-1)">‹</button><button type="button" class="nxp-cal-today" aria-label="Jump to current month" onclick="NXP.historyThisMonth()">Today</button><button type="button" aria-label="Next month" onclick="NXP.historyShiftMonth(1)">›</button></div></div><div class="nxp-cal-weekdays" aria-hidden="true">${['M','T','W','T','F','S','S'].map(x=>`<span>${x}</span>`).join('')}</div><div class="nxp-cal-grid" id="vn-hist-grid">${cells.join('')}</div><p class="nxp-cal-legend st-cal-stats" aria-label="This month">${scope.lift?`<span class="lift${counts.lift?'':' is-zero'}"><i></i>Lifting<b>${counts.lift}</b></span>`:''}${scope.cond?`<span class="cond${counts.cardio?'':' is-zero'}"><i></i>Cardio<b>${counts.cardio}</b></span>`:''}${scope.body?`<span class="body${counts.body?'':' is-zero'}"><i></i>Weigh-in<b>${counts.body}</b></span>`:''}</p></section>`;
   }
   function historyLiftingBlock(date,logs) {
     const order=[],groups=new Map();
