@@ -646,7 +646,7 @@ const NXP = (() => {
             ${pillTxt?`<span class="st-coach-pill">${esc(pillTxt)}</span>`:''}
           </div>
           <p class="st-coach-n">${esc(coach.note)}</p>
-          ${coach.sets&&coach.sets.length?`<div class="st-coach-sets" role="group" aria-label="Target for each set">${coach.sets.map((x,k)=>`<button type="button" class="st-cs${setType==='working'&&k===done?' is-now':''}${k<done?' is-done':''}" onclick="NXP.useTarget(${k})" aria-label="Set ${x.n}: ${tg(x.weight)} kilograms for ${x.reps} reps. Tap to fill"><small>Set ${x.n}</small><b class="vn-num">${tg(x.weight)} × ${x.reps}</b></button>`).join('')}</div><p class="st-coach-hint">Tap a set to fill</p>`:''}
+          ${coach.sets&&coach.sets.length?`<div class="st-coach-sets" role="group" aria-label="Target for each set">${coach.sets.map((x,k)=>`<button type="button" class="st-cs${setType==='working'&&k===done?' is-now':''}${k<done?' is-done':''}" onclick="NXP.useTarget(${k})" aria-label="Set ${x.n}: ${tg(x.weight)} kilograms for ${x.reps} reps. Tap to fill"><small>Set ${x.n}</small><b class="vn-num">${tg(x.weight)} × ${x.reps}</b></button>`).join('')}</div>`:''}
         </section>`:'';
     const restPct=restLeft&&(ui.restTotal||restPlan)?Math.max(0,Math.min(100,restLeft/(ui.restTotal||restPlan)*100)):0;
     /* Set chips: warm-ups, then one chip per planned working set (extras are

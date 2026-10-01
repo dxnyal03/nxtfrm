@@ -1460,28 +1460,28 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);}
 .st-refc.is-aim{background:linear-gradient(160deg,rgba(139,92,246,.30),rgba(139,92,246,.10) 60%,rgba(255,255,255,.04));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 14px 30px -18px rgba(109,40,217,.75)}
-.st-coach{display:flex;flex-direction:column;gap:10px;margin:12px 0 0;padding:16px;border:0;border-radius:22px;box-sizing:border-box;overflow:hidden;
+.st-coach{display:flex;flex-direction:column;gap:8px;margin:10px 0 0;padding:13px 14px;border:0;border-radius:20px;box-sizing:border-box;overflow:hidden;
   color:var(--st-ink);font-family:var(--st-font);
   background:radial-gradient(90% 120% at 100% 0%,rgba(139,92,246,.30),transparent 60%),radial-gradient(70% 90% at 0% 100%,rgba(60,200,230,.07),transparent 65%),linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.03) 55%,rgba(255,255,255,.05));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 22px 44px -26px rgba(109,40,217,.8),0 2px 6px -2px rgba(0,0,0,.4)}
 .st-coach::after{content:"";position:absolute;left:-20%;right:-20%;top:0;height:46%;z-index:-1;pointer-events:none;
   background:linear-gradient(180deg,rgba(255,255,255,.07),transparent);transform:skewY(-6deg);transform-origin:top left}
-.st-coach-top{display:flex;align-items:center;gap:12px}
-.st-coach-ico{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:13px;color:#E3D8FF;
+.st-coach-top{display:flex;align-items:center;gap:10px}
+.st-coach-ico{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:11px;color:#E3D8FF;
   background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(139,92,246,.22));box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 8px 18px -8px rgba(139,92,246,.9)}
-.st-coach-ico svg{width:20px;height:20px;fill:currentColor}
+.st-coach-ico svg{width:17px;height:17px;fill:currentColor}
 .st-coach-tt{flex:1;min-width:0}
-.st-coach-k{margin:0 0 3px;font:590 12px/1 var(--st-font);color:#CBB8FF;letter-spacing:.01em}
-.st-coach-h{margin:0;font:590 19px/1.15 var(--st-font);letter-spacing:-.02em;color:var(--st-ink);
+.st-coach-k{margin:0 0 2px;font:590 12px/1 var(--st-font);color:#CBB8FF;letter-spacing:.01em}
+.st-coach-h{margin:0;font:590 17px/1.15 var(--st-font);letter-spacing:-.02em;color:var(--st-ink);
   background:linear-gradient(180deg,#fff,#D9CCFF);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.st-coach-pill{flex:none;padding:6px 11px;border-radius:999px;font:590 12.5px/1 var(--st-font);letter-spacing:-.01em;white-space:nowrap;color:#E3D8FF;
+.st-coach-pill{flex:none;padding:5px 10px;border-radius:999px;font:590 12.5px/1 var(--st-font);letter-spacing:-.01em;white-space:nowrap;color:#E3D8FF;
   background:rgba(139,92,246,.22);box-shadow:inset 0 0 0 1px rgba(180,154,255,.34)}
 .st-coach.is-load .st-coach-pill{color:#8FF0C4;background:rgba(61,213,152,.14);box-shadow:inset 0 0 0 1px rgba(61,213,152,.38)}
 .st-coach.is-tired .st-coach-pill,.st-coach.is-reentry .st-coach-pill{color:#FFD98A;background:rgba(255,194,74,.13);box-shadow:inset 0 0 0 1px rgba(255,194,74,.34)}
 .st-coach.is-stall .st-coach-pill{color:#FFB08C;background:rgba(255,138,91,.13);box-shadow:inset 0 0 0 1px rgba(255,138,91,.34)}
-.st-coach-n{margin:0;font:450 14px/1.45 var(--st-font);color:var(--st-ink-2)}
-.st-coach-sets{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;margin-top:2px}
-.st-cs{position:relative;isolation:isolate;display:flex;flex-direction:column;gap:4px;min-width:0;min-height:52px;padding:11px 6px 11px 12px;border:0;border-radius:16px;
+.st-coach-n{margin:0;font:450 13.5px/1.4 var(--st-font);color:var(--st-ink-2)}
+.st-coach-sets{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:7px}
+.st-cs{position:relative;isolation:isolate;display:flex;flex-direction:column;gap:3px;min-width:0;min-height:46px;padding:8px 6px 8px 11px;border:0;border-radius:14px;
   background:linear-gradient(160deg,rgba(255,255,255,.09),rgba(255,255,255,.03));box-shadow:inset 0 1px 0 rgba(255,255,255,.1);
   color:var(--st-ink);text-align:left;font-family:var(--st-font);cursor:pointer;touch-action:manipulation;transition:transform .15s var(--st-out),background .25s,box-shadow .25s}
 .st-cs:active{transform:scale(.96)}
@@ -1497,12 +1497,12 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 .st-coach.is-enter{animation:st-coach-in .5s var(--st-out) backwards}
 @keyframes st-coach-in{from{opacity:0;transform:translateY(8px)}}
 @media (prefers-reduced-motion:reduce){.st-coach.is-enter{animation:none}.st-cs{transition:none}}
-@media (max-width:359px){.st-coach{padding:13px}.st-coach-ico{width:32px;height:32px;border-radius:11px}.st-coach-h{font-size:17px}.st-coach-pill{padding:5px 9px;font-size:11.5px}.st-coach-sets{gap:5px}.st-cs{padding:9px 6px 9px 9px}.st-cs b{font-size:12.5px;letter-spacing:-.03em}}
+@media (max-width:359px){.st-coach{padding:12px}.st-coach-ico{width:28px;height:28px;border-radius:10px}.st-coach-h{font-size:16px}.st-coach-pill{padding:5px 9px;font-size:11.5px}.st-coach-sets{gap:5px}.st-cs{padding:9px 6px 9px 9px}.st-cs b{font-size:12.5px;letter-spacing:-.03em}}
 
-#trainPage .st-coach .st-coach-h{font-size:19px !important;font-weight:590 !important;line-height:1.15 !important}
-@media (max-width:359px){#trainPage .st-coach .st-coach-h{font-size:17px !important}}
+#trainPage .st-coach .st-coach-h{font-size:17px !important;font-weight:590 !important;line-height:1.15 !important}
+@media (max-width:359px){#trainPage .st-coach .st-coach-h{font-size:16px !important}}
 
 
 #trainPage .st-coach .st-coach-k{font-size:12px !important;font-weight:590 !important;line-height:1 !important}
 #trainPage .st-coach .st-coach-hint{font-size:11.5px !important;line-height:1 !important}
-#trainPage .st-coach .st-coach-n{font-size:14px !important;line-height:1.45 !important}
+#trainPage .st-coach .st-coach-n{font-size:13.5px !important;line-height:1.4 !important}
