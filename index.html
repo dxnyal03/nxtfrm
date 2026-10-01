@@ -2621,10 +2621,10 @@ textarea:disabled {
 <!-- Presentation layers load in <head> so the first paint is already NXTFRM V109.
      These were previously <link>ed at the end of <body>, which let the legacy
      in-head CSS paint the old chrome before the current styles arrived. -->
-<link rel="stylesheet" href="cut-support.css?v=121">
-<link rel="stylesheet" href="premium-ui.css?v=121">
-<link rel="stylesheet" href="vnext.css?v=121">
-<link rel="stylesheet" href="strata.css?v=121">
+<link rel="stylesheet" href="cut-support.css?v=122">
+<link rel="stylesheet" href="premium-ui.css?v=122">
+<link rel="stylesheet" href="vnext.css?v=122">
+<link rel="stylesheet" href="strata.css?v=122">
 
 </head>
 <body>
@@ -2633,9 +2633,9 @@ textarea:disabled {
 
 <div class="app">
   <div id="cloudLocalBanner" class="cloud-local-banner" hidden>
-    <p>Your data is local-only on this device. iOS may wipe it. Log in to sync.</p>
+    <p id="cloudLocalBannerText">Your data is local-only on this device. iOS may wipe it. Log in to sync.</p>
     <div class="cloud-local-banner-actions">
-      <button type="button" class="cloud-local-banner-login" onclick="openCloudLoginFromBanner()">Log in</button>
+      <button type="button" id="cloudLocalBannerAction" class="cloud-local-banner-login" onclick="openCloudLoginFromBanner()">Log in</button>
       <button type="button" class="cloud-local-banner-dismiss" onclick="dismissCloudLocalBanner()">Dismiss</button>
     </div>
   </div>
@@ -7881,25 +7881,25 @@ document.addEventListener("focusout",function(e){
 },true);
 </script>
 
-<script src="cut-support.js?v=121"></script>
-<script src="wearables.js?v=121"></script>
-<script src="wearables.adapters.js?v=121"></script>
-<script src="wearables.ingest.js?v=121"></script>
-<script src="wearables.canonical.js?v=121"></script>
-<script src="wearables.days.js?v=121"></script>
-<script src="wearables.snapshots.js?v=121"></script>
-<script src="wearables.resolution.js?v=121"></script>
-<script src="wearables.recovery.js?v=121"></script>
-<script src="wearables.recovery-integration.js?v=121"></script>
-<script src="wearables.training-readiness.js?v=121"></script>
-<script src="wearables.store.js?v=121"></script>
-<script src="wearables.provider-garmin.js?v=121"></script>
-<script src="wearables.sync.js?v=121"></script>
-<script src="train-anatomy.js?v=121"></script>
-<script src="premium-ui.js?v=121"></script>
-<script src="strata.js?v=121"></script>
-<script src="seed.dev.js?v=121"></script>
-<script src="seed.scenarios.js?v=121"></script>
+<script src="cut-support.js?v=122"></script>
+<script src="wearables.js?v=122"></script>
+<script src="wearables.adapters.js?v=122"></script>
+<script src="wearables.ingest.js?v=122"></script>
+<script src="wearables.canonical.js?v=122"></script>
+<script src="wearables.days.js?v=122"></script>
+<script src="wearables.snapshots.js?v=122"></script>
+<script src="wearables.resolution.js?v=122"></script>
+<script src="wearables.recovery.js?v=122"></script>
+<script src="wearables.recovery-integration.js?v=122"></script>
+<script src="wearables.training-readiness.js?v=122"></script>
+<script src="wearables.store.js?v=122"></script>
+<script src="wearables.provider-garmin.js?v=122"></script>
+<script src="wearables.sync.js?v=122"></script>
+<script src="train-anatomy.js?v=122"></script>
+<script src="premium-ui.js?v=122"></script>
+<script src="strata.js?v=122"></script>
+<script src="seed.dev.js?v=122"></script>
+<script src="seed.scenarios.js?v=122"></script>
 <script>
 (function loadWearableFixturesDevOnly(){
   var host=String(location.hostname||"");

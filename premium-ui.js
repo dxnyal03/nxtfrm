@@ -1766,7 +1766,13 @@ const NXP = (() => {
         if(!response.ok)throw Error(response.status===401||response.status===403?'The project rejected the key, session or read permissions. Check settings and sign in again.':'The project returned HTTP '+response.status+'. Check its status and configuration.');
         return bounded(response.json());
       };
-      await request('/auth/v1/settings');c.lines.push('Project reachable · public key accepted');paintConnection();
+      try{await request('/auth/v1/settings');}
+      catch(e){
+        if(e.message!=='timeout')throw e;
+        c.lines.push('Slow to answer · trying once more');paintConnection();
+        await request('/auth/v1/settings');
+      }
+      c.lines.push('Project reachable · public key accepted');paintConnection();
       if(url!==savedUrl||key!==savedKey){c.summary='Project reachable; entered settings are not saved';c.lines.push('Use the account controls to connect before checking a personal backup.');return;}
       const client=initSupabaseClient();
       const sessionResult=await bounded(client.auth.getSession());
@@ -1782,7 +1788,7 @@ const NXP = (() => {
       c.tone=rows.length?'good':'';
       c.lines.push(rows.length?'Own backup row can be queried. No workout contents were fetched.':'The query succeeded, but a backup may not exist or a row policy may hide it.');
       c.lines.push('No records written or restored. Save permissions remain untested.');
-    }catch(e){c.tone='watch';c.summary=e.message==='timeout'?'Connection check timed out':e instanceof TypeError?'Could not reach the project. Check your network, project status or browser restrictions.':e.message||'Connection check failed';}
+    }catch(e){c.tone='watch';c.summary=e.message==='timeout'?'No reply in time. Your connection may be slow; try again, ideally on wifi.':e instanceof TypeError?'Could not reach the project. Check your network, project status or browser restrictions.':e.message||'Connection check failed';}
     finally{controller?.abort();c.busy=false;c.checkedAt=Date.now();paintConnection();}
   }
   function dateRows(date) {return (state.logs||[]).filter(r=>r&&r.date===date);}
