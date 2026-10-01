@@ -471,7 +471,7 @@ button.st-tile:active{transform:scale(.985)}
 .st-sr{position:absolute !important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;padding:0 !important;margin:0 !important}
 #trainPage .st-train.st-train-active{display:flex;flex-direction:column;padding:0 20px 16px;box-sizing:border-box}
 
-.st-tbar{display:flex;align-items:center;gap:8px;min-height:52px;padding-top:4px}
+.st-tbar{display:flex;align-items:center;gap:8px;min-height:52px;padding-top:calc(var(--nxt-safe-top,0px) + 4px)}
 .st-icon{
   display:grid;place-items:center;width:44px;height:44px;flex:none;padding:0;border:0;border-radius:50%;cursor:pointer;
   background:rgba(var(--st-hl),.08);color:var(--st-ink);transition:transform .15s var(--st-out),background .2s;

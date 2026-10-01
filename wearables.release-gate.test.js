@@ -27,7 +27,7 @@ const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
 const fixtures = fs.readFileSync(path.join(ROOT, "wearables.fixtures.js"), "utf8");
 
 // Bump with each shipped release; the gate asserts the SW cache matches.
-const RELEASE_CACHE = "nxtfrm-v117-premium-cache";
+const RELEASE_CACHE = "nxtfrm-v118-premium-cache";
 
 test("index does not statically load fixtures on every host", function () {
   assert.ok(!/<script src="wearables\.fixtures\.js"><\/script>/.test(html));
