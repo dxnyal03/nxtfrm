@@ -1556,3 +1556,9 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){#homePage .st-tweek .vn-week{background:rgba(40,36,60,.85)}}
 @media (max-width:359px){#homePage .st-tweek .vn-week{padding:4px !important;gap:1px !important}}
 
+
+/* Week rail: roomier cells */
+#homePage .st-tweek .vn-week{padding:8px !important;gap:4px !important}
+#homePage .st-today .st-tweek .vn-week-c{min-height:72px !important;justify-content:center;gap:7px}
+#homePage .st-tweek .vn-week-m{height:6px}
+@media (max-width:359px){#homePage .st-tweek .vn-week{padding:6px !important;gap:2px !important}#homePage .st-today .st-tweek .vn-week-c{min-height:68px !important}}
