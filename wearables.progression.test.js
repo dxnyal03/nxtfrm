@@ -1,4 +1,4 @@
-/* NXTFRM progression rule (D24). Run: node wearables.progression.test.js
+/* NXTFRM progression rule (D24) and coach (D25). Run: node wearables.progression.test.js
 
    Executes the real cue()/aimFor() from cut-support.js against fixed Leg Press
    histories (range 8-12, step 5 kg). D24 supersedes D20's "two consecutive
@@ -174,6 +174,77 @@ test("the session is judged by its heaviest set: a lighter overshoot does not un
 
 test("history over four weeks old still re-establishes the baseline", () => {
   assert.strictEqual(engine(sets("2026-08-01", [[130, 14]])).cue("Leg Press").label, "Re-establish your baseline");
+});
+
+
+/* ---- D25: coach, per-set targets, ease-back-in, stall, double step ------------------------ */
+const G = (c, kind) => assert.strictEqual(c.kind, kind, "kind was " + c.kind + " / " + c.headline);
+const line = c => c.sets.map(x => x.weight + "x" + x.reps).join(" ");
+
+test("coach: a clear overshoot adds one step and plans each set from how the sets fell off", () => {
+  const c = engine([...sets("2026-09-18", [[130, 11]]), ...sets("2026-09-25", [[130, 13], [130, 11], [130, 10]])]).coachFor("Leg Press");
+  G(c, "load"); assert.strictEqual(c.headline, "Add 5 kg");
+  assert.strictEqual(line(c), "135x11 135x9 135x8");
+});
+
+test("coach: 3+ reps over the top takes two steps, and the target reps stay inside the range", () => {
+  const N = engine(sets("2026-09-25", [[130, 16], [130, 13], [130, 11]]));
+  const c = N.coachFor("Leg Press");
+  assert.strictEqual(c.headline, "Add 10 kg");
+  assert.strictEqual(N.cue("Leg Press").weight, 140);
+  assert.ok(c.sets.every(x => x.reps >= 1 && x.reps <= 12));
+  assert.strictEqual(N.aimFor("Leg Press").reps, c.sets[0].reps);
+});
+
+test("coach: aim reps after a load increase come from the lifter's own set and match the first target", () => {
+  const N = engine(sets("2026-09-25", [[130, 13]]));
+  const a = N.aimFor("Leg Press"), c = N.coachFor("Leg Press");
+  assert.strictEqual(a.kind, "load"); assert.strictEqual(a.weight, 135); assert.strictEqual(a.reps, 11);
+  assert.strictEqual(c.sets[0].reps, 11);
+});
+
+test("coach: 15-28 days away eases back in at about 90% on the lift's own step", () => {
+  const N = engine(sets("2026-09-11", [[130, 12], [130, 10]]));
+  const c = N.coachFor("Leg Press"), a = N.aimFor("Leg Press");
+  G(c, "reentry"); assert.strictEqual(a.kind, "reentry");
+  assert.strictEqual(a.weight, 115); assert.strictEqual(N.cue("Leg Press").weight, 115);
+  assert.ok(/19 days/.test(c.note));
+});
+
+test("coach: over 28 days keeps the baseline reset, no load suggested", () => {
+  const c = engine(sets("2026-08-01", [[130, 12]])).coachFor("Leg Press");
+  G(c, "baseline"); assert.strictEqual(c.sets.length, 0);
+});
+
+test("coach: three sessions with no better best set is a stall; the note offers the choice, the aim does not change", () => {
+  const N = engine([...sets("2026-09-11", [[130, 10]]), ...sets("2026-09-18", [[130, 10]]), ...sets("2026-09-25", [[130, 10]])]);
+  const c = N.coachFor("Leg Press");
+  G(c, "stall"); assert.ok(/115/.test(c.note));
+  assert.strictEqual(N.aimFor("Leg Press").weight, 130);
+});
+
+test("coach: improving sessions are not a stall", () => {
+  const N = engine([...sets("2026-09-11", [[130, 9]]), ...sets("2026-09-18", [[130, 10]]), ...sets("2026-09-25", [[130, 11]])]);
+  assert.notStrictEqual(N.coachFor("Leg Press").kind, "stall");
+});
+
+test("coach: tired, low reserve, no step, rebuild and first-time each get their own plain message", () => {
+  G(engine(sets("2026-09-25", [[130, 10]]), { [TODAY]: { energy: 2, soreness: 1 } }).coachFor("Leg Press"), "tired");
+  assert.strictEqual(engine(sets("2026-09-25", [[130, 13, 1]])).coachFor("Leg Press").headline, "Keep a rep in hand");
+  assert.strictEqual(engine(sets("2026-09-25", [[130, 6]])).coachFor("Leg Press").headline, "Rebuild the reps");
+  assert.strictEqual(engine([]).coachFor("Leg Press").kind, "new");
+});
+
+test("coach: one lighter session is called out as not a trend, and the numbers are the lifter's own", () => {
+  const c = engine([...sets("2026-09-18", [[130, 11]]), ...sets("2026-09-25", [[130, 9]])]).coachFor("Leg Press");
+  assert.ok(/not a trend/.test(c.note)); assert.ok(/130 × 9/.test(c.note)); assert.strictEqual(c.sets[0].reps, 10);
+});
+
+test("coach: nothing is written to storage or settings by asking for a plan", () => {
+  const N = engine(sets("2026-09-25", [[130, 13]]));
+  const before = JSON.stringify(N.cfg().recovery);
+  N.coachFor("Leg Press"); N.coachFor("Leg Press");
+  assert.strictEqual(JSON.stringify(N.cfg().recovery), before);
 });
 
 console.log("\n" + (failed ? "FAILED " : "OK  ") + passed + " passed, " + failed + " failed");
