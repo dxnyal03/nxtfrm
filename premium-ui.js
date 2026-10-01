@@ -1336,6 +1336,21 @@ const NXP = (() => {
      hairline and a chevron — the group heading is a quiet label, not a
      container. Under D1 that leaves the hub with no protagonist surface at
      all, which is the correct answer for this destination. */
+  /* Settings › Data: how full this device's storage is and when a backup was last requested.
+     Reads existing records only (localStorage size, backupExportRequestedAt); stores nothing.
+     The browser's real quota varies, so the figure is "roughly 5 MB", never exact. */
+  function storageStatus() {
+    let n=0;
+    try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);n+=k.length+(localStorage.getItem(k)||'').length;}}catch(e){return null;}
+    const mb=n/1048576,pct=Math.min(100,Math.round(mb/5*100));
+    const used=n<1048576?Math.max(1,Math.round(n/1024))+' KB':mb.toFixed(1)+' MB';
+    const ts=Number(N.cfg().backupExportRequestedAt),age=ts?(Date.now()-ts)/864e5:null;
+    const records=(state.logs||[]).length+(state.bws||[]).length;
+    const stale=records>=10&&(age===null||age>30);
+    const nearFull=pct>=70;
+    const sub=(nearFull?'Getting full \u2014 export a backup. ':pct+'% of roughly 5 MB. ')+'Backup: '+(ts?backupLabel()+(stale?' \u2014 over a month ago':''):'none recorded yet');
+    return {used,sub,tone:(nearFull||stale)?'watch':''};
+  }
   function setRow(title,value,action,sub='',tone='') {
     return `<button type="button" class="vn-set-row" onclick="${esc(action)}">`
       +`<span class="vn-set-l"><span class="vn-set-t">${esc(title)}</span>${sub?`<span class="vn-set-s">${esc(sub)}</span>`:''}</span>`
@@ -1586,6 +1601,7 @@ const NXP = (() => {
         setRow('Body & scans',waist?waist+(waist===1?' waist entry':' waist entries'):'None yet',"NXT.more('body')",'Evo scans and measurements'))}
       ${setGroup('Data',
         setRow('Cloud & sync',cloud.word,"NXT.more('data')",cloud.sub,cloud.tone)
+        +(()=>{const st=storageStatus();return st?setRow('Storage',st.used,"NXT.more('data')",st.sub,st.tone):'';})()
         +setRow('Wearable',wearableConnectionLabel(),'NXP.openWearableConnection()','Connection stays off until a secure backend exists'))}
       ${setGroup('About',
         setRow('App & install','',"NXT.more('app')",'Install, build version and safe reset')

@@ -1330,3 +1330,118 @@ body:has(.st-train-active){overflow:visible !important}
 }
 html,body,button,input,select,textarea{font-family:var(--st-font) !important}
 html body :where(*:not(svg *)){font-family:var(--st-font) !important}
+
+/* =====================================================================================
+   TYPE SCALE. Eight sizes, four weights, used everywhere; screens pick a step, not a number.
+     micro 11 · caption 12 · label 13 · body 14.5 · row 15.5 · section 18 · hero 22 · title 28
+     regular 400 · medium 550 · heading 590 · semibold 600 · numerals stay light (300)
+   The rules below snap the older per-screen values onto the scale (generated from a
+   per-screen audit; the trailing comment is the value each one replaced).
+   ===================================================================================== */
+:root{
+  --fs-micro:11px;--fs-cap:12px;--fs-label:13px;--fs-body:14.5px;--fs-row:15.5px;--fs-sect:18px;--fs-hero:22px;--fs-title:28px;--fs-cta:16px;
+  --fw-reg:400;--fw-med:550;--fw-head:590;--fw-semi:600;
+}
+.st-cta,.st-log,.nxp-train-cta{font-size:var(--fs-cta) !important;font-weight:var(--fw-semi) !important}
+#homePage button.vn-text{font-size:var(--fs-body) !important;font-weight:var(--fw-med) !important}/* 14.5/540 */
+#homePage span.vn-row-t{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 15/500 */
+#homePage span.vn-row-s{font-size:var(--fs-cap) !important;font-weight:var(--fw-reg) !important}/* 12.5/400 */
+#homePage p.st-meta{font-size:var(--fs-label) !important;font-weight:var(--fw-reg) !important}/* 13/450 */
+#homePage .st-tweek-h span{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12.5/500 */
+#homePage .st-mini-v small{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12/500 */
+#homePage span.st-mini-v{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 16/550 */
+#homePage button.st-link{font-size:var(--fs-body) !important;font-weight:var(--fw-med) !important}/* 14/550 */
+#homePage .st-evid span{font-size:var(--fs-label) !important;font-weight:var(--fw-reg) !important}/* 13.5/450 */
+#homePage .st-evid b{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13.5/550 */
+#homePage span.st-scan-vs{font-size:var(--fs-label) !important;font-weight:var(--fw-reg) !important}/* 13/450 */
+#homePage .st-scan-c small{font-size:var(--fs-micro) !important;font-weight:var(--fw-med) !important}/* 11/590 */
+#homePage span.st-scan-d{font-size:var(--fs-micro) !important;font-weight:var(--fw-med) !important}/* 11.5/550 */
+#homePage .vn-more summary{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 15/500 */
+#homePage .nxp-rec-source strong{font-size:var(--fs-sect) !important;font-weight:var(--fw-head) !important}/* 17/650 */
+#homePage .nxp-home-kcal strong{font-size:var(--fs-sect) !important;font-weight:var(--fw-head) !important}/* 18/650 */
+#homePage .nxp-home-kcal span{font-size:var(--fs-body) !important;font-weight:var(--fw-semi) !important}/* 14/600 */
+#homePage button.n99-button{font-size:var(--fs-body) !important;font-weight:var(--fw-semi) !important}/* 14/650 */
+#trainPage button.st-chip{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 15/400 */
+#trainPage .nxp-train-idle-copy p{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/400 */
+#trainPage .nxp-train-pace em{font-size:var(--fs-body) !important;font-weight:var(--fw-med) !important}/* 14.4/520 */
+#trainPage button.n99-button{font-size:var(--fs-sect) !important;font-weight:var(--fw-head) !important}/* 17/600 */
+#trainPage button.n99-text{font-size:var(--fs-body) !important;font-weight:var(--fw-med) !important}/* 14/500 */
+#trainPage p.n99-small{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/400 */
+#trainPage button.nxp-addon-add{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 15/400 */
+#weightPage .nxp-heading p{font-size:var(--fs-cap) !important;font-weight:var(--fw-reg) !important}/* 12.5/400 */
+#weightPage button.n99-button{font-size:var(--fs-body) !important;font-weight:var(--fw-semi) !important}/* 14/600 */
+#weightPage button.active{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13.5/500 */
+#weightPage .n99-progress-tabs button{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13.5/500 */
+#weightPage h2.vn-h-sub{font-size:var(--fs-hero) !important;font-weight:var(--fw-head) !important}/* 20/590 */
+#weightPage small.vn-tiny{font-size:var(--fs-micro) !important;font-weight:var(--fw-med) !important}/* 11.5/500 */
+#weightPage .vn-seg button{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13/560 */
+#weightPage .vn-legend span{font-size:var(--fs-micro) !important;font-weight:var(--fw-med) !important}/* 11.5/520 */
+#weightPage p.vn-tiny{font-size:var(--fs-micro) !important;font-weight:var(--fw-med) !important}/* 11.5/500 */
+#weightPage button.vn-tog{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13.5/540 */
+#weightPage .st-wk-h small{font-size:var(--fs-cap) !important;font-weight:var(--fw-reg) !important}/* 12/450 */
+#weightPage span.st-wk-d{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13/500 */
+#weightPage b.st-wk-v{font-size:var(--fs-body) !important;font-weight:var(--fw-med) !important}/* 14/550 */
+#weightPage span.st-wk-c{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12.5/500 */
+#weightPage .st-wk-d small{font-size:var(--fs-micro) !important;font-weight:var(--fw-reg) !important}/* 11/450 */
+#weightPage span.vn-status{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13/580 */
+#weightPage span.vn-ink-3{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 15/500 */
+#weightPage span.vn-row-v{font-size:var(--fs-row) !important;font-weight:var(--fw-semi) !important}/* 15/600 */
+#weightPage .vn-more-block summary{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 15/500 */
+#weightPage p.vn-perf-intro{font-size:var(--fs-body) !important;font-weight:var(--fw-reg) !important}/* 14.5/450 */
+#weightPage p.vn-perf-meta{font-size:var(--fs-cap) !important;font-weight:var(--fw-reg) !important}/* 12.5/450 */
+#weightPage p.vn-perf-eq{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/400 */
+#weightPage .st-fold span{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/400 */
+#weightPage p.vn-perf-note{font-size:var(--fs-cap) !important;font-weight:var(--fw-reg) !important}/* 12.5/450 */
+#weightPage span.st-cat{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13/560 */
+#weightPage span.st-meta{font-size:var(--fs-label) !important;font-weight:var(--fw-reg) !important}/* 13/450 */
+#weightPage p.st-meta{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/400 */
+#weightPage .st-cm-read b{font-size:var(--fs-row) !important;font-weight:var(--fw-semi) !important}/* 16/700 */
+#weightPage .st-cm-read span{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/400 */
+#weightPage p.nxp-progress-body-empty{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/400 */
+#weightPage .nxp-setting b{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 16/550 */
+#weightPage p.vn-evo-delta{font-size:var(--fs-body) !important;font-weight:var(--fw-med) !important}/* 14/540 */
+#weightPage p.vn-evo-ctx{font-size:var(--fs-body) !important;font-weight:var(--fw-reg) !important}/* 14.5/450 */
+#weightPage .vn-evo-row-l span{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 15/540 */
+#weightPage .vn-evo-row-v em{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12.5/500 */
+#weightPage .vn-evo-row-v small{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12/540 */
+#weightPage .vn-evo-comp-top span{font-size:var(--fs-body) !important;font-weight:var(--fw-reg) !important}/* 14/400 */
+#weightPage .vn-evo-comp-top b{font-size:var(--fs-body) !important;font-weight:var(--fw-semi) !important}/* 14/600 */
+#weightPage p.vn-evo-note{font-size:var(--fs-body) !important;font-weight:var(--fw-reg) !important}/* 14.5/450 */
+#weightPage p.vn-evo-kicker{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13/560 */
+#weightPage .vn-evo-chg-row b{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 16/580 */
+#weightPage .vn-evo-chg-row em{font-size:var(--fs-label) !important;font-weight:var(--fw-reg) !important}/* 13.5/400 */
+#weightPage span.nxp-setting-value{font-size:var(--fs-body) !important;font-weight:var(--fw-reg) !important}/* 14/400 */
+#weightPage p.n99-small{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/400 */
+#historyPage .nxp-heading p{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13.5/500 */
+#historyPage button.active{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13.5/500 */
+#historyPage .nxp-history-filters button{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13.5/500 */
+#historyPage .nxp-cal-month em{font-size:var(--fs-body) !important;font-weight:var(--fw-reg) !important}/* 14.4/400 */
+#historyPage button.nxp-cal-today{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13/500 */
+#historyPage span.lift{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12.5/500 */
+#historyPage span.cond{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12.5/500 */
+#historyPage span.floor{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12.5/500 */
+#historyPage span.body{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12.5/500 */
+#historyPage span.nxp-history-weekday{font-size:var(--fs-body) !important;font-weight:var(--fw-med) !important}/* 14/500 */
+#historyPage .nxp-history-ex b{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 15/540 */
+#morePage .vn-set-account h2{font-size:var(--fs-sect) !important;font-weight:var(--fw-head) !important}/* 19/620 */
+#morePage .vn-set-account p{font-size:var(--fs-label) !important;font-weight:var(--fw-reg) !important}/* 13.5/450 */
+#morePage h2.vn-set-grp{font-size:var(--fs-body) !important;font-weight:var(--fw-med) !important}/* 14/590 */
+#morePage span.vn-set-t{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 15/500 */
+#morePage span.vn-set-s{font-size:var(--fs-cap) !important;font-weight:var(--fw-reg) !important}/* 12.5/450 */
+#morePage span.vn-set-v{font-size:var(--fs-body) !important;font-weight:var(--fw-med) !important}/* 14/540 */
+#morePage p.vn-set-foot{font-size:var(--fs-micro) !important;font-weight:var(--fw-med) !important}/* 11.5/500 */
+/* Type scale: stragglers the audit could not snap by key. */
+.st-cat{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}
+.vn-row-s{font-size:var(--fs-cap) !important;font-weight:var(--fw-reg) !important}
+.vn-row-t{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}
+.st-meta{font-size:var(--fs-label) !important;font-weight:var(--fw-reg) !important}
+.tab-label{font-size:var(--fs-micro) !important}
+
+/* One icon set: 1.9px round-cap strokes, drawn on currentColor. */
+.st-ico{display:inline-block;width:1.15em;height:1.15em;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.2em;pointer-events:none}
+.nxp-step .st-ico{width:22px;height:22px;stroke-width:1.7}
+.nxp-setting-value .st-ico,.vn-chev .st-ico,.st-link .st-ico{width:17px;height:17px;opacity:.7;vertical-align:middle}
+.nxp-cal-nav .st-ico{width:18px;height:18px;vertical-align:middle}
+.nxp-cta-check .st-ico{width:14px;height:14px;stroke-width:2.6}
+/* The Body-tab accordion chevron uses the same stroke. */
+#weightPage .vn-evo-sec>h2[data-st-fold]::after{content:"" !important;width:18px;height:18px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 5l7 7-7 7'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 5l7 7-7 7'/%3E%3C/svg%3E") center/contain no-repeat;opacity:.7}

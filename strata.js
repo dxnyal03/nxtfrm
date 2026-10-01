@@ -599,6 +599,33 @@ const STRATA = (() => {
   }
 
   /* ---- Hydrate after every paint ------------------------------------------ */
+  /* One icon set. Single-glyph controls (› ‹ + − × ✓) become the same 1.9px round-cap SVG strokes the
+     Train header already uses. Done where the glyph is the whole content of its element, so
+     "+ Weight" style labels keep their text. Runs on whatever gets added to the page. */
+  const ICONS = {
+    "\u203a": ["M8 5l7 7-7 7", "Next", true], "\u2039": ["M16 5l-7 7 7 7", "Previous", true],
+    "+": ["M12 5v14M5 12h14", "Increase", false], "\u2212": ["M5 12h14", "Decrease", false],
+    "\u00d7": ["M6 6l12 12M18 6L6 18", "Close", false], "\u2713": ["M5 12.5l4.5 4.5L19 7.5", "Done", true]
+  };
+  function iconify(root) {
+    if (!root || root.nodeType !== 1 || root.closest("svg")) return;
+    const els = [root, ...root.querySelectorAll("*")];
+    for (const el of els) {
+      if (el.childElementCount || el.closest("svg,script,style,textarea,input")) continue;
+      const t = el.textContent.trim(), ic = t.length === 1 && ICONS[t];
+      if (!ic || el.dataset.stIco) continue;
+      if (!ic[2] && !el.closest("button,[role=button]")) continue; /* \u00d7 between weight and reps is a times sign, not a close */
+      el.dataset.stIco = "1";
+      el.innerHTML = `<svg class="st-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="${ic[0]}"/></svg>`;
+      const btn = el.closest("button");
+      if (btn && !ic[2] && !btn.hasAttribute("aria-label") && !btn.textContent.trim()) btn.setAttribute("aria-label", ic[1]);
+    }
+  }
+  function bindIcons() {
+    iconify(document.body);
+    new MutationObserver(list => { for (const m of list) m.addedNodes.forEach(n => { if (n.nodeType === 1) iconify(n); }); })
+      .observe(document.body, { childList: true, subtree: true });
+  }
   /* History calendar: horizontal swipe changes month. Delegated, installed once.
      Vertical intent is left to the browser (grid is touch-action:pan-y). */
   function bindCalSwipe() {
@@ -698,6 +725,7 @@ const STRATA = (() => {
       NXT.selectPoint.__strata = true;
     }
     bindCalSwipe();
+    bindIcons();
     bindHold();
     ['input','click','pointerup'].forEach(ev=>document.addEventListener(ev,e=>{ if(e.target&&e.target.closest&&e.target.closest('#trainPage .st-entry,#trainPage .st-refc,#trainPage .nxp-seg'))setTimeout(syncVs,0); },true));
     document.addEventListener("pointerup", e => {
