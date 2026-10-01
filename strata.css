@@ -1445,3 +1445,30 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 .nxp-cta-check .st-ico{width:14px;height:14px;stroke-width:2.6}
 /* The Body-tab accordion chevron uses the same stroke. */
 #weightPage .vn-evo-sec>h2[data-st-fold]::after{content:"" !important;width:18px;height:18px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 5l7 7-7 7'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 5l7 7-7 7'/%3E%3C/svg%3E") center/contain no-repeat;opacity:.7}
+
+
+/* Coach (D25): built from the same pieces as the Aim / Best last time tiles (same surface, label,
+   numeral weight), so it reads as part of the card. The entrance only plays when the exercise
+   genuinely changed, never on the repaint after logging a set. */
+.st-coach{display:flex;flex-direction:column;gap:6px;margin:10px 0 0;padding:14px;border:0;border-radius:18px;box-sizing:border-box;
+  background:rgba(var(--st-hl),.05);color:var(--st-ink);font-family:var(--st-font)}
+.st-coach-k{display:flex;justify-content:space-between;gap:6px;margin:0;font:590 12.5px var(--st-font);color:#CBB8FF;white-space:nowrap}
+.st-coach-k em{font-style:normal;font-weight:500;color:var(--st-ink-3)}
+.st-coach-h{margin:0;font:590 17px/1.2 var(--st-font);letter-spacing:-.02em;color:var(--st-ink)}
+.st-coach-n{margin:0;font:450 13px/1.45 var(--st-font);color:var(--st-ink-3)}
+.st-coach-sets{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;margin-top:6px}
+.st-cs{display:flex;flex-direction:column;gap:3px;min-width:0;min-height:48px;padding:10px 8px 10px 12px;border:0;border-radius:14px;
+  background:rgba(var(--st-hl),.06);color:var(--st-ink);text-align:left;font-family:var(--st-font);cursor:pointer;touch-action:manipulation;transition:transform .15s var(--st-out),background .2s}
+.st-cs:active{transform:scale(.96)}
+.st-cs small{font:500 11.5px var(--st-font);color:var(--st-ink-3)}
+.st-cs b{font:590 14px/1.1 var(--st-font);letter-spacing:-.02em;white-space:nowrap}
+.st-cs.is-now{background:rgba(139,92,246,.16)}
+.st-cs.is-now small{color:#CBB8FF}
+.st-cs.is-done{opacity:.5}
+.st-coach.is-enter{animation:st-coach-in .5s var(--st-out) backwards}
+@keyframes st-coach-in{from{opacity:0;transform:translateY(8px)}}
+@media (prefers-reduced-motion:reduce){.st-coach.is-enter{animation:none}.st-cs{transition:none}}
+@media (max-width:359px){.st-coach{padding:12px}.st-coach-k em{display:none}.st-coach-sets{gap:5px}.st-cs{padding:9px 7px}.st-cs b{font-size:13px;letter-spacing:-.03em}}
+
+#trainPage .st-coach .st-coach-h{font-size:17px !important;font-weight:590 !important;line-height:1.2 !important}
+

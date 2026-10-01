@@ -541,14 +541,61 @@ const NXT = (() => {
   /* What "beating last time" means for the next working set, derived from the
      same double-progression rule cue() applies: add a rep at the best load until
      the top of the range, then the load moves up only once cue() says so. */
+  /* D25: expected reps at a heavier load, from the lifter's own best set (Epley, the
+     usual rep-max relation). It only sets the target reps for a load increase, is
+     clamped to the exercise's rep range, and is never stored or shown as a 1RM. */
+  function repsAt(best,newWeight,t) {
+    const w=Number(best.weight),n=Number(best.reps);
+    if(!(newWeight>w)||!(w>0))return n;
+    const r=Math.round(30*(w*(1+n/30)/newWeight-1));
+    return Math.max(t.reps[0],Math.min(t.reps[1],r));
+  }
   function aimFor(ex) {
     const t=targetFor(ex),all=sessionRows(ex,state.gym,state.date,100),last=all.at(-1);
     if(!last)return null;
     const best=bestSet(last.sets);if(!best)return null;
     const c=cue(ex),w=Number(best.weight),n=Number(best.reps);
-    if(Number(c.weight)>w)return {best,date:last.date,weight:Number(c.weight),reps:t.reps[0],kind:"load"};
+    if(c.label==="Ease back in")return {best,date:last.date,weight:Number(c.weight),reps:Math.min(n,t.reps[1]),kind:"reentry",why:c.why||""};
+    if(Number(c.weight)>w)return {best,date:last.date,weight:Number(c.weight),reps:repsAt(best,Number(c.weight),t),kind:"load"};
     if(n<t.reps[1])return {best,date:last.date,weight:w,reps:n+1,kind:"rep",why:c.why||""};
     return {best,date:last.date,weight:w,reps:n,kind:"match",why:c.why||""};
+  }
+  /* D25: the coach. Deterministic copy written from the lifter's own history (no model call,
+     nothing stored): one headline, one concise note with the real numbers, and a target for
+     each planned set that mirrors how the sets fell off last time. */
+  function coachFor(ex) {
+    const t=targetFor(ex),all=sessionRows(ex,state.gym,state.date,100),last=all.at(-1);
+    const lo=t.reps[0],hi=t.reps[1],planned=Math.max(1,Number(t.sets)||1),num=v=>String(Math.round(Number(v)*100)/100);
+    if(!last)return {kind:"new",headline:"First session on this lift",note:`Choose a load you can move for ${lo}–${hi} reps with about two to spare. Today sets your baseline.`,sets:[]};
+    const best=bestSet(last.sets);if(!best)return null;
+    const w=Number(best.weight),n=Number(best.reps),gap=Math.round((dateMs(state.date)-dateMs(last.date))/864e5);
+    if(gap>28)return {kind:"baseline",headline:`Back after ${gap} days`,note:"Your last session is over four weeks old. Pick a manageable load and re-establish your baseline.",sets:[],gap};
+    const c=cue(ex),a=aimFor(ex);if(!a)return null;
+    const step=Number(t.inc)>0?Number(t.inc):2.5,backoff=Math.max(step,+(Math.round(w*0.9/step)*step).toFixed(2));
+    /* How the sets fell off last time at the best load (reps below the best set), padded for planned sets. */
+    const shape=last.sets.filter(r=>Number(r.weight)===w).map(r=>Number(r.reps)),top=Math.max(...shape,n);
+    const known=shape.map(r=>top-r);
+    const drops=Array.from({length:planned},(_,k)=>k<known.length?known[k]:known.length>1?known[known.length-1]:k);
+    const sets=drops.map((d,k)=>({n:k+1,weight:a.weight,reps:Math.max(1,a.reps-d)}));
+    const prev=all.at(-2),pb=prev&&bestSet(prev.sets);
+    const imp=(x,y)=>Number(y.weight)>Number(x.weight)||(Number(y.weight)===Number(x.weight)&&Number(y.reps)>Number(x.reps));
+    const three=all.slice(-3).map(x=>bestSet(x.sets)),stalled=three.length===3&&three.every(Boolean)&&!imp(three[0],three[1])&&!imp(three[1],three[2])&&all.at(-3).date>=dateAdd(state.date,-28);
+    const lighter=!!pb&&imp(best,pb);
+    const out=(kind,headline,note)=>({kind,headline,note,sets,weight:a.weight,reps:a.reps,gap});
+    if(a.kind==="load"){
+      const steps=Math.round((a.weight-w)/step);
+      return out("load",`Add ${num(a.weight-w)} kg`,
+        (n>hi?`${num(w)} × ${n} ${steps>1?`is ${n-hi} over the top of your ${lo}–${hi} range, so take two steps`:`cleared your ${lo}–${hi} range`}.`:`You topped your ${lo}–${hi} range twice at ${num(w)}.`)+` Target ${num(a.weight)} × ${a.reps}.`);
+    }
+    if(a.kind==="reentry")return out("reentry","Ease back in",`${gap} days off. Re-enter at ${num(a.weight)} (about 90% of ${num(w)}) for ${a.reps} reps.`);
+    if(c.label==="Keep today manageable")return out("tired","Keep it manageable",`Check-in says tired. Aim ${num(a.weight)} × ${a.reps}, stopping a rep or two short.`);
+    if(stalled&&Number(t.inc)>0)return out("stall","Same best set three times",`Best set flat for three sessions. Repeat ${num(w)} × ${n}, or drop to ${num(backoff)} and rebuild.`);
+    if(a.why==="No kg step set")return out("hold","Add a weight step",`Range topped, but this lift has no kg step. Set one in the routine editor.`);
+    if(a.why==="Low reserve · hold")return out("hold","Keep a rep in hand","Last time was close to failure. Repeat the load with a couple in hand before adding weight.");
+    if(a.why==="Top once · repeat to add")return out("hold","Confirm the top",`${num(w)} × ${n} tops your range. Hit it once more and the weight goes up.`);
+    if(a.kind==="rep"&&n<lo)return out("rebuild","Rebuild the reps",`${num(w)} × ${n} was under ${lo}. Stay at ${num(w)} and build to ${lo}+.`);
+    if(a.kind==="rep")return out("rep","One more rep",(lighter?"One lighter session is not a trend. ":"")+`${num(w)} × ${n} last time. Target ${num(a.weight)} × ${a.reps}.`);
+    return out("hold","Match your best",`Repeat ${num(w)} × ${n}. Holding strength on a cut counts.`);
   }
   function cue(ex) {
     const t=targetFor(ex),all=sessionRows(ex,state.gym,state.date,100),last=all.at(-1),prev=all.at(-2);
@@ -556,7 +603,13 @@ const NXT = (() => {
     if(!last)out={label:"Set your baseline",weight:0,text:"Choose a manageable load and leave around two reps in reserve. Your first session establishes the baseline."};
     else {
       const weight=Number(bestSet(last.sets).weight),recent=last.date>=dateAdd(state.date,-28);
+      const gapDays=Math.round((dateMs(state.date)-dateMs(last.date))/864e5);
       if(!recent)out={label:"Re-establish your baseline",weight:0,text:"This exercise history is over four weeks old. Choose a manageable starting load for today."};
+      else if(gapDays>14){
+        /* D25: after two to four weeks away, re-enter lighter (about 90%, on the lift's own step). */
+        const stp=Number(targetFor(ex).inc)>0?Number(targetFor(ex).inc):2.5;
+        out={label:"Ease back in",weight:Math.max(stp,+(Math.round(weight*0.9/stp)*stp).toFixed(2)),why:"Ease back in",text:`It has been ${gapDays} days. Re-enter lighter, then build back up.`};
+      }
       else {
         /* Top-set double progression (D20): a session "tops out" when its best
            set, at this load, reached the top of the rep range. */
@@ -566,7 +619,7 @@ const NXT = (() => {
         const effortOkay=last.sets.every(r=>r.rir===null||r.rir===undefined||r.rir===""||Number(r.rir)>=2);
         const r=cfg().recovery[state.date],tired=r&&(Number(r.energy)<=2&&r.energy!==""||Number(r.soreness)>=4);
         const earned=top(last)&&(top(prev)||over(last)),step=Number(t.inc)>0;
-        if(!tired&&earned&&effortOkay&&step)out={label:"Ready to consider an increase",weight:weight+Number(t.inc),text:over(last)&&!top(prev)?"You went past the top of the rep range last time. Use the next increment only if today’s warm-up feels controlled.":"You reached the top of the rep range in two sessions. Use the next increment only if today’s warm-up feels controlled."};
+        if(!tired&&earned&&effortOkay&&step)out={label:"Ready to consider an increase",weight:weight+Number(t.inc)*(Number(bestSet(last.sets).reps)>=t.reps[1]+3?2:1),text:over(last)&&!top(prev)?"You went past the top of the rep range last time. Use the next increment only if today’s warm-up feels controlled.":"You reached the top of the rep range in two sessions. Use the next increment only if today’s warm-up feels controlled."};
         else {
           const lb=bestSet(last.sets),lowReps=lb&&Number(lb.reps)<t.reps[0];
           const why=tired?"Tired today · hold":earned&&!effortOkay?"Low reserve · hold":earned&&!step?"No kg step set":top(last)?"Top once · repeat to add":lowReps?`Under ${t.reps[0]} · rebuild`:"";
@@ -749,7 +802,7 @@ const NXT = (() => {
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any target change stays your choice.</p><div class="n99-stack">${button('Review calorie guide','NXT.openCalories()',true)}${button('Update recovery check-in','apx96OpenReadiness()',true)}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{

@@ -633,7 +633,15 @@ const NXP = (() => {
     };
     const m=typeof NXTLIB!=='undefined'?NXTLIB.musclesFor(ex):{primary:[],secondary:[]};
     const fig=(typeof NXTANAT!=='undefined'&&m.primary.length)?NXTANAT.figure({primary:m.primary,secondary:m.secondary,view:NXTANAT.viewFor(m.primary,[]),crop:false}):'';
-    const aimText=aim?(aim.kind==='load'?`+${trimNum(aim.weight-Number(prev.weight))} kg · next increment`:aim.kind==='rep'?(/^Under /.test(aim.why||'')?aim.why:'One more rep'):(aim.why||'Match your best')):'Set a baseline';
+    const aimText=aim?(aim.kind==='reentry'?'Ease back in · lighter':aim.kind==='load'?`+${trimNum(aim.weight-Number(prev.weight))} kg`:aim.kind==='rep'?(/^Under /.test(aim.why||'')?aim.why:'One more rep'):(aim.why||'Match your best')):'Set a baseline';
+    /* D25 coach: note + a target for every planned set. Tapping a target fills the fields; nothing is logged. */
+    const coach=N.coachFor(ex),tg=n=>esc(trimNum(n));
+    const coachHTML=coach?`<section class="st-coach${exMove?' is-enter':''}" aria-label="Coach">
+          <p class="st-coach-k">Coach${coach.sets&&coach.sets.length?'<em>Tap a set to fill</em>':''}</p>
+          <h3 class="st-coach-h">${esc(coach.headline)}</h3>
+          <p class="st-coach-n">${esc(coach.note)}</p>
+          ${coach.sets&&coach.sets.length?`<div class="st-coach-sets" role="group" aria-label="Target for each set">${coach.sets.map((x,k)=>`<button type="button" class="st-cs${setType==='working'&&k===done?' is-now':''}${k<done?' is-done':''}" onclick="NXP.useTarget(${k})" aria-label="Set ${x.n}: ${tg(x.weight)} kilograms for ${x.reps} reps. Tap to fill"><small>Set ${x.n}</small><b class="vn-num">${tg(x.weight)} × ${x.reps}</b></button>`).join('')}</div>`:''}
+        </section>`:'';
     const restPct=restLeft&&(ui.restTotal||restPlan)?Math.max(0,Math.min(100,restLeft/(ui.restTotal||restPlan)*100)):0;
     /* Set chips: warm-ups, then one chip per planned working set (extras are
        appended). Logged chips open the same edit sheet as before. */
@@ -668,12 +676,9 @@ const NXP = (() => {
           :`<div class="st-refc is-aim"><small>Aim</small><b class="vn-num">${t.reps[0]}–${t.reps[1]} reps</b><span>Set a baseline</span></div>`}
           <div class="st-refc"${prev?` data-w="${esc(prev.weight)}" data-r="${esc(prev.reps)}"`:''}><small>Best last time</small><b class="vn-num">${prev?`${esc(trimNum(prev.weight))} × ${esc(prev.reps)}`:'—'}</b><span>${previous?esc(N.shortDate(previous.date)):'No history yet'}</span></div>
         </div>
+        ${coachHTML}
         <input type="hidden" id="n99-set-type" value="${setType}">
         <input type="hidden" id="n99-rir" value="${esc(rir)}">
-        <fieldset class="nxp-seg-block nxp-seg-rir">
-          <legend>Reps in reserve</legend>
-          <div class="nxp-seg" role="group">${[['','—'],['0','0'],['1','1'],['2','2'],['3','3'],['4','4+']].map(([v,l])=>`<button type="button" class="${rir===v?'is-on':''}" aria-pressed="${rir===v}" aria-label="${v===''?'Not recorded':v==='4'?'4 or more reps left':v+' reps left'}" onclick="NXP.setRir('${v}')">${l}</button>`).join('')}</div>
-        </fieldset>
         <button id="nxp-log-button" type="submit" class="n99-button nxp-train-cta st-log" data-idle-label="${esc(idleLabel)}">${justLogged?`<span class="nxp-cta-check" aria-hidden="true">✓</span>${esc(confirmLabel)}`:esc(idleLabel)}</button>
       </form>`;
 
@@ -765,11 +770,18 @@ const NXP = (() => {
       ${addOnEligible()?`<div class="st-mgroup st-madd">${addOnSection()}</div>`:''}
     </div>`);
   }
+  function fillEntry(weight,reps) {
+    const w=document.getElementById('weightInput'),r=document.getElementById('repsInput');
+    if(w){w.value=trimNum(weight);rememberInput(w);w.classList.add('st-flash');setTimeout(()=>w.classList.remove('st-flash'),600);}
+    if(r){r.value=String(reps);rememberInput(r);r.classList.add('st-flash');setTimeout(()=>r.classList.remove('st-flash'),600);}
+  }
   function useAim() {
     const aim=N.aimFor(state.exercise);if(!aim)return;
-    const w=document.getElementById('weightInput'),r=document.getElementById('repsInput');
-    if(w){w.value=trimNum(aim.weight);rememberInput(w);w.classList.add('st-flash');setTimeout(()=>w.classList.remove('st-flash'),600);}
-    if(r){r.value=String(aim.reps);rememberInput(r);r.classList.add('st-flash');setTimeout(()=>r.classList.remove('st-flash'),600);}
+    fillEntry(aim.weight,aim.reps);
+  }
+  function useTarget(k) {
+    const c=N.coachFor(state.exercise),s=c&&c.sets&&c.sets[k];if(!s)return;
+    fillEntry(s.weight,s.reps);
   }
   function scheduleConfirmReset() {
     clearTimeout(ui.confirmTimer);
@@ -2276,7 +2288,7 @@ const NXP = (() => {
   }
   bindSteppers();
   bindKeyboardDock();
-  return {ui,useAim,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom};
+  return {ui,useAim,useTarget,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;
