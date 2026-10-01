@@ -1,5 +1,5 @@
-const RELEASE = '130';
-const CACHE_NAME = 'nxtfrm-v130-premium-cache';
+const RELEASE = '131';
+const CACHE_NAME = 'nxtfrm-v131-premium-cache';
 
 // The offline shell. Versioned URLs match exactly what index.html requests, so
 // a cold start offline serves the same files the page asks for rather than an
