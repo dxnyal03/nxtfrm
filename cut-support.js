@@ -669,7 +669,14 @@ const NXT = (() => {
     }
   }
   function repaint() { document.activeElement?.blur?.();window.__apexTyping=false;state.typingWeight=false;render(); }
-  function commit(message) { try{persist();}catch(e){toast('Could not save on this device. Export a backup and free storage before retrying.');return false;}old.closeModal();repaint();if(message)toast(message);return true; }
+  function commit(message) {
+    let localFail=false;
+    try{persist();}catch(e){localFail=true;}
+    /* A signed-in account still gets the change: persist() starts the cloud save before it reports a local failure. */
+    if(localFail&&typeof cloudUser!=='undefined'&&cloudUser){toast('Saved online. This device’s storage is full, so export a backup and free some space.');old.closeModal();repaint();return true;}
+    if(localFail){toast('Could not save on this device. Export a backup and free storage before retrying.');return false;}
+    old.closeModal();repaint();if(message)toast(message);return true;
+  }
   function modal(title,body) {
     ui.lastFocus=document.activeElement;
     document.getElementById("modalRoot").innerHTML=`<div class="modal n99-modal" onclick="if(event.target===this)closeModal()"><section class="sheet n99" role="dialog" aria-modal="true" aria-labelledby="n99-modal-title"><div class="n99-row"><h2 id="n99-modal-title">${esc(title)}</h2><button class="n99-icon" aria-label="Close" onclick="closeModal()">×</button></div>${body}</section></div>`;
