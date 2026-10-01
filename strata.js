@@ -289,6 +289,61 @@ const STRATA = (() => {
       h.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
     });
   }
+  /* Weekly recap on Home: Sunday shows the week ending today, Monday the week just gone.
+     Everything is read from logged rows with the engine's own helpers; no new metric. */
+  function recapWeek() {
+    if (typeof NXT !== "object" || typeof state !== "object") return null;
+    const dow = new Date(NXT.dateMs(state.date)).getUTCDay();
+    if (dow !== 0 && dow !== 1) return null;
+    const ws = dow === 1 ? NXT.dateAdd(NXT.weekStart(state.date), -7) : NXT.weekStart(state.date);
+    return { ws, we: NXT.dateAdd(ws, 6) };
+  }
+  function dressRecap(page) {
+    if (page.id !== "homePage") return;
+    const old = page.querySelector(".st-recap");
+    if (old) old.remove();
+    const wk = recapWeek();
+    const bento = page.querySelector(".st-bento");
+    if (!wk || !bento) return;
+    const N = NXT, esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const all = N.workRows ? N.workRows() : [];
+    const inWk = all.filter(r => r.date >= wk.ws && r.date <= wk.we);
+    const cardio = (state.cardio || []).filter(r => r && r.date >= wk.ws && r.date <= wk.we && Number(r.duration) > 0).reduce((a, r) => a + Number(r.duration), 0);
+    const days = new Set(inWk.map(r => r.date)).size;
+    let planned = 0;
+    for (let i = 0; i < 7; i++) { const t = N.typeFor(N.dateAdd(wk.ws, i)); if (t && !["Rest", "Zone2", "Floorball"].includes(t)) planned++; }
+    const rows = N.weights ? N.weights() : [];
+    const cur = N.windowStats(rows, wk.we, 7), prev = N.windowStats(rows, N.dateAdd(wk.we, -7), 7);
+    if (!inWk.length && !cardio && !cur.n) return;
+    const by = new Map();
+    inWk.forEach(r => { const k = (r.exercise || r.name) + "|" + (r.gym || ""); (by.get(k) || by.set(k, []).get(k)).push(r); });
+    const best = [];
+    by.forEach((sets, k) => {
+      const b = N.bestSet(sets); if (!b) return;
+      const before = all.filter(r => r.date < wk.ws && (r.exercise || r.name) + "|" + (r.gym || "") === k);
+      const pb = N.bestSet(before);
+      const beat = !!pb && (Number(b.weight) > Number(pb.weight) || (Number(b.weight) === Number(pb.weight) && Number(b.reps) > Number(pb.reps)));
+      best.push({ name: b.exercise || b.name, w: Number(b.weight), r: Number(b.reps), beat });
+    });
+    best.sort((a, b) => (b.beat - a.beat) || (b.w - a.w));
+    const top = best.slice(0, 3), fmt = n => String(Math.round(n * 10) / 10);
+    const wt = cur.avg !== null ? `${cur.avg.toFixed(1)}<small> kg</small>` : "—";
+    const dl = cur.avg !== null && prev.avg !== null && cur.n >= 2 && prev.n >= 2 ? (cur.avg - prev.avg) : null;
+    const dtxt = dl === null ? `avg of ${cur.n}` : `avg · `+ `${dl > 0 ? "+" : dl < 0 ? "\u2212" : ""}${Math.abs(dl).toFixed(1)} kg vs last week`;
+    const range = `${N.shortDate(wk.ws)} \u2013 ${N.shortDate(wk.we)}`;
+    const el = document.createElement("section");
+    el.className = "st-tile st-recap"; el.setAttribute("aria-label", "Your week");
+    el.style.setProperty("--c", "var(--st-accent)");
+    el.innerHTML = `<div class="st-tile-head"><h3 class="st-h3">${recapWeek() && new Date(N.dateMs(state.date)).getUTCDay() === 1 ? "Last week" : "Your week"}</h3><span class="st-meta">${esc(range)}</span></div>
+      <div class="st-rc-stats">
+        <div><b class="vn-num">${days}${planned ? `<small> / ${planned}</small>` : ""}</b><span>Lifting</span><em>${inWk.length} working sets</em></div>
+        <div><b class="vn-num">${Math.round(cardio)}<small> min</small></b><span>Cardio</span><em>&nbsp;</em></div>
+        <div><b class="vn-num">${wt}</b><span>Weight</span><em>${esc(dtxt)}</em></div>
+      </div>
+      ${top.length ? `<ul class="st-rc-best" aria-label="Best sets">${top.map(t => `<li${t.beat ? ' data-beat="1"' : ""}><span>${esc(t.name)}</span><b class="vn-num">${fmt(t.w)} \u00d7 ${t.r}</b>${t.beat ? '<i>New best</i>' : ""}</li>`).join("")}</ul>` : ""}`;
+    const anchor = [...bento.children].find(c => /NXTFRM decision/i.test(c.textContent));
+    if (anchor) anchor.insertAdjacentElement("beforebegin", el); else bento.appendChild(el);
+  }
   function foldPerf(page) {
     const list = page.querySelector(".vn-perf-rows");
     if (!list || list.parentNode.querySelector(".st-fold")) return;
@@ -429,6 +484,8 @@ const STRATA = (() => {
       else { kind = "dn"; text = "Below your best last time"; }
     }
     el.dataset.k = kind; el.textContent = text;
+    const lb = document.getElementById("nxp-log-button");
+    if (lb) { if (kind === "up") lb.dataset.beat = "1"; else delete lb.dataset.beat; }
   }
   /* Hold a stepper to keep stepping: starts after a beat, then speeds up. */
   function bindHold() {
@@ -606,6 +663,7 @@ const STRATA = (() => {
     dressWeeks(page, entering);
     foldPerf(page);
     foldBody(page);
+    dressRecap(page);
     if (page.id === "trainPage") bindTrain(page, entering);
     bindProgressReplay(page);
     syncDock();

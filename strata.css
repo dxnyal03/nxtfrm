@@ -1284,3 +1284,49 @@ body,button,input{-webkit-font-smoothing:antialiased}
 /* .app is overflow:hidden auto, which would make it the sticky container; clip keeps the horizontal guard without becoming a scroller. */
 body:has(.st-train-active) .app{overflow:clip !important}
 body:has(.st-train-active){overflow:visible !important}
+
+/* Train, v7: a set that beats last time earns a mint edge on the button (before logging, never on repaint);
+   the rest timer drops its tinted box and reads as a quiet tile with a hairline rail. */
+#trainPage .st-train-active .st-log[data-beat="1"]{box-shadow:0 14px 30px -10px rgba(109,40,217,.7),0 0 0 1.5px rgba(61,213,152,.7),0 0 0 6px rgba(8,8,13,.55)}
+#trainPage .st-train-active .st-log{transition:box-shadow .3s var(--st-out),transform .15s var(--st-out)}
+.st-rest{padding:6px 6px 6px 18px !important;margin:0 0 10px !important;border-radius:20px !important;
+  background:var(--st-tile),rgba(20,19,30,.62) !important;border:1px solid var(--st-tile-line) !important;box-shadow:var(--st-tile-hl);
+  -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+.st-rest-l{gap:12px}
+.st-rest-l small{color:var(--st-ink-3) !important;font-weight:550}
+.st-rest-l b{font-size:28px !important;font-weight:300 !important;color:var(--st-ink)}
+.st-rest .nxp-rest-rail{height:2px !important;left:18px !important;right:18px !important;bottom:5px !important;border-radius:2px;background:rgba(var(--st-hl),.07) !important;overflow:hidden}
+.st-rest .nxp-rest-rail span{background:linear-gradient(90deg,var(--st-accent-lift),var(--st-cardio)) !important;opacity:.85;border-radius:2px}
+.st-rest .vn-rest-actions .n99-button{height:40px !important;min-height:40px !important;padding:0 14px !important;background:transparent !important;color:var(--st-ink-2) !important;font-weight:500 !important}
+.st-rest .vn-rest-actions .n99-button:first-child{background:rgba(var(--st-hl),.07) !important;color:var(--st-ink) !important}
+@media (prefers-reduced-motion:reduce){#trainPage .st-train-active .st-log{transition:none}.st-rest .nxp-rest-rail span{transition:none !important}}
+
+/* Weekly recap tile (Home, Sunday / Monday). */
+.st-recap .st-rc-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin-top:2px}
+.st-recap .st-rc-stats>div{display:flex;flex-direction:column;gap:3px;min-width:0;padding:0 12px}
+.st-recap .st-rc-stats>div:first-child{padding-left:0}
+.st-recap .st-rc-stats>div+div{border-left:1px solid var(--st-tile-line)}
+.st-recap .st-rc-stats b{font:300 30px/1.05 var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink);white-space:nowrap}
+.st-recap .st-rc-stats b small{font:400 13px var(--st-font);color:var(--st-ink-3);letter-spacing:0;margin-left:2px}
+.st-recap .st-rc-stats span{font:550 13px/1.2 var(--st-font);color:var(--st-ink-2)}
+.st-recap .st-rc-stats em{font:400 12px/1.25 var(--st-font);font-style:normal;color:var(--st-ink-3)}
+.st-recap .st-rc-best{list-style:none;margin:16px 0 0;padding:12px 0 0;border-top:1px solid var(--st-tile-line);display:flex;flex-direction:column;gap:2px}
+.st-recap .st-rc-best li{display:flex;align-items:center;gap:10px;min-height:36px}
+.st-recap .st-rc-best li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:500 14.5px var(--st-font);color:var(--st-ink)}
+.st-recap .st-rc-best li b{font:600 14.5px var(--st-font);color:var(--st-ink);white-space:nowrap}
+.st-recap .st-rc-best li i{font:550 11.5px/1 var(--st-font);font-style:normal;color:var(--st-lean);display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;background:rgba(61,213,152,.12)}
+.st-recap .st-rc-best li i::before{content:"";border-left:3.5px solid transparent;border-right:3.5px solid transparent;border-bottom:5.5px solid currentColor}
+@media (max-width:359px){.st-recap .st-rc-stats b{font-size:25px}.st-recap .st-rc-stats>div{padding:0 8px}}
+
+/* =====================================================================================
+   ONE TYPEFACE. The system face (SF on iPhone and Mac) for everything: text, numerals,
+   buttons, inputs, chart labels. -apple-system picks the Display optical size on its own
+   at large sizes, so headings and numerals do not need a second family. This replaces the
+   four stacks that were in play (Inter-first legacy, SF Pro Text, SF Pro Display, mixed).
+   ===================================================================================== */
+:root{
+  --st-font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",system-ui,"Segoe UI",Roboto,sans-serif;
+  --st-font-d:var(--st-font);
+}
+html,body,button,input,select,textarea{font-family:var(--st-font) !important}
+html body :where(*:not(svg *)){font-family:var(--st-font) !important}

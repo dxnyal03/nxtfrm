@@ -589,6 +589,13 @@ const NXT = (() => {
     try {
       const data=old.getFullBackup();
       delete data.localStorageDump.apm_recovery_backup;
+      /* getFullBackup carries every record twice: as structured fields and again inside
+         the raw localStorage dump. Restore (validateBackup) reads the structured field
+         whenever it is present and only falls back to the dump, so for a recovery copy
+         the duplicate is dropped. File exports still use the full backup untouched. */
+      for(const [field,key] of [["logs","apm_logs"],["cardio","apm_cardio"],["floorball","apm_floorball"],["bws","apm_bws"],["scans","apm_evo_scans"],["rest","apm_rest"],["settings","apm_settings"],["notifications","apm_notifications"]]) {
+        if(data[field]!==undefined)delete data.localStorageDump[key];
+      }
       payload=JSON.stringify({reason,createdAt:new Date().toISOString(),data});
     } catch(e) { return snapshotFail("build",e,opts); }
     try { localStorage.setItem(key,payload);return true; }
