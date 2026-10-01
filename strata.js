@@ -669,6 +669,63 @@ const STRATA = (() => {
       if (swallow && Date.now() - swallow < 350) { e.stopPropagation(); e.preventDefault(); swallow = 0; }
     }, true);
   }
+
+  /* ---- Scroll-in, tap ripple, rolling trend figure ----------------------- */
+  const io = (typeof IntersectionObserver === "function") ? new IntersectionObserver(list => {
+    for (const e of list) {
+      if (!e.isIntersecting) continue;
+      io.unobserve(e.target);
+      const el = e.target;
+      if (el.hasAttribute("data-st-view")) { el.classList.add("is-in", "st-play"); rollDec(el); }
+      if (el.classList.contains("st-rv")) el.classList.add("st-rv-in");
+    }
+  }, { threshold: 0.28, rootMargin: "0px 0px -6% 0px" }) : null;
+  function rollDec(root) {
+    const el = root.querySelector(".st-dec-val");
+    if (!el || reduced() || el.dataset.stRolled) return;
+    const m = /^([+\u2212-]?)(\d+(?:\.\d+)?)(.*)$/.exec(el.textContent.trim());
+    if (!m) return;
+    el.dataset.stRolled = "1";
+    const sign = m[1], target = parseFloat(m[2]), unit = m[3], dp = (m[2].split(".")[1] || "").length;
+    const t0 = performance.now(), dur = 900;
+    const step = now => {
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 4);
+      el.textContent = sign + (target * e).toFixed(dp) + unit;
+      if (k < 1) requestAnimationFrame(step);
+    };
+    el.textContent = sign + (0).toFixed(dp) + unit;
+    requestAnimationFrame(step);
+  }
+  function bindView(page, entering) {
+    const live = entering && !reduced() && io;
+    page.querySelectorAll("[data-st-view]").forEach(el => {
+      if (!live) { el.classList.add("is-in"); return; }
+      io.observe(el);
+    });
+    if (!live) return;
+    /* Cards that start below the fold wait for the scroll instead of animating unseen. */
+    const fold = window.innerHeight || 800;
+    page.querySelectorAll(".st-bento>*, .vn-weight>*").forEach(el => {
+      if (el.getBoundingClientRect().top < fold * 0.96) return;
+      el.classList.add("st-rv");
+      io.observe(el);
+    });
+  }
+  function bindRipple() {
+    const SEL = ".st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row,.st-dec-chip";
+    document.addEventListener("pointerdown", e => {
+      if (reduced() || (e.pointerType === "mouse" && e.button !== 0)) return;
+      const host = e.target && e.target.closest && e.target.closest(SEL);
+      if (!host || host.disabled) return;
+      const r = host.getBoundingClientRect(), sp = document.createElement("span");
+      sp.className = "st-ripple"; sp.setAttribute("aria-hidden", "true");
+      const i = document.createElement("i");
+      const d = Math.max(r.width, r.height) * 1.6;
+      i.style.cssText = "width:" + d + "px;height:" + d + "px;left:" + (e.clientX - r.left - d / 2) + "px;top:" + (e.clientY - r.top - d / 2) + "px";
+      sp.appendChild(i); host.appendChild(sp);
+      setTimeout(() => sp.remove(), 650);
+    }, true);
+  }
   function hydrate(page) {
     if (!page) return;
     const tab = (typeof state === "object" && state && state.tab) || "home";
@@ -693,6 +750,7 @@ const STRATA = (() => {
     dressRecap(page);
     if (page.id === "trainPage") bindTrain(page, entering);
     bindProgressReplay(page);
+    bindView(page, entering);
     syncDock();
   }
   function wrap(name, pageId) {
@@ -727,6 +785,7 @@ const STRATA = (() => {
     bindCalSwipe();
     bindIcons();
     bindHold();
+    bindRipple();
     ['input','click','pointerup'].forEach(ev=>document.addEventListener(ev,e=>{ if(e.target&&e.target.closest&&e.target.closest('#trainPage .st-entry,#trainPage .st-refc,#trainPage .nxp-seg'))setTimeout(syncVs,0); },true));
     document.addEventListener("pointerup", e => {
       const w = e.target && e.target.closest && e.target.closest("#vn-chart-wrap");

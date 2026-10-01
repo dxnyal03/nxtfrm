@@ -1705,3 +1705,49 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 .st-dec-conf{padding:9px 12px}
 .st-dec-conf .st-dec-txt{flex-direction:row;align-items:baseline;gap:8px}
 .st-dec-spark{width:72px}
+
+/* ── Motion pass (D38) ─────────────────────────────────────────────────────
+   Entrance plays when a card is first seen after a tab change (strata.js adds .st-play / .st-rv-in);
+   a repaint after logging stays still. Every loop and entrance has a reduced-motion path. */
+button.st-dec-chip{border:0;font:inherit;color:inherit;text-align:left;width:100%;cursor:pointer;transition:transform .2s var(--st-out,ease),box-shadow .25s}
+button.st-dec-chip:active{transform:scale(.975)}
+@media (hover:hover){button.st-dec-chip:hover{transform:translateY(-1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(var(--st-hl),.16),0 8px 20px rgba(0,0,0,.25)}}
+.st-dec-chip::after{content:"›";margin-left:6px;color:var(--st-ink-4,#6b6880);font-size:18px;line-height:1;transition:transform .2s var(--st-out,ease),color .2s;flex:0 0 auto}
+.st-dec-chip:active::after{transform:translateX(3px);color:var(--st-ink-2)}
+.st-dec-bars,.st-dec-spark{margin-left:auto}
+/* tap ripple (all tiles, chips, quick actions, CTA) */
+.st-ripple{position:absolute;inset:0;border-radius:inherit;overflow:hidden;pointer-events:none;z-index:0}
+.st-ripple i{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.22),rgba(177,138,255,.12) 45%,transparent 70%);transform:scale(.1);opacity:1;animation:st-rip .6s var(--st-out,ease-out) forwards}
+@keyframes st-rip{to{transform:scale(1);opacity:0}}
+.st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row,.st-dec-chip{position:relative}
+/* scroll-in for cards that start below the fold */
+.st-rv{opacity:0;transform:translateY(22px) scale(.985);transition:opacity .6s ease,transform .75s var(--st-spring,cubic-bezier(.2,.9,.3,1.2))}
+.st-rv.st-rv-in{opacity:1;transform:none}
+.st-enter .st-rv{animation:none !important}
+
+@media (prefers-reduced-motion:no-preference){
+  /* decision card: sparkline draws, dot lands, arrow breathes, meter climbs, hairline sweeps once */
+  .st-t-dec.st-play .st-tile-head,.st-t-dec.st-play h2,.st-t-dec.st-play .st-body{animation:st-rise .7s var(--st-spring,ease) both}
+  .st-t-dec.st-play h2{animation-delay:.07s}.st-t-dec.st-play .st-body{animation-delay:.14s}
+  .st-t-dec.st-play .st-dec-chip{animation:st-rise .7s var(--st-spring,ease) both}
+  .st-t-dec.st-play .st-dec-trend{animation-delay:.22s}.st-t-dec.st-play .st-dec-conf{animation-delay:.3s}
+  .st-t-dec.st-play .st-dec-line{stroke-dasharray:1;stroke-dashoffset:1;animation:st-draw 1.15s cubic-bezier(.3,.7,.2,1) .45s forwards}
+  .st-t-dec.st-play .st-dec-dot{opacity:0;transform-box:fill-box;transform-origin:center;animation:st-pop .45s var(--st-spring,ease) 1.5s forwards}
+  .st-t-dec.is-in .st-dec-dot{animation-name:st-dot-pulse;animation-duration:2.6s;animation-delay:2s;animation-iteration-count:infinite;opacity:1;transform-box:fill-box;transform-origin:center}
+  .st-t-dec.st-play .st-dec-bars i{transform-origin:bottom;animation:st-grow .6s var(--st-spring,ease) both}
+  .st-t-dec.st-play .st-dec-bars i:nth-child(1){animation-delay:.55s}.st-t-dec.st-play .st-dec-bars i:nth-child(2){animation-delay:.65s}.st-t-dec.st-play .st-dec-bars i:nth-child(3){animation-delay:.75s}
+  .st-t-dec.is-in .st-dec-trend.is-down .st-dec-ico svg{animation:st-nudge-dn 2.4s ease-in-out 1.6s infinite}
+  .st-t-dec.is-in .st-dec-trend.is-up .st-dec-ico svg{animation:st-nudge-up 2.4s ease-in-out 1.6s infinite}
+  .st-t-dec.is-in .st-dec-trend:not(.is-flat) .st-dec-ico{animation:st-ico-ring 3.2s ease-out 1.8s infinite}
+  .st-t-dec::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;
+    background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.1) 48%,rgba(177,138,255,.14) 52%,transparent 65%);background-size:250% 100%;background-position:120% 0}
+  .st-t-dec.st-play::after{animation:st-sweep 1.5s ease .35s 1 both}
+  .st-t-dec.vn-tone-watch.is-in{animation:st-watch 4.2s ease-in-out 1.2s infinite}
+}
+@keyframes st-nudge-dn{0%,100%{transform:translateY(-1.5px)}50%{transform:translateY(2px)}}
+@keyframes st-nudge-up{0%,100%{transform:translateY(1.5px)}50%{transform:translateY(-2px)}}
+@keyframes st-ico-ring{0%{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--e) 35%,transparent),0 0 0 0 color-mix(in srgb,var(--e) 40%,transparent)}70%,100%{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--e) 35%,transparent),0 0 0 9px transparent}}
+@keyframes st-dot-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.45)}}
+@keyframes st-sweep{0%{opacity:1;background-position:120% 0}100%{opacity:0;background-position:-40% 0}}
+@keyframes st-watch{0%,100%{box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),0 0 0 0 rgba(184,132,42,0)}50%{box-shadow:inset 0 0 0 1px rgba(184,132,42,.45),0 0 26px rgba(184,132,42,.16)}}
+@media (prefers-reduced-motion:reduce){.st-rv{opacity:1;transform:none;transition:none}.st-ripple{display:none}}

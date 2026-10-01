@@ -175,7 +175,7 @@ const NXP = (() => {
               <span class="st-meta">${perfLabel==='Older history'&&lastPerfDate?`Last ${esc(N.shortDate(lastPerfDate))}`:`${lifts.length} lifts`}</span>
             </button>
           </div>
-          <section class="st-tile st-t-dec${toneClass}" aria-labelledby="vn-dec-h" style="--c:var(--st-accent)">
+          <section class="st-tile st-t-dec${toneClass}" data-st-view aria-labelledby="vn-dec-h" style="--c:var(--st-accent)">
             <div class="st-tile-head"><span class="st-cat">NXTFRM decision</span><button type="button" class="st-link st-why" onclick="NXT.openReview()">Why<span aria-hidden="true">›</span></button></div>
             <h2 class="st-h3" id="vn-dec-h">${esc(r.title)}</h2>
             ${support?`<p class="st-body st-mt2">${esc(support)}</p>`:''}
@@ -255,14 +255,14 @@ const NXP = (() => {
       const xy=pts.map((v,i)=>[(i/(pts.length-1))*(W-pad*2)+pad,H-pad-((v-lo)/span)*(H-pad*2)]);
       const d=xy.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
       const e=xy[xy.length-1];
-      spark=`<svg class="st-dec-spark" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true" focusable="false"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${e[0].toFixed(1)}" cy="${e[1].toFixed(1)}" r="2.4" fill="currentColor"/></svg>`;
+      spark=`<svg class="st-dec-spark" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true" focusable="false"><path class="st-dec-line" pathLength="1" d="${d}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle class="st-dec-dot" cx="${e[0].toFixed(1)}" cy="${e[1].toFixed(1)}" r="2.4" fill="currentColor"/></svg>`;
     }
     const arrow={down:'M12 5v13M6.5 12.5 12 18l5.5-5.5',up:'M12 19V6M6.5 11.5 12 6l5.5 5.5',flat:'M5 12h14'}[dir];
     const lvl={low:1,medium:2,high:3}[String(confEv).toLowerCase()]||0;
     const bars=lvl?`<span class="st-dec-bars" aria-hidden="true">${[1,2,3].map(i=>`<i class="${i<=lvl?'on':''}"></i>`).join('')}</span>`:'';
     return `<div class="st-dec-ev">
-      <div class="st-dec-chip st-dec-trend is-${dir}"><span class="st-dec-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${arrow}"/></svg></span><span class="st-dec-txt"><small>Trend</small><b class="vn-num">${esc(trendEv)}</b></span>${spark}</div>
-      <div class="st-dec-chip st-dec-conf"><span class="st-dec-txt"><small>Confidence</small><b>${esc(confEv)}</b></span>${bars}</div>
+      <button type="button" class="st-dec-chip st-dec-trend is-${dir}" onclick="NXT.ui.view='overview';switchTab('weight')" aria-label="Open your weight trend"><span class="st-dec-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${arrow}"/></svg></span><span class="st-dec-txt"><small>Trend</small><b class="vn-num st-dec-val">${esc(trendEv)}</b></span>${spark}</button>
+      <button type="button" class="st-dec-chip st-dec-conf" onclick="NXT.openReview()" aria-label="Why this confidence"><span class="st-dec-txt"><small>Confidence</small><b>${esc(confEv)}</b></span>${bars}</button>
     </div>`;
   }
   function weightTileHTML() {
