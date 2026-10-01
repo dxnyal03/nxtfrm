@@ -1528,3 +1528,6 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 .st-down{margin:12px 0 0}
 #weightPage .st-down,#weightPage .st-down b{font:520 15px/1.35 var(--st-font) !important;color:var(--st-ink-2) !important}
 #weightPage .st-down b{font-weight:640 !important;color:var(--st-ink) !important}
+
+.st-slow{margin:0 0 16px}
+#weightPage .st-slow{font:450 14px/1.45 var(--st-font) !important;color:var(--st-ink-3) !important}

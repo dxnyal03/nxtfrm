@@ -1098,6 +1098,9 @@ Object.assign(NXT, (()=>{
     const togProj=canForecast?`<button type="button" class="vn-tog" data-tog="proj" aria-pressed="${!!N.ui.showForecast}" onclick="NXT.setForecastVisible(!NXT.ui.showForecast)">
       <span class="vn-tog-box" aria-hidden="true"></span>Projection
       <svg class="vn-tog-key" width="14" height="10" aria-hidden="true"><line x1="0" y1="5" x2="14" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="2 4" stroke-linecap="round"/></svg></button>`:'';
+    /* All range: the first weigh-in is marked so the whole journey reads at a glance.
+       Presentation only: the point is one the chart already plots. */
+    const first=points[0],startMark=(!N.ui.range&&points.length>=2&&first)?`<g pointer-events="none"><circle cx="${px(first.x)}" cy="${px(first.y)}" r="5" fill="none" stroke="${CHART.ink}" stroke-width="1.6"/><text x="${px(Math.min(first.x+8,W-right-60))}" y="${px(Math.max(first.y-14,top+10))}" fill="${CHART.axisText}" font-size="11">Start ${first.weight.toFixed(1)} kg</text></g>`:'';
     const summary=`${points.length} readings from ${N.shortDate(model.start)} to ${N.shortDate(state.date)}. Domain ${Number(low.toFixed(1))}–${Number(high.toFixed(1))} kg.`
       +(forecast?' Projection is a model estimate, shown dashed — not a measurement.':'');
     return `<section class="vn-weight n99-chart" id="vn-weight">
@@ -1147,6 +1150,7 @@ Object.assign(NXT, (()=>{
             <circle id="n99-chart-active" cx="${p.x}" cy="${p.y}" r="${CHART.pointActive}" fill="${CHART.active}" stroke="${CHART.activeRing}" stroke-width="2"/>
             ${anchor&&forecast?`<circle cx="${px(anchor.x)}" cy="${px(anchor.y)}" r="4" fill="${CHART.ink}" stroke="${CHART.activeRing}" stroke-width="2"/>`:''}
           </g>
+          ${startMark}
           ${xLabs}
         </svg>
       </div>

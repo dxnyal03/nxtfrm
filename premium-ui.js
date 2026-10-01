@@ -1195,6 +1195,30 @@ const NXP = (() => {
     if(done<=0)return '';
     return `<p class="st-down"><b class="vn-num">${done.toFixed(1)} kg</b> down${remain>0?` · <b class="vn-num">${remain.toFixed(1)} kg</b> to your goal range`:' · in your goal range'}</p>`;
   }
+  function weeklyAvgs(){
+    const rows=N.weights().filter(r=>r.date<=state.date&&Number.isFinite(Number(r.weight)));
+    const by=new Map();
+    rows.forEach(r=>{const w=N.weekStart(r.date),a=by.get(w)||[];a.push(Number(r.weight));by.set(w,a);});
+    return [...by.entries()].sort((a,b)=>a[0].localeCompare(b[0])).filter(([,a])=>a.length>=3).map(([w,a])=>({week:w,avg:a.reduce((x,y)=>x+y,0)/a.length}));
+  }
+  /* A flat or up week, said plainly with the real numbers. Shown only when this
+     week's average is above last week's AND the longer trend is still down. */
+  function slowWeekHTML(){
+    const w=weeklyAvgs();
+    if(w.length<2)return '';
+    const cur=w.at(-1),prev=w.at(-2);
+    if(cur.week!==N.weekStart()||prev.week!==N.dateAdd(cur.week,-7))return '';
+    const up=cur.avg-prev.avg,pl=N.detectPlateau(),rate=N.finite(pl&&pl.weeklyRate);
+    if(!(up>=0.05)||rate===null||!(rate<0))return '';
+    return `<p class="st-slow">This week’s average is ${up.toFixed(1)} kg above last week. Your trend is still down ${Math.abs(rate).toFixed(2)} kg a week. Daily weight moves around; the trend is what counts.</p>`;
+  }
+  /* The projection already says "~N weeks to goal"; this adds the date it points to. */
+  function withGoalDate(html){
+    const f=N.cfg().targetConfirmed?N.forecastGoal():null;
+    if(!f||!f.ok||!(f.weeks>0))return html;
+    const d=N.shortDate(N.dateAdd(state.date,f.weeks*7));
+    return html.replace(/(~\d+ weeks? to goal(?: \(range \d+–\d+\))?)/,`$1 · around ${d}`);
+  }
   function weightHighlightsHTML(){
     const h=weightHighlights();
     return h.length?`<ul class="st-wchips" aria-label="Highlights">${h.map(x=>`<li class="is-${x.k}"><i aria-hidden="true"></i><span>${esc(x.t)}</span></li>`).join('')}</ul>`:'';
@@ -1221,7 +1245,7 @@ const NXP = (() => {
     }
     /* Phase 2C — Weight owns its layout inside chartHTML (trajectory + journey).
        TDEE and weigh-in history are demoted below, not deleted. */
-    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${N.chartHTML().replace('<div class="vn-mhead"',downSoFarHTML()+weightHighlightsHTML()+'<div class="vn-mhead"')}<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details><button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${N.weights().length} readings</span></span><span class="vn-chev">›</span></button></div>`;
+    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${withGoalDate(N.chartHTML()).replace('<div class="vn-mhead"',downSoFarHTML()+weightHighlightsHTML()+slowWeekHTML()+'<div class="vn-mhead"')}<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details><button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${N.weights().length} readings</span></span><span class="vn-chev">›</span></button></div>`;
   }
   function syncLatestControl() {
     const btn=document.getElementById('nxp-progress-latest');
