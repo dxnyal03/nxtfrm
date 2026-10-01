@@ -1524,3 +1524,7 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 .st-wchips li i{flex:none;width:7px;height:7px;border-radius:50%;background:var(--st-accent);box-shadow:0 0 8px var(--st-accent)}
 .st-wchips li.is-low i{background:var(--st-lean);box-shadow:0 0 8px var(--st-lean)}
 #weightPage .st-wchips li span{font:550 13px/1.2 var(--st-font) !important;color:var(--st-ink) !important;text-transform:none !important;letter-spacing:0 !important}
+
+.st-down{margin:12px 0 0}
+#weightPage .st-down,#weightPage .st-down b{font:520 15px/1.35 var(--st-font) !important;color:var(--st-ink-2) !important}
+#weightPage .st-down b{font-weight:640 !important;color:var(--st-ink) !important}

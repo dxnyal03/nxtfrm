@@ -1182,6 +1182,19 @@ const NXP = (() => {
     if(down>=2)out.push({k:'down',t:`${down} weeks of falling averages in a row`});
     return out;
   }
+  /* "Down so far": the same facts the Cut journey card uses (start weight, current
+     trend, goal range), brought to the top. Only when a goal is confirmed. */
+  function downSoFarHTML(){
+    if(!N.cfg().targetConfirmed)return '';
+    const rows=N.weights(),start=N.finite(typeof START_WEIGHT!=='undefined'?START_WEIGHT:null);
+    const seed=start!==null?start:(rows[0]?rows[0].weight:null);
+    const pl=N.detectPlateau(rows),cur=N.finite(pl.lastAvg)!==null?pl.lastAvg:(rows.at(-1)?rows.at(-1).weight:null);
+    const hi=typeof goalHigh==='function'?Number(goalHigh()):NaN;
+    if(seed===null||cur===null||!Number.isFinite(hi))return '';
+    const done=seed-cur,remain=Math.max(0,cur-hi);
+    if(done<=0)return '';
+    return `<p class="st-down"><b class="vn-num">${done.toFixed(1)} kg</b> down${remain>0?` · <b class="vn-num">${remain.toFixed(1)} kg</b> to your goal range`:' · in your goal range'}</p>`;
+  }
   function weightHighlightsHTML(){
     const h=weightHighlights();
     return h.length?`<ul class="st-wchips" aria-label="Highlights">${h.map(x=>`<li class="is-${x.k}"><i aria-hidden="true"></i><span>${esc(x.t)}</span></li>`).join('')}</ul>`:'';
@@ -1208,7 +1221,7 @@ const NXP = (() => {
     }
     /* Phase 2C — Weight owns its layout inside chartHTML (trajectory + journey).
        TDEE and weigh-in history are demoted below, not deleted. */
-    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${N.chartHTML().replace('<div class="vn-mhead"',weightHighlightsHTML()+'<div class="vn-mhead"')}<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details><button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${N.weights().length} readings</span></span><span class="vn-chev">›</span></button></div>`;
+    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${N.chartHTML().replace('<div class="vn-mhead"',downSoFarHTML()+weightHighlightsHTML()+'<div class="vn-mhead"')}<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details><button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${N.weights().length} readings</span></span><span class="vn-chev">›</span></button></div>`;
   }
   function syncLatestControl() {
     const btn=document.getElementById('nxp-progress-latest');

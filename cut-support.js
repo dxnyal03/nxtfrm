@@ -1116,7 +1116,7 @@ Object.assign(NXT, (()=>{
           <div class="vn-mhead-cell vn-mhead-right">
             <span class="vn-metric-l">Trend</span>
             <div class="vn-h-sub vn-num vn-trend-val" id="n99-chart-average">${p.avg===null?'—':p.avg.toFixed(2)}<em>kg</em></div>
-            <small class="vn-tiny" id="n99-chart-coverage">${p.coverage} readings in this window</small>
+            <small class="vn-tiny" id="n99-chart-coverage">${p.coverage} readings</small>
           </div>
         </div>
         <div class="vn-mhead-post" id="n99-chart-post" ${postRow?'':'hidden'}>
@@ -1174,7 +1174,7 @@ Object.assign(NXT, (()=>{
     text('n99-chart-date',isLatest?'Latest morning':N.shortDate(p.date));
     html('n99-chart-weight',p.weight.toFixed(1)+'<em>kg</em>');
     html('n99-chart-average',p.avg===null?'—<em>kg</em>':p.avg.toFixed(2)+'<em>kg</em>');
-    text('n99-chart-coverage',p.coverage+' readings in this window');
+    text('n99-chart-coverage',p.coverage+' readings');
     text('n99-chart-timing',pointTiming(p));
     const postRow=m.postByDate?m.postByDate.get(p.date):null,postBox=document.getElementById('n99-chart-post');
     if(postBox)postBox.hidden=!postRow;
@@ -1602,7 +1602,7 @@ v88OpenNoteModal=function(ex){NXT.ui.noteExercise=ex;NXT.modal('Equipment note',
 NXT.saveEquipmentNote=function(){state.exerciseNotes=state.exerciseNotes||{};state.exerciseNotes[v88NoteKey(NXT.ui.noteExercise)]=val('n99-equipment-note').trim();NXT.commit('Equipment note saved');};
 closeModal=function(){NXT.old.closeModal();window.__apexTyping=false;state.typingWeight=false;NXT.ui.lastFocus?.focus?.();};
 apx95OpenQuickWeight=function(){NXT.modal('Log bodyweight',`<form onsubmit="event.preventDefault();apx95SaveQuickWeight()"><div class="n99-form-grid"><label>Date<input id="apx95WeightDate" type="date" required max="${state.date}" value="${state.date}"></label><label>Weight · kg<input id="apx95WeightValue" type="number" min="20" max="400" step="0.1" inputmode="decimal" required></label></div><label>Timing<select id="apx95WeightTime"><option>Morning</option><option>Pre-workout</option><option>Post-workout</option><option>Night</option></select></label><p class="n99-small">Use similar conditions each time. Morning readings drive your progress trend; post-workout readings are shown separately for context. Every original entry stays saved.</p><button type="submit" class="n99-button">Save weigh-in</button></form>`);};
-apx95SaveQuickWeight=function(){const date=val('apx95WeightDate'),weight=NXT.finite(val('apx95WeightValue'));if(!Number.isFinite(NXT.dateMs(date))||date>state.date||weight===null||weight<20||weight>400)return toast('Enter a valid date and bodyweight.');state.bws.push({id:uid(),date,weight,timeOfDay:val('apx95WeightTime')||'Morning',ts:Date.now()});NXT.commit('Weigh-in saved');};
+apx95SaveQuickWeight=function(){const date=val('apx95WeightDate'),weight=NXT.finite(val('apx95WeightValue'));if(!Number.isFinite(NXT.dateMs(date))||date>state.date||weight===null||weight<20||weight>400)return toast('Enter a valid date and bodyweight.');const prior=NXT.weights().map(r=>Number(r.weight)),tod=val('apx95WeightTime')||'Morning',newLow=tod==='Morning'&&prior.length>=5&&weight<Math.min(...prior);state.bws.push({id:uid(),date,weight,timeOfDay:tod,ts:Date.now()});NXT.commit(newLow?'Weigh-in saved · new low':'Weigh-in saved');};
 saveEditedSet=function(id){
   const row=(state.logs||[]).find(r=>r.id===id),weight=NXT.finite(val('editSetWeight')),reps=NXT.finite(val('editSetReps')),date=val('editSetDate'),number=NXT.finite(val('editSetNum'));
   if(!row||weight===null||weight<0||weight>1000||reps===null||reps<1||reps>100||!Number.isInteger(reps)||!Number.isFinite(NXT.dateMs(date))||date>state.date||number===null||number<1||!Number.isInteger(number))return toast('Check the weight, reps, set number and date.');
