@@ -1678,3 +1678,30 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 #homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-weight:var(--fw-semi,600) !important}
 .n99-picker button{font-weight:600}
 @media (max-width:359px){#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:10px !important;letter-spacing:-.02em !important}}
+
+/* Today · NXTFRM decision: evidence as glass chips with a real sparkline and a 3-step confidence meter (D36) */
+.st-t-dec .st-why{padding:0 12px;border-radius:999px;min-height:32px;background:rgba(var(--st-hl),.06);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.12)}
+.st-dec-ev{display:grid;grid-template-columns:1.35fr 1fr;gap:10px;margin-top:16px}
+.st-dec-chip{position:relative;display:flex;align-items:center;gap:10px;min-width:0;padding:11px 12px;border-radius:16px;
+  background:linear-gradient(160deg,rgba(255,255,255,.075),rgba(255,255,255,.02) 60%,rgba(124,77,255,.05));
+  -webkit-backdrop-filter:blur(12px) saturate(1.25);backdrop-filter:blur(12px) saturate(1.25);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(var(--st-hl),.08)}
+.st-dec-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.st-dec-txt small{font-size:var(--fs-micro,11px);font-weight:var(--fw-med,550);color:var(--st-ink-3)}
+.st-dec-txt b{font-size:var(--fs-body,14.5px);font-weight:var(--fw-semi,600);color:var(--st-ink);white-space:nowrap;text-transform:capitalize}
+.st-dec-trend .st-dec-txt b{text-transform:none}
+.st-dec-ico{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;color:var(--st-ink-2);background:rgba(var(--st-hl),.07);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.12)}
+.st-dec-trend.is-down{--e:#3ddc97}.st-dec-trend.is-up{--e:#ff7b54}.st-dec-trend.is-flat{--e:#b9b5cc}
+.st-dec-trend .st-dec-ico{color:var(--e);background:color-mix(in srgb,var(--e) 14%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--e) 35%,transparent)}
+.st-dec-spark{margin-left:auto;flex:0 0 auto;color:var(--e)}
+.st-dec-bars{margin-left:auto;display:flex;gap:3px;align-items:flex-end}
+.st-dec-bars i{width:5px;border-radius:2px;background:rgba(var(--st-hl),.14)}
+.st-dec-bars i:nth-child(1){height:8px}.st-dec-bars i:nth-child(2){height:12px}.st-dec-bars i:nth-child(3){height:16px}
+.st-dec-bars i.on{background:var(--st-accent-lift,#b18aff)}
+.vn-tone-watch .st-dec-bars i.on{background:var(--vn-review,#B8842A)}
+@media (max-width:359px){.st-dec-ev{grid-template-columns:1fr}.st-dec-spark{width:52px}}
+@media (prefers-reduced-transparency:reduce){.st-dec-chip{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(40,36,60,.9)}}
+.st-dec-ev{grid-template-columns:1fr;gap:8px}
+.st-dec-conf{padding:9px 12px}
+.st-dec-conf .st-dec-txt{flex-direction:row;align-items:baseline;gap:8px}
+.st-dec-spark{width:72px}
