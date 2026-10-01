@@ -2621,10 +2621,10 @@ textarea:disabled {
 <!-- Presentation layers load in <head> so the first paint is already NXTFRM V109.
      These were previously <link>ed at the end of <body>, which let the legacy
      in-head CSS paint the old chrome before the current styles arrived. -->
-<link rel="stylesheet" href="cut-support.css?v=128">
-<link rel="stylesheet" href="premium-ui.css?v=128">
-<link rel="stylesheet" href="vnext.css?v=128">
-<link rel="stylesheet" href="strata.css?v=128">
+<link rel="stylesheet" href="cut-support.css?v=129">
+<link rel="stylesheet" href="premium-ui.css?v=129">
+<link rel="stylesheet" href="vnext.css?v=129">
+<link rel="stylesheet" href="strata.css?v=129">
 
 </head>
 <body>
@@ -2857,10 +2857,22 @@ let cloudStatusText="Not connected";
 let cloudTimer=null;
 
 function persist(){
-  save("apm_logs",state.logs);save("apm_cardio",state.cardio);save("apm_floorball",state.floorball);
-  save("apm_bws",state.bws);save("apm_evo_scans",state.scans);save("apm_rest",state.rest);save("apm_coach_insights",state.coachInsights);save("apm_session_plans",state.sessionPlans);save("apm_addons",state.addOns);save("apm_exercise_notes",state.exerciseNotes);save("apm_current_read",state.read);save("apm_current_gym",state.gym);save("apm_gyms",state.gyms);save("apm_settings",settings);save("apm_notifications",state.notifs)
-
-  scheduleCloudSave();}
+  /* Each record is written on its own, small and critical ones first (settings hold
+     routines and the plan), the big scan record last. One refused write — a full
+     phone — can no longer stop the others, and the cloud save always runs, because
+     it reads the in-memory state. The first error is still thrown so callers know. */
+  let firstErr=null;
+  const w=fn=>{try{fn();}catch(e){firstErr=firstErr||e;}};
+  w(()=>save("apm_settings",settings));w(()=>save("apm_notifications",state.notifs));
+  w(()=>save("apm_current_gym",state.gym));w(()=>save("apm_gyms",state.gyms));
+  w(()=>save("apm_session_plans",state.sessionPlans));w(()=>save("apm_addons",state.addOns));
+  w(()=>save("apm_exercise_notes",state.exerciseNotes));w(()=>save("apm_current_read",state.read));w(()=>save("apm_coach_insights",state.coachInsights));
+  w(()=>save("apm_logs",state.logs));w(()=>save("apm_cardio",state.cardio));w(()=>save("apm_floorball",state.floorball));
+  w(()=>save("apm_bws",state.bws));w(()=>save("apm_rest",state.rest));
+  w(()=>save("apm_evo_scans",state.scans));
+  scheduleCloudSave();
+  if(firstErr)throw firstErr;
+}
 function today(){
   const d=new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -7898,25 +7910,25 @@ document.addEventListener("focusout",function(e){
 },true);
 </script>
 
-<script src="cut-support.js?v=128"></script>
-<script src="wearables.js?v=128"></script>
-<script src="wearables.adapters.js?v=128"></script>
-<script src="wearables.ingest.js?v=128"></script>
-<script src="wearables.canonical.js?v=128"></script>
-<script src="wearables.days.js?v=128"></script>
-<script src="wearables.snapshots.js?v=128"></script>
-<script src="wearables.resolution.js?v=128"></script>
-<script src="wearables.recovery.js?v=128"></script>
-<script src="wearables.recovery-integration.js?v=128"></script>
-<script src="wearables.training-readiness.js?v=128"></script>
-<script src="wearables.store.js?v=128"></script>
-<script src="wearables.provider-garmin.js?v=128"></script>
-<script src="wearables.sync.js?v=128"></script>
-<script src="train-anatomy.js?v=128"></script>
-<script src="premium-ui.js?v=128"></script>
-<script src="strata.js?v=128"></script>
-<script src="seed.dev.js?v=128"></script>
-<script src="seed.scenarios.js?v=128"></script>
+<script src="cut-support.js?v=129"></script>
+<script src="wearables.js?v=129"></script>
+<script src="wearables.adapters.js?v=129"></script>
+<script src="wearables.ingest.js?v=129"></script>
+<script src="wearables.canonical.js?v=129"></script>
+<script src="wearables.days.js?v=129"></script>
+<script src="wearables.snapshots.js?v=129"></script>
+<script src="wearables.resolution.js?v=129"></script>
+<script src="wearables.recovery.js?v=129"></script>
+<script src="wearables.recovery-integration.js?v=129"></script>
+<script src="wearables.training-readiness.js?v=129"></script>
+<script src="wearables.store.js?v=129"></script>
+<script src="wearables.provider-garmin.js?v=129"></script>
+<script src="wearables.sync.js?v=129"></script>
+<script src="train-anatomy.js?v=129"></script>
+<script src="premium-ui.js?v=129"></script>
+<script src="strata.js?v=129"></script>
+<script src="seed.dev.js?v=129"></script>
+<script src="seed.scenarios.js?v=129"></script>
 <script>
 (function loadWearableFixturesDevOnly(){
   var host=String(location.hostname||"");
