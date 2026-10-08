@@ -334,25 +334,32 @@ const STRATA = (() => {
     }
     const have = weeks.filter(w => w.avg !== null && w.avg !== undefined);
     if (have.length < 2) return;
-    const lo = Math.min(...have.map(w => w.avg)) - 0.5, hi = Math.max(...have.map(w => w.avg)) + 0.15;
+    /* Each week's lowest and highest morning reading, straight from the rows the chart plots. */
+    weeks.forEach(w => {
+      const end = w.part ? today : w.end, inWk = rows.filter(r => r.date >= w.st && r.date <= end).map(r => Number(r.weight)).filter(Number.isFinite);
+      w.min = inWk.length ? Math.min(...inWk) : null; w.max = inWk.length ? Math.max(...inWk) : null;
+    });
+    const lo = Math.min(...have.map(w => w.min ?? w.avg)) - 0.15, hi = Math.max(...have.map(w => w.max ?? w.avg)) + 0.15, pc = v => ((v - lo) / (hi - lo) * 100).toFixed(2);
     let prev = null;
-    const li = weeks.map((w, i) => {
-      if (w.avg === null || w.avg === undefined) return "";
+    const shown = weeks.filter(w => w.avg !== null && w.avg !== undefined), n = shown.length;
+    const li = shown.map((w, i) => {
       const d = prev === null ? null : w.avg - prev; prev = w.avg;
-      const dTxt = d === null ? "" : `${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}`;
-      const name = w.part ? "This week" : shortDate(w.st);
-      const say = `${w.part ? "This week so far" : "Week of " + shortDate(w.st)}: ${w.avg.toFixed(1)} kilograms${d === null ? "" : d === 0 ? ", unchanged" : `, ${d < 0 ? "down" : "up"} ${Math.abs(d).toFixed(1)}`}`;
-      return `<li class="st-wk${w.part ? " is-now" : ""}" data-a="${w.st}" data-b="${w.end}" style="--i:${i};--w:${Math.max(.06, (w.avg - lo) / (hi - lo)).toFixed(3)}" aria-label="${esc(say)}">
-        <span class="st-wk-d">${esc(name)}${w.part ? `<small>${w.n} ${w.n === 1 ? "day" : "days"}</small>` : ""}</span>
-        <span class="st-wk-t" aria-hidden="true"><i></i></span>
+      const dTxt = d === null ? "" : Math.abs(d) < 0.05 ? "±0.0" : `${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}`;
+      const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], dd = new Date(w.st + "T12:00:00"), name = dd.getDate() + " " + MON[dd.getMonth()];
+      const sofar = w.part ? Math.round((NXT.dateMs(today) - NXT.dateMs(w.st)) / 86400000) + 1 : 7;
+      const say = `${w.part ? "This week so far" : "Week of " + shortDate(w.st)}: average ${w.avg.toFixed(1)} kilograms from ${w.n} readings${w.min !== null ? `, lowest ${w.min.toFixed(1)}, highest ${w.max.toFixed(1)}` : ""}${d === null ? "" : Math.abs(d) < 0.05 ? ", unchanged" : `, ${d < 0 ? "down" : "up"} ${Math.abs(d).toFixed(1)} on the week before`}`;
+      return `<li class="st-wk${w.part ? " is-now" : ""}" data-a="${w.st}" data-b="${w.end}" style="--i:${i};--lo:${pc(w.min ?? w.avg)}%;--hi:${pc(w.max ?? w.avg)}%;--a:${pc(w.avg)}%" aria-label="${esc(say)}">
         <b class="st-wk-v" aria-hidden="true">${w.avg.toFixed(1)}</b>
-        <span class="st-wk-c${d !== null && d > 0 ? " is-up" : ""}" aria-hidden="true">${dTxt}</span>
+        <span class="st-wk-c${d !== null && d > 0.04 ? " is-up" : ""}" aria-hidden="true">${dTxt || "&nbsp;"}</span>
+        <span class="st-wk-trk" aria-hidden="true"><i class="st-wk-rng"></i><i class="st-wk-avg"></i></span>
+        <span class="st-wk-d" aria-hidden="true">${esc(name)}<small>${w.part ? "now · " : ""}${w.n}/${sofar}</small></span>
       </li>`;
     }).join("");
+    const pts = shown.map((w, i) => `${((i + .5) / n * 100).toFixed(2)},${(100 - Number(pc(w.avg))).toFixed(2)}`).join(" ");
     const host = document.createElement("section");
-    host.className = "st-weeks" + (entering && !reduced() ? " is-draw" : "");
-    host.setAttribute("aria-label", "Week by week average morning weight");
-    host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Morning average, Mon–Sun</small></div><ol class="st-wk-l">${li}</ol>`;
+    host.className = "st-weeks is-cols" + (entering && !reduced() ? " is-draw" : "");
+    host.setAttribute("aria-label", "Week by week: average and range of morning weight");
+    host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Average and range, Mon–Sun</small></div><ol class="st-wk-l" style="--n:${n}"><svg class="st-wk-link" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}"/></svg>${li}</ol><p class="st-wk-note"><span class="st-wk-key"><i class="st-wk-key-r"></i>Lowest to highest reading</span><span class="st-wk-key"><i class="st-wk-key-a"></i>Average</span><span class="st-wk-key">6/7 = mornings weighed</span></p>`;
     anchor.insertAdjacentElement("afterend", host);
     host.querySelectorAll(".st-wk").forEach(li => {
       li.tabIndex = 0; li.setAttribute("role", "button");
