@@ -217,6 +217,100 @@ const STRATA = (() => {
       const txt = Number(tail.avg).toFixed(2), w = 14 + txt.length * 6.6, px = Math.min(m.W - m.right - w, tail.x - w / 2);
       svg.insertAdjacentHTML("beforeend", `<g class="st-pillg is-end"><rect x="${px.toFixed(1)}" y="${(tail.y - 30).toFixed(1)}" width="${w.toFixed(1)}" height="20" rx="10"/><text x="${(px + w / 2).toFixed(1)}" y="${(tail.y - 16).toFixed(1)}" text-anchor="middle">${txt}</text></g>`);
     }
+    /* Labels are drawn in viewBox units, so a narrow phone shrinks them. Scale the small
+       chart text back up to its intended size (capped) so 320px stays readable. */
+    const rw = svg.getBoundingClientRect().width;
+    if (rw > 0) svg.style.setProperty("--tsc", Math.min(1.4, Math.max(1, m.W / rw)).toFixed(3));
+    /* Instrument layer. Same points, same scale. (1) A "Vs trend" strip under the plot:
+       every morning reading as a bar above or below its own trend value, so daily noise
+       reads separately from the trend. Own panel, own zero line: never a second axis on
+       the plot. (2) A step per Mon-Sun week at that week's morning average (the figure in
+       Week by week), so the plot and the list are one object. (3) A scanner column. */
+    {
+      const g = svg.querySelector("g[clip-path]"), base0 = m.H - m.bottom, DAY0 = 86400000;
+      const sTop = base0 + 20, sBot = m.H - 30, mid = (sTop + sBot) / 2, half = (sBot - sTop) / 2;
+      const dev = m.points.map((q, i) => ({ i, x: q.x, d: q.avg !== null && q.avg !== undefined ? Number(q.weight) - Number(q.avg) : null })).filter(q => q.d !== null);
+      let strip = "";
+      if (dev.length >= 4) {
+        const mx = Math.max(.5, Math.ceil(Math.max(...dev.map(q => Math.abs(q.d))) * 2) / 2), kk = half / mx;
+        strip += `<line class="st-dev-axis" x1="${m.left}" x2="${(m.futureDays ? m.todayX : m.W - m.right).toFixed(1)}" y1="${mid.toFixed(1)}" y2="${mid.toFixed(1)}"/>`;
+        strip += `<text class="st-dev-t" x="${m.left + 2}" y="${(sTop - 6).toFixed(1)}">Each day vs its trend</text>`;
+        strip += dev.map((q, n) => {
+          const h = Math.max(2, Math.abs(q.d) * kk), up = q.d > 0;
+          return `<rect class="st-dev ${up ? "is-up" : "is-dn"}" data-i="${q.i}" style="--i:${n}" x="${(q.x - 2.6).toFixed(1)}" y="${(up ? mid - h : mid).toFixed(1)}" width="5.2" height="${h.toFixed(1)}" rx="2.6"/>`;
+        }).join("");
+      }
+      const cols = [];
+      if (m.points.length > 1 && typeof NXT.windowStats === "function") {
+        const rowsW = NXT.weights(), first = m.points[0].date, last = m.points[m.points.length - 1].date;
+        let st = NXT.weekStart(first);
+        for (let guard = 0; st <= last && guard < 20; guard++, st = NXT.dateAdd(st, 7)) {
+          const en = NXT.dateAdd(st, 6), endUse = en > last ? last : en, from = st < first ? first : st;
+          /* Same window as the Week by week row: the whole Mon-Sun week (to today for this week),
+             even when the range starts mid-week, so the step and the list always agree. */
+          const wEnd = en > state.date ? state.date : en, days = Math.round((NXT.dateMs(wEnd) - NXT.dateMs(st)) / DAY0) + 1, w = NXT.windowStats(rowsW, wEnd, days);
+          if (!w || w.avg === null || w.avg === undefined || w.n < 3) continue;
+          cols.push({ x1: Math.max(m.left, m.x(from)), x2: Math.min(m.W - m.right, m.x(endUse)), y: m.y(w.avg), avg: w.avg });
+        }
+      }
+      const steps = cols.map(c => `<line class="st-wstep" x1="${c.x1.toFixed(1)}" x2="${c.x2.toFixed(1)}" y1="${c.y.toFixed(1)}" y2="${c.y.toFixed(1)}"/>`).join("");
+      /* Projection end: the date the engine's horizon points to, on the mark itself. */
+      const fe = m.forecast && (m.forecast.endpoint || { x: m.forecast.mid.x2, y: m.forecast.mid.y2 }), fr = m.forecastRead;
+      if (fe && fr && fr.ok && fr.weeks > 0) {
+        const txt = "Goal range · ~" + shortDate(NXT.dateAdd(state.date, fr.weeks * 7)), w = 18 + txt.length * 5.9, px = m.W - m.right - w - 2, py = m.top + 4;
+        svg.insertAdjacentHTML("beforeend", `<g class="st-pillg is-goal"><rect x="${px.toFixed(1)}" y="${py.toFixed(1)}" width="${w.toFixed(1)}" height="20" rx="10"/><text x="${(px + w / 2).toFixed(1)}" y="${(py + 13.6).toFixed(1)}" text-anchor="middle">${txt}</text></g>`);
+      }
+      /* The projection starts from the fitted level (it leads the smoothed trend); a faint
+         dotted bridge keeps the two from reading as a break in the line. */
+      const tl = m.segments && m.segments.length ? m.segments[m.segments.length - 1].slice(-1)[0] : null;
+      if (m.forecast && tl && m.anchor && Math.hypot(m.anchor.x - tl.x, m.anchor.y - tl.y) > 3 && g) {
+        g.insertAdjacentHTML("beforeend", `<line class="st-bridge" x1="${tl.x.toFixed(1)}" y1="${tl.y.toFixed(1)}" x2="${m.anchor.x.toFixed(1)}" y2="${m.anchor.y.toFixed(1)}"/>`);
+      }
+      if (g) {
+        g.insertAdjacentHTML("beforeend", steps);
+        g.insertAdjacentHTML("beforebegin", `<rect id="st-scan" class="st-scan" x="0" y="${m.top}" width="30" height="${(sBot - m.top).toFixed(1)}" fill="url(#st-scan-g)" visibility="hidden"/>`);
+        g.querySelectorAll(".vn-raw-dot").forEach((d, i) => d.style.setProperty("--i", i));
+        const defs2 = svg.querySelector("defs");
+        defs2 && defs2.insertAdjacentHTML("beforeend", `<linearGradient id="st-scan-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B49AFF" stop-opacity="0"/><stop offset=".5" stop-color="#B49AFF" stop-opacity=".16"/><stop offset="1" stop-color="#B49AFF" stop-opacity="0"/></linearGradient>`);
+        g.insertAdjacentHTML("afterend", `<g class="st-devg" aria-hidden="true">${strip}</g>`);
+        const lg = page.querySelector("#vn-legend");
+        if (strip && lg && !lg.querySelector(".st-lg-dev")) lg.insertAdjacentHTML("beforeend", `<span class="st-lg-dev"><svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><path d="M1 8L4.5 1.5 8 8z" fill="none" stroke="#CDBBFF" stroke-width="1.3" stroke-linejoin="round"/></svg>Above trend</span><span class="st-lg-dev"><svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><path d="M1 1L4.5 7.5 8 1z" fill="#8B5CF6"/></svg>Below trend</span>`);
+      }
+    }
+    /* Week bands (Mon–Sun, alternate weeks), the lowest morning reading tagged,
+       and a stem from the selected reading to its trend. Marks only. */
+    const clip = svg.querySelector("g[clip-path]"), base = m.H - m.bottom, DAY = 86400000;
+    if (clip && m.points.length > 1) {
+      const t0 = NXT.dateMs(m.points[0].date), t1 = NXT.dateMs(m.points[m.points.length - 1].date), span = t1 - t0;
+      if (span > 0 && span <= 100 * DAY) {
+        const xm = ms => m.points[0].x + (ms - t0) / span * (m.points[m.points.length - 1].x - m.points[0].x);
+        let ms = NXT.dateMs(NXT.weekStart(m.points[0].date)), i = 0, out = "";
+        for (; ms <= t1; ms += 7 * DAY, i++) {
+          if (i % 2) continue;
+          const a = Math.max(m.left, xm(ms)), b = Math.min(m.W - m.right, xm(ms + 7 * DAY));
+          if (b > a) out += `<rect class="st-band" x="${a.toFixed(1)}" y="${m.top}" width="${(b - a).toFixed(1)}" height="${(base - m.top).toFixed(1)}"/>`;
+        }
+        clip.insertAdjacentHTML("afterbegin", out);
+      }
+      const low = m.points.reduce((b, p) => p.weight < b.weight ? p : b, m.points[0]);
+      if (m.points.length >= 7 && low !== m.points[m.points.length - 1]) {
+        const txt = "Low " + Number(low.weight).toFixed(1), w = 16 + txt.length * 6, px = Math.min(m.W - m.right - w, Math.max(m.left, low.x - w / 2));
+        svg.insertAdjacentHTML("beforeend", `<g class="st-pillg is-low"><rect x="${px.toFixed(1)}" y="${(low.y + 10).toFixed(1)}" width="${w.toFixed(1)}" height="18" rx="9"/><text x="${(px + w / 2).toFixed(1)}" y="${(low.y + 22.5).toFixed(1)}" text-anchor="middle">${txt}</text></g>`);
+      }
+      if (clip) clip.insertAdjacentHTML("beforeend", `<line id="st-stem" class="st-stem" y1="0" y2="0" x1="0" x2="0" visibility="hidden"/>`);
+    }
+    const rseg = page.querySelector(".st-range-row .vn-seg");
+    if (rseg && !rseg.querySelector(".st-seg-ind")) {
+      const act = rseg.querySelector("button.active"); 
+      if (act) {
+        rseg.insertAdjacentHTML("afterbegin", `<i class="st-seg-ind" aria-hidden="true"></i>`);
+        const ind = rseg.querySelector(".st-seg-ind"), put = (l, w) => { ind.style.left = l + "px"; ind.style.width = w + "px"; };
+        const prev = window.__stSegL;
+        if (prev && !reduced()) { ind.style.transition = "none"; put(prev.l, prev.w); void ind.offsetWidth; ind.style.transition = ""; }
+        put(act.offsetLeft, act.offsetWidth);
+        window.__stSegL = { l: act.offsetLeft, w: act.offsetWidth };
+      }
+    }
     const read = page.querySelector("#vn-traj-read");
     if (read && /^no plateau detected\.?$/i.test(read.textContent.trim())) read.hidden = true;
     const wrapEl = page.querySelector("#vn-chart-wrap");
@@ -240,26 +334,71 @@ const STRATA = (() => {
     }
     const have = weeks.filter(w => w.avg !== null && w.avg !== undefined);
     if (have.length < 2) return;
-    const lo = Math.min(...have.map(w => w.avg)) - 0.5, hi = Math.max(...have.map(w => w.avg)) + 0.15;
+    /* Each week's lowest and highest morning reading, straight from the rows the chart plots. */
+    weeks.forEach(w => {
+      const end = w.part ? today : w.end, inWk = rows.filter(r => r.date >= w.st && r.date <= end).map(r => Number(r.weight)).filter(Number.isFinite);
+      w.min = inWk.length ? Math.min(...inWk) : null; w.max = inWk.length ? Math.max(...inWk) : null;
+    });
+    const lo = Math.min(...have.map(w => w.min ?? w.avg)) - 0.15, hi = Math.max(...have.map(w => w.max ?? w.avg)) + 0.15, pc = v => ((v - lo) / (hi - lo) * 100).toFixed(2);
     let prev = null;
-    const li = weeks.map((w, i) => {
-      if (w.avg === null || w.avg === undefined) return "";
+    const shown = weeks.filter(w => w.avg !== null && w.avg !== undefined), n = shown.length;
+    const li = shown.map((w, i) => {
       const d = prev === null ? null : w.avg - prev; prev = w.avg;
-      const dTxt = d === null ? "" : `${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}`;
-      const name = w.part ? "This week" : shortDate(w.st);
-      const say = `${w.part ? "This week so far" : "Week of " + shortDate(w.st)}: ${w.avg.toFixed(1)} kilograms${d === null ? "" : d === 0 ? ", unchanged" : `, ${d < 0 ? "down" : "up"} ${Math.abs(d).toFixed(1)}`}`;
-      return `<li class="st-wk${w.part ? " is-now" : ""}" data-a="${w.st}" data-b="${w.end}" style="--i:${i};--w:${Math.max(.06, (w.avg - lo) / (hi - lo)).toFixed(3)}" aria-label="${esc(say)}">
-        <span class="st-wk-d">${esc(name)}${w.part ? `<small>${w.n} ${w.n === 1 ? "day" : "days"}</small>` : ""}</span>
-        <span class="st-wk-t" aria-hidden="true"><i></i></span>
+      const dTxt = d === null ? "" : Math.abs(d) < 0.05 ? "±0.0" : `${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}`;
+      const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], dd = new Date(w.st + "T12:00:00"), name = dd.getDate() + " " + MON[dd.getMonth()];
+      const sofar = w.part ? Math.round((NXT.dateMs(today) - NXT.dateMs(w.st)) / 86400000) + 1 : 7;
+      const say = `${w.part ? "This week so far" : "Week of " + shortDate(w.st)}: average ${w.avg.toFixed(1)} kilograms from ${w.n} readings${w.min !== null ? `, lowest ${w.min.toFixed(1)}, highest ${w.max.toFixed(1)}` : ""}${d === null ? "" : Math.abs(d) < 0.05 ? ", unchanged" : `, ${d < 0 ? "down" : "up"} ${Math.abs(d).toFixed(1)} on the week before`}`;
+      return `<li class="st-wk${w.part ? " is-now" : ""}" data-a="${w.st}" data-b="${w.end}" style="--i:${i};--lo:${pc(w.min ?? w.avg)}%;--hi:${pc(w.max ?? w.avg)}%;--a:${pc(w.avg)}%" aria-label="${esc(say)}">
         <b class="st-wk-v" aria-hidden="true">${w.avg.toFixed(1)}</b>
-        <span class="st-wk-c${d !== null && d > 0 ? " is-up" : ""}" aria-hidden="true">${dTxt}</span>
+        <span class="st-wk-c${d !== null && d > 0.04 ? " is-up" : ""}" aria-hidden="true">${dTxt || "&nbsp;"}</span>
+        <span class="st-wk-trk" aria-hidden="true"><i class="st-wk-rng"></i><i class="st-wk-avg"></i></span>
+        <span class="st-wk-d" aria-hidden="true">${esc(name)}<small>${w.part ? "now · " : ""}${w.n}/${sofar}</small></span>
       </li>`;
     }).join("");
+    const pts = shown.map((w, i) => `${((i + .5) / n * 100).toFixed(2)},${(100 - Number(pc(w.avg))).toFixed(2)}`).join(" ");
     const host = document.createElement("section");
     host.className = "st-weeks" + (entering && !reduced() ? " is-draw" : "");
-    host.setAttribute("aria-label", "Week by week average morning weight");
-    host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Morning average, Mon–Sun</small></div><ol class="st-wk-l">${li}</ol>`;
+    host.setAttribute("aria-label", "Week by week: average and range of morning weight");
+    host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Average and range, Mon–Sun</small></div><ol class="st-wk-l" style="--n:${n}"><svg class="st-wk-link" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}"/></svg>${li}</ol><p class="st-wk-note"><span class="st-wk-key"><i class="st-wk-key-r"></i>Lowest to highest reading</span><span class="st-wk-key"><i class="st-wk-key-a"></i>Average</span><span class="st-wk-key">6/7 = mornings weighed</span></p>`;
+    {
+      /* Week by week as a ledger (owner pick, 2026-10-08). Same data as above. */
+      const style = "ledger";
+      if (style === "ledger") {
+        const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], have = new Set(rows.map(r => r.date));
+        let pv = null;
+        const meta = shown.map(w => {
+          const d = pv === null ? null : w.avg - pv; pv = w.avg;
+          const dd = new Date(w.st + "T12:00:00"), so = w.part ? Math.round((NXT.dateMs(today) - NXT.dateMs(w.st)) / 86400000) + 1 : 7;
+          const days = Array.from({ length: 7 }, (_, k) => { const ds = NXT.dateAdd(w.st, k); return ds > today ? "f" : have.has(ds) ? "y" : "n"; });
+          return { w, d, so, days, name: w.part ? "This week" : dd.getDate() + " " + MON[dd.getMonth()], dir: d === null ? "" : d < -0.04 ? "down" : d > 0.04 ? "up" : "flat" };
+        });
+        const arrow = dir => dir === "down" ? '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v7.5M2.8 6.6 6 9.8l3.2-3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' : dir === "up" ? '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10V2.5M2.8 5.4 6 2.2l3.2 3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+        const chip = x => x.d === null ? '<span class="wx-chip is-none">first</span>' : `<span class="wx-chip is-${x.dir}">${arrow(x.dir)}${Math.abs(x.d).toFixed(1)}</span>`;
+        const attrs = x => `class="st-wk wx-it${x.w.part ? " is-now" : ""}" data-a="${x.w.st}" data-b="${x.w.end}" aria-label="${esc(`${x.w.part ? "This week so far" : "Week of " + shortDate(x.w.st)}: average ${x.w.avg.toFixed(1)} kilograms${x.d === null ? "" : x.dir === "flat" ? ", unchanged" : `, ${x.dir} ${Math.abs(x.d).toFixed(1)} on the week before`}, ${x.w.n} of ${x.so} mornings weighed`)}"`;
+        if (style === "ledger") {
+          host.className = "st-weeks wx-ledger" + (entering && !reduced() ? " is-draw" : "");
+          host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Morning average, Mon–Sun</small></div><ol class="st-wk-l">${meta.map((x, k) => `<li ${attrs(x)} style="--i:${k}"><span class="wx-d">${esc(x.name)}${x.w.part ? `<small>${7 - x.so} ${7 - x.so === 1 ? "day" : "days"} to go</small>` : ""}</span><b class="wx-v">${x.w.avg.toFixed(1)}<em>kg</em></b>${chip(x)}<span class="wx-dots" aria-hidden="true">${x.days.map(c => `<i class="is-${c}"></i>`).join("")}</span></li>`).join("")}</ol>`;
+        }
+      }
+    }
     anchor.insertAdjacentElement("afterend", host);
+    host.querySelectorAll(".st-wk").forEach(li => {
+      li.tabIndex = 0; li.setAttribute("role", "button");
+      const go = () => {
+        const mm = NXT.ui.chart, sv = document.getElementById("n99-chart-svg"); if (!mm || !sv) return;
+        const a = li.dataset.a, b = li.dataset.b, inWk = mm.points.map((q, i) => ({ q, i })).filter(o => o.q.date >= a && o.q.date <= b);
+        sv.querySelectorAll(".st-weeksel").forEach(e => e.remove());
+        host.querySelectorAll(".st-wk.is-pick").forEach(e => e.classList.remove("is-pick"));
+        if (!inWk.length) return;
+        li.classList.add("is-pick");
+        const x1 = Math.max(mm.left, inWk[0].q.x - 8), x2 = Math.min(mm.W - mm.right, inWk[inWk.length - 1].q.x + 8);
+        const gp = sv.querySelector("g[clip-path]");
+        gp && gp.insertAdjacentHTML("afterbegin", `<rect class="st-weeksel" x="${x1.toFixed(1)}" y="${mm.top}" width="${(x2 - x1).toFixed(1)}" height="${(mm.H - mm.bottom - mm.top).toFixed(1)}" rx="8"/>`);
+        NXT.selectPoint(inWk[inWk.length - 1].i);
+        const wrapEl = document.getElementById("vn-chart-wrap"); wrapEl && wrapEl.scrollIntoView({ block: "center", behavior: reduced() ? "auto" : "smooth" });
+      };
+      li.onclick = go; li.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+    });
     weeksSync(m.points.length - 1);
   }
   function weeksSync(index) {
@@ -369,12 +508,23 @@ const STRATA = (() => {
     const tip = wrapEl && wrapEl.querySelector(".st-tip");
     if (!tip || !m || !m.points || !svg) return;
     const p = m.points[index];
-    if (!p || (opts && opts.clear) || state0.replay) { tip.hidden = true; return; }
+    if (!p || (opts && opts.clear) || state0.replay) { tip.hidden = true; const st0 = svg.querySelector("#st-stem"), sc0 = svg.querySelector("#st-scan"); if (st0) st0.setAttribute("visibility", "hidden"); if (sc0) sc0.setAttribute("visibility", "hidden"); return; }
     const r = svg.getBoundingClientRect(), wr = wrapEl.getBoundingClientRect(), k = r.width / m.W;
-    tip.innerHTML = `<b>${esc(shortDate(p.date))}</b><span>Reading <em>${Number(p.weight).toFixed(1)}</em></span>${p.avg !== null ? `<span>Trend <em>${Number(p.avg).toFixed(2)}</em></span>` : ""}`;
+    svg.querySelectorAll(".st-dev.is-sel").forEach(e => e.classList.remove("is-sel"));
+    const selBar = svg.querySelector(`.st-dev[data-i="${index}"]`); if (selBar && !(opts && opts.clear)) selBar.classList.add("is-sel");
+    const scan = svg.querySelector("#st-scan");
+    if (scan) { scan.setAttribute("x", (p.x - 15).toFixed(1)); scan.setAttribute("visibility", "visible"); }
+    const gap = p.avg !== null && p.avg !== undefined ? Number(p.weight) - Number(p.avg) : null, stem = svg.querySelector("#st-stem");
+    if (stem) {
+      if (gap !== null && p.ty !== null && p.ty !== undefined && Math.abs(p.y - p.ty) > 3) { stem.setAttribute("x1", p.x); stem.setAttribute("x2", p.x); stem.setAttribute("y1", p.y); stem.setAttribute("y2", p.ty); stem.setAttribute("visibility", "visible"); }
+      else stem.setAttribute("visibility", "hidden");
+    }
+    tip.innerHTML = `<b>${esc(shortDate(p.date))}</b><span>Reading <em>${Number(p.weight).toFixed(1)}</em></span>${p.avg !== null ? `<span>Trend <em>${Number(p.avg).toFixed(2)}</em></span>` : ""}${gap !== null && Math.abs(gap) >= 0.05 ? `<span class="st-tip-gap">${Math.abs(gap).toFixed(1)} kg ${gap < 0 ? "below" : "above"} trend</span>` : ""}`;
     tip.style.left = Math.min(Math.max(r.left - wr.left + p.x * k, 58), wr.width - 58) + "px";
-    tip.style.top = Math.max(0, r.top - wr.top + (p.ty !== null && p.ty !== undefined ? Math.min(p.y, p.ty) : p.y) * k - 58) + "px";
     tip.hidden = false;
+    const hi = (p.ty !== null && p.ty !== undefined ? Math.min(p.y, p.ty) : p.y), lo = (p.ty !== null && p.ty !== undefined ? Math.max(p.y, p.ty) : p.y), h = tip.offsetHeight;
+    const above = r.top - wr.top + hi * k - h - 16;
+    tip.style.top = (above >= 0 ? above : Math.min(wr.height - h, r.top - wr.top + lo * k + 18)) + "px";
   }
   function stopReplay() {
     if (!state0.replay) return;
@@ -605,7 +755,8 @@ const STRATA = (() => {
   const ICONS = {
     "\u203a": ["M8 5l7 7-7 7", "Next", true], "\u2039": ["M16 5l-7 7 7 7", "Previous", true],
     "+": ["M12 5v14M5 12h14", "Increase", false], "\u2212": ["M5 12h14", "Decrease", false],
-    "\u00d7": ["M6 6l12 12M18 6L6 18", "Close", false], "\u2713": ["M5 12.5l4.5 4.5L19 7.5", "Done", true]
+    "\u00d7": ["M6 6l12 12M18 6L6 18", "Close", false], "\u2713": ["M5 12.5l4.5 4.5L19 7.5", "Done", true],
+    "\u2191": ["M12 19V6M6.5 11.5 12 6l5.5 5.5", "Up", true], "\u2193": ["M12 5v13M6.5 12.5 12 18l5.5-5.5", "Down", true]
   };
   function iconify(root) {
     if (!root || root.nodeType !== 1 || root.closest("svg")) return;

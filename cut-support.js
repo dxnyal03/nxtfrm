@@ -897,7 +897,7 @@ Object.assign(NXT, (()=>{
   }
   function chartModel(rows=N.weights(),range=N.ui.range,showGoal=N.ui.showGoal) {
     const series=N.trend(rows),start=range?N.dateAdd(state.date,1-range):rows[0]?.date||N.dateAdd(state.date,-29);
-    const visible=series.filter(r=>r.date>=start),W=420,H=240,left=40,right=12,top=14,bottom=32;
+    const visible=series.filter(r=>r.date>=start),W=420,H=392,left=20,right=20,top=18,bottom=110;
     if(!visible.length)return {visible,start,W,H,left,right,top,bottom,low:null,high:null,step:null};
     /* D2 — Y-domain from visible morning readings + trend ONLY.
        Goal band, target reference, forecast cone/endpoint, confidence band
@@ -964,6 +964,13 @@ Object.assign(NXT, (()=>{
      falls back to whatever timing exists on days with no morning reading. That
      fallback is unchanged, so the readout names the timing actually recorded
      rather than claiming every point is a morning one. */
+  /* One plain line under the trend figure: how far this reading sits from its own trend value. */
+  function gapLine(p) {
+    if(!p||p.avg===null||p.avg===undefined||!Number.isFinite(p.weight))return (p&&p.coverage!==undefined?p.coverage+' readings':'');
+    const d=p.weight-p.avg;
+    if(Math.abs(d)<0.05)return 'On trend';
+    return Math.abs(d).toFixed(1)+' kg '+(d<0?'below':'above')+' trend';
+  }
   function pointTiming(p) {
     const t=String(p&&p.timeOfDay||'').trim();
     if(!t)return 'Timing not recorded';
@@ -1034,9 +1041,10 @@ Object.assign(NXT, (()=>{
       else if(plateau.status==='gaining'){plateauStatus='Gaining';plateauTone='is-watch';}
       else {plateauStatus='Settling';plateauTone='is-neutral';}
     }
-    const proj=forecastRead&&forecastRead.ok&&forecastRead.weeks!==null
+    /* A horizon only means something against a goal the lifter confirmed (same gate as the chart and Today). */
+    const proj=N.cfg().targetConfirmed&&forecastRead&&forecastRead.ok&&forecastRead.weeks!==null
       ?`${forecastRead.weeks} wk <span class="vn-ink-3">(${forecastRead.lowWeeks}–${forecastRead.highWeeks})</span>`
-      :'Unavailable';
+      :(N.cfg().targetConfirmed?'Unavailable':'Set a goal');
     const conf=plateau&&plateau.confidence&&plateau.confidence!=='none'
       ?plateau.confidence.charAt(0).toUpperCase()+plateau.confidence.slice(1):'—';
     return `<section class="vn-evidence">
@@ -1074,7 +1082,6 @@ Object.assign(NXT, (()=>{
       const emptyTitle=N.weights().length?'No weigh-ins in this period':'Your first weigh-in starts here';
       const emptyBody=N.weights().length?'Choose All to see older entries, or log a current weight.':'Your actual readings will appear as dots. A trend line starts when a seven-day window has three readings.';
       return `<section class="vn-weight n99-chart" id="vn-weight">
-        <p class="vn-h-sect">Recent trajectory</p>
         <h2 class="vn-h-sub">Building your baseline</h2>
         <div class="vn-mt4">${rangeBtns}</div>
         <div class="vn-chart-empty n99-chart-empty"><div class="n99-empty-number">—<small> kg</small></div>
@@ -1121,11 +1128,10 @@ Object.assign(NXT, (()=>{
     /* All range: the first weigh-in is marked so the whole journey reads at a glance.
        Presentation only: the point is one the chart already plots. */
     const first=points[0],startMark=(!N.ui.range&&points.length>=2&&first)?`<g pointer-events="none"><circle cx="${px(first.x)}" cy="${px(first.y)}" r="5" fill="none" stroke="${CHART.ink}" stroke-width="1.6"/><text x="${px(Math.min(first.x+8,W-right-60))}" y="${px(Math.max(first.y-14,top+10))}" fill="${CHART.axisText}" font-size="11">Start ${first.weight.toFixed(1)} kg</text></g>`:'';
-    const summary=`${points.length} readings from ${N.shortDate(model.start)} to ${N.shortDate(state.date)}. Domain ${Number(low.toFixed(1))}–${Number(high.toFixed(1))} kg.`
+    const summary=`${points.length} readings, ${N.shortDate(points[0].date)} to ${N.shortDate(points.at(-1).date)}. Dotted steps mark each week’s morning average. The strip shows each reading against the trend: while you are cutting most land below it, because the trend averages the days before; several days above it in a row mean the drop is slowing.`
       +(forecast?' Projection is a model estimate, shown dashed — not a measurement.':'');
     return `<section class="vn-weight n99-chart" id="vn-weight">
       <div class="vn-read">
-        <p class="vn-h-sect">Recent trajectory</p>
         <h2 class="vn-h-sub" id="vn-traj-headline">${esc(headline)}</h2>
         <p class="vn-meta vn-mt2" id="vn-traj-read">${esc(readLine||(plateau.reason||''))}</p>
       </div>
@@ -1139,7 +1145,7 @@ Object.assign(NXT, (()=>{
           <div class="vn-mhead-cell vn-mhead-right">
             <span class="vn-metric-l">Trend</span>
             <div class="vn-h-sub vn-num vn-trend-val" id="n99-chart-average">${p.avg===null?'—':p.avg.toFixed(2)}<em>kg</em></div>
-            <small class="vn-tiny" id="n99-chart-coverage">${p.coverage} readings</small>
+            <small class="vn-tiny st-gapline" id="n99-chart-coverage">${esc(gapLine(p))}</small>
           </div>
         </div>
         <div class="vn-mhead-post" id="n99-chart-post" ${postRow?'':'hidden'}>
@@ -1161,10 +1167,10 @@ Object.assign(NXT, (()=>{
             <linearGradient id="n99-chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".34"/><stop offset=".7" stop-color="${CHART.ink}" stop-opacity=".06"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity="0"/></linearGradient><filter id="st-glow" x="-10%" y="-40%" width="120%" height="180%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             <linearGradient id="n99-chart-cone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".10"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity=".02"/></linearGradient>
           </defs>
-          ${narrowTicks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}" pointer-events="none"/><text x="${left-8}" y="${t.y+3.5}" text-anchor="end" fill="${CHART.axisText}" font-size="11" pointer-events="none">${Number(t.value.toFixed(1))}</text>`).join('')}
+          ${narrowTicks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}" pointer-events="none"/><text x="${left+2}" y="${t.y-5}" text-anchor="start" fill="${CHART.axisText}" font-size="11" pointer-events="none">${Number(t.value.toFixed(1))}</text>`).join('')}
           <g clip-path="url(#vn-chart-clip)" pointer-events="none">
             ${today}${cone}${bandFill}${trendPaths}${forecastLine}${postSeries}
-            ${points.map(pt=>`<circle class="vn-raw-dot" cx="${pt.x}" cy="${pt.y}" r="2.1" fill="${CHART.raw}" fill-opacity=".85"/>`).join('')}
+            ${points.map(pt=>`<circle class="vn-raw-dot" cx="${pt.x}" cy="${pt.y}" r="2.8" fill="${CHART.raw}" fill-opacity=".85"/>`).join('')}
             <line id="n99-chart-cursor" x1="${p.x}" x2="${p.x}" y1="${top}" y2="${baseline}" stroke="${CHART.cursor}" stroke-opacity=".38" stroke-dasharray="3 4"/>
             <circle id="st-chart-halo" class="st-halo" cx="${p.x}" cy="${p.y}" r="11" fill="${CHART.ink}"/>
             <circle id="n99-chart-active" cx="${p.x}" cy="${p.y}" r="${CHART.pointActive}" fill="${CHART.active}" stroke="${CHART.activeRing}" stroke-width="2"/>
@@ -1198,7 +1204,7 @@ Object.assign(NXT, (()=>{
     text('n99-chart-date',isLatest?'Latest morning':N.shortDate(p.date));
     html('n99-chart-weight',p.weight.toFixed(1)+'<em>kg</em>');
     html('n99-chart-average',p.avg===null?'—<em>kg</em>':p.avg.toFixed(2)+'<em>kg</em>');
-    text('n99-chart-coverage',p.coverage+' readings');
+    text('n99-chart-coverage',gapLine(p));
     text('n99-chart-timing',pointTiming(p));
     const postRow=m.postByDate?m.postByDate.get(p.date):null,postBox=document.getElementById('n99-chart-post');
     if(postBox)postBox.hidden=!postRow;
