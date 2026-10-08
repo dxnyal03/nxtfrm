@@ -280,8 +280,8 @@ button.st-tile:active{transform:scale(.985)}
 .st-tip b{color:var(--st-ink);font-weight:590;font-size:12px}
 .st-tip em{font-style:normal;color:var(--st-ink);font-weight:550;font-variant-numeric:tabular-nums;margin-left:4px}
 #weightPage .vn-chart-wrap .st-tip{top:0}
-#weightPage .st-band{fill:rgba(var(--st-hl),.03)}
-#weightPage .vn-raw-dot{fill:rgba(var(--st-hl),.55)}
+#weightPage .st-band{fill:rgba(var(--st-hl),.028)}
+#weightPage .vn-raw-dot{fill:rgba(var(--st-hl),.85);stroke:rgba(14,12,22,.9);stroke-width:1.2;paint-order:stroke}
 #weightPage #n99-chart-active{fill:#fff;stroke:#8B5CF6;stroke-width:3}
 #weightPage #n99-chart-cursor{stroke:rgba(180,154,255,.55);stroke-dasharray:3 4}
 
@@ -1792,3 +1792,9 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
   100%{transform:translate3d(3vw,-5vh,0) scale(1.05) rotate(3deg)}
 }
 @keyframes st-dust{from{opacity:.78}to{opacity:1}}
+
+/* Weight chart lift: stem from reading to trend, low tag, gap line in the tooltip */
+#weightPage .st-stem{stroke:rgba(210,195,255,.8);stroke-width:1.6;stroke-linecap:round;pointer-events:none}
+.st-pillg.is-low rect{fill:rgba(20,18,30,.82);stroke:rgba(255,255,255,.18)}
+.st-pillg.is-low text{fill:var(--st-ink-2);font-weight:550;font-size:11px}
+.st-tip .st-tip-gap{color:var(--st-ink-3);font-size:11px;margin-top:2px}

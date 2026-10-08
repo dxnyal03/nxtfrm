@@ -897,7 +897,7 @@ Object.assign(NXT, (()=>{
   }
   function chartModel(rows=N.weights(),range=N.ui.range,showGoal=N.ui.showGoal) {
     const series=N.trend(rows),start=range?N.dateAdd(state.date,1-range):rows[0]?.date||N.dateAdd(state.date,-29);
-    const visible=series.filter(r=>r.date>=start),W=420,H=240,left=40,right=12,top=14,bottom=32;
+    const visible=series.filter(r=>r.date>=start),W=420,H=288,left=40,right=12,top=14,bottom=32;
     if(!visible.length)return {visible,start,W,H,left,right,top,bottom,low:null,high:null,step:null};
     /* D2 — Y-domain from visible morning readings + trend ONLY.
        Goal band, target reference, forecast cone/endpoint, confidence band
@@ -1164,7 +1164,7 @@ Object.assign(NXT, (()=>{
           ${narrowTicks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}" pointer-events="none"/><text x="${left-8}" y="${t.y+3.5}" text-anchor="end" fill="${CHART.axisText}" font-size="11" pointer-events="none">${Number(t.value.toFixed(1))}</text>`).join('')}
           <g clip-path="url(#vn-chart-clip)" pointer-events="none">
             ${today}${cone}${bandFill}${trendPaths}${forecastLine}${postSeries}
-            ${points.map(pt=>`<circle class="vn-raw-dot" cx="${pt.x}" cy="${pt.y}" r="2.1" fill="${CHART.raw}" fill-opacity=".85"/>`).join('')}
+            ${points.map(pt=>`<circle class="vn-raw-dot" cx="${pt.x}" cy="${pt.y}" r="2.8" fill="${CHART.raw}" fill-opacity=".85"/>`).join('')}
             <line id="n99-chart-cursor" x1="${p.x}" x2="${p.x}" y1="${top}" y2="${baseline}" stroke="${CHART.cursor}" stroke-opacity=".38" stroke-dasharray="3 4"/>
             <circle id="st-chart-halo" class="st-halo" cx="${p.x}" cy="${p.y}" r="11" fill="${CHART.ink}"/>
             <circle id="n99-chart-active" cx="${p.x}" cy="${p.y}" r="${CHART.pointActive}" fill="${CHART.active}" stroke="${CHART.activeRing}" stroke-width="2"/>

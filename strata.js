@@ -217,6 +217,28 @@ const STRATA = (() => {
       const txt = Number(tail.avg).toFixed(2), w = 14 + txt.length * 6.6, px = Math.min(m.W - m.right - w, tail.x - w / 2);
       svg.insertAdjacentHTML("beforeend", `<g class="st-pillg is-end"><rect x="${px.toFixed(1)}" y="${(tail.y - 30).toFixed(1)}" width="${w.toFixed(1)}" height="20" rx="10"/><text x="${(px + w / 2).toFixed(1)}" y="${(tail.y - 16).toFixed(1)}" text-anchor="middle">${txt}</text></g>`);
     }
+    /* Week bands (Mon–Sun, alternate weeks), the lowest morning reading tagged,
+       and a stem from the selected reading to its trend. Marks only. */
+    const clip = svg.querySelector("g[clip-path]"), base = m.H - m.bottom, DAY = 86400000;
+    if (clip && m.points.length > 1 && (!m.futureDays)) {
+      const t0 = NXT.dateMs(m.points[0].date), t1 = NXT.dateMs(m.points[m.points.length - 1].date), span = t1 - t0;
+      if (span > 0 && span <= 100 * DAY) {
+        const xm = ms => m.points[0].x + (ms - t0) / span * (m.points[m.points.length - 1].x - m.points[0].x);
+        let ms = NXT.dateMs(NXT.weekStart(m.points[0].date)), i = 0, out = "";
+        for (; ms <= t1; ms += 7 * DAY, i++) {
+          if (i % 2) continue;
+          const a = Math.max(m.left, xm(ms)), b = Math.min(m.W - m.right, xm(ms + 7 * DAY));
+          if (b > a) out += `<rect class="st-band" x="${a.toFixed(1)}" y="${m.top}" width="${(b - a).toFixed(1)}" height="${(base - m.top).toFixed(1)}"/>`;
+        }
+        clip.insertAdjacentHTML("afterbegin", out);
+      }
+      const low = m.points.reduce((b, p) => p.weight < b.weight ? p : b, m.points[0]);
+      if (m.points.length >= 7 && low !== m.points[m.points.length - 1]) {
+        const txt = "Low " + Number(low.weight).toFixed(1), w = 16 + txt.length * 6, px = Math.min(m.W - m.right - w, Math.max(m.left, low.x - w / 2));
+        svg.insertAdjacentHTML("beforeend", `<g class="st-pillg is-low"><rect x="${px.toFixed(1)}" y="${(low.y + 10).toFixed(1)}" width="${w.toFixed(1)}" height="18" rx="9"/><text x="${(px + w / 2).toFixed(1)}" y="${(low.y + 22.5).toFixed(1)}" text-anchor="middle">${txt}</text></g>`);
+      }
+      if (clip) clip.insertAdjacentHTML("beforeend", `<line id="st-stem" class="st-stem" y1="0" y2="0" x1="0" x2="0" visibility="hidden"/>`);
+    }
     const read = page.querySelector("#vn-traj-read");
     if (read && /^no plateau detected\.?$/i.test(read.textContent.trim())) read.hidden = true;
     const wrapEl = page.querySelector("#vn-chart-wrap");
@@ -369,12 +391,19 @@ const STRATA = (() => {
     const tip = wrapEl && wrapEl.querySelector(".st-tip");
     if (!tip || !m || !m.points || !svg) return;
     const p = m.points[index];
-    if (!p || (opts && opts.clear) || state0.replay) { tip.hidden = true; return; }
+    if (!p || (opts && opts.clear) || state0.replay) { tip.hidden = true; const st0 = svg.querySelector("#st-stem"); if (st0) st0.setAttribute("visibility", "hidden"); return; }
     const r = svg.getBoundingClientRect(), wr = wrapEl.getBoundingClientRect(), k = r.width / m.W;
-    tip.innerHTML = `<b>${esc(shortDate(p.date))}</b><span>Reading <em>${Number(p.weight).toFixed(1)}</em></span>${p.avg !== null ? `<span>Trend <em>${Number(p.avg).toFixed(2)}</em></span>` : ""}`;
+    const gap = p.avg !== null && p.avg !== undefined ? Number(p.weight) - Number(p.avg) : null, stem = svg.querySelector("#st-stem");
+    if (stem) {
+      if (gap !== null && p.ty !== null && p.ty !== undefined && Math.abs(p.y - p.ty) > 3) { stem.setAttribute("x1", p.x); stem.setAttribute("x2", p.x); stem.setAttribute("y1", p.y); stem.setAttribute("y2", p.ty); stem.setAttribute("visibility", "visible"); }
+      else stem.setAttribute("visibility", "hidden");
+    }
+    tip.innerHTML = `<b>${esc(shortDate(p.date))}</b><span>Reading <em>${Number(p.weight).toFixed(1)}</em></span>${p.avg !== null ? `<span>Trend <em>${Number(p.avg).toFixed(2)}</em></span>` : ""}${gap !== null && Math.abs(gap) >= 0.05 ? `<span class="st-tip-gap">${Math.abs(gap).toFixed(1)} kg ${gap < 0 ? "below" : "above"} trend</span>` : ""}`;
     tip.style.left = Math.min(Math.max(r.left - wr.left + p.x * k, 58), wr.width - 58) + "px";
-    tip.style.top = Math.max(0, r.top - wr.top + (p.ty !== null && p.ty !== undefined ? Math.min(p.y, p.ty) : p.y) * k - 58) + "px";
     tip.hidden = false;
+    const hi = (p.ty !== null && p.ty !== undefined ? Math.min(p.y, p.ty) : p.y), lo = (p.ty !== null && p.ty !== undefined ? Math.max(p.y, p.ty) : p.y), h = tip.offsetHeight;
+    const above = r.top - wr.top + hi * k - h - 16;
+    tip.style.top = (above >= 0 ? above : Math.min(wr.height - h, r.top - wr.top + lo * k + 18)) + "px";
   }
   function stopReplay() {
     if (!state0.replay) return;
