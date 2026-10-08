@@ -299,18 +299,6 @@ const STRATA = (() => {
       }
       if (clip) clip.insertAdjacentHTML("beforeend", `<line id="st-stem" class="st-stem" y1="0" y2="0" x1="0" x2="0" visibility="hidden"/>`);
     }
-    const rseg = page.querySelector(".st-range-row .vn-seg");
-    if (rseg && !rseg.querySelector(".st-seg-ind")) {
-      const act = rseg.querySelector("button.active"); 
-      if (act) {
-        rseg.insertAdjacentHTML("afterbegin", `<i class="st-seg-ind" aria-hidden="true"></i>`);
-        const ind = rseg.querySelector(".st-seg-ind"), put = (l, w) => { ind.style.left = l + "px"; ind.style.width = w + "px"; };
-        const prev = window.__stSegL;
-        if (prev && !reduced()) { ind.style.transition = "none"; put(prev.l, prev.w); void ind.offsetWidth; ind.style.transition = ""; }
-        put(act.offsetLeft, act.offsetWidth);
-        window.__stSegL = { l: act.offsetLeft, w: act.offsetWidth };
-      }
-    }
     const read = page.querySelector("#vn-traj-read");
     if (read && /^no plateau detected\.?$/i.test(read.textContent.trim())) read.hidden = true;
     const wrapEl = page.querySelector("#vn-chart-wrap");
@@ -772,9 +760,60 @@ const STRATA = (() => {
       if (btn && !ic[2] && !btn.hasAttribute("aria-label") && !btn.textContent.trim()) btn.setAttribute("aria-label", ic[1]);
     }
   }
+  /* ---- D44 · Segmented controls share one sliding pill ----------------------
+     Every segmented control (range, Progress tabs, History filter, Working/Warm-up,
+     weigh-in timing) gets the same glass pill, which springs from the option you
+     left to the one you chose. Repaints rebuild the DOM, so the last position is
+     remembered per control. Presentation only: the buttons and handlers are untouched. */
+  const SEGS = ".vn-seg, .n99-progress-tabs, .vn-hist-filters, .nxp-seg-type .nxp-seg, .st-qw-seg";
+  const segMem = {};
+  function segKey(c) { return (c.closest("[id$='Page']") || document.body).id + "|" + c.className.replace(/\s*st-segc\s*/g, " ").trim(); }
+  function placeSeg(c, animate) {
+    const act = c.querySelector(":scope>button.active, :scope>button.is-on, :scope>button[aria-pressed='true']");
+    let pill = c.querySelector(":scope>.st-seg-pill");
+    if (!act) { if (pill) pill.style.opacity = "0"; return; }
+    if (!pill) { c.insertAdjacentHTML("afterbegin", '<i class="st-seg-pill" aria-hidden="true"></i>'); pill = c.firstElementChild; c.classList.add("st-segc"); }
+    const box = { x: act.offsetLeft, y: act.offsetTop, w: act.offsetWidth, h: act.offsetHeight }, key = segKey(c), prev = segMem[key];
+    const put = b => { pill.style.transform = `translate(${b.x}px,${b.y}px)`; pill.style.width = b.w + "px"; pill.style.height = b.h + "px"; };
+    if (animate && prev && !reduced() && (prev.x !== box.x || prev.w !== box.w)) { pill.style.transition = "none"; put(prev); void pill.offsetWidth; pill.style.transition = ""; }
+    else if (!pill.dataset.on) { pill.style.transition = "none"; put(box); void pill.offsetWidth; pill.style.transition = ""; }
+    pill.dataset.on = "1"; pill.style.opacity = "1"; put(box); segMem[key] = box;
+  }
+  function bindSegs(root) { (root || document).querySelectorAll(SEGS).forEach(c => { if (c.offsetParent !== null) placeSeg(c, true); }); }
+  let segRaf = 0;
+  function queueSegs() { cancelAnimationFrame(segRaf); segRaf = requestAnimationFrame(() => bindSegs(document)); }
+  document.addEventListener("click", e => { const c = e.target.closest && e.target.closest(SEGS); if (c) setTimeout(queueSegs, 0); }, true);
+  window.addEventListener("resize", () => { Object.keys(segMem).forEach(k => delete segMem[k]); document.querySelectorAll(".st-seg-pill").forEach(p => delete p.dataset.on); queueSegs(); });
+
+  /* ---- D44 · Press feedback everywhere ---------------------------------------
+     Anything tappable dips on touch and springs back on release (Web Animations on
+     the independent `scale` property, so it never fights an element's own transform
+     or transitions). Large surfaces dip less than buttons. Off under reduced motion. */
+  const PRESS = "button:not(:disabled), [role=button], summary, a[href], .st-tile[onclick], .st-wk, label:has(>input[type=checkbox])";
+  const SPRING_BACK = "linear(0.0027,0.0851,0.2168,0.4029,0.5926,0.7408,0.885,0.9931,1.057,1.1015,1.1196,1.1192,1.1064,1.0893,1.0663,1.0438,1.0266,1.0102,0.9982,0.9914,0.9869,0.9854,0.9859,0.9877,0.9903,0.9927,0.9954,0.9976,0.9992,1.0005,1.0013,1.0017,1.0018,1.0017,1.0014,1.0011,1.0008,1.0005,1.0002,1.0001,1)";
+  let pressed = null;
+  function pressDepth(el) { const r = el.getBoundingClientRect(), big = r.height > 96 || el.classList.contains("st-tile"); return big ? 0.985 : r.width > 200 ? 0.97 : r.width > 100 ? 0.96 : 0.92; }
+  function release() {
+    const el = pressed; pressed = null; if (!el || !el.animate) return;
+    const from = el.__stScale || 0.96; el.__stPress && el.__stPress.cancel();
+    el.__stPress = el.animate([{ scale: String(from) }, { scale: "1" }], { duration: 440, easing: SPRING_BACK });
+  }
+  function bindPress() {
+    if (!Element.prototype.animate) return;
+    document.addEventListener("pointerdown", e => {
+      if (reduced() || e.button > 0) return;
+      const el = e.target.closest && e.target.closest(PRESS);
+      if (!el || el.closest(".nxp-stepper-row input, #vn-chart-wrap, .st-qw-field")) return;
+      pressed = el; const d = el.__stScale = pressDepth(el);
+      el.__stPress && el.__stPress.cancel();
+      el.__stPress = el.animate([{ scale: "1" }, { scale: String(d) }], { duration: 110, easing: "cubic-bezier(.32,.72,0,1)", fill: "forwards" });
+    }, { passive: true });
+    ["pointerup", "pointercancel", "dragstart"].forEach(t => document.addEventListener(t, release, { passive: true }));
+    document.addEventListener("pointermove", e => { if (pressed && e.buttons && Math.hypot(e.movementX, e.movementY) > 6) release(); }, { passive: true });
+  }
   function bindIcons() {
     iconify(document.body);
-    new MutationObserver(list => { for (const m of list) m.addedNodes.forEach(n => { if (n.nodeType === 1) iconify(n); }); })
+    new MutationObserver(list => { let added = false; for (const m of list) m.addedNodes.forEach(n => { if (n.nodeType === 1) { iconify(n); added = true; } }); if (added) queueSegs(); })
       .observe(document.body, { childList: true, subtree: true });
   }
   /* History calendar: horizontal swipe changes month. Delegated, installed once.
@@ -945,6 +984,8 @@ const STRATA = (() => {
     bindHold();
     bindRipple();
     bindParallax();
+    bindPress();
+    queueSegs();
     ['input','click','pointerup'].forEach(ev=>document.addEventListener(ev,e=>{ if(e.target&&e.target.closest&&e.target.closest('#trainPage .st-entry,#trainPage .st-refc,#trainPage .nxp-seg'))setTimeout(syncVs,0); },true));
     document.addEventListener("pointerup", e => {
       const w = e.target && e.target.closest && e.target.closest("#vn-chart-wrap");
