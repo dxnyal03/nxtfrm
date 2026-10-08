@@ -357,13 +357,13 @@ const STRATA = (() => {
     }).join("");
     const pts = shown.map((w, i) => `${((i + .5) / n * 100).toFixed(2)},${(100 - Number(pc(w.avg))).toFixed(2)}`).join(" ");
     const host = document.createElement("section");
-    host.className = "st-weeks is-cols" + (entering && !reduced() ? " is-draw" : "");
+    host.className = "st-weeks" + (entering && !reduced() ? " is-draw" : "");
     host.setAttribute("aria-label", "Week by week: average and range of morning weight");
     host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Average and range, Mon–Sun</small></div><ol class="st-wk-l" style="--n:${n}"><svg class="st-wk-link" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}"/></svg>${li}</ol><p class="st-wk-note"><span class="st-wk-key"><i class="st-wk-key-r"></i>Lowest to highest reading</span><span class="st-wk-key"><i class="st-wk-key-a"></i>Average</span><span class="st-wk-key">6/7 = mornings weighed</span></p>`;
     {
-      /* Alternative Week by week treatments (owner is choosing). Same data as above. */
-      const style = (() => { try { return localStorage.getItem("nxt_wk_style") || window.__wkStyle || ""; } catch (e) { return window.__wkStyle || ""; } })();
-      if (style === "ledger" || style === "cards" || style === "fold") {
+      /* Week by week as a ledger (owner pick, 2026-10-08). Same data as above. */
+      const style = "ledger";
+      if (style === "ledger") {
         const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], have = new Set(rows.map(r => r.date));
         let pv = null;
         const meta = shown.map(w => {
@@ -377,13 +377,7 @@ const STRATA = (() => {
         const attrs = x => `class="st-wk wx-it${x.w.part ? " is-now" : ""}" data-a="${x.w.st}" data-b="${x.w.end}" aria-label="${esc(`${x.w.part ? "This week so far" : "Week of " + shortDate(x.w.st)}: average ${x.w.avg.toFixed(1)} kilograms${x.d === null ? "" : x.dir === "flat" ? ", unchanged" : `, ${x.dir} ${Math.abs(x.d).toFixed(1)} on the week before`}, ${x.w.n} of ${x.so} mornings weighed`)}"`;
         if (style === "ledger") {
           host.className = "st-weeks wx-ledger" + (entering && !reduced() ? " is-draw" : "");
-          host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Morning average, Mon–Sun</small></div><ol class="st-wk-l">${meta.map((x, k) => `<li ${attrs(x)} style="--i:${k}"><span class="wx-d">${esc(x.name)}</span><b class="wx-v">${x.w.avg.toFixed(1)}<em>kg</em></b>${chip(x)}<span class="wx-dots" aria-hidden="true">${x.days.map(c => `<i class="is-${c}"></i>`).join("")}</span></li>`).join("")}</ol>`;
-        } else if (style === "cards") {
-          host.className = "st-weeks wx-cards" + (entering && !reduced() ? " is-draw" : "");
-          host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Morning average, Mon–Sun</small></div><ol class="st-wk-l">${meta.slice().reverse().map((x, k) => `<li ${attrs(x)} style="--i:${k}"><span class="wx-d">${esc(x.name)}</span><b class="wx-v">${x.w.avg.toFixed(1)}<em>kg</em></b>${chip(x)}<span class="wx-n">${x.w.n} of ${x.so} mornings</span></li>`).join("")}</ol>`;
-        } else {
-          host.className = "st-weeks wx-fold" + (entering && !reduced() ? " is-draw" : "");
-          host.innerHTML = `<div class="wx-fold-h"><span>Weekly change</span><small>average vs the week before</small></div><ol class="st-wk-l">${meta.filter(x => x.d !== null).map((x, k) => `<li ${attrs(x)} style="--i:${k}">${chip(x)}<span class="wx-d">${esc(x.name)}</span></li>`).join("")}</ol>`;
+          host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Morning average, Mon–Sun</small></div><ol class="st-wk-l">${meta.map((x, k) => `<li ${attrs(x)} style="--i:${k}"><span class="wx-d">${esc(x.name)}${x.w.part ? `<small>${7 - x.so} ${7 - x.so === 1 ? "day" : "days"} to go</small>` : ""}</span><b class="wx-v">${x.w.avg.toFixed(1)}<em>kg</em></b>${chip(x)}<span class="wx-dots" aria-hidden="true">${x.days.map(c => `<i class="is-${c}"></i>`).join("")}</span></li>`).join("")}</ol>`;
         }
       }
     }

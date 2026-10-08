@@ -1859,38 +1859,6 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 #weightPage .st-dev-t,#weightPage .st-dev-k text{font-size:calc(10.5px * var(--tsc,1)) !important}
 #weightPage .st-lg-dev{display:inline-flex;align-items:center;gap:6px}
 
-/* Week by week as a staircase: one column per Mon-Sun week. The capsule spans that week's
-   lowest to highest morning reading, the tick is its average, and a dotted line (the same
-   dotted step as on the chart) joins the averages. Shared scale across the five weeks. */
-#weightPage .st-weeks.is-cols .st-wk-l{position:relative;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:6px;--trk-top:44px;--trk-h:132px}
-#weightPage .st-weeks.is-cols .st-wk{display:flex;flex-direction:column;align-items:center;gap:0;min-height:0;margin:0;padding:8px 2px 10px;border-radius:16px;text-align:center}
-#weightPage .st-weeks.is-cols .st-wk-v{font:600 15px/1 var(--st-font) !important;color:var(--st-ink) !important;text-align:center;height:18px}
-#weightPage .st-weeks.is-cols .st-wk-c{font:550 11.5px/1 var(--st-font) !important;color:var(--st-ink-3) !important;text-align:center;height:18px;padding-top:4px}
-#weightPage .st-weeks.is-cols .st-wk-c.is-up{color:var(--st-floor) !important}
-#weightPage .st-weeks.is-cols .st-wk-trk{position:relative;display:block;width:100%;height:var(--trk-h);margin:0}
-#weightPage .st-wk-rng{position:absolute;left:50%;width:16px;margin-left:-8px;bottom:var(--lo);height:max(6px,calc(var(--hi) - var(--lo)));border-radius:99px;
-  background:linear-gradient(180deg,rgba(205,187,255,.38),rgba(139,92,246,.22));box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 0 0 1px rgba(205,187,255,.28);transform-origin:50% calc(100% - (var(--a) - var(--lo)))}
-#weightPage .st-wk-avg{position:absolute;left:50%;width:24px;margin-left:-12px;height:3px;margin-bottom:-1.5px;bottom:var(--a);border-radius:2px;background:#F4F2FA;box-shadow:0 1px 3px rgba(0,0,0,.5)}
-#weightPage .st-wk.is-now .st-wk-rng{background:transparent;box-shadow:inset 0 0 0 1.4px rgba(205,187,255,.55);background-image:repeating-linear-gradient(135deg,rgba(205,187,255,.16) 0 3px,transparent 3px 7px)}
-#weightPage .st-weeks.is-cols .st-wk-d{margin-top:10px;font:550 12.5px/1.15 var(--st-font) !important;color:var(--st-ink-2) !important;white-space:nowrap}
-#weightPage .st-weeks.is-cols .st-wk-d small{display:block;margin-top:3px;font:450 11px/1.1 var(--st-font) !important;color:var(--st-ink-3) !important}
-#weightPage .st-wk-link{position:absolute;left:0;right:0;top:calc(8px + var(--trk-top) - 8px);height:var(--trk-h);width:100%;overflow:visible;pointer-events:none}
-#weightPage .st-wk-link polyline{fill:none;stroke:rgba(244,242,250,.45);stroke-width:1.4;stroke-dasharray:1 4;stroke-linecap:round;vector-effect:non-scaling-stroke}
-#weightPage .st-weeks.is-cols .st-wk.is-on,#weightPage .st-weeks.is-cols .st-wk.is-pick{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(139,92,246,.10));box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(var(--st-hl),.1)}
-#weightPage .st-weeks.is-cols .st-wk.is-on .st-wk-rng,#weightPage .st-weeks.is-cols .st-wk.is-pick .st-wk-rng{background:linear-gradient(180deg,rgba(205,187,255,.6),rgba(139,92,246,.42))}
-#weightPage .st-wk-note{display:flex;flex-wrap:wrap;gap:6px 16px;margin:12px 0 0;font:450 12px/1.3 var(--st-font);color:var(--st-ink-3)}
-#weightPage .st-wk-key{display:inline-flex;align-items:center;gap:7px}
-#weightPage .st-wk-key-r{width:8px;height:16px;border-radius:99px;background:linear-gradient(180deg,rgba(205,187,255,.38),rgba(139,92,246,.22));box-shadow:inset 0 0 0 1px rgba(205,187,255,.28)}
-#weightPage .st-wk-key-a{width:14px;height:3px;border-radius:2px;background:#F4F2FA}
-@keyframes st-wk-rise{from{transform:scaleY(0);opacity:0}to{transform:none;opacity:1}}
-#weightPage .st-weeks.is-cols.is-draw .st-wk-rng{animation:st-wk-rise .7s var(--st-out) calc(.15s + var(--i) * 80ms) both}
-#weightPage .st-weeks.is-cols.is-draw .st-wk-avg,#weightPage .st-weeks.is-cols.is-draw .st-wk-link{animation:st-fade .5s var(--st-out) .7s both}
-@media (prefers-reduced-motion:reduce){#weightPage .st-weeks.is-cols .st-wk-rng,#weightPage .st-weeks.is-cols .st-wk-avg,#weightPage .st-weeks.is-cols .st-wk-link{animation:none !important}}
-:root[data-nxp-motion="reduced"] #weightPage .st-weeks.is-cols .st-wk-rng,:root[data-nxp-motion="reduced"] #weightPage .st-weeks.is-cols .st-wk-avg{animation:none !important}
-@media (max-width:359px){#weightPage .st-weeks.is-cols .st-wk-l{gap:3px;--trk-h:116px}#weightPage .st-weeks.is-cols .st-wk-d{font-size:11.5px !important}#weightPage .st-weeks.is-cols .st-wk-v{font-size:14px !important}}
-#weightPage .st-weeks.is-cols .st-wk-h{flex-direction:column;align-items:flex-start;gap:4px}
-#weightPage .st-weeks.is-cols .st-wk-h small{display:block !important}
-#weightPage .st-weeks.is-cols .st-wk.is-now .st-wk-d small{color:var(--st-ink-2) !important}
 
 /* Week by week options */
 .wx-chip{display:inline-flex;align-items:center;gap:3px;justify-self:start;padding:4px 9px 4px 7px;border-radius:99px;font:600 12.5px/1 var(--st-font);font-variant-numeric:tabular-nums;color:var(--st-ink-2);
@@ -1900,10 +1868,9 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 .wx-chip.is-up{color:#ff9b7a;background:linear-gradient(160deg,rgba(255,123,84,.14),rgba(255,123,84,.04));box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(255,123,84,.3)}
 .wx-chip.is-none{color:var(--st-ink-3);font-weight:500}
 #weightPage .wx-ledger .st-wk-l{display:grid;gap:2px;list-style:none;margin:0;padding:0}
-#weightPage .wx-ledger .st-wk{display:grid;grid-template-columns:76px 1fr auto;grid-template-areas:"d v c" "d dots dots";align-items:center;column-gap:12px;row-gap:6px;padding:12px 10px;margin:0 -10px;border-radius:16px;min-height:0;border-bottom:1px solid rgba(var(--st-hl),.06)}
-#weightPage .wx-ledger .st-wk:last-child{border-bottom:0}
+#weightPage .wx-ledger .st-wk{display:grid;grid-template-columns:76px 1fr auto;grid-template-areas:"d v c" "d dots dots";align-items:center;column-gap:12px;row-gap:6px;padding:12px 10px;margin:0 -10px;border-radius:16px;min-height:0;border:0}
 #weightPage .wx-ledger .wx-d{grid-area:d;font:550 13px/1.2 var(--st-font);color:var(--st-ink-2)}
-#weightPage .wx-ledger .wx-v{grid-area:v;font:300 26px/1 var(--st-font);letter-spacing:-.02em;color:var(--st-ink);font-variant-numeric:tabular-nums}
+#weightPage .wx-ledger .wx-v{grid-area:v;font:300 22px/1 var(--st-font);letter-spacing:-.02em;color:var(--st-ink);font-variant-numeric:tabular-nums}
 #weightPage .wx-ledger .wx-v em{font:450 12px var(--st-font);font-style:normal;color:var(--st-ink-3);margin-left:3px;letter-spacing:0}
 #weightPage .wx-ledger .wx-chip{grid-area:c}
 #weightPage .wx-dots{grid-area:dots;display:flex;gap:5px}
@@ -1912,26 +1879,10 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 #weightPage .wx-dots i.is-f{background:transparent;box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.14)}
 #weightPage .wx-ledger .st-wk.is-now .wx-v{font-weight:400}
 #weightPage .wx-ledger .st-wk.is-on,#weightPage .wx-ledger .st-wk.is-pick{background:rgba(139,92,246,.10)}
-#weightPage .wx-cards .st-wk-l{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -18px;padding:2px 18px 8px;list-style:none;scrollbar-width:none}
-#weightPage .wx-cards .st-wk-l::-webkit-scrollbar{display:none}
-#weightPage .wx-cards .st-wk{flex:0 0 118px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:14px;margin:0;border-radius:20px;min-height:0;
-  background:linear-gradient(160deg,rgba(255,255,255,.075),rgba(255,255,255,.02) 60%,rgba(124,77,255,.05));box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(var(--st-hl),.08)}
-#weightPage .wx-cards .st-wk.is-now{background:linear-gradient(160deg,rgba(139,92,246,.30),rgba(139,92,246,.08));box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(205,187,255,.3)}
-#weightPage .wx-cards .wx-d{font:550 12.5px/1 var(--st-font);color:var(--st-ink-2)}
-#weightPage .wx-cards .wx-v{font:300 30px/1 var(--st-font);letter-spacing:-.02em;color:var(--st-ink);font-variant-numeric:tabular-nums}
-#weightPage .wx-cards .wx-v em{font:450 12px var(--st-font);font-style:normal;color:var(--st-ink-3);margin-left:3px}
-#weightPage .wx-cards .wx-n{font:450 11px/1.2 var(--st-font);color:var(--st-ink-3)}
-#weightPage .wx-cards .st-wk.is-pick{box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1.5px rgba(205,187,255,.6)}
-#weightPage .wx-fold{margin-top:14px}
-#weightPage .wx-fold-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px}
-#weightPage .wx-fold-h span{font:590 15px/1.2 var(--st-font);color:var(--st-ink)}
-#weightPage .wx-fold-h small{font:450 12px var(--st-font);color:var(--st-ink-3)}
-#weightPage .wx-fold .st-wk-l{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;list-style:none;margin:0;padding:0}
-#weightPage .wx-fold .st-wk{display:flex;flex-direction:column;align-items:center;gap:7px;padding:10px 4px;margin:0;border-radius:16px;min-height:0}
-#weightPage .wx-fold .wx-chip{justify-self:center}
-#weightPage .wx-fold .wx-d{font:500 11.5px var(--st-font);color:var(--st-ink-3)}
-#weightPage .wx-fold .st-wk.is-on,#weightPage .wx-fold .st-wk.is-pick{background:rgba(139,92,246,.10)}
 #weightPage .wx-it{cursor:pointer}
 @keyframes wx-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 #weightPage .st-weeks.is-draw .wx-it{animation:wx-in .5s var(--st-out) calc(var(--i)*60ms) both}
 @media (prefers-reduced-motion:reduce){#weightPage .st-weeks.is-draw .wx-it{animation:none}}
+#weightPage .wx-ledger .wx-d small{display:block;margin-top:3px;font:450 11px/1.2 var(--st-font);color:var(--st-ink-3)}
+#weightPage .wx-ledger .st-wk.is-now{background:linear-gradient(160deg,rgba(139,92,246,.14),rgba(139,92,246,.04));}
+#weightPage .wx-dots i.is-f{background:transparent;box-shadow:inset 0 0 0 1px rgba(205,187,255,.35)}
