@@ -125,7 +125,7 @@ const NXP = (() => {
           </div>
           ${logged?ringHTML(logged,sets,'sets','var(--st-lift)'):''}
         </div>
-        <div class="st-tweek st-tweek-top"><div class="st-tweek-h"><span>This week · ${weekLogged} lifting ${weekLogged===1?'day':'days'}</span>${textAct('Edit plan ›',"NXT.more('training')",true)}</div>${weekStrip}</div>
+        <div class="st-tweek st-tweek-top"><div class="st-tweek-h"><span>This week · ${weekLogged} lifting ${weekLogged===1?'day':'days'}</span>${textAct('Edit plan',"NXT.more('training')",true)}</div>${weekStrip}</div>
         <button type="button" class="st-cta" onclick="${esc(finished?"switchTab('train')":action)}">${esc(title)}<span aria-hidden="true">›</span></button>
         ${lastLiftLine?`<p class="st-meta st-mt2 st-center">${esc(lastLiftLine)}</p>`:''}
       </article>`:`
@@ -148,7 +148,7 @@ const NXP = (() => {
           </button>`:''}
         </div>
         <p class="st-meta st-mt3">${esc(nextLine)}</p>
-        <div class="st-tweek"><div class="st-tweek-h"><span>This week · ${weekLogged} lifting ${weekLogged===1?'day':'days'}</span>${textAct('Edit plan ›',"NXT.more('training')",true)}</div>${weekStrip}</div>
+        <div class="st-tweek"><div class="st-tweek-h"><span>This week · ${weekLogged} lifting ${weekLogged===1?'day':'days'}</span>${textAct('Edit plan',"NXT.more('training')",true)}</div>${weekStrip}</div>
       </article>`;
     document.getElementById('homePage').innerHTML=`<div class="vn-today st-today">
       <div class="vn-pad">
@@ -176,7 +176,7 @@ const NXP = (() => {
             </button>
           </div>
           <section class="st-tile st-t-dec${toneClass}" data-st-view aria-labelledby="vn-dec-h" style="--c:var(--st-accent)">
-            <div class="st-tile-head"><span class="st-cat">NXTFRM decision</span><button type="button" class="st-link st-why" onclick="NXT.openReview()">Why<span aria-hidden="true">›</span></button></div>
+            <div class="st-tile-head"><span class="st-cat">Decision</span><button type="button" class="st-link st-why" onclick="NXT.openReview()">Why<span aria-hidden="true">›</span></button></div>
             <h2 class="st-h3" id="vn-dec-h">${esc(r.title)}</h2>
             ${support?`<p class="st-body st-mt2">${esc(support)}</p>`:''}
             ${decEvidenceHTML(trendEv,confEv,plateau)}
@@ -322,10 +322,15 @@ const NXP = (() => {
     const scans=bodyScanSource().filter(s=>s&&N.finite(s.weight)!==null);
     if(!scans.length)return '';
     const L=scans.at(-1),P=scans.at(-2)||null;
+    /* Change pills read by metric, not by sign: less fat is good news, less muscle is
+       something to watch (never a claim it was preserved), scale weight is neutral. The
+       arrow and the number always carry the direction, so colour is never alone. */
+    const ARW={dn:'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v7.5M2.8 6.6 6 9.8l3.2-3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',up:'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10V2.5M2.8 5.4 6 2.2l3.2 3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',eq:'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'};
+    const tone=(k,dir)=>dir==='eq'?'is-none':k==='muscleMass'?(dir==='dn'?'is-watch':'is-none'):k==='weight'?'is-none':(dir==='dn'?'is-down':'is-up');
     const cell=(k,label,unit,c)=>{
       const v=N.finite(L[k]);if(v===null)return '';
-      const pv=P?N.finite(P[k]):null,d=pv===null?null:v-pv;
-      return `<span class="st-scan-c" style="--c:${c}"><small>${label}</small><b class="vn-num">${v.toFixed(1)}<em>${unit}</em></b>${d===null?'':`<span class="st-scan-d${d<0?' is-dn':d>0?' is-up':''}">${d>0?'+':d<0?'−':'±'}${Math.abs(d).toFixed(1)}</span>`}</span>`;
+      const pv=P?N.finite(P[k]):null,d=pv===null?null:v-pv,dir=d===null?null:Math.abs(d)<0.05?'eq':d<0?'dn':'up';
+      return `<span class="st-scan-c" style="--c:${c}"><small>${label}</small><b class="vn-num">${v.toFixed(1)}<em>${unit}</em></b>${d===null?'':`<span class="wx-chip ${tone(k,dir)}" aria-label="${dir==='eq'?'unchanged':(dir==='dn'?'down ':'up ')+Math.abs(d).toFixed(1)+' '+unit}">${ARW[dir]}${Math.abs(d).toFixed(1)}</span>`}</span>`;
     };
     return `<button type="button" class="st-tile st-t-body" style="--c:var(--st-fat)" onclick="NXT.ui.view='body';switchTab('weight')">
       <div class="st-tile-head"><span class="st-cat">Latest Evo scan</span><span class="st-meta">${esc(N.shortDate(L.date))}${P?`<span class="st-scan-vs"> · vs ${esc(N.shortDate(P.date))}</span>`:''}</span></div>
@@ -1777,7 +1782,7 @@ const NXP = (() => {
       const eyebrow=head.querySelector('.n99-eyebrow');
       if(eyebrow)eyebrow.textContent='Settings';
       const back=head.querySelector('.n99-button');
-      if(back){back.textContent='‹ Settings';back.setAttribute('aria-label','Back to Settings');}
+      if(back){back.innerHTML='<svg class="st-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Settings';back.setAttribute('aria-label','Back to Settings');}
     }
     /* Tier 3 keeps its V96 body by design; the icon-only back control is the
        one thing that cannot stay as it is, because it has no accessible name. */
@@ -2091,7 +2096,7 @@ const NXP = (() => {
        summary line would just repeat "82 kg". */
     if(parts.length===1&&scope.body&&r.bw&&!(scope.lift&&r.logs.length)&&!(scope.cond&&(r.cardio.length||r.floorball.length)))parts.length=0;
     const emptyCopy=filter==='strength'?'No lifting logged on this date.':filter==='conditioning'?'No cardio logged on this date.':filter==='body'?'No weigh-in recorded on this date.':'No training or measurements logged.';
-    return `<section class="nxp-history-selected vn-hist-day"><header class="nxp-history-selected-head"><span class="nxp-history-weekday">${esc(when.toLocaleDateString('en-SG',{weekday:'long'}))}</span><h2>${esc(when.toLocaleDateString('en-SG',{day:'numeric',month:'long',year:'numeric'}))}</h2>${parts.length?`<p class="nxp-history-selected-summary">${esc(parts.join(' · '))}</p>`:''}${(()=>{const k=[scope.lift&&r.logs.length?'<span class="lift"><i></i>Lifting</span>':'',scope.cond&&r.cardio.length?'<span class="cond"><i></i>Cardio</span>':'',scope.cond&&r.floorball.length?'<span class="floor"><i></i>Floorball</span>':'',scope.body&&r.bw?'<span class="body"><i></i>Weigh-in</span>':''].join('');return k?`<p class="st-day-k" aria-hidden="true">${k}</p>`:'';})()}</header>${blocks.length?blocks.join(''):`<p class="nxp-history-empty">${esc(emptyCopy)}</p>`}${historyAuditLanes()}</section>`;
+    return `<section class="nxp-history-selected vn-hist-day"><header class="nxp-history-selected-head"><h2>${esc(when.toLocaleDateString('en-SG',{weekday:'short'}))} ${esc(when.toLocaleDateString('en-SG',{day:'numeric',month:'long'}))} <em>${esc(String(when.getFullYear()))}</em></h2>${parts.length?`<p class="nxp-history-selected-summary">${esc(parts.join(' · '))}</p>`:''}${(()=>{const k=[scope.lift&&r.logs.length?'<span class="lift"><i></i>Lifting</span>':'',scope.cond&&r.cardio.length?'<span class="cond"><i></i>Cardio</span>':'',scope.cond&&r.floorball.length?'<span class="floor"><i></i>Floorball</span>':'',scope.body&&r.bw?'<span class="body"><i></i>Weigh-in</span>':''].join('');return k?`<p class="st-day-k" aria-hidden="true">${k}</p>`:'';})()}</header>${blocks.length?blocks.join(''):`<p class="nxp-history-empty">${esc(emptyCopy)}</p>`}${historyAuditLanes()}</section>`;
   }
   function historyPaintDay(date) {
     const host=document.getElementById('vn-hist-dayhost');
@@ -2101,6 +2106,9 @@ const NXP = (() => {
     host.classList.remove('vn-enter');
     void host.offsetWidth;
     host.classList.add('vn-enter');
+    /* The day card renders below the grid; bring it up when a tap would leave it under the dock. */
+    const r=host.getBoundingClientRect(),dock=document.querySelector('.tabs'),dh=dock?dock.getBoundingClientRect().height:0;
+    if(r.top>innerHeight-dh-60){const rm=matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;window.scrollBy({top:r.top-(innerHeight*.35),behavior:rm?'auto':'smooth'});}
     return true;
   }
   function historyMoveSelection(from,to) {

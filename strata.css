@@ -1886,3 +1886,42 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 #weightPage .wx-ledger .wx-d small{display:block;margin-top:3px;font:450 11px/1.2 var(--st-font);color:var(--st-ink-3)}
 #weightPage .wx-ledger .st-wk.is-now{background:linear-gradient(160deg,rgba(139,92,246,.14),rgba(139,92,246,.04));}
 #weightPage .wx-dots i.is-f{background:transparent;box-shadow:inset 0 0 0 1px rgba(205,187,255,.35)}
+
+/* ================= All-screens pass (D42): one glass system, one pill, one numeral ================= */
+/* Today */
+.st-scan-c .wx-chip{margin-top:6px;padding:3px 8px 3px 6px;font-size:12px}
+.wx-chip.is-watch{color:#E7B45A;background:linear-gradient(160deg,rgba(184,132,42,.16),rgba(184,132,42,.04));box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(184,132,42,.34)}
+.st-scan-c b.vn-num{font-weight:300 !important;letter-spacing:-.02em}
+.st-cta{box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 12px 26px -12px rgba(124,58,237,.65)}
+/* Train */
+#trainPage .st-train .st-entry .nxp-stepper-row input::placeholder{color:rgba(var(--st-hl),.2)}
+#trainPage .st-train .st-entry .nxp-stepper-row input:placeholder-shown{background:repeating-linear-gradient(90deg,rgba(var(--st-hl),.34) 0 4px,transparent 4px 9px) 50% calc(100% - 10px)/46% 1.5px no-repeat}
+#trainPage .st-train .st-entry .nxp-stepper-row input[data-len="4"]{font-size:52px !important}
+#trainPage .st-train .st-entry .nxp-stepper-row input{font-size:52px !important}
+#trainPage .st-train .st-ex-pos,#trainPage .st-train .st-coach-k{display:none}
+#trainPage .nxp-seg-type .nxp-seg button{min-height:44px}
+#trainPage #nxp-set-form{padding-bottom:84px}
+#trainPage .st-train .st-refc b{font-weight:300 !important;letter-spacing:-.02em}
+#trainPage .st-chip2 .st-ico{width:12px;height:12px;stroke-width:2.2}
+@media (max-width:359px){#trainPage .st-tbar-t{font-size:14px !important}#trainPage .st-tbar-s{font-size:12.5px !important}#trainPage .st-tbar-t,#trainPage .st-tbar-s{white-space:nowrap !important}#trainPage .st-card-head{flex-wrap:wrap;row-gap:8px}#trainPage .st-refc small,#trainPage .st-refc .st-refc-k,#trainPage .st-refc>span:first-child{font-size:12px !important;white-space:nowrap}#trainPage .st-refs{gap:8px !important}}
+/* History */
+#historyPage .nxp-history-selected-head h2 em{font-style:normal;color:var(--st-ink-3);font-weight:400}
+#historyPage .nxp-cal-day{min-height:44px}
+#historyPage .nxp-cal-day.is-future,#historyPage .nxp-cal-day.is-outside{background:none !important;border-color:transparent !important;box-shadow:none !important;opacity:1 !important;color:var(--st-ink-3) !important}
+#historyPage .nxp-cal-day.is-outside{color:rgba(var(--st-hl),.38) !important}
+#historyPage .st-cal-stats span.is-zero{display:none}
+#vn-hist-dayhost{scroll-margin-bottom:120px}
+/* Settings */
+#morePage .apx96-danger{box-shadow:none !important;margin-top:28px;border-color:rgba(255,123,84,.26) !important}
+#morePage .apx96-kicker{font:550 13px/1.2 var(--st-font) !important;letter-spacing:0 !important;text-transform:none !important;color:var(--st-ink-3) !important}
+#morePage .apx96-danger .apx96-kicker{color:#ff9b7a !important}
+#morePage button,#morePage .apx96-btn{text-transform:none !important;letter-spacing:0 !important}
+#morePage h1,#morePage h2,#morePage h3{font-weight:600 !important;letter-spacing:-.01em !important}
+#morePage .vn-set-group{border-radius:var(--st-r,26px) !important;-webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3)}
+#morePage .vn-set-back .st-ico,#morePage .apx96-back .st-ico{width:18px;height:18px;vertical-align:-4px;margin-right:2px}
+@media (prefers-reduced-transparency:reduce){#morePage .vn-set-group{-webkit-backdrop-filter:none;backdrop-filter:none}}
+#morePage .apx96-more-subhead .apx96-kicker{display:none}
+#morePage *{text-transform:none !important}
+#morePage .kicker{font:550 13px/1.2 var(--st-font) !important;letter-spacing:0 !important;color:var(--st-ink-3) !important}
+#morePage .apx96-card-title,#morePage .title,#morePage .apx96-more-subhead h1{font-weight:600 !important;letter-spacing:-.01em !important}
+#morePage .apx96-back{border-radius:50% !important}

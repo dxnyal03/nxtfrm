@@ -755,7 +755,8 @@ const STRATA = (() => {
   const ICONS = {
     "\u203a": ["M8 5l7 7-7 7", "Next", true], "\u2039": ["M16 5l-7 7 7 7", "Previous", true],
     "+": ["M12 5v14M5 12h14", "Increase", false], "\u2212": ["M5 12h14", "Decrease", false],
-    "\u00d7": ["M6 6l12 12M18 6L6 18", "Close", false], "\u2713": ["M5 12.5l4.5 4.5L19 7.5", "Done", true]
+    "\u00d7": ["M6 6l12 12M18 6L6 18", "Close", false], "\u2713": ["M5 12.5l4.5 4.5L19 7.5", "Done", true],
+    "\u2191": ["M12 19V6M6.5 11.5 12 6l5.5 5.5", "Up", true], "\u2193": ["M12 5v13M6.5 12.5 12 18l5.5-5.5", "Down", true]
   };
   function iconify(root) {
     if (!root || root.nodeType !== 1 || root.closest("svg")) return;
