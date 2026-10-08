@@ -1820,8 +1820,8 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
   transition:left .5s cubic-bezier(.3,1.4,.5,1),width .5s cubic-bezier(.3,1.4,.5,1)}
 @keyframes st-pop{0%{opacity:0;transform:scale(0)}70%{transform:scale(1.35)}100%{opacity:1;transform:scale(1)}}
 @keyframes st-bar-up{from{transform:scaleY(0)}to{transform:scaleY(1)}}
-#weightPage.st-enter .vn-raw-dot,#weightPage .vn-chart-svg.is-range-change .vn-raw-dot{transform-box:fill-box;transform-origin:center;opacity:0;animation:st-pop .5s var(--st-out) calc(.5s + var(--i)*26ms) forwards}
-#weightPage.st-enter .st-dev,#weightPage .vn-chart-svg.is-range-change .st-dev{transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0);animation:st-bar-up .55s var(--st-out) calc(.9s + var(--i)*26ms) forwards}
+#weightPage.st-enter .vn-raw-dot,#weightPage .vn-chart-svg.is-range-change .vn-raw-dot{transform-box:fill-box;transform-origin:center;opacity:0;animation:st-pop .5s var(--st-out) calc(.3s + min(var(--i),30)*12ms) forwards}
+#weightPage.st-enter .st-dev,#weightPage .vn-chart-svg.is-range-change .st-dev{transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0);animation:st-bar-up .55s var(--st-out) calc(.45s + min(var(--i),30)*12ms) forwards}
 #weightPage.st-enter .st-dev.is-dn,#weightPage .vn-chart-svg.is-range-change .st-dev.is-dn{transform-origin:50% 0%}
 #weightPage.st-enter .st-wstep,#weightPage .vn-chart-svg.is-range-change .st-wstep{stroke-dashoffset:60;opacity:0;animation:st-fade .6s var(--st-out) 1.4s forwards}
 @media (prefers-reduced-motion:reduce){#weightPage .vn-raw-dot,#weightPage .st-dev,#weightPage .st-wstep{animation:none !important;opacity:1 !important;transform:none !important}#weightPage .vn-seg .st-seg-ind{transition:none}}
@@ -2009,7 +2009,7 @@ html{caret-color:#B49AFF;-webkit-tap-highlight-color:transparent}
 .st-seg-pill{position:absolute;left:0;top:0;z-index:0;pointer-events:none;border-radius:12px;opacity:0;
   background:linear-gradient(180deg,rgba(139,92,246,.46),rgba(139,92,246,.22));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 0 0 1px rgba(180,154,255,.38),0 8px 20px -8px rgba(139,92,246,.75);
-  transition:transform .5s var(--st-spring-snappy),width .5s var(--st-spring-snappy),height .3s var(--st-out),opacity .2s}
+  transition-property:transform,width,height,opacity;transition-duration:340ms;transition-timing-function:cubic-bezier(.22,1,.36,1);will-change:transform,width}
 .vn-seg.st-segc .st-seg-pill,.n99-progress-tabs.st-segc .st-seg-pill,.vn-hist-filters.st-segc .st-seg-pill{border-radius:14px}
 #weightPage .vn-seg .st-seg-ind{display:none !important}
 @media (prefers-reduced-motion:reduce){.st-seg-pill{transition:opacity .2s}}
@@ -2072,3 +2072,8 @@ html{caret-color:#B49AFF;-webkit-tap-highlight-color:transparent}
 #morePage .st-rt-l b{font-size:var(--fs-row) !important;font-weight:var(--fw-semi) !important}
 #morePage .st-settings summary{font-size:var(--fs-row) !important}
 #morePage .st-settings>p,#morePage .st-set-sec>p{font-size:var(--fs-label) !important}
+/* Taps register immediately: no double-tap-zoom wait on controls */
+button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
+.st-segc>button{transition:color .18s ease-out}
+/* A range change redraws quickly; the slower draw-in is kept for arriving on the tab */
+#weightPage .vn-chart-svg.is-range-change .vn-trend-line{animation-duration:.7s !important;animation-delay:.05s !important}

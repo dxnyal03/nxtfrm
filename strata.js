@@ -768,18 +768,47 @@ const STRATA = (() => {
   const SEGS = ".vn-seg, .n99-progress-tabs, .vn-hist-filters, .nxp-seg-type .nxp-seg, .st-qw-seg";
   const segMem = {};
   function segKey(c) { return (c.closest("[id$='Page']") || document.body).id + "|" + c.className.replace(/\s*st-segc\s*/g, " ").trim(); }
-  function placeSeg(c, animate) {
-    const act = c.querySelector(":scope>button.active, :scope>button.is-on, :scope>button[aria-pressed='true']");
+  /* The pill starts moving on pointerdown, before the click handler repaints the
+     screen; if a repaint replaces the control mid-slide, the new pill resumes from
+     where the old one was, so the motion is continuous rather than late. */
+  const SEG_MS = 340, segAnim = {};
+  const segEase = x => 1 - Math.pow(1 - x, 3);
+  function pillBox(c, btn) { return { x: btn.offsetLeft, y: btn.offsetTop, w: btn.offsetWidth, h: btn.offsetHeight }; }
+  function ensurePill(c) {
     let pill = c.querySelector(":scope>.st-seg-pill");
-    if (!act) { if (pill) pill.style.opacity = "0"; return; }
     if (!pill) { c.insertAdjacentHTML("afterbegin", '<i class="st-seg-pill" aria-hidden="true"></i>'); pill = c.firstElementChild; c.classList.add("st-segc"); }
-    const box = { x: act.offsetLeft, y: act.offsetTop, w: act.offsetWidth, h: act.offsetHeight }, key = segKey(c), prev = segMem[key];
-    const put = b => { pill.style.transform = `translate(${b.x}px,${b.y}px)`; pill.style.width = b.w + "px"; pill.style.height = b.h + "px"; };
-    if (animate && prev && !reduced() && (prev.x !== box.x || prev.w !== box.w)) { pill.style.transition = "none"; put(prev); void pill.offsetWidth; pill.style.transition = ""; }
-    else if (!pill.dataset.on) { pill.style.transition = "none"; put(box); void pill.offsetWidth; pill.style.transition = ""; }
-    pill.dataset.on = "1"; pill.style.opacity = "1"; put(box); segMem[key] = box;
+    return pill;
   }
-  function bindSegs(root) { (root || document).querySelectorAll(SEGS).forEach(c => { if (c.offsetParent !== null) placeSeg(c, true); }); }
+  function putPill(pill, b, ms) {
+    pill.style.transitionDuration = ms == null ? "" : ms + "ms";
+    pill.style.transform = `translate(${b.x}px,${b.y}px)`; pill.style.width = b.w + "px"; pill.style.height = b.h + "px";
+  }
+  function jumpPill(pill, b) { pill.style.transition = "none"; putPill(pill, b); void pill.offsetWidth; pill.style.transition = ""; }
+  function placeSeg(c) {
+    const act = c.querySelector(":scope>button.active, :scope>button.is-on, :scope>button[aria-pressed='true']");
+    const pill = ensurePill(c), key = segKey(c);
+    if (!act) { pill.style.opacity = "0"; return; }
+    const box = pillBox(c, act), run = segAnim[key];
+    if (run && run.to.x === box.x && run.to.w === box.w && !reduced()) {
+      const t = (performance.now() - run.t0) / SEG_MS;
+      if (t < 1 && !pill.dataset.on) {
+        const k = segEase(Math.max(0, t)), mid = { x: run.from.x + (box.x - run.from.x) * k, y: box.y, w: run.from.w + (box.w - run.from.w) * k, h: box.h };
+        jumpPill(pill, mid); pill.dataset.on = "1"; pill.style.opacity = "1"; putPill(pill, box, Math.round((1 - t) * SEG_MS)); segMem[key] = box; return;
+      }
+    }
+    if (!pill.dataset.on) jumpPill(pill, box);
+    pill.dataset.on = "1"; pill.style.opacity = "1"; putPill(pill, box); segMem[key] = box;
+  }
+  document.addEventListener("pointerdown", e => {
+    const btn = e.target.closest && e.target.closest("button"), c = btn && btn.parentElement;
+    if (!c || !c.matches || !c.matches(SEGS) || btn.matches(".active,.is-on,[aria-pressed='true']")) return;
+    const pill = ensurePill(c), key = segKey(c), to = pillBox(c, btn);
+    const from = segMem[key] || (() => { const a = c.querySelector(":scope>button.active, :scope>button.is-on, :scope>button[aria-pressed='true']"); return a ? pillBox(c, a) : to; })();
+    if (!pill.dataset.on) { jumpPill(pill, from); pill.dataset.on = "1"; pill.style.opacity = "1"; }
+    segAnim[key] = { from, to, t0: performance.now() }; segMem[key] = to;
+    if (reduced()) jumpPill(pill, to); else putPill(pill, to);
+  }, { capture: true, passive: true });
+  function bindSegs(root) { (root || document).querySelectorAll(SEGS).forEach(c => { if (c.offsetParent !== null) placeSeg(c); }); }
   let segRaf = 0;
   function queueSegs() { cancelAnimationFrame(segRaf); segRaf = requestAnimationFrame(() => bindSegs(document)); }
   document.addEventListener("click", e => { const c = e.target.closest && e.target.closest(SEGS); if (c) setTimeout(queueSegs, 0); }, true);
