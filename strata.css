@@ -1798,3 +1798,32 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 .st-pillg.is-low rect{fill:rgba(20,18,30,.82);stroke:rgba(255,255,255,.18)}
 .st-pillg.is-low text{fill:var(--st-ink-2);font-weight:550;font-size:11px}
 .st-tip .st-tip-gap{color:var(--st-ink-3);font-size:11px;margin-top:2px}
+
+/* Weight chart instrument (D41): edge-to-edge canvas, weekly steps, vs-trend strip, scanner, sliding range pill */
+#weightPage .vn-chart-wrap{margin-inline:-18px;border-radius:0;margin-top:14px}
+#weightPage .vn-chart-svg .vn-trend-line{stroke-width:3.4}
+#weightPage .vn-raw-dot{r:2.7px;fill:#14111f;stroke:#CDBBFF;stroke-width:1.5}
+#weightPage .st-scan{pointer-events:none}
+#weightPage .st-wstep{stroke:rgba(255,255,255,.5);stroke-width:1.6;stroke-dasharray:5 4;stroke-linecap:round;pointer-events:none}
+#weightPage .st-wstep-t{fill:var(--st-ink-2);font:590 10.5px var(--st-font);font-variant-numeric:tabular-nums;paint-order:stroke;stroke:rgba(14,12,22,.9);stroke-width:3px;stroke-linejoin:round}
+#weightPage .st-dev-axis{stroke:rgba(255,255,255,.22);stroke-width:1}
+#weightPage .st-dev-t{fill:var(--st-ink-3);font:550 10.5px var(--st-font);letter-spacing:.02em}
+#weightPage .st-dev.is-dn{fill:#8B5CF6}
+#weightPage .st-dev.is-up{fill:rgba(14,12,22,.9);stroke:#CDBBFF;stroke-width:1.5}
+#weightPage .st-dev.is-sel{fill:#fff;stroke:#fff;filter:drop-shadow(0 0 4px rgba(205,187,255,.9))}
+#weightPage .st-dev.is-up.is-sel{fill:rgba(14,12,22,.9);stroke:#fff}
+.is-scrubbing .st-wstep-t{opacity:.35}
+#weightPage .vn-seg{position:relative}
+#weightPage .vn-seg>button{position:relative;z-index:1;background:transparent !important;box-shadow:none !important}
+#weightPage .vn-seg .st-seg-ind{position:absolute;top:4px;bottom:4px;border-radius:14px;z-index:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(139,92,246,.42),rgba(139,92,246,.2));border:1px solid rgba(180,154,255,.4);box-shadow:0 6px 18px -6px rgba(139,92,246,.7),inset 0 1px 0 rgba(255,255,255,.18);
+  transition:left .5s cubic-bezier(.3,1.4,.5,1),width .5s cubic-bezier(.3,1.4,.5,1)}
+@keyframes st-pop{0%{opacity:0;transform:scale(0)}70%{transform:scale(1.35)}100%{opacity:1;transform:scale(1)}}
+@keyframes st-bar-up{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+#weightPage.st-enter .vn-raw-dot,#weightPage .vn-chart-svg.is-range-change .vn-raw-dot{transform-box:fill-box;transform-origin:center;opacity:0;animation:st-pop .5s var(--st-out) calc(.5s + var(--i)*26ms) forwards}
+#weightPage.st-enter .st-dev,#weightPage .vn-chart-svg.is-range-change .st-dev{transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0);animation:st-bar-up .55s var(--st-out) calc(.9s + var(--i)*26ms) forwards}
+#weightPage.st-enter .st-dev.is-dn,#weightPage .vn-chart-svg.is-range-change .st-dev.is-dn{transform-origin:50% 0%}
+#weightPage.st-enter .st-wstep,#weightPage .vn-chart-svg.is-range-change .st-wstep{stroke-dashoffset:60;opacity:0;animation:st-fade .6s var(--st-out) 1.4s forwards}
+@media (prefers-reduced-motion:reduce){#weightPage .vn-raw-dot,#weightPage .st-dev,#weightPage .st-wstep{animation:none !important;opacity:1 !important;transform:none !important}#weightPage .vn-seg .st-seg-ind{transition:none}}
+:root[data-nxp-motion="reduced"] #weightPage .vn-raw-dot,:root[data-nxp-motion="reduced"] #weightPage .st-dev,:root[data-nxp-motion="reduced"] #weightPage .st-wstep{animation:none !important;opacity:1 !important;transform:none !important}
+#weightPage #vn-csum{color:var(--st-ink-3);font-size:12.5px;line-height:1.45}

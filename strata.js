@@ -217,6 +217,46 @@ const STRATA = (() => {
       const txt = Number(tail.avg).toFixed(2), w = 14 + txt.length * 6.6, px = Math.min(m.W - m.right - w, tail.x - w / 2);
       svg.insertAdjacentHTML("beforeend", `<g class="st-pillg is-end"><rect x="${px.toFixed(1)}" y="${(tail.y - 30).toFixed(1)}" width="${w.toFixed(1)}" height="20" rx="10"/><text x="${(px + w / 2).toFixed(1)}" y="${(tail.y - 16).toFixed(1)}" text-anchor="middle">${txt}</text></g>`);
     }
+    /* Instrument layer. Same points, same scale. (1) A "Vs trend" strip under the plot:
+       every morning reading as a bar above or below its own trend value, so daily noise
+       reads separately from the trend. Own panel, own zero line: never a second axis on
+       the plot. (2) A step per Mon-Sun week at that week's morning average (the figure in
+       Week by week), so the plot and the list are one object. (3) A scanner column. */
+    {
+      const g = svg.querySelector("g[clip-path]"), base0 = m.H - m.bottom, DAY0 = 86400000;
+      const sTop = base0 + 20, sBot = m.H - 30, mid = (sTop + sBot) / 2, half = (sBot - sTop) / 2;
+      const dev = m.points.map((q, i) => ({ i, x: q.x, d: q.avg !== null && q.avg !== undefined ? Number(q.weight) - Number(q.avg) : null })).filter(q => q.d !== null);
+      let strip = "";
+      if (dev.length >= 4) {
+        const mx = Math.max(.5, Math.ceil(Math.max(...dev.map(q => Math.abs(q.d))) * 2) / 2), kk = half / mx;
+        strip += `<line class="st-dev-axis" x1="${m.left}" x2="${m.W - m.right}" y1="${mid.toFixed(1)}" y2="${mid.toFixed(1)}"/>`;
+        strip += `<text class="st-dev-t" x="${m.left + 2}" y="${(sTop - 6).toFixed(1)}">Vs trend</text><text class="st-dev-t is-r" x="${m.W - m.right - 2}" y="${(sTop + 6).toFixed(1)}" text-anchor="end">above ▲</text><text class="st-dev-t is-r" x="${m.W - m.right - 2}" y="${(sBot - 1).toFixed(1)}" text-anchor="end">below ▼</text>`;
+        strip += dev.map((q, n) => {
+          const h = Math.max(2, Math.abs(q.d) * kk), up = q.d > 0;
+          return `<rect class="st-dev ${up ? "is-up" : "is-dn"}" data-i="${q.i}" style="--i:${n}" x="${(q.x - 2.6).toFixed(1)}" y="${(up ? mid - h : mid).toFixed(1)}" width="5.2" height="${h.toFixed(1)}" rx="2.6"/>`;
+        }).join("");
+      }
+      const cols = [];
+      if (m.points.length > 1 && !m.futureDays && typeof NXT.windowStats === "function") {
+        const rowsW = NXT.weights(), first = m.points[0].date, last = m.points[m.points.length - 1].date;
+        let st = NXT.weekStart(first);
+        for (let guard = 0; st <= last && guard < 20; guard++, st = NXT.dateAdd(st, 7)) {
+          const en = NXT.dateAdd(st, 6), endUse = en > last ? last : en, from = st < first ? first : st;
+          const days = Math.round((NXT.dateMs(endUse) - NXT.dateMs(from)) / DAY0) + 1, w = NXT.windowStats(rowsW, endUse, days);
+          if (!w || w.avg === null || w.avg === undefined || w.n < 3) continue;
+          cols.push({ x1: Math.max(m.left, m.x(from)), x2: Math.min(m.W - m.right, m.x(endUse)), y: m.y(w.avg), avg: w.avg });
+        }
+      }
+      const steps = cols.map(c => `<line class="st-wstep" x1="${c.x1.toFixed(1)}" x2="${c.x2.toFixed(1)}" y1="${c.y.toFixed(1)}" y2="${c.y.toFixed(1)}"/>${c.x2 - c.x1 > 52 ? `<text class="st-wstep-t" x="${(c.x1 + 3).toFixed(1)}" y="${(c.y - 5).toFixed(1)}">${c.avg.toFixed(1)}</text>` : ""}`).join("");
+      if (g) {
+        g.insertAdjacentHTML("beforeend", steps);
+        g.insertAdjacentHTML("beforebegin", `<rect id="st-scan" class="st-scan" x="0" y="${m.top}" width="30" height="${(sBot - m.top).toFixed(1)}" fill="url(#st-scan-g)" visibility="hidden"/>`);
+        g.querySelectorAll(".vn-raw-dot").forEach((d, i) => d.style.setProperty("--i", i));
+        const defs2 = svg.querySelector("defs");
+        defs2 && defs2.insertAdjacentHTML("beforeend", `<linearGradient id="st-scan-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B49AFF" stop-opacity="0"/><stop offset=".5" stop-color="#B49AFF" stop-opacity=".16"/><stop offset="1" stop-color="#B49AFF" stop-opacity="0"/></linearGradient>`);
+        g.insertAdjacentHTML("afterend", `<g class="st-devg" aria-hidden="true">${strip}</g>`);
+      }
+    }
     /* Week bands (Mon–Sun, alternate weeks), the lowest morning reading tagged,
        and a stem from the selected reading to its trend. Marks only. */
     const clip = svg.querySelector("g[clip-path]"), base = m.H - m.bottom, DAY = 86400000;
@@ -238,6 +278,18 @@ const STRATA = (() => {
         svg.insertAdjacentHTML("beforeend", `<g class="st-pillg is-low"><rect x="${px.toFixed(1)}" y="${(low.y + 10).toFixed(1)}" width="${w.toFixed(1)}" height="18" rx="9"/><text x="${(px + w / 2).toFixed(1)}" y="${(low.y + 22.5).toFixed(1)}" text-anchor="middle">${txt}</text></g>`);
       }
       if (clip) clip.insertAdjacentHTML("beforeend", `<line id="st-stem" class="st-stem" y1="0" y2="0" x1="0" x2="0" visibility="hidden"/>`);
+    }
+    const rseg = page.querySelector(".st-range-row .vn-seg");
+    if (rseg && !rseg.querySelector(".st-seg-ind")) {
+      const act = rseg.querySelector("button.active"); 
+      if (act) {
+        rseg.insertAdjacentHTML("afterbegin", `<i class="st-seg-ind" aria-hidden="true"></i>`);
+        const ind = rseg.querySelector(".st-seg-ind"), put = (l, w) => { ind.style.left = l + "px"; ind.style.width = w + "px"; };
+        const prev = window.__stSegL;
+        if (prev && !reduced()) { ind.style.transition = "none"; put(prev.l, prev.w); void ind.offsetWidth; ind.style.transition = ""; }
+        put(act.offsetLeft, act.offsetWidth);
+        window.__stSegL = { l: act.offsetLeft, w: act.offsetWidth };
+      }
     }
     const read = page.querySelector("#vn-traj-read");
     if (read && /^no plateau detected\.?$/i.test(read.textContent.trim())) read.hidden = true;
@@ -391,8 +443,12 @@ const STRATA = (() => {
     const tip = wrapEl && wrapEl.querySelector(".st-tip");
     if (!tip || !m || !m.points || !svg) return;
     const p = m.points[index];
-    if (!p || (opts && opts.clear) || state0.replay) { tip.hidden = true; const st0 = svg.querySelector("#st-stem"); if (st0) st0.setAttribute("visibility", "hidden"); return; }
+    if (!p || (opts && opts.clear) || state0.replay) { tip.hidden = true; const st0 = svg.querySelector("#st-stem"), sc0 = svg.querySelector("#st-scan"); if (st0) st0.setAttribute("visibility", "hidden"); if (sc0) sc0.setAttribute("visibility", "hidden"); return; }
     const r = svg.getBoundingClientRect(), wr = wrapEl.getBoundingClientRect(), k = r.width / m.W;
+    svg.querySelectorAll(".st-dev.is-sel").forEach(e => e.classList.remove("is-sel"));
+    const selBar = svg.querySelector(`.st-dev[data-i="${index}"]`); if (selBar && !(opts && opts.clear)) selBar.classList.add("is-sel");
+    const scan = svg.querySelector("#st-scan");
+    if (scan) { scan.setAttribute("x", (p.x - 15).toFixed(1)); scan.setAttribute("visibility", "visible"); }
     const gap = p.avg !== null && p.avg !== undefined ? Number(p.weight) - Number(p.avg) : null, stem = svg.querySelector("#st-stem");
     if (stem) {
       if (gap !== null && p.ty !== null && p.ty !== undefined && Math.abs(p.y - p.ty) > 3) { stem.setAttribute("x1", p.x); stem.setAttribute("x2", p.x); stem.setAttribute("y1", p.y); stem.setAttribute("y2", p.ty); stem.setAttribute("visibility", "visible"); }
