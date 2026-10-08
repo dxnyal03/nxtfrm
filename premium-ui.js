@@ -1381,7 +1381,7 @@ const NXP = (() => {
     return bits.join(' · ')+(last?'. Latest session '+N.shortDate(last)+'.':'.');
   }
   function performanceSummary(items) {
-    return `<header class="vn-perf-lead"><p class="vn-perf-kicker">Performance</p><p class="vn-perf-intro">${esc(performanceIntro(items))}</p></header>`;
+    return `<header class="vn-perf-lead"><p class="vn-perf-intro">${esc(performanceIntro(items))}</p></header>`;
   }
   function performanceView(items) {
     const note=`<p class="vn-perf-note">${esc(PERF_NOTE)}</p>`;

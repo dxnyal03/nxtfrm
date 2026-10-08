@@ -334,6 +334,23 @@ const STRATA = (() => {
     host.setAttribute("aria-label", "Week by week average morning weight");
     host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Morning average, Mon–Sun</small></div><ol class="st-wk-l">${li}</ol>`;
     anchor.insertAdjacentElement("afterend", host);
+    host.querySelectorAll(".st-wk").forEach(li => {
+      li.tabIndex = 0; li.setAttribute("role", "button");
+      const go = () => {
+        const mm = NXT.ui.chart, sv = document.getElementById("n99-chart-svg"); if (!mm || !sv) return;
+        const a = li.dataset.a, b = li.dataset.b, inWk = mm.points.map((q, i) => ({ q, i })).filter(o => o.q.date >= a && o.q.date <= b);
+        sv.querySelectorAll(".st-weeksel").forEach(e => e.remove());
+        host.querySelectorAll(".st-wk.is-pick").forEach(e => e.classList.remove("is-pick"));
+        if (!inWk.length) return;
+        li.classList.add("is-pick");
+        const x1 = Math.max(mm.left, inWk[0].q.x - 8), x2 = Math.min(mm.W - mm.right, inWk[inWk.length - 1].q.x + 8);
+        const gp = sv.querySelector("g[clip-path]");
+        gp && gp.insertAdjacentHTML("afterbegin", `<rect class="st-weeksel" x="${x1.toFixed(1)}" y="${mm.top}" width="${(x2 - x1).toFixed(1)}" height="${(mm.H - mm.bottom - mm.top).toFixed(1)}" rx="8"/>`);
+        NXT.selectPoint(inWk[inWk.length - 1].i);
+        const wrapEl = document.getElementById("vn-chart-wrap"); wrapEl && wrapEl.scrollIntoView({ block: "center", behavior: reduced() ? "auto" : "smooth" });
+      };
+      li.onclick = go; li.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+    });
     weeksSync(m.points.length - 1);
   }
   function weeksSync(index) {

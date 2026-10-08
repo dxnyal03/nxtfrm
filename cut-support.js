@@ -964,6 +964,13 @@ Object.assign(NXT, (()=>{
      falls back to whatever timing exists on days with no morning reading. That
      fallback is unchanged, so the readout names the timing actually recorded
      rather than claiming every point is a morning one. */
+  /* One plain line under the trend figure: how far this reading sits from its own trend value. */
+  function gapLine(p) {
+    if(!p||p.avg===null||p.avg===undefined||!Number.isFinite(p.weight))return (p&&p.coverage!==undefined?p.coverage+' readings':'');
+    const d=p.weight-p.avg;
+    if(Math.abs(d)<0.05)return 'On trend';
+    return Math.abs(d).toFixed(1)+' kg '+(d<0?'below':'above')+' trend';
+  }
   function pointTiming(p) {
     const t=String(p&&p.timeOfDay||'').trim();
     if(!t)return 'Timing not recorded';
@@ -1137,7 +1144,7 @@ Object.assign(NXT, (()=>{
           <div class="vn-mhead-cell vn-mhead-right">
             <span class="vn-metric-l">Trend</span>
             <div class="vn-h-sub vn-num vn-trend-val" id="n99-chart-average">${p.avg===null?'—':p.avg.toFixed(2)}<em>kg</em></div>
-            <small class="vn-tiny" id="n99-chart-coverage">${p.coverage} readings</small>
+            <small class="vn-tiny st-gapline" id="n99-chart-coverage">${esc(gapLine(p))}</small>
           </div>
         </div>
         <div class="vn-mhead-post" id="n99-chart-post" ${postRow?'':'hidden'}>
@@ -1196,7 +1203,7 @@ Object.assign(NXT, (()=>{
     text('n99-chart-date',isLatest?'Latest morning':N.shortDate(p.date));
     html('n99-chart-weight',p.weight.toFixed(1)+'<em>kg</em>');
     html('n99-chart-average',p.avg===null?'—<em>kg</em>':p.avg.toFixed(2)+'<em>kg</em>');
-    text('n99-chart-coverage',p.coverage+' readings');
+    text('n99-chart-coverage',gapLine(p));
     text('n99-chart-timing',pointTiming(p));
     const postRow=m.postByDate?m.postByDate.get(p.date):null,postBox=document.getElementById('n99-chart-post');
     if(postBox)postBox.hidden=!postRow;

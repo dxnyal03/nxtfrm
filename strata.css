@@ -1827,3 +1827,9 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 @media (prefers-reduced-motion:reduce){#weightPage .vn-raw-dot,#weightPage .st-dev,#weightPage .st-wstep{animation:none !important;opacity:1 !important;transform:none !important}#weightPage .vn-seg .st-seg-ind{transition:none}}
 :root[data-nxp-motion="reduced"] #weightPage .vn-raw-dot,:root[data-nxp-motion="reduced"] #weightPage .st-dev,:root[data-nxp-motion="reduced"] #weightPage .st-wstep{animation:none !important;opacity:1 !important;transform:none !important}
 #weightPage #vn-csum{color:var(--st-ink-3);font-size:12.5px;line-height:1.45}
+
+#weightPage .st-weeksel{fill:rgba(139,92,246,.16);stroke:rgba(205,187,255,.5);stroke-width:1;pointer-events:none}
+#weightPage .st-wk{cursor:pointer;-webkit-tap-highlight-color:transparent}
+#weightPage .st-wk.is-pick{background:rgba(139,92,246,.14);border-radius:12px}
+#weightPage .st-wk:focus-visible{outline:2px solid #CDBBFF;outline-offset:2px;border-radius:12px}
+#weightPage .st-gapline{color:var(--st-ink-2)}
