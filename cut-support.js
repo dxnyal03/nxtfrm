@@ -1041,9 +1041,10 @@ Object.assign(NXT, (()=>{
       else if(plateau.status==='gaining'){plateauStatus='Gaining';plateauTone='is-watch';}
       else {plateauStatus='Settling';plateauTone='is-neutral';}
     }
-    const proj=forecastRead&&forecastRead.ok&&forecastRead.weeks!==null
+    /* A horizon only means something against a goal the lifter confirmed (same gate as the chart and Today). */
+    const proj=N.cfg().targetConfirmed&&forecastRead&&forecastRead.ok&&forecastRead.weeks!==null
       ?`${forecastRead.weeks} wk <span class="vn-ink-3">(${forecastRead.lowWeeks}–${forecastRead.highWeeks})</span>`
-      :'Unavailable';
+      :(N.cfg().targetConfirmed?'Unavailable':'Set a goal');
     const conf=plateau&&plateau.confidence&&plateau.confidence!=='none'
       ?plateau.confidence.charAt(0).toUpperCase()+plateau.confidence.slice(1):'—';
     return `<section class="vn-evidence">
@@ -1127,7 +1128,7 @@ Object.assign(NXT, (()=>{
     /* All range: the first weigh-in is marked so the whole journey reads at a glance.
        Presentation only: the point is one the chart already plots. */
     const first=points[0],startMark=(!N.ui.range&&points.length>=2&&first)?`<g pointer-events="none"><circle cx="${px(first.x)}" cy="${px(first.y)}" r="5" fill="none" stroke="${CHART.ink}" stroke-width="1.6"/><text x="${px(Math.min(first.x+8,W-right-60))}" y="${px(Math.max(first.y-14,top+10))}" fill="${CHART.axisText}" font-size="11">Start ${first.weight.toFixed(1)} kg</text></g>`:'';
-    const summary=`${points.length} readings, ${N.shortDate(points[0].date)} to ${N.shortDate(points.at(-1).date)}. Steps mark each week’s morning average; the strip shows each day against its trend.`
+    const summary=`${points.length} readings, ${N.shortDate(points[0].date)} to ${N.shortDate(points.at(-1).date)}. Dotted steps mark each week’s morning average. The strip shows each reading against the trend: while you are cutting most land below it, because the trend averages the days before; several days above it in a row mean the drop is slowing.`
       +(forecast?' Projection is a model estimate, shown dashed — not a measurement.':'');
     return `<section class="vn-weight n99-chart" id="vn-weight">
       <div class="vn-read">

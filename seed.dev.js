@@ -314,6 +314,7 @@
         settings.cutSupport.adherence = Object.assign({}, settings.cutSupport.adherence, cut.adherence);
       }
       if (cut.calories != null) settings.cutSupport.calories = cut.calories;
+      if (cut.targetConfirmed != null && settings.cutSupport.targetConfirmed == null) settings.cutSupport.targetConfirmed = cut.targetConfirmed;
       settings.cutSupport.seedVersion = cut.seedVersion;
       if (written.settings.startWeight != null) settings.startWeight = written.settings.startWeight;
     }
@@ -360,6 +361,7 @@
       cutSupport: Object.assign({}, existingSettings.cutSupport, {
         recovery: forced ? recovery : Object.assign({}, existingCut.recovery || {}, recovery),
         adherence: forced ? adherence : Object.assign({}, existingCut.adherence || {}, adherence),
+        targetConfirmed: existingCut.targetConfirmed != null ? existingCut.targetConfirmed : true,
         calories: existingCut.calories != null && existingCut.calories !== '' ? existingCut.calories : 2100,
         seedVersion: SEED_VERSION,
         waist: forced ? dropSeeded(existingCut.waist) : existingCut.waist,

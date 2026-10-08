@@ -217,6 +217,10 @@ const STRATA = (() => {
       const txt = Number(tail.avg).toFixed(2), w = 14 + txt.length * 6.6, px = Math.min(m.W - m.right - w, tail.x - w / 2);
       svg.insertAdjacentHTML("beforeend", `<g class="st-pillg is-end"><rect x="${px.toFixed(1)}" y="${(tail.y - 30).toFixed(1)}" width="${w.toFixed(1)}" height="20" rx="10"/><text x="${(px + w / 2).toFixed(1)}" y="${(tail.y - 16).toFixed(1)}" text-anchor="middle">${txt}</text></g>`);
     }
+    /* Labels are drawn in viewBox units, so a narrow phone shrinks them. Scale the small
+       chart text back up to its intended size (capped) so 320px stays readable. */
+    const rw = svg.getBoundingClientRect().width;
+    if (rw > 0) svg.style.setProperty("--tsc", Math.min(1.4, Math.max(1, m.W / rw)).toFixed(3));
     /* Instrument layer. Same points, same scale. (1) A "Vs trend" strip under the plot:
        every morning reading as a bar above or below its own trend value, so daily noise
        reads separately from the trend. Own panel, own zero line: never a second axis on
@@ -229,25 +233,39 @@ const STRATA = (() => {
       let strip = "";
       if (dev.length >= 4) {
         const mx = Math.max(.5, Math.ceil(Math.max(...dev.map(q => Math.abs(q.d))) * 2) / 2), kk = half / mx;
-        strip += `<line class="st-dev-axis" x1="${m.left}" x2="${m.W - m.right}" y1="${mid.toFixed(1)}" y2="${mid.toFixed(1)}"/>`;
-        strip += `<text class="st-dev-t" x="${m.left + 2}" y="${(sTop - 6).toFixed(1)}">Vs trend</text><text class="st-dev-t is-r" x="${m.W - m.right - 2}" y="${(sTop + 6).toFixed(1)}" text-anchor="end">above ▲</text><text class="st-dev-t is-r" x="${m.W - m.right - 2}" y="${(sBot - 1).toFixed(1)}" text-anchor="end">below ▼</text>`;
+        strip += `<line class="st-dev-axis" x1="${m.left}" x2="${(m.futureDays ? m.todayX : m.W - m.right).toFixed(1)}" y1="${mid.toFixed(1)}" y2="${mid.toFixed(1)}"/>`;
+        strip += `<text class="st-dev-t" x="${m.left + 2}" y="${(sTop - 6).toFixed(1)}">Each day vs its trend</text>`;
         strip += dev.map((q, n) => {
           const h = Math.max(2, Math.abs(q.d) * kk), up = q.d > 0;
           return `<rect class="st-dev ${up ? "is-up" : "is-dn"}" data-i="${q.i}" style="--i:${n}" x="${(q.x - 2.6).toFixed(1)}" y="${(up ? mid - h : mid).toFixed(1)}" width="5.2" height="${h.toFixed(1)}" rx="2.6"/>`;
         }).join("");
       }
       const cols = [];
-      if (m.points.length > 1 && !m.futureDays && typeof NXT.windowStats === "function") {
+      if (m.points.length > 1 && typeof NXT.windowStats === "function") {
         const rowsW = NXT.weights(), first = m.points[0].date, last = m.points[m.points.length - 1].date;
         let st = NXT.weekStart(first);
         for (let guard = 0; st <= last && guard < 20; guard++, st = NXT.dateAdd(st, 7)) {
           const en = NXT.dateAdd(st, 6), endUse = en > last ? last : en, from = st < first ? first : st;
-          const days = Math.round((NXT.dateMs(endUse) - NXT.dateMs(from)) / DAY0) + 1, w = NXT.windowStats(rowsW, endUse, days);
+          /* Same window as the Week by week row: the whole Mon-Sun week (to today for this week),
+             even when the range starts mid-week, so the step and the list always agree. */
+          const wEnd = en > state.date ? state.date : en, days = Math.round((NXT.dateMs(wEnd) - NXT.dateMs(st)) / DAY0) + 1, w = NXT.windowStats(rowsW, wEnd, days);
           if (!w || w.avg === null || w.avg === undefined || w.n < 3) continue;
           cols.push({ x1: Math.max(m.left, m.x(from)), x2: Math.min(m.W - m.right, m.x(endUse)), y: m.y(w.avg), avg: w.avg });
         }
       }
-      const steps = cols.map(c => `<line class="st-wstep" x1="${c.x1.toFixed(1)}" x2="${c.x2.toFixed(1)}" y1="${c.y.toFixed(1)}" y2="${c.y.toFixed(1)}"/>${c.x2 - c.x1 > 52 ? `<text class="st-wstep-t" x="${(c.x1 + 3).toFixed(1)}" y="${(c.y - 5).toFixed(1)}">${c.avg.toFixed(1)}</text>` : ""}`).join("");
+      const steps = cols.map(c => `<line class="st-wstep" x1="${c.x1.toFixed(1)}" x2="${c.x2.toFixed(1)}" y1="${c.y.toFixed(1)}" y2="${c.y.toFixed(1)}"/>`).join("");
+      /* Projection end: the date the engine's horizon points to, on the mark itself. */
+      const fe = m.forecast && (m.forecast.endpoint || { x: m.forecast.mid.x2, y: m.forecast.mid.y2 }), fr = m.forecastRead;
+      if (fe && fr && fr.ok && fr.weeks > 0) {
+        const txt = "Goal range · ~" + shortDate(NXT.dateAdd(state.date, fr.weeks * 7)), w = 18 + txt.length * 5.9, px = m.W - m.right - w - 2, py = m.top + 4;
+        svg.insertAdjacentHTML("beforeend", `<g class="st-pillg is-goal"><rect x="${px.toFixed(1)}" y="${py.toFixed(1)}" width="${w.toFixed(1)}" height="20" rx="10"/><text x="${(px + w / 2).toFixed(1)}" y="${(py + 13.6).toFixed(1)}" text-anchor="middle">${txt}</text></g>`);
+      }
+      /* The projection starts from the fitted level (it leads the smoothed trend); a faint
+         dotted bridge keeps the two from reading as a break in the line. */
+      const tl = m.segments && m.segments.length ? m.segments[m.segments.length - 1].slice(-1)[0] : null;
+      if (m.forecast && tl && m.anchor && Math.hypot(m.anchor.x - tl.x, m.anchor.y - tl.y) > 3 && g) {
+        g.insertAdjacentHTML("beforeend", `<line class="st-bridge" x1="${tl.x.toFixed(1)}" y1="${tl.y.toFixed(1)}" x2="${m.anchor.x.toFixed(1)}" y2="${m.anchor.y.toFixed(1)}"/>`);
+      }
       if (g) {
         g.insertAdjacentHTML("beforeend", steps);
         g.insertAdjacentHTML("beforebegin", `<rect id="st-scan" class="st-scan" x="0" y="${m.top}" width="30" height="${(sBot - m.top).toFixed(1)}" fill="url(#st-scan-g)" visibility="hidden"/>`);
@@ -255,12 +273,14 @@ const STRATA = (() => {
         const defs2 = svg.querySelector("defs");
         defs2 && defs2.insertAdjacentHTML("beforeend", `<linearGradient id="st-scan-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B49AFF" stop-opacity="0"/><stop offset=".5" stop-color="#B49AFF" stop-opacity=".16"/><stop offset="1" stop-color="#B49AFF" stop-opacity="0"/></linearGradient>`);
         g.insertAdjacentHTML("afterend", `<g class="st-devg" aria-hidden="true">${strip}</g>`);
+        const lg = page.querySelector("#vn-legend");
+        if (strip && lg && !lg.querySelector(".st-lg-dev")) lg.insertAdjacentHTML("beforeend", `<span class="st-lg-dev"><svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><path d="M1 8L4.5 1.5 8 8z" fill="none" stroke="#CDBBFF" stroke-width="1.3" stroke-linejoin="round"/></svg>Above trend</span><span class="st-lg-dev"><svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><path d="M1 1L4.5 7.5 8 1z" fill="#8B5CF6"/></svg>Below trend</span>`);
       }
     }
     /* Week bands (Mon–Sun, alternate weeks), the lowest morning reading tagged,
        and a stem from the selected reading to its trend. Marks only. */
     const clip = svg.querySelector("g[clip-path]"), base = m.H - m.bottom, DAY = 86400000;
-    if (clip && m.points.length > 1 && (!m.futureDays)) {
+    if (clip && m.points.length > 1) {
       const t0 = NXT.dateMs(m.points[0].date), t1 = NXT.dateMs(m.points[m.points.length - 1].date), span = t1 - t0;
       if (span > 0 && span <= 100 * DAY) {
         const xm = ms => m.points[0].x + (ms - t0) / span * (m.points[m.points.length - 1].x - m.points[0].x);
