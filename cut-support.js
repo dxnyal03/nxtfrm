@@ -1673,7 +1673,27 @@ apx96OpenQueueManager=function(){NXT.old.apx96OpenQueueManager();document.queryS
 v88OpenNoteModal=function(ex){NXT.ui.noteExercise=ex;NXT.modal('Equipment note',`<p>${esc(state.gym)} · ${esc(ex)}</p><label>Note<textarea id="n99-equipment-note" maxlength="2000">${esc(v88NoteFor(ex))}</textarea></label>${NXT.button('Save note','NXT.saveEquipmentNote()')}`);};
 NXT.saveEquipmentNote=function(){state.exerciseNotes=state.exerciseNotes||{};state.exerciseNotes[v88NoteKey(NXT.ui.noteExercise)]=val('n99-equipment-note').trim();NXT.commit('Equipment note saved');};
 closeModal=function(){NXT.old.closeModal();window.__apexTyping=false;state.typingWeight=false;NXT.ui.lastFocus?.focus?.();};
-apx95OpenQuickWeight=function(){NXT.modal('Log bodyweight',`<form onsubmit="event.preventDefault();apx95SaveQuickWeight()"><div class="n99-form-grid"><label>Date<input id="apx95WeightDate" type="date" required max="${state.date}" value="${state.date}"></label><label>Weight · kg<input id="apx95WeightValue" type="number" min="20" max="400" step="0.1" inputmode="decimal" required></label></div><label>Timing<select id="apx95WeightTime"><option>Morning</option><option>Pre-workout</option><option>Post-workout</option><option>Night</option></select></label><p class="n99-small">Use similar conditions each time. Morning readings drive your progress trend; post-workout readings are shown separately for context. Every original entry stays saved.</p><button type="submit" class="n99-button">Save weigh-in</button></form>`);};
+/* Weigh-in sheet (D44): the daily action gets the same big-number entry as a set on Train.
+   Same ids and the same save path; timing is a segmented control writing the same value. */
+apx95OpenQuickWeight=function(){
+  const last=NXT.weights().at(-1),hint=last?Number(last.weight).toFixed(1):'';
+  const times=['Morning','Pre-workout','Post-workout','Night'];
+  NXT.modal('Log weigh-in',`<form class="st-qw" onsubmit="event.preventDefault();apx95SaveQuickWeight()">
+    <div class="st-qw-num">
+      <button type="button" class="st-qw-step" aria-label="Down 0.1 kilograms" onclick="NXT.qwStep(-1)">−</button>
+      <label class="st-qw-field"><span class="st-sr">Weight in kilograms</span><input id="apx95WeightValue" type="number" min="20" max="400" step="0.1" inputmode="decimal" required placeholder="${hint}" data-hint="${hint}" autocomplete="off"><em aria-hidden="true">kg</em></label>
+      <button type="button" class="st-qw-step" aria-label="Up 0.1 kilograms" onclick="NXT.qwStep(1)">+</button>
+    </div>
+    <p class="st-qw-last">${last?`Last morning reading ${hint} kg · ${esc(NXT.shortDate(last.date))}`:'Morning, before food, gives the cleanest trend.'}</p>
+    <div class="st-qw-seg" role="group" aria-label="Timing">${times.map((t,i)=>`<button type="button" aria-pressed="${i===0}" class="${i===0?'is-on':''}" onclick="NXT.qwTime(this,'${t}')">${t==='Pre-workout'?'Pre':t==='Post-workout'?'Post':t}</button>`).join('')}</div>
+    <select id="apx95WeightTime" class="st-sr" tabindex="-1" aria-hidden="true"><option>Morning</option><option>Pre-workout</option><option>Post-workout</option><option>Night</option></select>
+    <label class="st-qw-date">Date<input id="apx95WeightDate" type="date" required max="${state.date}" value="${state.date}"></label>
+    <p class="n99-small">Use similar conditions each time. Morning readings drive your progress trend; post-workout readings are shown separately for context. Every original entry stays saved.</p>
+    <button type="submit" class="n99-button">Save weigh-in</button></form>`);
+  setTimeout(()=>document.getElementById('apx95WeightValue')?.focus(),60);
+};
+NXT.qwStep=function(dir){const el=document.getElementById('apx95WeightValue');if(!el)return;const cur=NXT.finite(el.value)??NXT.finite(el.dataset.hint)??80;el.value=(Math.round((cur+dir*0.1)*10)/10).toFixed(1);el.classList.remove('st-bump-up','st-bump-dn');void el.offsetWidth;el.classList.add(dir>0?'st-bump-up':'st-bump-dn');};
+NXT.qwTime=function(btn,t){const h=document.getElementById('apx95WeightTime');if(h)h.value=t;btn.parentElement.querySelectorAll('button').forEach(b=>{const on=b===btn;b.classList.toggle('is-on',on);b.setAttribute('aria-pressed',String(on));});};
 apx95SaveQuickWeight=function(){const date=val('apx95WeightDate'),weight=NXT.finite(val('apx95WeightValue'));if(!Number.isFinite(NXT.dateMs(date))||date>state.date||weight===null||weight<20||weight>400)return toast('Enter a valid date and bodyweight.');const prior=NXT.weights().map(r=>Number(r.weight)),newLow=(val('apx95WeightTime')||'Morning')==='Morning'&&prior.length>=5&&weight<Math.min(...prior);state.bws.push({id:uid(),date,weight,timeOfDay:val('apx95WeightTime')||'Morning',ts:Date.now()});NXT.commit(newLow?'Weigh-in saved · new low':'Weigh-in saved');};
 saveEditedSet=function(id){
   const row=(state.logs||[]).find(r=>r.id===id),weight=NXT.finite(val('editSetWeight')),reps=NXT.finite(val('editSetReps')),date=val('editSetDate'),number=NXT.finite(val('editSetNum'));

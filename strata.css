@@ -976,7 +976,7 @@ html.st-sheet-open main{transform:scale(.94) translateY(10px);filter:brightness(
 .st-refc b{font-size:17px !important}
 .st-mini-w{font-size:16px !important}
 .st-rt-l b{font-size:17px !important}
-#weightPage .vn-weight .vn-h-sub#vn-traj-headline{font-size:20px !important}
+#weightPage .vn-weight .vn-h-sub#vn-traj-headline{font-size:var(--fs-hero) !important}
 .tabs .tab .tab-label{font-weight:500 !important}
 .tabs .tab.active .tab-label{font-weight:600 !important}
 #morePage .vn-set-t,#morePage .vn-set-grp{font-weight:500}
@@ -1499,13 +1499,13 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 @media (prefers-reduced-motion:reduce){.st-coach.is-enter{animation:none}.st-cs{transition:none}}
 @media (max-width:359px){.st-coach{padding:12px}.st-coach-ico{width:28px;height:28px;border-radius:10px}.st-coach-h{font-size:16px}.st-coach-pill{padding:5px 9px;font-size:11.5px}.st-coach-sets{gap:5px}.st-cs{padding:9px 6px 9px 9px}.st-cs b{font-size:12.5px;letter-spacing:-.03em}}
 
-#trainPage .st-coach .st-coach-h{font-size:17px !important;font-weight:590 !important;line-height:1.15 !important}
+#trainPage .st-coach .st-coach-h{font-size:var(--fs-sect) !important;font-weight:var(--fw-semi) !important;line-height:1.15 !important}
 @media (max-width:359px){#trainPage .st-coach .st-coach-h{font-size:16px !important}}
 
 
 #trainPage .st-coach .st-coach-k{font-size:12px !important;font-weight:590 !important;line-height:1 !important}
 #trainPage .st-coach .st-coach-hint{font-size:11.5px !important;line-height:1 !important}
-#trainPage .st-coach .st-coach-n{font-size:13.5px !important;line-height:1.4 !important}
+#trainPage .st-coach .st-coach-n{font-size:var(--fs-label) !important;line-height:1.4 !important}
 
 
 /* D27 finish moments: quiet, factual, only when true */
@@ -1820,8 +1820,8 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
   transition:left .5s cubic-bezier(.3,1.4,.5,1),width .5s cubic-bezier(.3,1.4,.5,1)}
 @keyframes st-pop{0%{opacity:0;transform:scale(0)}70%{transform:scale(1.35)}100%{opacity:1;transform:scale(1)}}
 @keyframes st-bar-up{from{transform:scaleY(0)}to{transform:scaleY(1)}}
-#weightPage.st-enter .vn-raw-dot,#weightPage .vn-chart-svg.is-range-change .vn-raw-dot{transform-box:fill-box;transform-origin:center;opacity:0;animation:st-pop .5s var(--st-out) calc(.5s + var(--i)*26ms) forwards}
-#weightPage.st-enter .st-dev,#weightPage .vn-chart-svg.is-range-change .st-dev{transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0);animation:st-bar-up .55s var(--st-out) calc(.9s + var(--i)*26ms) forwards}
+#weightPage.st-enter .vn-raw-dot,#weightPage .vn-chart-svg.is-range-change .vn-raw-dot{transform-box:fill-box;transform-origin:center;opacity:0;animation:st-pop .5s var(--st-out) calc(.3s + min(var(--i),30)*12ms) forwards}
+#weightPage.st-enter .st-dev,#weightPage .vn-chart-svg.is-range-change .st-dev{transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0);animation:st-bar-up .55s var(--st-out) calc(.45s + min(var(--i),30)*12ms) forwards}
 #weightPage.st-enter .st-dev.is-dn,#weightPage .vn-chart-svg.is-range-change .st-dev.is-dn{transform-origin:50% 0%}
 #weightPage.st-enter .st-wstep,#weightPage .vn-chart-svg.is-range-change .st-wstep{stroke-dashoffset:60;opacity:0;animation:st-fade .6s var(--st-out) 1.4s forwards}
 @media (prefers-reduced-motion:reduce){#weightPage .vn-raw-dot,#weightPage .st-dev,#weightPage .st-wstep{animation:none !important;opacity:1 !important;transform:none !important}#weightPage .vn-seg .st-seg-ind{transition:none}}
@@ -1849,10 +1849,10 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
   box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(var(--st-hl),.08)}
 #weightPage .vn-weight .vn-evidence .vn-row-l{display:contents}
 #weightPage .vn-weight .vn-evidence .vn-row-t{grid-area:t;font:550 12px/1.2 var(--st-font) !important;color:var(--st-ink-3) !important}
-#weightPage .vn-weight .vn-evidence .vn-row-s{grid-area:s;font:450 11.5px/1.35 var(--st-font) !important;color:var(--st-ink-3) !important}
-#weightPage .vn-weight .vn-evidence .vn-row-v{grid-area:v;justify-self:start;text-align:left !important;font:600 20px/1.15 var(--st-font) !important;color:var(--st-ink) !important;font-variant-numeric:tabular-nums;white-space:nowrap}
+#weightPage .vn-weight .vn-evidence .vn-row-s{grid-area:s;font:450 12px/1.4 var(--st-font) !important;color:var(--st-ink-3) !important}
+#weightPage .vn-weight .vn-evidence .vn-row-v{grid-area:v;justify-self:start;text-align:left !important;font:600 22px/1.15 var(--st-font) !important;color:var(--st-ink) !important;font-variant-numeric:tabular-nums;white-space:nowrap}
 #weightPage .vn-weight .vn-evidence .vn-row-v .vn-ink-3{font-size:13px;font-weight:500}
-#weightPage .vn-weight .vn-evidence .vn-status{font:600 20px/1.15 var(--st-font)}
+#weightPage .vn-weight .vn-evidence .vn-status{font:600 22px/1.15 var(--st-font)}
 @media (max-width:339px){#weightPage .vn-weight .vn-evidence .vn-rows{grid-template-columns:1fr}}
 @media (prefers-reduced-transparency:reduce){#weightPage .vn-weight .vn-evidence .vn-row{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(40,36,60,.9)}}
 #weightPage .vn-chart-svg>text{font-size:calc(11px * var(--tsc,1)) !important}
@@ -1925,3 +1925,155 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 #morePage .kicker{font:550 13px/1.2 var(--st-font) !important;letter-spacing:0 !important;color:var(--st-ink-3) !important}
 #morePage .apx96-card-title,#morePage .title,#morePage .apx96-more-subhead h1{font-weight:600 !important;letter-spacing:-.01em !important}
 #morePage .apx96-back{border-radius:50% !important}
+
+/* =====================================================================================
+   D44 · VISUAL SYSTEM PASS
+   From a computed audit of every screen (25 text sizes, 16 weights, 30 text colours,
+   11 corner radii). Fixed at the token where possible, snapped where not.
+   ===================================================================================== */
+/* One ink family: the cool vn greys and the warm nxt greys now resolve to the violet inks. */
+:root{
+  --vn-ink:#F4F2FA;--vn-ink-2:#B9B5C8;--vn-ink-3:#9893AA;--vn-ink-4:#8A85A0;
+  --nxt-text-primary:#F4F2FA;--nxt-text-secondary:#B9B5C8;--nxt-text-muted:#9893AA;
+  --st-spring-snappy:linear(0.0018,0.033,0.1074,0.1883,0.2965,0.3893,0.4974,0.5817,0.6588,0.7404,0.7989,0.858,0.8985,0.9375,0.9629,0.9827,1.0002,1.0104,1.0184,1.0223,1.0245,1.0247,1.0239,1.0221,1.0201,1.0174,1.0151,1.0129,1.0104,1.0084,1.0064,1.005,1.0035,1.0025,1.0017,1.0009,1.0004,1,0.9997,0.9995,1);
+  --st-spring-soft:linear(0.0007,0.0331,0.1005,0.1781,0.2753,0.3754,0.4727,0.5637,0.646,0.711,0.7747,0.8286,0.8733,0.9096,0.9386,0.9589,0.9767,0.9898,0.9993,1.0057,1.0098,1.012,1.0131,1.0133,1.0128,1.0119,1.0108,1.0095,1.0082,1.0069,1.0057,1.0046,1.0037,1.0029,1.0022,1.0016,1.0011,1.0008,1.0005,1.0003,1);
+  --r-tile:26px;--r-card:18px;--r-ctl:14px;
+}
+/* Browser surfaces wear the palette too */
+::selection{background:rgba(139,92,246,.5);color:#fff}
+html{caret-color:#B49AFF;-webkit-tap-highlight-color:transparent}
+:where(button,a,[role=button],summary,select,textarea,input,[tabindex]):focus-visible{outline:2px solid rgba(180,154,255,.8) !important;outline-offset:3px}
+.vn-num,.st-odo,.wx-v,.st-mini-v,.st-qw-field input,.nxp-stepper-row input,.st-wk-v,.vn-row-v{font-variant-numeric:tabular-nums}
+
+/* Radii onto three steps: tiles, inner cards, controls */
+#morePage .vn-set-group,#morePage .apx96-card{border-radius:var(--r-tile) !important}
+
+/* ---- Toast: a dark glass pill that drops in, not a lilac slab ---- */
+.toast{background:rgba(26,23,38,.92) !important;color:var(--st-ink) !important;font:550 13.5px/1.2 var(--st-font) !important;letter-spacing:0 !important;padding:12px 18px 12px 14px !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(180,154,255,.28),0 18px 40px -12px rgba(0,0,0,.8) !important;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+.toast::before{content:"";display:inline-block;width:8px;height:8px;margin-right:9px;border-radius:50%;vertical-align:1px;background:#3ddc97;box-shadow:0 0 0 3px rgba(61,220,151,.18)}
+.toast{animation:st-toast-in .5s var(--st-spring-snappy) both}
+@keyframes st-toast-in{from{opacity:0;translate:0 -14px;scale:.94}}
+
+/* ---- Today: the three mini tiles become one glass instrument strip ---- */
+#homePage .st-minis{gap:0;padding:4px;border-radius:var(--r-tile);
+  background:linear-gradient(160deg,rgba(255,255,255,.075),rgba(255,255,255,.02) 60%,rgba(124,77,255,.05));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(var(--st-hl),.08),0 18px 36px -24px rgba(0,0,0,.8);
+  -webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3)}
+#homePage .st-minis>.st-tile{background:none !important;box-shadow:none !important;border:0 !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;
+  border-radius:20px !important;min-height:108px;padding:13px 12px !important;position:relative}
+#homePage .st-minis>.st-tile+.st-tile::before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:1px;background:rgba(var(--st-hl),.09);display:block !important;opacity:1 !important;inset:18px auto 18px 0 !important;border-radius:0 !important;transform:none !important}
+#homePage .st-minis>.st-tile:active{background:rgba(255,255,255,.04) !important}
+#homePage .st-mini-v,#homePage .st-mini-v b,#homePage .st-minis .st-odo{font-family:var(--st-font-d) !important;font-weight:300 !important;font-size:26px !important;letter-spacing:-.03em !important;line-height:1 !important}
+#homePage .st-mini-v.st-mini-w{font:550 15.5px/1.2 var(--st-font) !important;letter-spacing:-.01em !important;white-space:normal}
+#homePage .st-minis .st-cat{font-size:12px !important}
+@media (prefers-reduced-transparency:reduce){#homePage .st-minis{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(32,29,46,.95)}}
+
+/* ---- Sheets and forms: one field recipe everywhere ---- */
+.n99-modal #n99-modal-title{font:600 22px/1.2 var(--st-font) !important;letter-spacing:-.015em !important}
+.n99-modal .sheet :where(label){font:550 13px/1.3 var(--st-font) !important;color:var(--st-ink-2) !important;letter-spacing:0 !important}
+.n99-modal .sheet :where(input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=range]),select,textarea){
+  min-height:52px;border-radius:var(--r-ctl) !important;background:rgba(255,255,255,.045) !important;border:1px solid rgba(var(--st-hl),.11) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04) !important;color:var(--st-ink) !important;font:450 16px var(--st-font) !important;
+  transition:border-color .2s,background-color .2s,box-shadow .25s var(--st-out)}
+.n99-modal .sheet :where(input,select,textarea):focus{outline:none !important;border-color:rgba(180,154,255,.6) !important;background:rgba(139,92,246,.09) !important;box-shadow:0 0 0 4px rgba(139,92,246,.18) !important}
+.n99-modal .sheet ::placeholder{color:rgba(var(--st-hl),.32)}
+.n99-modal .n99-icon{background:rgba(var(--st-hl),.08) !important;box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.1) !important}
+.n99-modal .n99-icon:focus:not(:focus-visible){outline:none !important}
+.n99-modal .n99-small{color:var(--st-ink-3) !important;font:450 13px/1.5 var(--st-font) !important}
+
+/* ---- Weigh-in sheet (D44): big number, steppers, timing pill ---- */
+.st-qw-num{display:grid;grid-template-columns:56px minmax(0,1fr) 56px;align-items:center;gap:6px;margin:6px 0 2px}
+.st-qw-step{width:56px;height:56px;border-radius:50% !important;border:0;cursor:pointer;color:var(--st-ink);font:300 28px/1 var(--st-font);
+  background:rgba(var(--st-hl),.09);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.1)}
+.st-qw-field{position:relative;display:block;margin:0 !important}
+.n99-modal .sheet .st-qw-field input{height:92px;min-height:0;width:100%;padding:0 30px 0 0 !important;text-align:center;border:0 !important;background:transparent !important;box-shadow:none !important;
+  font:200 64px/1 var(--st-font-d) !important;letter-spacing:-.045em !important;-moz-appearance:textfield;appearance:textfield}
+.st-qw-field input::-webkit-inner-spin-button,.st-qw-field input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.n99-modal .sheet .st-qw-field input:focus{background:rgba(139,92,246,.1) !important;box-shadow:none !important;border-radius:20px !important}
+.n99-modal .sheet .st-qw-field input::placeholder{color:rgba(var(--st-hl),.22)}
+.n99-modal .sheet .st-qw-field input:placeholder-shown{background:repeating-linear-gradient(90deg,rgba(var(--st-hl),.32) 0 4px,transparent 4px 9px) 46% calc(100% - 12px)/52% 1.5px no-repeat !important}
+.st-qw-field em{position:absolute;right:16px;bottom:26px;font:450 17px var(--st-font);font-style:normal;color:var(--st-ink-3);pointer-events:none}
+.st-qw-field input.st-bump-up{animation:st-bump-up .26s var(--st-out)}
+.st-qw-field input.st-bump-dn{animation:st-bump-dn .26s var(--st-out)}
+.st-qw-last{margin:0 0 14px !important;text-align:center;font:450 13px var(--st-font);color:var(--st-ink-3)}
+.st-qw-seg{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:0;padding:4px;margin:0 0 14px;border-radius:16px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.08)}
+.st-qw-seg button{position:relative;z-index:1;height:42px;border:0;border-radius:12px;background:transparent;color:var(--st-ink-3);font:550 14px var(--st-font);cursor:pointer;transition:color .2s}
+.st-qw-seg button.is-on{color:var(--st-ink)}
+.st-qw-date{display:flex !important;flex-direction:row !important;align-items:center !important;justify-content:space-between;gap:12px;margin:0 0 6px}
+.n99-modal .sheet .st-qw-date input{width:auto;min-width:0;flex:0 0 auto;min-height:44px}
+
+/* ---- One sliding pill for every segmented control ---- */
+.st-segc{position:relative;isolation:isolate}
+.st-segc>button{position:relative;z-index:1;background:transparent !important;box-shadow:none !important;transition:color .25s var(--st-out)}
+.st-seg-pill{position:absolute;left:0;top:0;z-index:0;pointer-events:none;border-radius:12px;opacity:0;
+  background:linear-gradient(180deg,rgba(139,92,246,.46),rgba(139,92,246,.22));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 0 0 1px rgba(180,154,255,.38),0 8px 20px -8px rgba(139,92,246,.75);
+  transition-property:transform,width,height,opacity;transition-duration:340ms;transition-timing-function:cubic-bezier(.22,1,.36,1);will-change:transform,width}
+.vn-seg.st-segc .st-seg-pill,.n99-progress-tabs.st-segc .st-seg-pill,.vn-hist-filters.st-segc .st-seg-pill{border-radius:14px}
+#weightPage .vn-seg .st-seg-ind{display:none !important}
+@media (prefers-reduced-motion:reduce){.st-seg-pill{transition:opacity .2s}}
+
+/* ---- Small moments that answer a tap ---- */
+#historyPage .nxp-cal-day.is-selected{animation:st-sel-pop .5s var(--st-spring-snappy)}
+@keyframes st-sel-pop{from{scale:.82}}
+.vn-tog[aria-pressed="true"] .vn-tog-box{animation:st-sel-pop .45s var(--st-spring-snappy)}
+.n99-modal .sheet{animation:st-sheet-in .55s var(--st-spring-soft) both !important}
+@media (prefers-reduced-motion:reduce){.toast,#historyPage .nxp-cal-day.is-selected,.vn-tog .vn-tog-box{animation:none !important}.n99-modal .sheet{animation:none !important}}
+:root[data-nxp-motion="reduced"] .toast,:root[data-nxp-motion="reduced"] #historyPage .nxp-cal-day.is-selected{animation:none !important}
+
+/* ---- Type snapped onto the eight-step scale (generated from the audit; old value trails) ---- */
+#historyPage button.nxp-cal-today{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13/500 */
+#homePage button.st-qa{font-size:var(--fs-body) !important;font-weight:var(--fw-med) !important}/* 14/550 */
+#homePage h2.st-h2{font-size:var(--fs-hero) !important;font-weight:var(--fw-semi) !important}/* 22/590 */
+#homePage h2.st-h3{font-size:var(--fs-sect) !important;font-weight:var(--fw-semi) !important}/* 18/590 */
+#homePage span.wx-chip.is-none{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12/500 */
+#morePage button.vn-set-back{font-size:var(--fs-body) !important;font-weight:var(--fw-med) !important}/* 14.5/540 */
+#morePage p.st-set-note{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/400 */
+#morePage span.st-rt-p{font-size:var(--fs-label) !important;font-weight:var(--fw-reg) !important}/* 13/450 */
+#trainPage button.is-on{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13.5/550 */
+#trainPage button.st-exnav-mid.nxp-queue-open{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/450 */
+#trainPage button.st-tfinish{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/400 */
+#trainPage h3.st-coach-h{font-size:var(--fs-sect) !important;font-weight:var(--fw-semi) !important}/* 17/590 */
+#trainPage legend.st-sr{font-size:var(--fs-micro) !important;font-weight:var(--fw-med) !important}/* 11/500 */
+#trainPage p.st-coach-n{font-size:var(--fs-label) !important;font-weight:var(--fw-reg) !important}/* 13.5/400 */
+#trainPage p.st-ex-mus{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/400 */
+#trainPage p.st-tbar-s{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/450 */
+#trainPage p.st-tbar-t{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/400 */
+#trainPage span.nxp-field-label{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13/500 */
+#trainPage span.st-coach-pill{font-size:var(--fs-cap) !important;font-weight:var(--fw-semi) !important}/* 12.5/590 */
+#weightPage h2.nxp-caption.nxp-progress-body-heading{font-size:var(--fs-sect) !important;font-weight:var(--fw-semi) !important}/* 18/590 */
+#weightPage h2.vn-h-sub{font-size:var(--fs-hero) !important;font-weight:var(--fw-semi) !important}/* 20/590 */
+#weightPage p.st-cm-read{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/400 */
+#weightPage p.st-down{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 15/520 */
+#weightPage p.vn-h-sect{font-size:var(--fs-sect) !important;font-weight:var(--fw-semi) !important}/* 18/590 */
+#weightPage p.vn-meta.vn-mt2{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12.5/500 */
+#weightPage span.vn-row-v{font-size:var(--fs-hero) !important;font-weight:var(--fw-semi) !important}/* 20/600 */
+#weightPage span.vn-tiny{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 11.5/500 */
+#weightPage span.vn-tiny.vn-journey-now-l{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 11.5/500 */
+#weightPage span.wx-chip.is-down{font-size:var(--fs-cap) !important;font-weight:var(--fw-semi) !important}/* 12.5/600 */
+#weightPage span.wx-chip.is-none{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12.5/500 */
+/* Progress legend sits on one line at phone width */
+#weightPage .vn-legend{gap:6px 14px !important}
+/* History: logged values read in the same thin numerals as Progress */
+#historyPage .nxp-history-ex b{font:300 22px/1.1 var(--st-font-d) !important;letter-spacing:-.02em !important;font-variant-numeric:tabular-nums}
+/* Remaining off-scale text, snapped with its own context (audit, second pass) */
+#weightPage .vn-weight h2.vn-h-sub{font-size:var(--fs-hero) !important;font-weight:var(--fw-semi) !important}
+#weightPage .st-down b{font-size:var(--fs-row) !important;font-weight:var(--fw-semi) !important}
+#trainPage .st-card-head b,#trainPage .st-card-head span{font-size:var(--fs-sect) !important}
+#trainPage .st-card-head b{font-weight:var(--fw-semi) !important}
+#trainPage .nxp-seg button{font-size:var(--fs-label) !important}
+#trainPage .st-refc span,#trainPage .st-refc small{font-size:var(--fs-cap) !important}
+#trainPage .st-coach-h{font-size:var(--fs-sect) !important;font-weight:var(--fw-semi) !important}
+#trainPage .st-coach-n{font-size:var(--fs-label) !important}
+#historyPage .nxp-cal-day b{font-size:var(--fs-label) !important;font-weight:var(--fw-semi) !important}
+#homePage .st-scan-c b em{font-size:var(--fs-micro) !important}
+#morePage .st-settings h2{font-size:var(--fs-hero) !important;font-weight:var(--fw-semi) !important}
+#morePage .st-rt-l b{font-size:var(--fs-row) !important;font-weight:var(--fw-semi) !important}
+#morePage .st-settings summary{font-size:var(--fs-row) !important}
+#morePage .st-settings>p,#morePage .st-set-sec>p{font-size:var(--fs-label) !important}
+/* Taps register immediately: no double-tap-zoom wait on controls */
+button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
+.st-segc>button{transition:color .18s ease-out}
+/* A range change redraws quickly; the slower draw-in is kept for arriving on the tab */
+#weightPage .vn-chart-svg.is-range-change .vn-trend-line{animation-duration:.7s !important;animation-delay:.05s !important}
