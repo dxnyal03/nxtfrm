@@ -1282,6 +1282,58 @@ Object.assign(NXT, (()=>{
     const fallback=()=>{const t=document.createElement('textarea');t.value=text;t.setAttribute('readonly','');t.style.cssText='position:fixed;opacity:0;top:0';document.body.appendChild(t);t.select();t.setSelectionRange(0,text.length);let ok=false;try{ok=document.execCommand('copy');}catch(e){}t.remove();ok?done():toast('Copy was blocked. Try again.');};
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(done,fallback);else fallback();
   }
+  /* D46 · Import Evo scans exported from Strata (CSV from Strata's Export, or its JSON).
+     Each new scan is saved exactly as the scan form saves one — same record shape, plus the
+     same contextual "Evo Scan" weigh-in, which never enters the morning trend (D14/D15).
+     Scans already in NXTFRM (same date and weight) are skipped. Nothing existing is changed. */
+  function parseStrataScans(text) {
+    const t=String(text||'').trim();if(!t)return [];
+    const num=v=>{const n=Number(String(v==null?'':v).replace(',','.'));return Number.isFinite(n)&&String(v).trim()!==''?n:null;};
+    const pick=o=>({date:String(o.timestamp||o.date||'').slice(0,10),time:String(o.timestamp||'').slice(11,16),weight:num(o.weightKg),bodyFat:num(o.bodyFatPct),muscleMass:num(o.skeletalMuscleMassKg),fatMass:num(o.bodyFatMassKg),bmr:num(o.bmrKcal),tdee:num(o.teeKcal)});
+    if(/^[\[{]/.test(t)){
+      try{const j=JSON.parse(t),arr=Array.isArray(j)?j:(j.scans||[]);
+        return arr.map(x=>{const d=x.data||x,c=d.composition||{},f=d.fat||{},m=d.metabolism||{};return pick({timestamp:d.timestamp,weightKg:c.weightKg,bodyFatPct:f.bodyFatPct,skeletalMuscleMassKg:c.skeletalMuscleMassKg,bodyFatMassKg:f.bodyFatMassKg,bmrKcal:m.bmrKcal,teeKcal:m.teeKcal});}).filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(r.date));
+      }catch(e){return [];}
+    }
+    const lines=t.split(/\r?\n/).filter(l=>l.trim());if(lines.length<2)return [];
+    const split=l=>{const out=[];let cur='',q=false;for(let i=0;i<l.length;i++){const ch=l[i];if(q){if(ch==='"'&&l[i+1]==='"'){cur+='"';i++;}else if(ch==='"')q=false;else cur+=ch;}else if(ch==='"')q=true;else if(ch===','){out.push(cur);cur='';}else cur+=ch;}out.push(cur);return out;};
+    const head=split(lines[0]).map(h=>h.trim());
+    return lines.slice(1).map(l=>{const v=split(l),o={};head.forEach((h,i)=>o[h]=v[i]);return pick(o);}).filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(r.date)&&r.date<=state.date);
+  }
+  function scanPlan(rows) {
+    const have=(state.scans||[]).map(x=>x.date+'|'+(Number.isFinite(Number(x.weight))?Number(x.weight).toFixed(1):''));
+    const seen=new Set(have);
+    return rows.map(r=>{const k=r.date+'|'+(r.weight!==null?r.weight.toFixed(1):'');const dup=seen.has(k);seen.add(k);return {...r,dup};});
+  }
+  function importScans() {
+    N.ui.scanImport=null;
+    N.modal('Import from Strata',`<p class="n99-small">In Strata, use Export → CSV, then paste it here or choose the file. New scans are saved like ones you enter yourself; scans already here are skipped.</p>
+      <label>Strata export<textarea id="n99-scan-import" rows="6" placeholder="id,timestamp,heightCm,…" oninput="NXT.previewScanImport()"></textarea></label>
+      <label class="n99-file">Or choose a file<input type="file" accept=".csv,.json,text/csv,application/json" onchange="NXT.readScanFile(this)"></label>
+      <div id="n99-scan-preview" class="n99-small" aria-live="polite"></div>
+      <button type="button" class="n99-button" id="n99-scan-go" disabled onclick="NXT.commitScanImport()">Import scans</button>`);
+  }
+  function readScanFile(input) {const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const ta=document.getElementById('n99-scan-import');if(ta){ta.value=String(r.result||'');previewScanImport();}};r.readAsText(f);}
+  function previewScanImport() {
+    const ta=document.getElementById('n99-scan-import'),box=document.getElementById('n99-scan-preview'),go=document.getElementById('n99-scan-go');if(!ta||!box)return;
+    const plan=scanPlan(parseStrataScans(ta.value)),fresh=plan.filter(r=>!r.dup);N.ui.scanImport=fresh;
+    if(!ta.value.trim()){box.innerHTML='';if(go)go.disabled=true;return;}
+    if(!plan.length){box.textContent='No scans found in that text. Paste the CSV exactly as Strata exports it.';if(go)go.disabled=true;return;}
+    box.innerHTML=`<b>${plan.length} ${plan.length===1?'scan':'scans'} found · ${fresh.length} new</b>`+plan.map(r=>`<div class="n99-list-row"><span>${esc(N.shortDate(r.date))}${r.time?' · '+esc(r.time):''}</span><b>${r.weight!==null?r.weight.toFixed(1)+' kg':'—'}</b><span>${r.dup?'Already here':(r.bodyFat!==null?r.bodyFat.toFixed(1)+'% fat':'New')}</span></div>`).join('');
+    if(go){go.disabled=!fresh.length;go.textContent=fresh.length?`Import ${fresh.length} ${fresh.length===1?'scan':'scans'}`:'Nothing new to import';}
+  }
+  function commitScanImport() {
+    const rows=N.ui.scanImport||[];if(!rows.length)return;
+    state.scans=state.scans||[];state.bws=state.bws||[];
+    const keys=['weight','bodyFat','muscleMass','fatMass','tdee','bmr'];
+    rows.forEach(r=>{
+      const provenance={};keys.forEach(k=>provenance[k]={source:'MANUAL_ENTRY',ocr:'',raw:''});
+      const scan={id:uid(),date:r.date,image:'',weight:r.weight??'',bodyFat:r.bodyFat??'',muscleMass:r.muscleMass??'',fatMass:r.fatMass??'',tdee:r.tdee??'',bmr:r.bmr??'',notes:'Imported from Strata'+(r.time?' · scanned '+r.time:''),context:'EVOSCAN',provenance};
+      if(r.weight!==null&&r.weight>0){const wid=uid();scan.weighInId=wid;state.bws.push({id:wid,date:r.date,weight:r.weight,timeOfDay:'Evo Scan'});}
+      state.scans.push(scan);
+    });
+    N.ui.scanImport=null;N.commit(`Imported ${rows.length} ${rows.length===1?'scan':'scans'} from Strata`);
+  }
   function editWeight(date) {
     const r=N.weights().find(x=>x.date===date);if(!r)return;
     N.ui.editWeightId=r.id;N.ui.editWeightDate=date;
@@ -1294,7 +1346,7 @@ Object.assign(NXT, (()=>{
     r.date=date;r.weight=weight;r.ts=Date.now();N.commit('Weigh-in corrected');
   }
   function deleteWeight() {const r=findEditWeight();if(!r||!confirm('Delete this weigh-in?'))return;state.bws=state.bws.filter(x=>x!==r);N.commit('Weigh-in deleted');}
-  return {signed,smoothPath,trendReadText,chartModel,chartHTML,journeyHTML,selectPoint,scrub,chartKey,copyWeighIns,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
+  return {signed,smoothPath,trendReadText,chartModel,chartHTML,journeyHTML,selectPoint,scrub,chartKey,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
 })());
 
 Object.assign(NXT, (()=>{
