@@ -1272,7 +1272,15 @@ Object.assign(NXT, (()=>{
   }
   function deleteWaist(date) {if(!confirm('Delete this measurement?'))return;N.cfg().waist=N.cfg().waist.filter(r=>r.date!==date);N.commit('Measurement deleted');}
   function openWeightHistory() {
-    const rows=N.weights().slice().reverse();N.modal('Weigh-in history',rows.length?rows.map((r,i)=>`<button class="n99-list-row" onclick="NXT.editWeight('${r.date}')"><span>${N.shortDate(r.date)}</span><b>${r.weight.toFixed(1)} kg</b><span>Edit ›</span></button>`).join(''):'<p>No weights recorded yet.</p>');
+    const rows=N.weights().slice().reverse(),all=(state.bws||[]).length;N.modal('Weigh-in history',(all?`<button type="button" class="n99-button secondary st-copy-wi" onclick="NXT.copyWeighIns()">Copy all ${all} weigh-ins</button><p class="n99-small">Copies date, weight and timing as a table you can paste into Notes, Sheets or a chat.</p>`:'')+(rows.length?rows.map((r,i)=>`<button class="n99-list-row" onclick="NXT.editWeight('${r.date}')"><span>${N.shortDate(r.date)}</span><b>${r.weight.toFixed(1)} kg</b><span>Edit ›</span></button>`).join(''):'<p>No weights recorded yet.</p>'));
+  }
+  /* Every stored weigh-in (all timings), oldest first, tab-separated so it pastes as a table. Read-only. */
+  function copyWeighIns() {
+    const rows=(state.bws||[]).filter(r=>r&&r.date&&Number.isFinite(Number(r.weight))).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))||Number(a.ts||0)-Number(b.ts||0));
+    const text=['Date\tWeight (kg)\tTiming'].concat(rows.map(r=>`${r.date}\t${Number(r.weight).toFixed(1)}\t${r.timeOfDay||'Not recorded'}`)).join('\n');
+    const done=()=>toast(`Copied ${rows.length} weigh-ins`);
+    const fallback=()=>{const t=document.createElement('textarea');t.value=text;t.setAttribute('readonly','');t.style.cssText='position:fixed;opacity:0;top:0';document.body.appendChild(t);t.select();t.setSelectionRange(0,text.length);let ok=false;try{ok=document.execCommand('copy');}catch(e){}t.remove();ok?done():toast('Copy was blocked. Try again.');};
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(done,fallback);else fallback();
   }
   function editWeight(date) {
     const r=N.weights().find(x=>x.date===date);if(!r)return;
@@ -1286,7 +1294,7 @@ Object.assign(NXT, (()=>{
     r.date=date;r.weight=weight;r.ts=Date.now();N.commit('Weigh-in corrected');
   }
   function deleteWeight() {const r=findEditWeight();if(!r||!confirm('Delete this weigh-in?'))return;state.bws=state.bws.filter(x=>x!==r);N.commit('Weigh-in deleted');}
-  return {signed,smoothPath,trendReadText,chartModel,chartHTML,journeyHTML,selectPoint,scrub,chartKey,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
+  return {signed,smoothPath,trendReadText,chartModel,chartHTML,journeyHTML,selectPoint,scrub,chartKey,copyWeighIns,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
 })());
 
 Object.assign(NXT, (()=>{
