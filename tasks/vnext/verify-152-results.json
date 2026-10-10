@@ -1,0 +1,384 @@
+{
+  "when": "2026-10-10T18:51:08.374Z",
+  "failures": 0,
+  "results": [
+    {
+      "name": "Today: Decision trend chip draws a 28-day chart with one dot per morning reading",
+      "ok": true,
+      "detail": {
+        "has": true,
+        "raw": 27,
+        "morning": 27,
+        "range": "84.0 → 82.5 kg",
+        "want": "84.0 → 82.5 kg",
+        "label": "Open your weight trend. Trend -0.40 kg/wk, 84.0 to 82.5 kilograms over 28 days"
+      }
+    },
+    {
+      "name": "Today: chart names the first and last trend value from N.trend()",
+      "ok": true,
+      "detail": {
+        "got": "84.0 → 82.5 kg",
+        "want": "84.0 → 82.5 kg"
+      }
+    },
+    {
+      "name": "Today: no mini tile text is ellipsised or clipped",
+      "ok": true,
+      "detail": [
+        {
+          "t": "-0.40/wk",
+          "clipped": false
+        },
+        {
+          "t": "min/wk",
+          "clipped": false
+        },
+        {
+          "t": "Pull · 3d ago",
+          "clipped": false
+        }
+      ]
+    },
+    {
+      "name": "Weight: range read equals the plotted model (trend change, lowest morning, mornings weighed)",
+      "ok": true,
+      "detail": {
+        "cells": [
+          "−1.6kg",
+          "81.8kg",
+          "29/30"
+        ],
+        "want": [
+          "−1.6kg",
+          "81.8kg",
+          "29/30"
+        ]
+      }
+    },
+    {
+      "name": "Weight: chart caption is folded behind \"How to read this chart\"",
+      "ok": true
+    },
+    {
+      "name": "Weight: the top axis tick carries the unit",
+      "ok": true
+    },
+    {
+      "name": "Weight: a range over 90 readings thins its dots",
+      "ok": true,
+      "detail": {
+        "n": 87,
+        "r": "2.2"
+      }
+    },
+    {
+      "name": "Cut: range row is 2W/1M/3M/Cut, no All",
+      "ok": true,
+      "detail": [
+        "2W",
+        "1M",
+        "3M",
+        "Cut"
+      ]
+    },
+    {
+      "name": "Cut: opens on the first reading on or after the cut start",
+      "ok": true,
+      "detail": {
+        "btns": [
+          "2W",
+          "1M",
+          "3M",
+          "Cut"
+        ],
+        "first": "2026-08-12",
+        "want": "2026-08-12",
+        "minX": 12,
+        "maxX": 12,
+        "startRef": true,
+        "startPill": "Start 85.5 kg",
+        "firstW": "85.5"
+      }
+    },
+    {
+      "name": "Cut: the starting weight is drawn as a dashed reference with its label",
+      "ok": true,
+      "detail": {
+        "btns": [
+          "2W",
+          "1M",
+          "3M",
+          "Cut"
+        ],
+        "first": "2026-08-12",
+        "want": "2026-08-12",
+        "minX": 12,
+        "maxX": 12,
+        "startRef": true,
+        "startPill": "Start 85.5 kg",
+        "firstW": "85.5"
+      }
+    },
+    {
+      "name": "every range: no reading sits within 10 units of the plot edge (nothing half-clipped)",
+      "ok": true,
+      "detail": {
+        "left": 12,
+        "right": 12
+      }
+    },
+    {
+      "name": "14-day range: edge readings keep ≥10 units of room",
+      "ok": true,
+      "detail": 12
+    },
+    {
+      "name": "30-day range: edge readings keep ≥10 units of room",
+      "ok": true,
+      "detail": 12
+    },
+    {
+      "name": "90-day range: edge readings keep ≥10 units of room",
+      "ok": true,
+      "detail": 12
+    },
+    {
+      "name": "Performance: each row leads with the D20 best set of its latest session",
+      "ok": true,
+      "detail": [
+        {
+          "name": "Lat Pulldown",
+          "best": "55kg×10",
+          "want": "55kg×10",
+          "pill": true,
+          "dup": false
+        },
+        {
+          "name": "Chest Supported T-Bar Row",
+          "best": "42.5kg×11",
+          "want": "42.5kg×11",
+          "pill": true,
+          "dup": false
+        },
+        {
+          "name": "Unilateral Seated Row",
+          "best": "35kg×10",
+          "want": "35kg×10",
+          "pill": true,
+          "dup": false
+        },
+        {
+          "name": "Reverse Fly",
+          "best": "11kg×13",
+          "want": "11kg×13",
+          "pill": true,
+          "dup": false
+        },
+        {
+          "name": "DB Preacher Curl",
+          "best": "13kg×12",
+          "want": "13kg×12",
+          "pill": true,
+          "dup": false
+        },
+        {
+          "name": "Cable Hammer Curl",
+          "best": "13.5kg×13",
+          "want": "13.5kg×13",
+          "pill": true,
+          "dup": false
+        }
+      ]
+    },
+    {
+      "name": "Performance: status is a pill; \"Not enough yet\" / \"Too old\" no longer repeat in rows",
+      "ok": true
+    },
+    {
+      "name": "Performance: no lift name runs past two lines at 390",
+      "ok": true,
+      "detail": [
+        1,
+        2,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "Body: composition map shades the less-fat/more-muscle region from the first scan, with reference lines",
+      "ok": true,
+      "detail": {
+        "zone": true,
+        "refs": 2
+      }
+    },
+    {
+      "name": "Train (rest day): Up next lists the next lifting routine in order",
+      "ok": true,
+      "detail": {
+        "rows": [
+          "Incline Dumbbell Press",
+          "Chest Supported T-Bar Row",
+          "Leg Press",
+          "Hamstring Curl",
+          "Cable Lateral Raise",
+          "Ab Crunch"
+        ],
+        "want": [
+          "Incline Dumbbell Press",
+          "Chest Supported T-Bar Row",
+          "Leg Press",
+          "Hamstring Curl",
+          "Cable Lateral Raise",
+          "Ab Crunch"
+        ],
+        "meter": true
+      }
+    },
+    {
+      "name": "Train (rest day): cardio meter has a text equivalent",
+      "ok": true
+    },
+    {
+      "name": "History: a morning weigh-in shows the change vs the previous morning and its trend value",
+      "ok": true,
+      "detail": {
+        "text": "0.1 kg vs yesterdayTrend 82.51 · 0.3 kg below",
+        "want": "82.51"
+      }
+    },
+    {
+      "name": "D55: Today has no Check-in quick action and no empty \"More for today\"",
+      "ok": true,
+      "detail": {
+        "checkin": false,
+        "more": false
+      }
+    },
+    {
+      "name": "D55: Settings has no Reminders, Wearable or Classic app rows; Cardio replaces Cardio & recovery",
+      "ok": true,
+      "detail": [
+        "Goals",
+        "Training",
+        "Cardio",
+        "Your name",
+        "Appearance",
+        "Body & scans",
+        "Cloud & sync",
+        "Storage",
+        "App & install"
+      ]
+    },
+    {
+      "name": "D55: the session picker does not offer Floorball",
+      "ok": true
+    },
+    {
+      "name": "D55: Progress › Body has no waist section",
+      "ok": true
+    },
+    {
+      "name": "D55: diagnosis never asks for waist or check-ins",
+      "ok": true
+    },
+    {
+      "name": "D56: every Today button is a capsule (radius ≥ half its height) in Geist",
+      "ok": true,
+      "detail": [
+        {
+          "r": 999,
+          "h": 31.52001953125,
+          "f": "Geist"
+        },
+        {
+          "r": 999,
+          "h": 48,
+          "f": "Geist"
+        },
+        {
+          "r": 999,
+          "h": 48,
+          "f": "Geist"
+        }
+      ]
+    },
+    {
+      "name": "no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "320px: no horizontal overflow on Today, Train, Weight, Performance, Body, History",
+      "ok": true,
+      "detail": {
+        "home": true,
+        "train": true,
+        "overview": true,
+        "strength": true,
+        "body": true,
+        "history": true
+      }
+    },
+    {
+      "name": "375px: no horizontal overflow on Today, Train, Weight, Performance, Body, History",
+      "ok": true,
+      "detail": {
+        "home": true,
+        "train": true,
+        "overview": true,
+        "strength": true,
+        "body": true,
+        "history": true
+      }
+    },
+    {
+      "name": "390px: no horizontal overflow on Today, Train, Weight, Performance, Body, History",
+      "ok": true,
+      "detail": {
+        "home": true,
+        "train": true,
+        "overview": true,
+        "strength": true,
+        "body": true,
+        "history": true
+      }
+    },
+    {
+      "name": "393px: no horizontal overflow on Today, Train, Weight, Performance, Body, History",
+      "ok": true,
+      "detail": {
+        "home": true,
+        "train": true,
+        "overview": true,
+        "strength": true,
+        "body": true,
+        "history": true
+      }
+    },
+    {
+      "name": "reduced motion: 0 running animations on the new surfaces",
+      "ok": true,
+      "detail": {
+        "running": 0
+      }
+    }
+  ]
+}

@@ -562,6 +562,10 @@ const STRATA = (() => {
       <defs><marker id="${uid}-ar" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--st-accent-lift)"/></marker></defs>
       ${fx.ticks.map(v => `<line class="st-grid" x1="${X(v)}" x2="${X(v)}" y1="${P.t}" y2="${H - P.b}"/><text class="st-ax" x="${X(v)}" y="${H - 12}" text-anchor="middle">${Number(v.toFixed(1))}</text>`).join("")}
       ${my.ticks.map(v => `<line class="st-grid" x1="${P.l}" x2="${W - P.r}" y1="${Y(v)}" y2="${Y(v)}"/><text class="st-ax" x="${P.l - 6}" y="${Y(v) + 4}" text-anchor="end">${Number(v.toFixed(1))}</text>`).join("")}
+      ${/* D50: the region up and to the left of the first scan is "less fat, more muscle than the first scan". Geometry only, no score. */""}
+      <rect class="st-cm-zone" x="${P.l}" y="${P.t}" width="${Math.max(0, A.x - P.l).toFixed(1)}" height="${Math.max(0, A.y - P.t).toFixed(1)}" rx="6"/>
+      ${A.x - P.l > 70 && A.y - P.t > 24 ? `<text class="st-cm-zl" x="${P.l + 7}" y="${P.t + 14}">Less fat · more muscle</text>` : ""}
+      <line class="st-cm-ref" x1="${A.x.toFixed(1)}" x2="${A.x.toFixed(1)}" y1="${P.t}" y2="${H - P.b}"/><line class="st-cm-ref" x1="${P.l}" x2="${W - P.r}" y1="${A.y.toFixed(1)}" y2="${A.y.toFixed(1)}"/>
       <text class="st-ax st-ax-f" x="${W - P.r}" y="${H - 1}" text-anchor="end">Fat mass kg →</text>
       <text class="st-ax st-ax-m" x="${P.l}" y="${P.t - 6}">↑ Muscle mass kg</text>
       <path d="${d}" class="st-cm-path" pathLength="1" marker-end="url(#${uid}-ar)"/>
