@@ -73,7 +73,7 @@ try {
     const past = labels.filter((l) => /not logged/.test(l)).length;
     check('rail: past planned days with nothing logged read "not logged"', past >= 1, labels);
     check('rail: capsules — every cell has a capsule with the letter; status mark is a check (done) or hollow ring (not logged), never a dashed stroke or a dot row', await page.evaluate(() => [...document.querySelectorAll('#homePage .vn-week-c')].every((e) => { const cap = e.querySelector('.st-cap'), d = cap && cap.querySelector('.vn-week-d'), m = cap && cap.querySelector('.st-cap-s'); const cs = cap && getComputedStyle(cap); return cap && d && cs.borderStyle !== 'dashed' && !e.querySelector('.vn-week-w') && ((e.classList.contains('is-done') === !!(m && m.classList.contains('is-done'))) && (e.classList.contains('is-missed') === !!(m && m.classList.contains('is-missed')))); })));
-    check('rail: no Cut range without a cut start', (await page.evaluate(() => { NXT.ui.view = 'overview'; switchTab('weight'); return new Promise((r) => setTimeout(() => r(document.querySelectorAll('#weightPage .vn-seg button').length), 800)); })) === 4);
+    check('progress: Cut is offered without a cut start (D51) and opens on the first weigh-in', (await page.evaluate(() => { NXT.ui.view = 'overview'; switchTab('weight'); return new Promise((r) => setTimeout(() => { NXT.setRange('cut'); setTimeout(() => r(NXT.ui.chart.points[0].date === NXT.weights()[0].date && [...document.querySelectorAll('#weightPage .vn-seg button')].map((b) => b.textContent.trim()).join(',') === '2W,1M,3M,Cut'), 600); }, 800)); })));
     check('baseline: no page errors', errors.length === 0, errors);
     await ctx.close();
   }
@@ -103,7 +103,7 @@ try {
     /* Progress: Cut range */
     await page.evaluate(() => { NXT.ui.view = 'overview'; switchTab('weight'); }); await page.waitForTimeout(1200);
     const btns = await page.evaluate(() => [...document.querySelectorAll('#weightPage .vn-seg button')].map((b) => b.textContent.trim()));
-    check('progress: Cut range appears between 3M and All when a cut start exists', btns.join(',') === '2W,1M,3M,Cut,All', btns);
+    check('progress: range row is 2W, 1M, 3M, Cut — Cut replaces All (D51)', btns.join(',') === '2W,1M,3M,Cut', btns);
     await page.locator('#weightPage .vn-seg button:has-text("Cut")').click(); await page.waitForTimeout(1400);
     const cut = await page.evaluate(() => ({ range: NXT.ui.range, first: NXT.ui.chart.points[0].date, start: settings.cutStart, sub: document.querySelector('#weightPage .vn-progress-chrome p').textContent, startMark: /Start \d/.test(document.querySelector('#n99-chart-svg').textContent), active: document.querySelector('#weightPage .vn-seg button.active').textContent.trim() }));
     check('progress: Cut range plots from the cut start, subtitle and start mark follow', cut.range === 'cut' && cut.first >= cut.start && /cut started/.test(cut.sub) && cut.startMark && cut.active === 'Cut', cut);
@@ -159,7 +159,7 @@ try {
     check(`${width}px: no overflow, rail cells ≥44 tall and ≥${width < 360 ? 34 : 40} wide, nothing clipped, header ≤2 lines`, m.sw <= m.iw && m.minH >= 44 && m.minW >= (width < 360 ? 34 : 40) && !m.railClip && m.headLines <= 2, m);
     await page.evaluate(() => { NXT.ui.view = 'overview'; switchTab('weight'); }); await page.waitForTimeout(1000);
     const seg = await page.evaluate(() => { const bs = [...document.querySelectorAll('#weightPage .vn-seg button')].map((b) => b.getBoundingClientRect()); const seg = document.querySelector('#weightPage .vn-seg'); return { n: bs.length, minW: Math.min(...bs.map((b) => b.width)), minH: Math.min(...bs.map((b) => b.height)), clip: seg.scrollWidth > seg.clientWidth + 1, sw: document.documentElement.scrollWidth, iw: innerWidth }; });
-    check(`${width}px: five range buttons fit, ≥44 tall, no clipping`, seg.n === 5 && seg.minH >= 40 && !seg.clip && seg.sw <= seg.iw, seg);
+    check(`${width}px: four range buttons fit, ≥44 tall, no clipping`, seg.n === 4 && seg.minH >= 40 && !seg.clip && seg.sw <= seg.iw, seg);
     await ctx.close();
   }
   /* ---------- 4. Reduced motion ---------- */

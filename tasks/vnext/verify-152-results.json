@@ -1,5 +1,5 @@
 {
-  "when": "2026-10-10T17:19:25.000Z",
+  "when": "2026-10-10T17:30:56.354Z",
   "failures": 0,
   "results": [
     {
@@ -69,8 +69,79 @@
       "ok": true,
       "detail": {
         "n": 87,
-        "r": "2.8"
+        "r": "2.2"
       }
+    },
+    {
+      "name": "Cut: range row is 2W/1M/3M/Cut, no All",
+      "ok": true,
+      "detail": [
+        "2W",
+        "1M",
+        "3M",
+        "Cut"
+      ]
+    },
+    {
+      "name": "Cut: opens on the first reading on or after the cut start",
+      "ok": true,
+      "detail": {
+        "btns": [
+          "2W",
+          "1M",
+          "3M",
+          "Cut"
+        ],
+        "first": "2026-08-12",
+        "want": "2026-08-12",
+        "minX": 12,
+        "maxX": 12,
+        "startRef": true,
+        "startPill": "Start 85.5 kg",
+        "firstW": "85.5"
+      }
+    },
+    {
+      "name": "Cut: the starting weight is drawn as a dashed reference with its label",
+      "ok": true,
+      "detail": {
+        "btns": [
+          "2W",
+          "1M",
+          "3M",
+          "Cut"
+        ],
+        "first": "2026-08-12",
+        "want": "2026-08-12",
+        "minX": 12,
+        "maxX": 12,
+        "startRef": true,
+        "startPill": "Start 85.5 kg",
+        "firstW": "85.5"
+      }
+    },
+    {
+      "name": "every range: no reading sits within 10 units of the plot edge (nothing half-clipped)",
+      "ok": true,
+      "detail": {
+        "left": 12,
+        "right": 12
+      }
+    },
+    {
+      "name": "14-day range: edge readings keep ≥10 units of room",
+      "ok": true,
+      "detail": 12
+    },
+    {
+      "name": "30-day range: edge readings keep ≥10 units of room",
+      "ok": true,
+      "detail": 12
+    },
+    {
+      "name": "90-day range: edge readings keep ≥10 units of room",
+      "ok": true,
+      "detail": 12
     },
     {
       "name": "Performance: each row leads with the D20 best set of its latest session",

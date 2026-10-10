@@ -912,6 +912,9 @@ Object.assign(NXT, (()=>{
     return Math.round((N.dateMs(state.date)-N.dateMs(d))/86400000)+1;
   }
   function chartModel(rows=N.weights(),range=N.ui.range,showGoal=N.ui.showGoal) {
+    /* "Cut" (D51) replaces "All": from settings.cutStart, or from the first weigh-in when no
+       cut start is saved, to today. The window grows with every reading and always opens on
+       the starting point. */
     if(range==='cut')range=cutRangeDays()||0;
     const series=N.trend(rows),start=range?N.dateAdd(state.date,1-range):rows[0]?.date||N.dateAdd(state.date,-29);
     const visible=series.filter(r=>r.date>=start),W=420,H=392,left=20,right=20,top=18,bottom=110;
@@ -935,11 +938,15 @@ Object.assign(NXT, (()=>{
     const dataLow=Math.min(...values),rawHigh=Math.max(...values);
     const span=Math.max(1,rawHigh-dataLow);
     const step=span<=2?.5:span<=4?1:span<=10?2:Math.ceil(span/20)*5;
-    const low=Math.floor((dataLow-step*.45)/step)*step,high=Math.ceil((rawHigh+step*.45)/step)*step;
+    /* D51: a little more headroom (was .45 of a step) so the line never presses on the frame. Still data-only (D2). */
+    const low=Math.floor((dataLow-step*.6)/step)*step,high=Math.ceil((rawHigh+step*.6)/step)*step;
     // Future strip only when a projection is actually drawn — still same px/day.
     const futureDays=fc?fc.futureDays:0;
     const first=N.dateMs(start),end=Math.max(N.dateMs(state.date),first+86400000)+futureDays*86400000;
-    const xMs=ms=>left+(ms-first)/(end-first)*(W-left-right),x=d=>xMs(N.dateMs(d)),y=v=>top+(high-v)/(high-low)*(H-top-bottom);
+    /* D51: readings sit 12 units inside the plot edges, so the first and last day's dots and the
+       selected-point halo are never cut in half by the clip. */
+    const padX=12;
+    const xMs=ms=>left+padX+(ms-first)/(end-first)*(W-left-right-padX*2),x=d=>xMs(N.dateMs(d)),y=v=>top+(high-v)/(high-low)*(H-top-bottom);
     const points=visible.map(r=>({...r,x:x(r.date),y:y(r.weight),ty:r.avg===null?null:y(r.avg)}));
     /* Same x and y closures as the primary series: there is one scale, so a
        second y-axis cannot be introduced by accident. */
@@ -1090,11 +1097,10 @@ Object.assign(NXT, (()=>{
     N.ui.lastPlotted=latestKey;
     const animClass=N.ui.chartAnim==='range'?' is-range-change':grew?' is-new-point':'';
     N.ui.chartAnim=null;
-    const cutDays=cutRangeDays();
-    const ranges=[[14,'2W'],[30,'1M'],[90,'3M']].concat(cutDays&&cutDays>14?[['cut','Cut']]:[]).concat([[0,'All']]);
+    const ranges=[[14,'2W'],[30,'1M'],[90,'3M'],['cut','Cut']];
     const rangeBtns=`<div class="vn-seg n99-segments" role="group" aria-label="Chart date range">${ranges.map(([r,l])=>{
       const active=N.ui.range===r;
-      return `<button type="button" aria-pressed="${active}" class="${active?'active':''}" onclick="NXT.setRange(${typeof r==='string'?`'${r}'`:r})"${r==='cut'?` aria-label="Since your cut started, ${N.shortDate(settings.cutStart)}"`:''}>${l}</button>`;
+      return `<button type="button" aria-pressed="${active}" class="${active?'active':''}" onclick="NXT.setRange(${typeof r==='string'?`'${r}'`:r})"${r==='cut'?` aria-label="${cutRangeDays()?'Since your cut started, '+N.shortDate(settings.cutStart):'Since your first weigh-in'}"`:''}>${l}</button>`;
     }).join('')}</div>`;
     if(!visible.length){
       const emptyTitle=N.weights().length?'No weigh-ins in this period':'Your first weigh-in starts here';
@@ -1145,7 +1151,11 @@ Object.assign(NXT, (()=>{
       <svg class="vn-tog-key" width="14" height="10" aria-hidden="true"><line x1="0" y1="5" x2="14" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="2 4" stroke-linecap="round"/></svg></button>`:'';
     /* All range: the first weigh-in is marked so the whole journey reads at a glance.
        Presentation only: the point is one the chart already plots. */
-    const first=points[0],startMark=((!N.ui.range||N.ui.range==='cut')&&points.length>=2&&first)?`<g pointer-events="none"><circle cx="${px(first.x)}" cy="${px(first.y)}" r="5" fill="none" stroke="${CHART.ink}" stroke-width="1.6"/><text x="${px(Math.min(first.x+8,W-right-60))}" y="${px(Math.max(first.y-14,top+10))}" fill="${CHART.axisText}" font-size="11">Start ${first.weight.toFixed(1)} kg</text></g>`:'';
+    const first=points[0],isCut=!N.ui.range||N.ui.range==='cut';
+    const startLine=isCut&&points.length>=2&&first?`<line class="vn-start-ref" x1="${px(first.x)}" x2="${px(W-right)}" y1="${px(first.y)}" y2="${px(first.y)}" stroke="${CHART.ink}" stroke-opacity=".32" stroke-width="1" stroke-dasharray="2 5" pointer-events="none"/>`:'';
+    /* The start label sits at the right end of the start line, where the descent has left room. */
+    const startTxt=`Start ${first.weight.toFixed(1)} kg`,startW=16+startTxt.length*6.1;
+    const startMark=(isCut&&points.length>=2&&first)?`${startLine}<g pointer-events="none"><circle cx="${px(first.x)}" cy="${px(first.y)}" r="5" fill="none" stroke="${CHART.ink}" stroke-width="1.6"/></g><g class="st-pillg is-start-ref" pointer-events="none"><rect x="${px(W-right-startW-2)}" y="${px(Math.max(top+2,first.y-24))}" width="${px(startW)}" height="18" rx="9"/><text x="${px(W-right-2-startW/2)}" y="${px(Math.max(top+2,first.y-24)+12.6)}" text-anchor="middle">${startTxt}</text></g>`:'';
     /* D50 — the range read: what this window says without scrubbing. Trend change from the
        first to the last trend value plotted, the lowest morning reading, and how many of the
        window's days were weighed. Descriptive only: no rate, no new statistic. */
@@ -1190,7 +1200,7 @@ Object.assign(NXT, (()=>{
         aria-label="Weight trend chart. Drag to inspect a day. Use left and right arrow keys; Escape returns to latest."
         onpointerdown="NXT.scrub(event)" onpointermove="if(event.buttons)NXT.scrub(event)"
         onkeydown="NXT.chartKey(event)">
-        <svg id="n99-chart-svg" class="n99-chart-svg vn-chart-svg${animClass}" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="n99-chart-title n99-chart-desc">
+        <svg id="n99-chart-svg" class="n99-chart-svg vn-chart-svg${animClass}${points.length>45?' is-busy':''}" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="n99-chart-title n99-chart-desc">
           <title id="n99-chart-title">Morning weight and smoothed trend${forecast?' with model projection':''}</title>
           <desc id="n99-chart-desc">${points.length} weigh-ins. Circles are morning readings. The solid line is the smoothed trend. Diamonds are post-workout when enabled. ${forecast?'A dashed faded line is a model projection, not a measurement. ':''}Y-axis covers recent readings only — the long-term goal is on Cut journey below.</desc>
           <defs>
@@ -1198,10 +1208,10 @@ Object.assign(NXT, (()=>{
             <linearGradient id="n99-chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".34"/><stop offset=".7" stop-color="${CHART.ink}" stop-opacity=".06"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity="0"/></linearGradient><filter id="st-glow" x="-10%" y="-40%" width="120%" height="180%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             <linearGradient id="n99-chart-cone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".10"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity=".02"/></linearGradient>
           </defs>
-          ${narrowTicks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}" pointer-events="none"/><text x="${left+2}" y="${t.y-5}" text-anchor="start" fill="${CHART.axisText}" font-size="11" pointer-events="none">${Number(t.value.toFixed(1))}${t.value===Math.max(...narrowTicks.map(k=>k.value))?' kg':''}</text>`).join('')}
+          ${narrowTicks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}" pointer-events="none"/><text x="${left+2}" y="${t.y-5}" text-anchor="start" fill="${CHART.axisText}" font-size="11" paint-order="stroke" stroke="#16141f" stroke-width="3" stroke-linejoin="round" pointer-events="none">${Number(t.value.toFixed(1))}${t.value===Math.max(...narrowTicks.map(k=>k.value))?' kg':''}</text>`).join('')}
           <g clip-path="url(#vn-chart-clip)" pointer-events="none">
             ${today}${cone}${bandFill}${trendPaths}${forecastLine}${postSeries}
-            ${points.map(pt=>`<circle class="vn-raw-dot" cx="${pt.x}" cy="${pt.y}" r="${dense?1.7:2.8}" fill="${CHART.raw}" fill-opacity="${dense?.5:.85}"/>`).join('')}
+            ${points.map(pt=>`<circle class="vn-raw-dot" cx="${pt.x}" cy="${pt.y}" r="${dense?1.7:points.length>45?2.2:2.8}" fill="${CHART.raw}" fill-opacity="${dense?.5:points.length>45?.7:.85}"/>`).join('')}
             <line id="n99-chart-cursor" x1="${p.x}" x2="${p.x}" y1="${top}" y2="${baseline}" stroke="${CHART.cursor}" stroke-opacity=".38" stroke-dasharray="3 4"/>
             <circle id="st-chart-halo" class="st-halo" cx="${p.x}" cy="${p.y}" r="11" fill="${CHART.ink}"/>
             <circle id="n99-chart-active" cx="${p.x}" cy="${p.y}" r="${CHART.pointActive}" fill="${CHART.active}" stroke="${CHART.activeRing}" stroke-width="2"/>

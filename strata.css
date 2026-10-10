@@ -2270,3 +2270,9 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #historyPage .st-hw-c.is-dn i{color:var(--st-lean)}
 #historyPage .st-hw-c.is-up i{color:#ff9b7a}
 #historyPage .st-hw-t b{font:inherit;color:var(--st-accent-lift)}
+
+/* ---- D51 · Cut range: start reference, busy windows ---- */
+#weightPage .st-pillg.is-start-ref rect{fill:rgba(20,18,30,.88);stroke:rgba(205,187,255,.38)}
+#weightPage .st-pillg.is-start-ref text{fill:var(--st-ink-2);font:590 10.5px var(--st-font)}
+/* Over 45 readings the weekly steps step back so the trend reads first; the Week by week list carries them. */
+#weightPage .vn-chart-svg.is-busy .st-wstep{opacity:.35}

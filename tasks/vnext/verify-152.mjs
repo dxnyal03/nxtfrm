@@ -80,6 +80,17 @@ try {
     await page.evaluate(() => NXT.setRange(0)); await page.waitForTimeout(900);
     const dense = await page.evaluate(() => { const d = document.querySelectorAll('#n99-chart-svg .vn-raw-dot'); return { n: d.length, r: d[0]?.getAttribute('r') }; });
     check('Weight: a range over 90 readings thins its dots', dense.n <= 90 || dense.r === '1.7', dense);
+    /* D51 — Cut replaces All; nothing is clipped at the plot edges; Cut opens on the start */
+    await page.evaluate(() => { settings.cutStart = NXT.dateAdd(state.date, -60); NXT.setRange('cut'); }); await page.waitForTimeout(1000);
+    const cut = await page.evaluate(() => {
+      const m = NXT.ui.chart, firstIn = NXT.weights().find((r) => r.date >= settings.cutStart);
+      return { btns: [...document.querySelectorAll('#weightPage .vn-seg button')].map((b) => b.textContent.trim()), first: m.points[0].date, want: firstIn && firstIn.date, minX: Math.min(...m.points.map((p) => p.x)) - m.left, maxX: (m.W - m.right) - Math.max(...m.points.map((p) => p.x)), startRef: !!document.querySelector('#n99-chart-svg .vn-start-ref'), startPill: document.querySelector('#n99-chart-svg .is-start-ref text')?.textContent, firstW: m.points[0].weight.toFixed(1) };
+    });
+    check('Cut: range row is 2W/1M/3M/Cut, no All', cut.btns.join(',') === '2W,1M,3M,Cut', cut.btns);
+    check('Cut: opens on the first reading on or after the cut start', cut.first === cut.want, cut);
+    check('Cut: the starting weight is drawn as a dashed reference with its label', cut.startRef && cut.startPill === `Start ${cut.firstW} kg`, cut);
+    check('every range: no reading sits within 10 units of the plot edge (nothing half-clipped)', cut.minX >= 10 && cut.maxX >= 10, { left: cut.minX, right: cut.maxX });
+    for (const r of [14, 30, 90]) { await page.evaluate((x) => NXT.setRange(x), r); await page.waitForTimeout(500); const e = await page.evaluate(() => { const m = NXT.ui.chart; return Math.min(Math.min(...m.points.map((p) => p.x)) - m.left, (m.W - m.right) - Math.max(...m.points.map((p) => p.x))); }); check(`${r}-day range: edge readings keep ≥10 units of room`, e >= 10, e); }
     await page.evaluate(() => NXT.setRange(30));
     /* Performance */
     await page.evaluate(() => NXT.setView('strength')); await page.waitForTimeout(1000);

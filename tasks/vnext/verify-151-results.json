@@ -1,5 +1,5 @@
 {
-  "when": "2026-10-10T17:15:00.209Z",
+  "when": "2026-10-10T17:32:03.069Z",
   "failures": 0,
   "results": [
     {
@@ -20,7 +20,7 @@
       "ok": true
     },
     {
-      "name": "rail: no Cut range without a cut start",
+      "name": "progress: Cut is offered without a cut start (D51) and opens on the first weigh-in",
       "ok": true
     },
     {
@@ -84,14 +84,13 @@
       "ok": true
     },
     {
-      "name": "progress: Cut range appears between 3M and All when a cut start exists",
+      "name": "progress: range row is 2W, 1M, 3M, Cut — Cut replaces All (D51)",
       "ok": true,
       "detail": [
         "2W",
         "1M",
         "3M",
-        "Cut",
-        "All"
+        "Cut"
       ]
     },
     {
@@ -101,7 +100,7 @@
         "range": "cut",
         "first": "2026-08-12",
         "start": "2026-08-12",
-        "sub": "Since your cut started",
+        "sub": "Since your cut started · 12 Aug",
         "startMark": true,
         "active": "Cut"
       }
@@ -192,11 +191,11 @@
       }
     },
     {
-      "name": "320px: five range buttons fit, ≥44 tall, no clipping",
+      "name": "320px: four range buttons fit, ≥44 tall, no clipping",
       "ok": true,
       "detail": {
-        "n": 5,
-        "minW": 37.02983856201172,
+        "n": 4,
+        "minW": 47.03375244140625,
         "minH": 43.340087890625,
         "clip": false,
         "sw": 320,
@@ -216,11 +215,11 @@
       }
     },
     {
-      "name": "375px: five range buttons fit, ≥44 tall, no clipping",
+      "name": "375px: four range buttons fit, ≥44 tall, no clipping",
       "ok": true,
       "detail": {
-        "n": 5,
-        "minW": 48.203125,
+        "n": 4,
+        "minW": 61,
         "minH": 44,
         "clip": false,
         "sw": 375,
@@ -240,11 +239,11 @@
       }
     },
     {
-      "name": "390px: five range buttons fit, ≥44 tall, no clipping",
+      "name": "390px: four range buttons fit, ≥44 tall, no clipping",
       "ok": true,
       "detail": {
-        "n": 5,
-        "minW": 51.203125,
+        "n": 4,
+        "minW": 64.75,
         "minH": 44,
         "clip": false,
         "sw": 390,
@@ -264,11 +263,11 @@
       }
     },
     {
-      "name": "393px: five range buttons fit, ≥44 tall, no clipping",
+      "name": "393px: four range buttons fit, ≥44 tall, no clipping",
       "ok": true,
       "detail": {
-        "n": 5,
-        "minW": 51.796875,
+        "n": 4,
+        "minW": 65.5,
         "minH": 44,
         "clip": false,
         "sw": 393,
