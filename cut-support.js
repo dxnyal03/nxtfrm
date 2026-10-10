@@ -517,7 +517,7 @@ const NXT = (() => {
       kind:entry.kind,
       subject:entry.subject==null?null:entry.subject,
       payload:entry.payload||{},
-      followed:null,
+      followed:entry.followed===true?true:entry.followed===false?false:null,
       ts:Date.now()
     };
     const last=c.suggestions.at(-1);
@@ -814,14 +814,189 @@ const NXT = (() => {
     if(e.error)return toast(e.error);
     if(target===null||target<(p.sex==='male'?1500:1200)||target>5000)return toast('Choose a suitable target within the calculator range, or seek personalised guidance.');
     if(target<e.maintenance*.75)return toast('This is over 25% below estimated maintenance. The app will not set that automatically; get personalised guidance.');
-    const c=cfg();c.profile=p;c.calories=target;c.calorieUpdated=state.date;c.maintenanceEstimate=e.maintenance;
-    logSuggestion({kind:"calorie",subject:null,payload:{calories:target,maintenanceEstimate:e.maintenance}});
+    const c=cfg(),from=finite(c.calories);c.profile=p;c.calories=target;c.calorieUpdated=state.date;c.maintenanceEstimate=e.maintenance;
+    /* `from` and `source` let the calorie ledger (D47) read manual saves and applied proposals as one record. */
+    logSuggestion({kind:"calorie",subject:null,payload:{calories:target,maintenanceEstimate:e.maintenance,from,source:"manual"}});
     maybeSnapshotTDEE(true);
     commit('Daily calorie target saved');
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any target change stays your choice.</p><div class="n99-stack">${button('Review calorie guide','NXT.openCalories()',true)}${button('Update recovery check-in','apx96OpenReadiness()',true)}${button('Done','closeModal()')}</div>`); }
+  /* ---- Phase 5 · calorie proposal and ledger (D47) --------------------------
+     The engine already diagnoses. This turns one verdict into one concrete,
+     reversible, user-confirmed change — and nothing else:
+     - Never applied automatically. applyCalorieProposal() is the only writer and
+       only runs from the confirm button in the proposal sheet.
+     - Deterministic. Every input is an existing engine output: review(),
+       diagnose(), adaptiveTDEE(), formulaTDEE(), trendStats(), the goal range.
+       No model call, no new threshold beyond the ones review() already applies.
+     - Minimum necessary intervention: one step at a time, 100–250 kcal, never
+       below the calculator floor, never more than 25% under maintenance (the same
+       guardrails as saveCalories()).
+     - Cooling-off: nothing is proposed within 14 days of any calorie change, and a
+       proposal set aside stays quiet for 7 days.
+     - Every applied change is one row in cfg().suggestions (kind "calorie"), the
+       record the ledger, the chart marker and the History lane all read.
+     Stored record shapes are unchanged: rows reuse the Phase 1 suggestion shape. */
+  const KCAL_PER_KG=7700;                                   // same constant adaptiveTDEE() uses
+  const PROPOSAL_STEP_MIN=100,PROPOSAL_STEP_MAX=250,PROPOSAL_COOLDOWN_DAYS=14,PROPOSAL_SNOOZE_DAYS=7;
+  const kcalFmt=n=>Number(n).toLocaleString("en-SG");
+  const round50=v=>Math.round(v/50)*50;
+  function calorieChanges() {
+    const rows=(cfg().suggestions||[]).filter(r=>r&&r.kind==="calorie"&&finite(r.payload&&r.payload.calories)!==null)
+      .slice().sort((a,b)=>a.date===b.date?(a.ts||0)-(b.ts||0):a.date.localeCompare(b.date));
+    let prev=null;const out=[];
+    for(const r of rows) {
+      const to=Number(r.payload.calories),from=finite(r.payload.from)!==null?Number(r.payload.from):prev;
+      prev=to;
+      if(from!==null&&from===to)continue;                 // re-saving the same target is not a change
+      out.push({id:r.id,date:r.date,from,to,source:r.payload.source||"manual",verdict:r.payload.verdict||null,reason:r.payload.reason||"",change:r.payload.change||null});
+    }
+    return out;
+  }
+  function calorieFloor() {
+    const c=cfg(),sex=c.profile&&c.profile.sex;
+    return sex==="female"?1200:1500;
+  }
+  function proposeCalories() {
+    const c=cfg(),current=finite(c.calories);
+    const none=(reason,basis="")=>({ok:false,reason,basis});
+    if(current===null||current<=0)return none("No daily target saved yet.","no_target");
+    const changes=calorieChanges(),last=changes.at(-1);
+    if(last&&last.date>dateAdd(state.date,-PROPOSAL_COOLDOWN_DAYS)) {
+      const left=PROPOSAL_COOLDOWN_DAYS-Math.round((dateMs(state.date)-dateMs(last.date))/DAY);
+      return none(`Target changed on ${shortDate(last.date)}. The trend needs about ${left} more day${left===1?"":"s"} to answer.`,"cooldown");
+    }
+    const snoozed=(c.suggestions||[]).filter(r=>r&&r.kind==="calorie_proposal"&&r.followed===false).at(-1);
+    if(snoozed&&snoozed.date>dateAdd(state.date,-PROPOSAL_SNOOZE_DAYS))return none(`Set aside on ${shortDate(snoozed.date)}.`,"snoozed");
+    const r=review(),d=diagnose(),rows=weights(),s=trendStats(rows),at=adaptiveTDEE();
+    const maintenance=at.ok?at.tdee:formulaTDEE();
+    const floor=calorieFloor(),minByEstimate=finite(c.maintenanceEstimate)!==null?Math.ceil(c.maintenanceEstimate*.75/50)*50:null;
+    const clampLow=to=>Math.max(to,floor,minByEstimate===null?0:minByEstimate);
+    const perWeek=kcal=>kcal*7/KCAL_PER_KG;                // kcal/day → kg/week
+    const rateWord=v=>(v>0?"+":"")+v.toFixed(2)+" kg/wk";
+    const conf=d.ok&&d.confidence?d.confidence:"low";
+    const base={ok:true,from:current,confidence:conf,evidence:[],date:state.date};
+    /* 1 · In the goal range for two weekly averages → move to maintenance. Tested here
+       directly (same inputs and bounds review() uses) and first: at goal, a flat trend
+       is the outcome, and the one safe proposal is to stop cutting — never a step down. */
+    const inRange=!!c.targetConfirmed&&s.current.avg!==null&&s.previous.avg!==null&&s.current.n>=3&&s.previous.n>=3
+      &&s.current.avg>=goalLow()&&s.current.avg<=goalHigh()&&s.previous.avg>=goalLow()&&s.previous.avg<=goalHigh();
+    if(inRange&&maintenance===null)return none("Your trend is in your goal range. Save a maintenance estimate in the calorie guide to get a proposal.","at_goal_no_estimate");
+    if(inRange) {
+      const to=clampLow(round50(maintenance));
+      if(Math.abs(to-current)<50)return none("Your target already sits at your maintenance estimate.","at_maintenance");
+      return {...base,kind:"maintain",to,delta:to-current,verdict:"goal_range",
+        title:"Move to maintenance",
+        what:`Raise your daily target from ${kcalFmt(current)} to ${kcalFmt(to)} kcal.`,
+        why:`Two weekly averages sit inside your goal range of ${goalLow()}–${goalHigh()} kg. ${at.ok?"Your measured TDEE":"Your formula estimate"} is about ${kcalFmt(maintenance)} kcal a day.`,
+        evidence:[{label:"This week",value:s.current.avg===null?"—":s.current.avg.toFixed(2)+" kg",tone:"good"},{label:"Previous week",value:s.previous.avg===null?"—":s.previous.avg.toFixed(2)+" kg",tone:"good"},{label:at.ok?"Measured TDEE":"Formula TDEE",value:kcalFmt(maintenance)+" kcal",tone:"neutral"}],
+        effect:"Expected: weight holds near the trend instead of falling. Water and glycogen can add a kilogram in the first week; judge it on weekly averages.",
+        change:+perWeek(to-current).toFixed(2)};
+    }
+    /* 2 · Losing faster than 1% of body weight a week → ease the deficit by the excess. */
+    if(r.action==="Review your target"&&finite(r.change)!==null&&r.change<0) {
+      const ref=s.current.avg||s.previous.avg||rows.at(-1).weight;
+      const excessKg=Math.abs(r.change)-ref*.01;          // the same 1% rule review() applied
+      const step=Math.min(PROPOSAL_STEP_MAX,Math.max(PROPOSAL_STEP_MIN,Math.ceil(excessKg*KCAL_PER_KG/7/50)*50));
+      const to=current+step,lifts=strengthItems().filter(x=>x.delta!==null),slip=lifts.filter(x=>x.status==="Watch"||x.status==="Review");
+      return {...base,kind:"raise",to,delta:step,verdict:"losing_fast",
+        title:"Ease the deficit",
+        what:`Raise your daily target from ${kcalFmt(current)} to ${kcalFmt(to)} kcal.`,
+        why:`You are losing ${rateWord(r.change)}, past the 1% of body weight a week the review watches for${slip.length?`, and ${slip.length} tracked lift${slip.length===1?" is":"s are"} down`:""}. Each 0.1 kg a week is about ${Math.round(KCAL_PER_KG/70)} kcal a day.`,
+        evidence:[{label:"Weight trend",value:rateWord(r.change)+" · "+r.reason.split(" · ").pop(),tone:"watch"},{label:"Lifts",value:lifts.length?`${lifts.length-slip.length} of ${lifts.length} holding or improving`:"Still building",tone:slip.length?"watch":"neutral"},{label:"Confidence",value:conf,tone:"neutral"}],
+        effect:`Expected pace about ${rateWord(r.change+perWeek(step))} instead of ${rateWord(r.change)}, judged on weekly averages after two weeks.${step===PROPOSAL_STEP_MAX&&excessKg*KCAL_PER_KG/7>PROPOSAL_STEP_MAX?` This is the largest single step; if the pace is still fast in two weeks, the review proposes another.`:""}`,
+        change:+perWeek(step).toFixed(2)};
+    }
+    /* 3 · Plateau with adherence held and a measured TDEE drop → one small step down. */
+    if(d.ok&&d.verdict==="metabolic_adaptation") {
+      const tdee=(d.evidence||[]).find(e=>e.label==="TDEE"),drop=/(\d[\d,]*)\s*→\s*(\d[\d,]*)/.exec(tdee?tdee.value:"");
+      const dropKcal=drop?Number(drop[1].replace(/,/g,""))-Number(drop[2].replace(/,/g,"")):null;
+      const step=dropKcal!==null&&dropKcal>=300?150:100;
+      const to=clampLow(current-step);
+      if(to>=current)return none(`A lower target would fall under the ${kcalFmt(Math.max(floor,minByEstimate||0))} kcal floor. Review the plan with a professional instead.`,"floor");
+      return {...base,kind:"reduce",to,delta:to-current,verdict:"metabolic_adaptation",
+        title:"Small step down",
+        what:`Lower your daily target from ${kcalFmt(current)} to ${kcalFmt(to)} kcal.`,
+        why:`${d.headline} ${d.reason}`,
+        evidence:(d.evidence||[]).slice(0,3),
+        effect:`Expected pace about ${rateWord(-perWeek(current-to))} from a ${kcalFmt(current-to)} kcal a day change (${kcalFmt(KCAL_PER_KG)} kcal per kg). One step at a time; the next review is in two weeks.`,
+        change:-+perWeek(current-to).toFixed(2)};
+    }
+    /* 4 · Everything else: the engine's own reason for holding, in its words. */
+    if(d.ok&&d.verdict==="dietary_drift")return none(d.actions[0].text,"drift");
+    if(d.ok&&d.verdict==="water_masking")return none(d.actions[0].text,"water");
+    if(d.ok&&d.verdict==="recovery_deficit")return none(d.actions[0].text,"recovery");
+    if(d.ok&&d.verdict==="no_issue")return none("Cut is progressing. Keep the current plan.","holding");
+    return none(d.ok?d.headline:"Not enough data to propose a change.","insufficient");
+  }
+  function proposalRowHTML() {
+    const p=proposeCalories();if(!p.ok)return "";
+    const arrow=p.delta>0?"↑":"↓";
+    return `<button type="button" class="st-prop" onclick="NXT.openProposal()" aria-label="Calorie proposal: ${esc(p.title)}, ${kcalFmt(p.from)} to ${kcalFmt(p.to)} kcal. Review before anything changes.">
+      <span class="st-prop-ico" aria-hidden="true">${arrow}</span>
+      <span class="st-prop-txt"><small>Proposal · nothing changes until you confirm</small><b>${esc(p.title)}</b><span class="st-prop-n vn-num">${kcalFmt(p.from)} → ${kcalFmt(p.to)} kcal</span></span>
+      <i class="vn-chev" aria-hidden="true">›</i></button>`;
+  }
+  function openProposal() {
+    const p=proposeCalories();
+    if(!p.ok)return modal("Calorie target",`<p class="st-prop-none">${esc(p.reason)}</p><p class="n99-small">A proposal appears on Today when the review calls for a change and no target change happened in the last ${PROPOSAL_COOLDOWN_DAYS} days.</p>${calorieLedgerHTML({compact:true})}<div class="n99-stack">${button("Edit calorie guide","NXT.openCalories()",true)}${button("Done","closeModal()")}</div>`);
+    ui.proposalArmed=false;
+    const ev=(p.evidence||[]).map(e=>`<div class="n99-diag-row"><span class="n99-diag-label">${esc(e.label)}</span><span class="n99-diag-value ${esc(e.tone||"")}"><b>${esc(String(e.value))}</b></span></div>`).join("");
+    modal("Calorie proposal",`<section class="st-prop-sheet n99-diagnosis ${p.kind}">
+      <p class="n99-eyebrow">${esc(p.kind==="maintain"?"End of cut":p.kind==="raise"?"Losing too fast":"Plateau")}</p>
+      <h3 class="st-prop-h">${esc(p.title)}</h3>
+      <div class="st-prop-big" aria-label="${kcalFmt(p.from)} to ${kcalFmt(p.to)} kilocalories a day"><span class="st-prop-from vn-num">${kcalFmt(p.from)}</span><span class="st-prop-arrow" aria-hidden="true">→</span><span class="st-prop-to vn-num">${kcalFmt(p.to)}</span><small>kcal / day</small><span class="st-pill${p.delta<0?" is-up":""}">${p.delta>0?"+":"−"}${kcalFmt(Math.abs(p.delta))}</span></div>
+      <h4 class="st-prop-k">What</h4><p>${esc(p.what)}</p>
+      <h4 class="st-prop-k">Why</h4><p>${esc(p.why)}</p>
+      <div class="n99-diag-rows">${ev}</div>
+      <h4 class="st-prop-k">Effect</h4><p>${esc(p.effect)}</p>
+      <p class="n99-small">A transparent rule, not a medical assessment. Confirming sets the new target, logs the change on your weight chart and in History, and opens a ${PROPOSAL_COOLDOWN_DAYS}-day review window. You can edit the target any time.</p>
+      <div class="n99-stack">
+        <button type="button" class="n99-button st-prop-apply" id="st-prop-apply" onclick="NXT.applyCalorieProposal()">Apply ${kcalFmt(p.to)} kcal</button>
+        <button type="button" class="n99-button secondary" onclick="NXT.dismissCalorieProposal()">Not now · ask again in ${PROPOSAL_SNOOZE_DAYS} days</button>
+      </div>
+    </section>`);
+  }
+  function applyCalorieProposal() {
+    const p=proposeCalories();
+    if(!p.ok){toast(p.reason);return false;}
+    const btn=document.getElementById("st-prop-apply");
+    /* Two taps on the same button: the first arms it and says so; the second writes. */
+    if(!ui.proposalArmed) {
+      ui.proposalArmed=true;
+      if(btn){btn.textContent=`Confirm ${kcalFmt(p.to)} kcal`;btn.classList.add("is-armed");btn.setAttribute("aria-live","polite");}
+      clearTimeout(ui.proposalArmTimer);
+      ui.proposalArmTimer=setTimeout(()=>{ui.proposalArmed=false;const b=document.getElementById("st-prop-apply");if(b){b.textContent=`Apply ${kcalFmt(p.to)} kcal`;b.classList.remove("is-armed");}},6000);
+      return false;
+    }
+    clearTimeout(ui.proposalArmTimer);ui.proposalArmed=false;
+    const c=cfg();
+    c.calories=p.to;c.calorieUpdated=state.date;
+    logSuggestion({kind:"calorie",subject:null,followed:true,payload:{calories:p.to,from:p.from,source:"proposal",verdict:p.verdict,kind:p.kind,reason:p.title,change:p.change}});
+    maybeSnapshotTDEE(true);
+    return commit(`Daily target now ${kcalFmt(p.to)} kcal · logged`);
+  }
+  function dismissCalorieProposal() {
+    const p=proposeCalories();
+    if(p.ok)logSuggestion({kind:"calorie_proposal",subject:null,followed:false,payload:{from:p.from,to:p.to,kind:p.kind,verdict:p.verdict}});
+    try{persist();}catch(e){}
+    old.closeModal();repaint();toast(`Set aside for ${PROPOSAL_SNOOZE_DAYS} days`);
+  }
+  /* The ledger: every calorie target change, newest first, each with its source. */
+  function calorieLedgerHTML(opts={}) {
+    const compact=!!opts.compact,head=opts.head!==false;
+    const rows=calorieChanges().slice().reverse(),c=cfg(),current=finite(c.calories);
+    const src={proposal:"Proposal applied",manual:"Set in calorie guide"};
+    const list=rows.length?rows.slice(0,compact?4:12).map(x=>`<div class="st-ledger-row"><span class="st-ledger-d">${esc(shortDate(x.date))}</span><span class="st-ledger-v vn-num">${x.from===null?"Target set · ":kcalFmt(x.from)+" → "}${kcalFmt(x.to)} <small>kcal</small></span><span class="st-ledger-s">${esc(src[x.source]||x.source)}${x.reason?" · "+esc(x.reason):""}</span></div>`).join(""):`<p class="n99-small">No target changes recorded yet.</p>`;
+    return `<div class="st-ledger">${head?`<div class="st-ledger-head"><span class="st-cat">Calorie target</span><b class="vn-num">${current===null?"—":kcalFmt(current)+" kcal"}</b></div>`:""}${list}</div>`;
+  }
+  /* Progress › Weight: the current target, any live proposal, and the ledger. */
+  function calorieTargetHTML() {
+    const p=proposeCalories(),c=cfg(),current=finite(c.calories);
+    return `<details class="nxp-disclosure vn-more-block st-caltarget"${p.ok?" open":""}><summary>Calorie target${current===null?"":" · "+kcalFmt(current)+" kcal"}${p.ok?' <span class="st-prop-dot" aria-label="A proposal is waiting"></span>':""}</summary>${p.ok?proposalRowHTML():`<p class="n99-small st-prop-none">${esc(p.reason)}</p>`}${calorieLedgerHTML({head:false})}<div class="n99-stack">${button("Edit calorie guide","NXT.openCalories()",true)}</div></details>`;
+  }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,coachFor,calorieChanges,proposeCalories,proposalRowHTML,openProposal,applyCalorieProposal,dismissCalorieProposal,calorieLedgerHTML,calorieTargetHTML,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
@@ -1128,8 +1303,18 @@ Object.assign(NXT, (()=>{
     /* All range: the first weigh-in is marked so the whole journey reads at a glance.
        Presentation only: the point is one the chart already plots. */
     const first=points[0],startMark=(!N.ui.range&&points.length>=2&&first)?`<g pointer-events="none"><circle cx="${px(first.x)}" cy="${px(first.y)}" r="5" fill="none" stroke="${CHART.ink}" stroke-width="1.6"/><text x="${px(Math.min(first.x+8,W-right-60))}" y="${px(Math.max(first.y-14,top+10))}" fill="${CHART.axisText}" font-size="11">Start ${first.weight.toFixed(1)} kg</text></g>`:'';
+    /* Interventions (D47): each calorie target change inside the plotted range is a
+       dashed column with a pill naming the new target, so a change in slope can be
+       read against the day the plan changed. Marks only — nothing is recomputed. */
+    const calChanges=(typeof N.calorieChanges==='function'?N.calorieChanges():[]).filter(c=>c.date>=points[0].date&&c.date<=points.at(-1).date&&c.from!==null);
+    const calMarks=calChanges.map((c,i)=>{
+      const cx=model.x(c.date);if(!Number.isFinite(cx))return '';
+      const txt=`${c.to>c.from?'▲':'▼'} ${Number(c.to).toLocaleString('en-SG')}`,w=14+txt.length*6.2,lx=Math.min(W-right-w,Math.max(left,cx-w/2)),ly=top+2+(i%2)*22;
+      return `<g class="vn-cal-mark" pointer-events="none"><line x1="${px(cx)}" x2="${px(cx)}" y1="${px(ly+20)}" y2="${baseline}" stroke="${CHART.ink}" stroke-opacity=".5" stroke-width="1.2" stroke-dasharray="1.5 4" stroke-linecap="round"/><g class="st-pillg is-cal"><rect x="${px(lx)}" y="${px(ly)}" width="${px(w)}" height="18" rx="9"/><text x="${px(lx+w/2)}" y="${px(ly+12.8)}" text-anchor="middle">${esc(txt)}</text></g></g>`;
+    }).join('');
+    const calSummary=calChanges.length?` Dashed columns mark ${calChanges.length===1?'a calorie target change':calChanges.length+' calorie target changes'}: ${calChanges.map(c=>`${N.shortDate(c.date)} ${Number(c.from).toLocaleString('en-SG')} to ${Number(c.to).toLocaleString('en-SG')} kcal`).join('; ')}.`:'';
     const summary=`${points.length} readings, ${N.shortDate(points[0].date)} to ${N.shortDate(points.at(-1).date)}. Dotted steps mark each week’s morning average. The strip shows each reading against the trend: while you are cutting most land below it, because the trend averages the days before; several days above it in a row mean the drop is slowing.`
-      +(forecast?' Projection is a model estimate, shown dashed — not a measurement.':'');
+      +(forecast?' Projection is a model estimate, shown dashed — not a measurement.':'')+calSummary;
     return `<section class="vn-weight n99-chart" id="vn-weight">
       <div class="vn-read">
         <h2 class="vn-h-sub" id="vn-traj-headline">${esc(headline)}</h2>
@@ -1177,6 +1362,7 @@ Object.assign(NXT, (()=>{
             ${anchor&&forecast?`<circle cx="${px(anchor.x)}" cy="${px(anchor.y)}" r="4" fill="${CHART.ink}" stroke="${CHART.activeRing}" stroke-width="2"/>`:''}
           </g>
           ${startMark}
+          ${calMarks}
           ${xLabs}
         </svg>
       </div>
@@ -1185,6 +1371,7 @@ Object.assign(NXT, (()=>{
         <span><i class="vn-key-raw raw"></i>Morning</span>
         ${N.ui.showPost?'<span><i class="vn-key-post post"></i>Post-workout</span>':''}
         ${forecast?'<span><i class="vn-key-proj dash"></i>Projection</span>':''}
+        ${calChanges.length?'<span><i class="vn-key-cal"></i>Target change</span>':''}
       </div>
       <p class="vn-tiny vn-mt3" id="vn-csum">${esc(summary)}</p>
       <div class="vn-togs">${togPost}${togProj}</div>
@@ -1491,7 +1678,7 @@ Object.assign(NXT, (()=>{
   }
   function goalsHTML() {
     const c=N.cfg();
-    return N.calorieCard()+N.card('Your goal range',`<p>Optional. Set a checkpoint you can review alongside waist and strength. There is no deadline or automatic push to keep losing weight.</p>${!c.targetConfirmed?'<p class="n99-small">The values below come from your previous app settings. Save to confirm or change them.</p>':''}<form onsubmit="event.preventDefault();NXT.saveGoal()"><div class="n99-form-grid"><label>Lower weight · kg<input id="n99-goal-low" type="number" min="40" max="300" step="0.1" required value="${goalLow()}"></label><label>Upper weight · kg<input id="n99-goal-high" type="number" min="40" max="300" step="0.1" required value="${goalHigh()}"></label></div><button type="submit" class="n99-button">Save goal range</button></form>`)+N.card('Cut start',`<p>When your cut began and your weight that day. Used for the “down so far” line and the cut journey.</p><form onsubmit="event.preventDefault();NXT.saveCutStart()"><label>Start date<input id="n99-cut-date" type="date" max="${state.date}" value="${esc(settings.cutStart||'')}"></label><label>Start weight · kg<input id="n99-cut-weight" type="number" min="30" max="300" step="0.1" inputmode="decimal" value="${Number(settings.startWeight)||''}"></label><button type="submit" class="n99-button">Save cut start</button></form>`)+N.card('How your advice works',`<p>Weight averages, repeated strength comparisons and dated check-ins inform your review. Recommendations explain their evidence; calorie changes are never automatic.</p>${N.button('Open weekly review','NXT.openReview()',true)}`);
+    return N.calorieCard()+N.card('Target changes',`<p>Every change to your daily target, with where it came from. Proposals appear on Today when the review calls for one; nothing is applied until you confirm.</p>${N.calorieLedgerHTML({head:false})}`)+N.card('Your goal range',`<p>Optional. Set a checkpoint you can review alongside waist and strength. There is no deadline or automatic push to keep losing weight.</p>${!c.targetConfirmed?'<p class="n99-small">The values below come from your previous app settings. Save to confirm or change them.</p>':''}<form onsubmit="event.preventDefault();NXT.saveGoal()"><div class="n99-form-grid"><label>Lower weight · kg<input id="n99-goal-low" type="number" min="40" max="300" step="0.1" required value="${goalLow()}"></label><label>Upper weight · kg<input id="n99-goal-high" type="number" min="40" max="300" step="0.1" required value="${goalHigh()}"></label></div><button type="submit" class="n99-button">Save goal range</button></form>`)+N.card('Cut start',`<p>When your cut began and your weight that day. Used for the “down so far” line and the cut journey.</p><form onsubmit="event.preventDefault();NXT.saveCutStart()"><label>Start date<input id="n99-cut-date" type="date" max="${state.date}" value="${esc(settings.cutStart||'')}"></label><label>Start weight · kg<input id="n99-cut-weight" type="number" min="30" max="300" step="0.1" inputmode="decimal" value="${Number(settings.startWeight)||''}"></label><button type="submit" class="n99-button">Save cut start</button></form>`)+N.card('How your advice works',`<p>Weight averages, repeated strength comparisons and dated check-ins inform your review. Recommendations explain their evidence; calorie changes are never automatic.</p>${N.button('Open weekly review','NXT.openReview()',true)}`);
   }
   /* Cut start (D31): the day the cut began and the weight that day. Display and
      "down so far" only; no trend, forecast or calorie calculation reads it. */

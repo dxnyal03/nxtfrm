@@ -96,13 +96,11 @@ Related preserved WIP (`68fa5ab`) is cache/version plumbing only, not the consol
 
 ---
 
-## PLANNED — Phase 5 calorie target suggestion
+## IN REVIEW — Phase 5 calorie proposals and intervention ledger (D47, release 150)
 
-Consume `NXT.diagnose()` (verdict, headline, evidence, actions, confidence). Propose a calorie-target **suggestion**. The user must confirm. **Never auto-write** `cfg().calories` or equivalent.
+Built on branch `phase5-calorie-proposal` (PR open; owner approves by merging). `NXT.proposeCalories()` turns a verdict into one user-confirmed change; `applyCalorieProposal()` is the only writer and runs from a two-tap confirm. `cfg().calories` is **never** auto-written. Changes are logged in the existing `cfg().suggestions` (`kind:"calorie"`) and surface as the ledger, chart marks and History's intervention lane. Verification: `node tasks/vnext/verify-phase5.mjs` (43 checks: every verdict path, write-once, snooze, cooling-off, floor, 320/375/390/393, reduced motion). Did not touch Safe Sync, seed or cloud.
 
-Do not mix with Safe Sync, seed, or UI redesign.
-
-Sync-matrix testing is required only if this phase touches cloud (it should not).
+Open question raised: Q7 in `tasks/vnext/DECISIONS.md`.
 
 ---
 
@@ -119,6 +117,7 @@ Sync-matrix testing is required only if this phase touches cloud (it should not)
 ## KNOWN ISSUE
 
 - Plateau diagnosis headline currently wins over the acute recovery `review()` warning when both apply. Flagged as Phase 4.5; do not change unless requested.
+- `wearables.train-enrichment.test.js` fails 3 of 34 on `main` at release 149 (anatomy markup assertions predate the D42 Train pass: muscle text, `nxp-ex-title` onclick, exercise-change class). Pre-existing; not weakened or adapted in release 150 — needs its own slice.
 - Seed cloud-write protection (`cloudUser` → `cloudSignOutSilent`) is in `seed.scenarios.js` but was only exercised signed-out.
 - `?scenario=` stays in the URL after overlay (by design so refresh does not wipe the fixture).
 - Multiple GoTrueClient console warning (Supabase client construction). Known, not a blocker.

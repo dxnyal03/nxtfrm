@@ -2077,3 +2077,67 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 .st-segc>button{transition:color .18s ease-out}
 /* A range change redraws quickly; the slower draw-in is kept for arriving on the tab */
 #weightPage .vn-chart-svg.is-range-change .vn-trend-line{animation-duration:.7s !important;animation-delay:.05s !important}
+
+/* ---- Phase 5 · calorie proposal, ledger and intervention marks (D47) ----------
+   Same glass recipe as the decision chips; status is a word first, the arrow
+   glyph second. Every motion here has a reduced-motion path. */
+.st-prop{
+  display:flex;align-items:center;gap:12px;width:100%;min-height:64px;margin-top:10px;padding:12px 12px 12px 14px;text-align:left;
+  border-radius:16px;border:0;cursor:pointer;color:var(--st-ink);
+  background:linear-gradient(160deg,rgba(255,255,255,.075),rgba(255,255,255,.02) 60%,rgba(124,77,255,.07));
+  -webkit-backdrop-filter:blur(12px) saturate(1.25);backdrop-filter:blur(12px) saturate(1.25);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(180,154,255,.22);
+}
+.st-prop-ico{flex:0 0 32px;height:32px;border-radius:50%;display:grid;place-items:center;font:600 15px/1 var(--st-font);color:var(--st-accent-lift);background:color-mix(in srgb,var(--st-accent) 18%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--st-accent-lift) 40%,transparent)}
+.st-prop-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.st-prop-txt small{font-size:var(--fs-micro,11px);font-weight:var(--fw-med,550);color:var(--st-ink-3);letter-spacing:.01em}
+.st-prop-txt b{font-size:var(--fs-body,15px);font-weight:var(--fw-semi,600);color:var(--st-ink)}
+.st-prop-n{font-size:13px;font-weight:520;color:var(--st-ink-2);font-variant-numeric:tabular-nums}
+.st-prop .vn-chev{color:var(--st-ink-4);font-size:17px;font-style:normal}
+.st-prop-dot{display:inline-block;width:7px;height:7px;margin-left:8px;border-radius:50%;background:var(--st-accent-lift);box-shadow:0 0 0 3px color-mix(in srgb,var(--st-accent-lift) 22%,transparent);vertical-align:middle}
+.st-prop-none{color:var(--st-ink-2)}
+/* Sheet */
+.st-prop-sheet .n99-eyebrow{color:var(--st-accent-lift)}
+.st-prop-h{font:600 24px/1.15 var(--st-font-d);letter-spacing:-.02em;margin:6px 0 14px;color:var(--st-ink)}
+.st-prop-big{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 10px;margin:0 0 18px;padding:14px 16px;border-radius:18px;background:rgba(var(--st-hl),.045);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.08)}
+.st-prop-from{font:300 30px/1 var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink-3);font-variant-numeric:tabular-nums}
+.st-prop-arrow{font:300 22px/1 var(--st-font-d);color:var(--st-ink-4)}
+.st-prop-to{font:300 40px/1 var(--st-font-d);letter-spacing:-.03em;color:var(--st-ink);font-variant-numeric:tabular-nums;background:linear-gradient(180deg,#F4F2FA,#CDBBFF);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.st-prop-big small{font:550 12px var(--st-font);color:var(--st-ink-3)}
+.st-prop-big .st-pill{margin-left:auto;align-self:center}
+.st-prop-k{font:600 12px/1 var(--st-font);letter-spacing:.06em;text-transform:uppercase;color:var(--st-ink-3);margin:16px 0 6px}
+.st-prop-sheet p{margin:0;color:var(--st-ink-2);line-height:1.45}
+.st-prop-sheet .n99-diag-rows{margin:10px 0 2px;border-radius:14px;background:rgba(var(--st-hl),.035);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.07)}
+.st-prop-sheet .n99-diag-row{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-top:1px solid rgba(var(--st-hl),.06)}
+.st-prop-sheet .n99-diag-row:first-child{border-top:0}
+.st-prop-sheet .n99-diag-label{font:550 13px var(--st-font);color:var(--st-ink-3)}
+.st-prop-sheet .n99-diag-value b{font:600 13.5px var(--st-font);color:var(--st-ink);text-align:right;font-variant-numeric:tabular-nums}
+.st-prop-sheet .n99-diag-value.watch b{color:var(--vn-review,#D9A15B)}
+.st-prop-sheet .n99-diag-value.good b{color:var(--st-lean)}
+.st-prop-sheet .n99-small{margin-top:14px}
+.st-prop-apply{transition:background .2s var(--st-out),transform .2s var(--st-spring)}
+.st-prop-apply.is-armed{background:linear-gradient(180deg,#B49AFF 0%,#8B5CF6 55%,#6D28D9 100%) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.34),0 0 0 4px rgba(139,92,246,.22),0 12px 26px -12px rgba(124,58,237,.8) !important}
+/* Ledger */
+.st-ledger{margin-top:12px}
+.st-ledger-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:4px 0 8px}
+.st-ledger-head b{font:300 22px/1 var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink)}
+.st-ledger-row{display:grid;grid-template-columns:64px 1fr;gap:2px 12px;align-items:baseline;padding:10px 0;border-top:1px solid rgba(var(--st-hl),.07)}
+.st-ledger-row:first-of-type{border-top:0}
+.st-ledger-d{font:550 12.5px var(--st-font);color:var(--st-ink-3);grid-row:span 2;align-self:start;padding-top:2px}
+.st-ledger-v{font:600 15px var(--st-font);color:var(--st-ink);font-variant-numeric:tabular-nums}
+.st-ledger-v small{font-weight:500;color:var(--st-ink-3);font-size:12px}
+.st-ledger-s{font:500 12.5px/1.35 var(--st-font);color:var(--st-ink-3)}
+.st-caltarget summary{display:flex;align-items:center}
+.st-caltarget .st-prop{margin:8px 0 4px}
+/* Chart marks and legend key */
+.st-pillg.is-cal rect{fill:rgba(20,18,30,.9);stroke:rgba(180,154,255,.55)}
+.st-pillg.is-cal text{fill:var(--st-ink);font:590 10.5px var(--st-font)}
+#weightPage .vn-key-cal{display:inline-block;width:2px !important;height:12px !important;flex:none;align-self:center;background:repeating-linear-gradient(180deg,var(--st-accent-lift) 0 2px,transparent 2px 5px)}
+/* History intervention lane */
+.st-hist-int{display:block !important}
+.st-hist-int .nxp-history-ex[data-kind="intervention"] b{font:600 15px/1.3 var(--st-font) !important;letter-spacing:0 !important;color:var(--st-accent-lift) !important}
+.st-hist-int .nxp-history-ex[data-kind="intervention"] span{font:550 14px var(--st-font) !important;color:var(--st-ink-2) !important}
+.st-hist-int .nxp-history-ex[data-kind="intervention"] span{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-transparency:reduce){.st-prop{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(40,36,60,.9)}}
+:root[data-nxp-motion="reduced"] .st-prop-apply{transition:none}
+@media (prefers-reduced-motion:reduce){.st-prop-apply{transition:none}}

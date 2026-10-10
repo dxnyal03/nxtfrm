@@ -180,6 +180,7 @@ const NXP = (() => {
             <h2 class="st-h3" id="vn-dec-h">${esc(r.title)}</h2>
             ${support?`<p class="st-body st-mt2">${esc(support)}</p>`:''}
             ${decEvidenceHTML(trendEv,confEv,plateau)}
+            ${N.proposalRowHTML()}
           </section>
           ${bodyTileHTML()}
         </div>
@@ -1267,7 +1268,7 @@ const NXP = (() => {
     }
     /* Phase 2C — Weight owns its layout inside chartHTML (trajectory + journey).
        TDEE and weigh-in history are demoted below, not deleted. */
-    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${withGoalDate(N.chartHTML()).replace('<div class="vn-mhead"',downSoFarHTML()+weightHighlightsHTML()+slowWeekHTML()+'<div class="vn-mhead"')}<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details><button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${N.weights().length} readings</span></span><span class="vn-chev">›</span></button></div>`;
+    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${withGoalDate(N.chartHTML()).replace('<div class="vn-mhead"',downSoFarHTML()+weightHighlightsHTML()+slowWeekHTML()+'<div class="vn-mhead"')}<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details>${N.calorieTargetHTML()}<button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${N.weights().length} readings</span></span><span class="vn-chev">›</span></button></div>`;
   }
   function syncLatestControl() {
     const btn=document.getElementById('nxp-progress-latest');
@@ -2064,11 +2065,16 @@ const NXP = (() => {
   function historyWeightBlock(bw) {
     return `<div class="nxp-history-block vn-hist-block" data-kind="weight"><span class="nxp-history-block-label">Weight</span><div class="nxp-history-ex"><b>${esc(historyNum(bw.weight))} kg</b>${bw.timeOfDay?`<span>${esc(bw.timeOfDay)}</span>`:''}</div></div>`;
   }
-  /* Structural homes for future State Engine record kinds — layout only, no persistence. */
-  function historyAuditLanes() {
+  /* Audit lanes. The intervention lane reads the calorie ledger (D47): a target
+     change on this date, with its source. Event and annotation lanes stay
+     structural until a record kind exists for them. */
+  function historyAuditLanes(date) {
+    const changes=typeof N.calorieChanges==='function'?N.calorieChanges().filter(x=>x.date===date):[];
+    const src={proposal:'Proposal applied',manual:'Set in calorie guide'};
+    const lane=changes.length?`<section class="vn-hist-lane nxp-history-block vn-hist-block st-hist-int" data-lane="intervention" data-kind="intervention"><span class="nxp-history-block-label">Intervention</span>${changes.map(x=>`<div class="nxp-history-ex" data-kind="intervention"><b>Calorie target${x.from===null?' set':''}</b><span class="vn-num">${x.from===null?'':formatNumber(x.from)+' → '}${formatNumber(x.to)} kcal</span></div><p class="nxp-history-meta">${esc(src[x.source]||x.source)}${x.reason?' · '+esc(x.reason):''}</p>`).join('')}</section>`:`<section class="vn-hist-lane" data-lane="intervention" hidden></section>`;
     return `<div class="vn-hist-audit" aria-label="Day audit trail">
       <section class="vn-hist-lane" data-lane="event" hidden></section>
-      <section class="vn-hist-lane" data-lane="intervention" hidden></section>
+      ${lane}
       <section class="vn-hist-lane" data-lane="annotation" hidden></section>
     </div>`;
   }
@@ -2096,7 +2102,7 @@ const NXP = (() => {
        summary line would just repeat "82 kg". */
     if(parts.length===1&&scope.body&&r.bw&&!(scope.lift&&r.logs.length)&&!(scope.cond&&(r.cardio.length||r.floorball.length)))parts.length=0;
     const emptyCopy=filter==='strength'?'No lifting logged on this date.':filter==='conditioning'?'No cardio logged on this date.':filter==='body'?'No weigh-in recorded on this date.':'No training or measurements logged.';
-    return `<section class="nxp-history-selected vn-hist-day"><header class="nxp-history-selected-head"><h2>${esc(when.toLocaleDateString('en-SG',{weekday:'short'}))} ${esc(when.toLocaleDateString('en-SG',{day:'numeric',month:'long'}))} <em>${esc(String(when.getFullYear()))}</em></h2>${parts.length?`<p class="nxp-history-selected-summary">${esc(parts.join(' · '))}</p>`:''}${(()=>{const k=[scope.lift&&r.logs.length?'<span class="lift"><i></i>Lifting</span>':'',scope.cond&&r.cardio.length?'<span class="cond"><i></i>Cardio</span>':'',scope.cond&&r.floorball.length?'<span class="floor"><i></i>Floorball</span>':'',scope.body&&r.bw?'<span class="body"><i></i>Weigh-in</span>':''].join('');return k?`<p class="st-day-k" aria-hidden="true">${k}</p>`:'';})()}</header>${blocks.length?blocks.join(''):`<p class="nxp-history-empty">${esc(emptyCopy)}</p>`}${historyAuditLanes()}</section>`;
+    return `<section class="nxp-history-selected vn-hist-day"><header class="nxp-history-selected-head"><h2>${esc(when.toLocaleDateString('en-SG',{weekday:'short'}))} ${esc(when.toLocaleDateString('en-SG',{day:'numeric',month:'long'}))} <em>${esc(String(when.getFullYear()))}</em></h2>${parts.length?`<p class="nxp-history-selected-summary">${esc(parts.join(' · '))}</p>`:''}${(()=>{const k=[scope.lift&&r.logs.length?'<span class="lift"><i></i>Lifting</span>':'',scope.cond&&r.cardio.length?'<span class="cond"><i></i>Cardio</span>':'',scope.cond&&r.floorball.length?'<span class="floor"><i></i>Floorball</span>':'',scope.body&&r.bw?'<span class="body"><i></i>Weigh-in</span>':''].join('');return k?`<p class="st-day-k" aria-hidden="true">${k}</p>`:'';})()}</header>${blocks.length?blocks.join(''):(N.calorieChanges&&N.calorieChanges().some(x=>x.date===date)?'':`<p class="nxp-history-empty">${esc(emptyCopy)}</p>`)}${historyAuditLanes(date)}</section>`;
   }
   function historyPaintDay(date) {
     const host=document.getElementById('vn-hist-dayhost');

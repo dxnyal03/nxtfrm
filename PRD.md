@@ -94,6 +94,10 @@ Philosophy: overlay existing signals; do not invent causes; `insufficient_contex
 
 `diagnose()` first-match verdicts: `no_issue` → `dietary_drift` → `water_masking` → `recovery_deficit` → `metabolic_adaptation` → `insufficient_context`.
 
+| 5 | Calorie proposals + intervention ledger (D47, release 150, **in review**) | `NXT.proposeCalories()`, `applyCalorieProposal()`, `dismissCalorieProposal()`, `calorieChanges()`; Today Decision tile row + sheet; Progress › Calorie target; chart marks; History intervention lane; Settings › Goals ledger |
+
+Phase 5 rules: a proposal exists only for *in goal range → maintenance*, *losing faster than 1% BW/week → ease the deficit*, or *metabolic_adaptation → small step down*. Drift, water masking, recovery deficit, no issue and insufficient context never propose. Guardrails: calculator floor, 25%-below-maintenance limit, 14-day cooling-off after any change, 7-day snooze on *Not now*. **The user confirms with two taps; nothing is auto-applied.** Every change — manual or proposal — is a `kind:"calorie"` row in `settings.cutSupport.suggestions` with `from`, `calories` (to) and `source`; the ledger, chart marks and History lane read that one record. No new `apm_*` key.
+
 Adherence for diagnosis is calendar-day mean (unlogged = 0). Evidence includes logged-day counts, not a bare hit-rate.
 
 Confidence is data completeness, not conviction. Charts and evidence must reflect actual stored rows.
@@ -201,6 +205,6 @@ See `TASKS.md` **KNOWN ISSUE**. Do not fold them into unrelated chunks.
 
 ## Future product direction (not shipped)
 
-Preferred sequence after docs: **UI stabilization / Apple HIG audit**, then **V101 UI consolidation**, then **Phase 5** calorie **suggestion** (user confirms; never auto-write). IndexedDB durability and later coaching phases are backlog.
+Phase 5 (calorie proposals) is built and in review as release 150 (D47). IndexedDB durability and later coaching phases are backlog.
 
 A local-only Git branch `preserve/v101-cache-version` (`68fa5ab`) holds a cache-name / version-check WIP. **Not shipped.**

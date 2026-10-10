@@ -1,0 +1,351 @@
+{
+  "when": "2026-10-10T13:42:53.601Z",
+  "failures": 0,
+  "results": [
+    {
+      "name": "base seed: no proposal while the cut is progressing",
+      "ok": true,
+      "detail": {
+        "ok": false,
+        "reason": "Cut is progressing. Keep the current plan.",
+        "basis": "holding"
+      }
+    },
+    {
+      "name": "base seed: Today shows no proposal row",
+      "ok": true,
+      "detail": {
+        "count": 0
+      }
+    },
+    {
+      "name": "base seed: no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "metabolic plateau: proposes a reduction of 100–150 kcal",
+      "ok": true,
+      "detail": {
+        "kind": "reduce",
+        "from": 2100,
+        "to": 1950
+      }
+    },
+    {
+      "name": "metabolic plateau: proposal carries what / why / effect / evidence",
+      "ok": true
+    },
+    {
+      "name": "metabolic plateau: proposal row sits inside the Decision tile",
+      "ok": true
+    },
+    {
+      "name": "metabolic plateau: proposal row ≥44px tall",
+      "ok": true,
+      "detail": {
+        "x": 41,
+        "y": 1223.625,
+        "width": 308,
+        "height": 99.734375
+      }
+    },
+    {
+      "name": "sheet opens with Apply and Not now",
+      "ok": true
+    },
+    {
+      "name": "first tap arms the button and writes nothing",
+      "ok": true,
+      "detail": {
+        "armedText": "Confirm 1,950 kcal",
+        "before": 2100,
+        "mid": 2100
+      }
+    },
+    {
+      "name": "second tap writes exactly the proposed target once",
+      "ok": true,
+      "detail": {
+        "cal": 1950,
+        "upd": "2026-10-10"
+      }
+    },
+    {
+      "name": "ledger has one proposal row with from/to/source/verdict",
+      "ok": true,
+      "detail": {
+        "id": "ha5yq41c",
+        "date": "2026-10-10",
+        "from": 2100,
+        "to": 1950,
+        "source": "proposal",
+        "verdict": "metabolic_adaptation",
+        "reason": "Small step down",
+        "change": -0.14
+      }
+    },
+    {
+      "name": "cooling-off: no new proposal for 14 days after a change",
+      "ok": true,
+      "detail": {
+        "ok": false,
+        "reason": "Target changed on 10 Oct. The trend needs about 14 more days to answer.",
+        "basis": "cooldown"
+      }
+    },
+    {
+      "name": "persisted: apm_settings.cutSupport.calories holds the new target",
+      "ok": true,
+      "detail": 1950
+    },
+    {
+      "name": "no new apm_* key was introduced by applying",
+      "ok": true,
+      "detail": "apm_addons,apm_bws,apm_cardio,apm_coach_insights,apm_current_gym,apm_current_read,apm_evo_scans,apm_exercise_notes,apm_floorball,apm_gyms,apm_last_open_date,apm_logs,apm_notifications,apm_rest,apm_session_plans,apm_settings"
+    },
+    {
+      "name": "Progress: chart draws one target-change mark",
+      "ok": true
+    },
+    {
+      "name": "Progress: legend names the mark in words",
+      "ok": true
+    },
+    {
+      "name": "Progress: accessible summary names the change",
+      "ok": true
+    },
+    {
+      "name": "Progress: Calorie target block shows the ledger row",
+      "ok": true
+    },
+    {
+      "name": "History: intervention lane is visible on the day with the change",
+      "ok": true
+    },
+    {
+      "name": "no page errors across the apply flow",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "Not now: proposal is snoozed and the target is untouched",
+      "ok": true,
+      "detail": {
+        "basis": "snoozed",
+        "cal": 2100,
+        "before": 2100
+      }
+    },
+    {
+      "name": "Not now: Today shows no proposal row",
+      "ok": true
+    },
+    {
+      "name": "Not now: ledger records no change",
+      "ok": true
+    },
+    {
+      "name": "plateau_drift: no proposal (dietary_drift)",
+      "ok": true,
+      "detail": {
+        "basis": "drift",
+        "verdict": "dietary_drift",
+        "reason": "Tighten adherence before changing calories."
+      }
+    },
+    {
+      "name": "water_masking: no proposal (water_masking)",
+      "ok": true,
+      "detail": {
+        "basis": "water",
+        "verdict": "water_masking",
+        "reason": "Keep measuring waist; don’t cut calories yet."
+      }
+    },
+    {
+      "name": "recovery: no proposal (recovery_deficit)",
+      "ok": true,
+      "detail": {
+        "basis": "recovery",
+        "verdict": "recovery_deficit",
+        "reason": "Deload or sleep more before cutting further."
+      }
+    },
+    {
+      "name": "fast loss: review flags \"Review your target\"",
+      "ok": true,
+      "detail": {
+        "title": "Losing quickly",
+        "action": "Review your target",
+        "change": -1.3316091954022986
+      }
+    },
+    {
+      "name": "fast loss: proposes a raise sized to the excess, within 100–250",
+      "ok": true,
+      "detail": {
+        "from": 2100,
+        "to": 2350,
+        "delta": 250,
+        "change": 0.23
+      }
+    },
+    {
+      "name": "fast loss: the step either lands the pace at the 1% rule (±50 kcal rounding) or is the capped 250 single step and says so",
+      "ok": true,
+      "detail": {
+        "expectedRate": -1.104,
+        "onePct": 0.839,
+        "capped": true
+      }
+    },
+    {
+      "name": "goal range: both weekly averages sit inside the confirmed range",
+      "ok": true,
+      "detail": {
+        "cur": 78.97142857142856,
+        "prev": 79.02857142857142,
+        "low": 78,
+        "high": 80
+      }
+    },
+    {
+      "name": "goal range: a flat trend at goal is never proposed as a step down (engine verdict noted)",
+      "ok": true,
+      "detail": {
+        "verdict": "dietary_drift",
+        "kind": "maintain"
+      }
+    },
+    {
+      "name": "goal range: proposes maintenance from the TDEE estimate",
+      "ok": true,
+      "detail": {
+        "from": 2100,
+        "to": 2150
+      }
+    },
+    {
+      "name": "manual save: ledger row with from 2,100 → to 2,300, source manual",
+      "ok": true,
+      "detail": [
+        {
+          "id": "ele88fru",
+          "date": "2026-10-10",
+          "from": 2100,
+          "to": 2300,
+          "source": "manual",
+          "verdict": null,
+          "reason": "",
+          "change": null
+        }
+      ]
+    },
+    {
+      "name": "floor: a step that would cross 1,500 kcal (male) is refused with a reason, not clamped silently",
+      "ok": true,
+      "detail": {
+        "ok": false,
+        "reason": "A lower target would fall under the 2,100 kcal floor. Review the plan with a professional instead.",
+        "basis": "floor"
+      }
+    },
+    {
+      "name": "320px Today: no horizontal overflow, proposal row ≥44px and unclipped",
+      "ok": true,
+      "detail": {
+        "sw": 320,
+        "iw": 320,
+        "h": 99.734375,
+        "w": 254,
+        "clipped": false
+      }
+    },
+    {
+      "name": "320px sheet: fits width, buttons ≥44px",
+      "ok": true,
+      "detail": {
+        "sw": 320,
+        "iw": 320,
+        "sheetScrolls": true,
+        "applyH": 50,
+        "sheetW": true
+      }
+    },
+    {
+      "name": "375px Today: no horizontal overflow, proposal row ≥44px and unclipped",
+      "ok": true,
+      "detail": {
+        "sw": 375,
+        "iw": 375,
+        "h": 99.734375,
+        "w": 293,
+        "clipped": false
+      }
+    },
+    {
+      "name": "375px sheet: fits width, buttons ≥44px",
+      "ok": true,
+      "detail": {
+        "sw": 375,
+        "iw": 375,
+        "sheetScrolls": true,
+        "applyH": 50,
+        "sheetW": true
+      }
+    },
+    {
+      "name": "390px Today: no horizontal overflow, proposal row ≥44px and unclipped",
+      "ok": true,
+      "detail": {
+        "sw": 390,
+        "iw": 390,
+        "h": 99.734375,
+        "w": 308,
+        "clipped": false
+      }
+    },
+    {
+      "name": "390px sheet: fits width, buttons ≥44px",
+      "ok": true,
+      "detail": {
+        "sw": 390,
+        "iw": 390,
+        "sheetScrolls": true,
+        "applyH": 50,
+        "sheetW": true
+      }
+    },
+    {
+      "name": "393px Today: no horizontal overflow, proposal row ≥44px and unclipped",
+      "ok": true,
+      "detail": {
+        "sw": 393,
+        "iw": 393,
+        "h": 99.734375,
+        "w": 311,
+        "clipped": false
+      }
+    },
+    {
+      "name": "393px sheet: fits width, buttons ≥44px",
+      "ok": true,
+      "detail": {
+        "sw": 393,
+        "iw": 393,
+        "sheetScrolls": true,
+        "applyH": 50,
+        "sheetW": true
+      }
+    },
+    {
+      "name": "reduced motion: 0 running animations on the proposal row and sheet",
+      "ok": true,
+      "detail": {
+        "running": 0
+      }
+    }
+  ]
+}
