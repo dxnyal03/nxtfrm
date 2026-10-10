@@ -111,19 +111,20 @@ const NXP = (() => {
        weigh-in is a dot under the label. All from stored rows — no new metric. */
     const cardioDays=new Set((state.cardio||[]).filter(r=>r&&N.finite(r.duration)>0).map(r=>r.date));
     const floorDays=new Set((state.floorball||[]).filter(r=>r&&r.date).map(r=>r.date));
-    const morningDays=new Set(N.timingRows('Morning').map(r=>r.date));
     const planLift=Array.from({length:7},(_,i)=>N.typeFor(N.dateAdd(weekStart,i))).filter(liftDays).length;
-    const weekStrip=`<div class="vn-week" role="list">${Array.from({length:7},(_,i)=>{
+    const check='<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.3 4.9 8.6 9.5 3.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const weekStrip=`<div class="vn-week st-rail" role="list">${Array.from({length:7},(_,i)=>{
       const d=N.dateAdd(weekStart,i),t=N.typeFor(d),isToday=d===state.date;
       const complete=t==='Zone2'?cardioDays.has(d):t==='Floorball'?floorDays.has(d):work.some(row=>row.date===d);
       /* "Not logged" means nothing at all was recorded that day. A walk day with an add-on
-         lift is neither done (the plan was the walk) nor empty, so it stays a plain ring. */
+         lift is neither done (the plan was the walk) nor empty, so it stays a plain capsule. */
       const anything=work.some(row=>row.date===d)||cardioDays.has(d)||floorDays.has(d);
-      const missed=!complete&&!anything&&t!=='Rest'&&d<state.date,weighed=morningDays.has(d);
+      const missed=!complete&&!anything&&t!=='Rest'&&d<state.date;
       const short=weekShort[t]||String(t).slice(0,3);
       const day=Number.isFinite(N.dateMs(d))?new Date(N.dateMs(d)).toLocaleDateString('en-SG',{weekday:'narrow',timeZone:'UTC'}):['M','T','W','T','F','S','S'][i];
       const stateWord=complete?'done':missed?'not logged':isToday?'today':d<state.date?(anything?'logged, plan not done':''):'planned';
-      return `<button type="button" class="vn-week-c${isToday?' is-today':''}${liftDays(t)?' is-lift':''}${complete?' is-done':''}${missed?' is-missed':''}${weighed?' is-weighed':''} is-k-${({FullA:'full',FullB:'full',FullC:'full',Push:'push',Pull:'pull',Legs:'legs',Pump:'legs',Zone2:'walk',Floorball:'fb',Rest:'rest'})[t]||(liftDays(t)?'full':'rest')}" role="listitem" onclick="NXT.openDay('${d}')" aria-label="${esc(N.shortDate(d)+' · '+N.label(t)+(stateWord?' · '+stateWord:'')+(weighed?' · weighed in':''))}" ${isToday?'aria-current="date"':''}><span class="vn-week-d">${esc(day)}</span><span class="vn-week-t">${esc(short)}</span><span class="vn-week-w" aria-hidden="true"></span><span class="vn-week-m" aria-hidden="true">${complete?'<i></i>':''}</span></button>`;
+      const mark=complete?`<span class="st-cap-s is-done">${check}</span>`:missed?'<span class="st-cap-s is-missed"></span>':'';
+      return `<button type="button" class="vn-week-c${isToday?' is-today':''}${liftDays(t)?' is-lift':''}${complete?' is-done':''}${missed?' is-missed':''}${d>state.date?' is-future':''} is-k-${({FullA:'full',FullB:'full',FullC:'full',Push:'push',Pull:'pull',Legs:'legs',Pump:'legs',Zone2:'walk',Floorball:'fb',Rest:'rest'})[t]||(liftDays(t)?'full':'rest')}" role="listitem" onclick="NXT.openDay('${d}')" aria-label="${esc(N.shortDate(d)+' · '+N.label(t)+(stateWord?' · '+stateWord:''))}" ${isToday?'aria-current="date"':''}><span class="st-cap"><span class="vn-week-d">${esc(day)}</span>${mark}</span><span class="vn-week-t">${esc(short)}</span></button>`;
     }).join('')}</div>`;
     function liftDays(t){return !['Rest','Zone2','Floorball'].includes(t);}
     const weekHead=`${weekLogged<=planLift?`${weekLogged}/${planLift} lifts`:`${weekLogged} lifts`} · ${cardioMins}/${cardioTarget} min`;

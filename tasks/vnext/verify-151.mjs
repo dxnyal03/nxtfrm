@@ -1,5 +1,5 @@
 /**
- * Release 151 — Today week rail outcome states, plan-vs-actual header, 28-day decision
+ * Release 151 — Today week rail capsules with outcome states, plan-vs-actual header, 28-day decision
  * sparkline, Lifts/Trend mini copy, Progress "Cut" range (D48); calorie system hidden app-wide (D49).
  *
  * Run (seed only runs on the hostname "localhost"):
@@ -72,7 +72,7 @@ try {
     const labels = await page.evaluate(() => [...document.querySelectorAll('#homePage .vn-week-c')].map((e) => e.getAttribute('aria-label')));
     const past = labels.filter((l) => /not logged/.test(l)).length;
     check('rail: past planned days with nothing logged read "not logged"', past >= 1, labels);
-    check('rail: every cell with a morning weigh-in says "weighed in" and carries the dot', await page.evaluate(() => [...document.querySelectorAll('#homePage .vn-week-c')].every((e) => (/weighed in/.test(e.getAttribute('aria-label')) === e.classList.contains('is-weighed')) && !!e.querySelector('.vn-week-w'))));
+    check('rail: capsules — every cell has a capsule with the letter; status mark is a check (done) or hollow ring (not logged), never a dashed stroke or a dot row', await page.evaluate(() => [...document.querySelectorAll('#homePage .vn-week-c')].every((e) => { const cap = e.querySelector('.st-cap'), d = cap && cap.querySelector('.vn-week-d'), m = cap && cap.querySelector('.st-cap-s'); const cs = cap && getComputedStyle(cap); return cap && d && cs.borderStyle !== 'dashed' && !e.querySelector('.vn-week-w') && ((e.classList.contains('is-done') === !!(m && m.classList.contains('is-done'))) && (e.classList.contains('is-missed') === !!(m && m.classList.contains('is-missed')))); })));
     check('rail: no Cut range without a cut start', (await page.evaluate(() => { NXT.ui.view = 'overview'; switchTab('weight'); return new Promise((r) => setTimeout(() => r(document.querySelectorAll('#weightPage .vn-seg button').length), 800)); })) === 4);
     check('baseline: no page errors', errors.length === 0, errors);
     await ctx.close();
