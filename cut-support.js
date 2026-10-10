@@ -316,6 +316,12 @@ const NXT = (() => {
     if(target<(p.sex==="male"?1500:1200))return {error:"This calculation produces a low-energy target. Get personalised guidance instead of using an automatic cut target."};
     return {resting,maintenance,target};
   }
+  /* D49 — the calorie system is switched off. The owner does not log calories or
+     adherence, so the guide, the adherence taps, the energy estimate and the
+     adherence-dependent verdicts are hidden behind this one flag. Stored data
+     (cfg().calories, adherence, tdeeHistory) is untouched and the maths is intact:
+     flip the flag and everything returns. */
+  const CALORIES_ENABLED=false;
   const ADHERENCE_FACTORS = {yes:1, close:.95, no:.85, over:1.1};
   function adherenceIn(start,end) {
     const rows=[],map=cfg().adherence;
@@ -401,9 +407,9 @@ const NXT = (() => {
     const plateauTone=p.plateau?"watch":p.status==="losing"?"good":"neutral";
     const base=[
       {label:"Weight trend",value:rate,tone:rateTone},
-      {label:"Adherence",value:adhValue,tone:adhTone},
       {label:"Plateau",value:plateauValue,tone:plateauTone}
     ];
+    if(CALORIES_ENABLED)base.splice(1,0,{label:"Adherence",value:adhValue,tone:adhTone});
     const rank=complete=>{
       if(!p.ok||p.confidence==="low"||p.confidence==="none")return complete?"medium":"low";
       if(p.confidence==="high"&&complete)return "high";
@@ -414,9 +420,9 @@ const NXT = (() => {
     });
     const gap=()=>{
       if(!p.ok)return {what:"weigh-ins",need:Math.max(1,PLATEAU_MIN_READINGS-p.n)};
-      if(adhLogged<10)return {what:"adherence",need:10-adhLogged};
+      if(CALORIES_ENABLED&&adhLogged<10)return {what:"adherence",need:10-adhLogged};
       if(waistRows.length<2)return {what:"waist",need:Math.max(1,2-waistRows.length)};
-      if((hist.length<2&&!(hist.length>=1&&at.ok&&hist[0].date!==state.date)))return {what:"TDEE snapshots",need:Math.max(1,2-hist.length)};
+      if(CALORIES_ENABLED&&(hist.length<2&&!(hist.length>=1&&at.ok&&hist[0].date!==state.date)))return {what:"TDEE snapshots",need:Math.max(1,2-hist.length)};
       if(lifts.length<2&&lowReady<5)return {what:"recovery check-ins",need:Math.max(1,5-lowReady)};
       return {what:"weigh-ins",need:7};
     };
@@ -425,16 +431,16 @@ const NXT = (() => {
       const conf=f.confidence==="high"&&p.ok&&p.confidence==="high"?"high":f.confidence==="low"||!p.ok?"low":"medium";
       return pack("no_issue","Cut is progressing.",extra,[{text:"Keep the current plan.",kind:"hold"}],conf,"Weight is still trending down.");
     }
-    if(p.plateau&&adhMean<.85) {
+    if(CALORIES_ENABLED&&p.plateau&&adhMean<.85) {
       return pack("dietary_drift",`No weight change, but adherence is ${pct(adhMean)}%. This looks like compliance, not metabolism.`,
         [],[{text:"Tighten adherence before changing calories.",kind:"adjust"}],
         rank(adhDays>=14),"Adherence is below 85% over the plateau window.");
     }
-    if(p.plateau&&waistDrop!==null&&waistDrop>.5&&adhMean>=.85) {
+    if(p.plateau&&waistDrop!==null&&waistDrop>.5&&(!CALORIES_ENABLED||adhMean>=.85)) {
       return pack("water_masking","Scale is flat, but waist is shrinking. This may not be a real plateau.",
         [{label:"Waist",value:`−${waistDrop.toFixed(1)} cm over ${days} days`,tone:"good"}],
         [{text:"Keep measuring waist; don’t cut calories yet.",kind:"hold"}],
-        rank(waistRows.length>=2),"Waist dropped while adherence held.");
+        rank(waistRows.length>=2),CALORIES_ENABLED?"Waist dropped while adherence held.":"Waist dropped while the scale stayed flat.");
     }
     if(p.plateau&&(lifts.length>=2||lowReady>=5)) {
       const extra=[];
@@ -445,7 +451,7 @@ const NXT = (() => {
         rank(lifts.length>=2||lowReady>=5),
         lifts.length>=2?"Two or more lifts dropped at least 8%.":"Readiness stayed below 60 for at least five days.");
     }
-    if(p.plateau&&adhMean>=.85&&tdeeDrop!==null&&tdeeDrop>=150) {
+    if(CALORIES_ENABLED&&p.plateau&&adhMean>=.85&&tdeeDrop!==null&&tdeeDrop>=150) {
       return pack("metabolic_adaptation","Likely metabolic adaptation, not a real plateau.",
         [{label:"TDEE",value:`${kcal(tdeeThen)} → ${kcal(tdeeNow)} kcal`,tone:"watch"}],
         [{text:"A small calorie adjustment may be warranted.",kind:"adjust"}],
@@ -474,6 +480,7 @@ const NXT = (() => {
     return true;
   }
   function tdeeCardHTML() {
+    if(!CALORIES_ENABLED)return "";
     const r=adaptiveTDEE(),formula=formulaTDEE(),kcal=n=>Number(n).toLocaleString("en-SG");
     if(!r.ok)return card("Your real TDEE",`<p>${r.reason}</p><div class="n99-stats">${metric("Adherence logged",r.daysLogged+`<small> / ${r.windowDays} days</small>`)}${metric("Formula estimate",formula===null?"—":kcal(formula)+"<small> kcal</small>","From your profile")}</div>`);
     const diff=formula===null?null:r.tdee-formula,weekly=r.weightChange/r.spanDays*7;
@@ -533,6 +540,7 @@ const NXT = (() => {
     repaint();
   }
   function adherenceHTML() {
+    if(!CALORIES_ENABLED)return "";
     const row=cfg().adherence[state.date];
     const labels={yes:"Hit target",close:"Close (~10%)",no:"Missed",over:"Way over"};
     if(row&&row.status)return `<p class="n99-small">Today’s calories: ${labels[row.status]||row.status}</p>`;
@@ -765,6 +773,7 @@ const NXT = (() => {
   </section>`;
   }
   function calorieCard() {
+    if(!CALORIES_ENABLED)return "";
     const c=cfg(),target=finite(c.calories);
     return `<button class="n99-calorie" onclick="NXT.openCalories()"><div><span class="n99-eyebrow">Daily calorie guide</span><strong>${target?target.toLocaleString("en-SG"):'Set your target'}${target?'<small> kcal</small>':''}</strong><p>${target?'Your saved target · no meal logging':'A starting estimate, personalised to you'}</p></div><span class="n99-calorie-edit">${target?'Edit':'Set up'} ›</span></button>`;
   }
@@ -819,9 +828,9 @@ const NXT = (() => {
     maybeSnapshotTDEE(true);
     commit('Daily calorie target saved');
   }
-  function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any target change stays your choice.</p><div class="n99-stack">${button('Review calorie guide','NXT.openCalories()',true)}${button('Update recovery check-in','apx96OpenReadiness()',true)}${button('Done','closeModal()')}</div>`); }
+  function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any change to your plan stays your choice.</p><div class="n99-stack">${CALORIES_ENABLED?button('Review calorie guide','NXT.openCalories()',true):''}${button('Update recovery check-in','apx96OpenReadiness()',true)}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,features:{calories:CALORIES_ENABLED},coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
@@ -895,7 +904,15 @@ Object.assign(NXT, (()=>{
       plateau.status==="gaining"?"Trend is gaining":"No plateau detected";
     return [horizon,level].filter(Boolean).join(" · ");
   }
+  /* "Cut" range (D48): from settings.cutStart (D31) to today. Display only — the
+     same series, domain rule and trend; only the window changes. */
+  function cutRangeDays() {
+    const d=settings.cutStart;
+    if(!d||!Number.isFinite(N.dateMs(d))||d>state.date)return null;
+    return Math.round((N.dateMs(state.date)-N.dateMs(d))/86400000)+1;
+  }
   function chartModel(rows=N.weights(),range=N.ui.range,showGoal=N.ui.showGoal) {
+    if(range==='cut')range=cutRangeDays()||0;
     const series=N.trend(rows),start=range?N.dateAdd(state.date,1-range):rows[0]?.date||N.dateAdd(state.date,-29);
     const visible=series.filter(r=>r.date>=start),W=420,H=392,left=20,right=20,top=18,bottom=110;
     if(!visible.length)return {visible,start,W,H,left,right,top,bottom,low:null,high:null,step:null};
@@ -1073,10 +1090,11 @@ Object.assign(NXT, (()=>{
     N.ui.lastPlotted=latestKey;
     const animClass=N.ui.chartAnim==='range'?' is-range-change':grew?' is-new-point':'';
     N.ui.chartAnim=null;
-    const ranges=[[14,'2W'],[30,'1M'],[90,'3M'],[0,'All']];
+    const cutDays=cutRangeDays();
+    const ranges=[[14,'2W'],[30,'1M'],[90,'3M']].concat(cutDays&&cutDays>14?[['cut','Cut']]:[]).concat([[0,'All']]);
     const rangeBtns=`<div class="vn-seg n99-segments" role="group" aria-label="Chart date range">${ranges.map(([r,l])=>{
       const active=N.ui.range===r;
-      return `<button type="button" aria-pressed="${active}" class="${active?'active':''}" onclick="NXT.setRange(${r})">${l}</button>`;
+      return `<button type="button" aria-pressed="${active}" class="${active?'active':''}" onclick="NXT.setRange(${typeof r==='string'?`'${r}'`:r})"${r==='cut'?` aria-label="Since your cut started, ${N.shortDate(settings.cutStart)}"`:''}>${l}</button>`;
     }).join('')}</div>`;
     if(!visible.length){
       const emptyTitle=N.weights().length?'No weigh-ins in this period':'Your first weigh-in starts here';
@@ -1127,7 +1145,7 @@ Object.assign(NXT, (()=>{
       <svg class="vn-tog-key" width="14" height="10" aria-hidden="true"><line x1="0" y1="5" x2="14" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="2 4" stroke-linecap="round"/></svg></button>`:'';
     /* All range: the first weigh-in is marked so the whole journey reads at a glance.
        Presentation only: the point is one the chart already plots. */
-    const first=points[0],startMark=(!N.ui.range&&points.length>=2&&first)?`<g pointer-events="none"><circle cx="${px(first.x)}" cy="${px(first.y)}" r="5" fill="none" stroke="${CHART.ink}" stroke-width="1.6"/><text x="${px(Math.min(first.x+8,W-right-60))}" y="${px(Math.max(first.y-14,top+10))}" fill="${CHART.axisText}" font-size="11">Start ${first.weight.toFixed(1)} kg</text></g>`:'';
+    const first=points[0],startMark=((!N.ui.range||N.ui.range==='cut')&&points.length>=2&&first)?`<g pointer-events="none"><circle cx="${px(first.x)}" cy="${px(first.y)}" r="5" fill="none" stroke="${CHART.ink}" stroke-width="1.6"/><text x="${px(Math.min(first.x+8,W-right-60))}" y="${px(Math.max(first.y-14,top+10))}" fill="${CHART.axisText}" font-size="11">Start ${first.weight.toFixed(1)} kg</text></g>`:'';
     const summary=`${points.length} readings, ${N.shortDate(points[0].date)} to ${N.shortDate(points.at(-1).date)}. Dotted steps mark each week’s morning average. The strip shows each reading against the trend: while you are cutting most land below it, because the trend averages the days before; several days above it in a row mean the drop is slowing.`
       +(forecast?' Projection is a model estimate, shown dashed — not a measurement.':'');
     return `<section class="vn-weight n99-chart" id="vn-weight">
@@ -1478,7 +1496,7 @@ Object.assign(NXT, (()=>{
     if(view==='hub') {
       document.getElementById('morePage').innerHTML=`<div class="n99">${N.heading('MAKE IT YOURS','Your setup.','<span class="n99-version">V99 PURPLE</span>')}${N.calorieCard()}<section class="n99-card n99-menu">${menuRow('Goals & calories','Your calorie guide and optional weight range','goals')}${menuRow('Training programme','Full Body A/B/C, saved routines and gym setup','training')}${menuRow('Cardio & recovery','Weekly minutes and quick check-ins','coach')}</section><div class="n99-section-label">APP & DATA</div><section class="n99-card n99-menu">${menuRow('Body & scans','Evo scans and body measurements','body')}${menuRow('Reminders','Your existing weigh-in and activity prompts','notifications')}${menuRow('Data & sync','Backup, restore, exports and cloud','data')}${menuRow('App & install','Version, installation and safe reset','app','V99 PURPLE')}</section><p class="n99-small">NXTFRM · workouts, progress and a clear calorie guide. No fixed programme deadline.</p></div>`;return;
     }
-    let content='',title={goals:'Goals & calories',training:'Training programme',coach:'Cardio & recovery'}[view];
+    let content='',title={goals:N.features&&N.features.calories?'Goals & calories':'Goals',training:'Training programme',coach:'Cardio & recovery'}[view];
     if(view==='goals')content=goalsHTML();
     else if(view==='training')content=programmeHTML();
     else if(view==='coach')content=coachHTML();
@@ -1491,7 +1509,7 @@ Object.assign(NXT, (()=>{
   }
   function goalsHTML() {
     const c=N.cfg();
-    return N.calorieCard()+N.card('Your goal range',`<p>Optional. Set a checkpoint you can review alongside waist and strength. There is no deadline or automatic push to keep losing weight.</p>${!c.targetConfirmed?'<p class="n99-small">The values below come from your previous app settings. Save to confirm or change them.</p>':''}<form onsubmit="event.preventDefault();NXT.saveGoal()"><div class="n99-form-grid"><label>Lower weight · kg<input id="n99-goal-low" type="number" min="40" max="300" step="0.1" required value="${goalLow()}"></label><label>Upper weight · kg<input id="n99-goal-high" type="number" min="40" max="300" step="0.1" required value="${goalHigh()}"></label></div><button type="submit" class="n99-button">Save goal range</button></form>`)+N.card('Cut start',`<p>When your cut began and your weight that day. Used for the “down so far” line and the cut journey.</p><form onsubmit="event.preventDefault();NXT.saveCutStart()"><label>Start date<input id="n99-cut-date" type="date" max="${state.date}" value="${esc(settings.cutStart||'')}"></label><label>Start weight · kg<input id="n99-cut-weight" type="number" min="30" max="300" step="0.1" inputmode="decimal" value="${Number(settings.startWeight)||''}"></label><button type="submit" class="n99-button">Save cut start</button></form>`)+N.card('How your advice works',`<p>Weight averages, repeated strength comparisons and dated check-ins inform your review. Recommendations explain their evidence; calorie changes are never automatic.</p>${N.button('Open weekly review','NXT.openReview()',true)}`);
+    return N.calorieCard()+N.card('Your goal range',`<p>Optional. Set a checkpoint you can review alongside waist and strength. There is no deadline or automatic push to keep losing weight.</p>${!c.targetConfirmed?'<p class="n99-small">The values below come from your previous app settings. Save to confirm or change them.</p>':''}<form onsubmit="event.preventDefault();NXT.saveGoal()"><div class="n99-form-grid"><label>Lower weight · kg<input id="n99-goal-low" type="number" min="40" max="300" step="0.1" required value="${goalLow()}"></label><label>Upper weight · kg<input id="n99-goal-high" type="number" min="40" max="300" step="0.1" required value="${goalHigh()}"></label></div><button type="submit" class="n99-button">Save goal range</button></form>`)+N.card('Cut start',`<p>When your cut began and your weight that day. Used for the “down so far” line and the cut journey.</p><form onsubmit="event.preventDefault();NXT.saveCutStart()"><label>Start date<input id="n99-cut-date" type="date" max="${state.date}" value="${esc(settings.cutStart||'')}"></label><label>Start weight · kg<input id="n99-cut-weight" type="number" min="30" max="300" step="0.1" inputmode="decimal" value="${Number(settings.startWeight)||''}"></label><button type="submit" class="n99-button">Save cut start</button></form>`)+N.card('How your advice works',`<p>Weight averages, repeated strength comparisons and dated check-ins inform your review. Recommendations explain their evidence; nothing in your plan changes automatically.</p>${N.button('Open weekly review','NXT.openReview()',true)}`);
   }
   /* Cut start (D31): the day the cut began and the weight that day. Display and
      "down so far" only; no trend, forecast or calorie calculation reads it. */

@@ -105,13 +105,28 @@ const NXP = (() => {
     const weekLogged=N.completedWeek();
     const weekStart=N.weekStart();
     const weekShort={FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Rest:'Rest',Floorball:'FB',Push:'Push',Pull:'Pull',Legs:'Legs',Pump:'Legs'};
+    /* D48 — the rail reads outcome as well as plan. A day is done when its own
+       record exists (lift sets, cardio minutes, or a floorball session); a planned
+       day already behind us with no record is "not logged" (dashed ring); a morning
+       weigh-in is a dot under the label. All from stored rows — no new metric. */
+    const cardioDays=new Set((state.cardio||[]).filter(r=>r&&N.finite(r.duration)>0).map(r=>r.date));
+    const floorDays=new Set((state.floorball||[]).filter(r=>r&&r.date).map(r=>r.date));
+    const morningDays=new Set(N.timingRows('Morning').map(r=>r.date));
+    const planLift=Array.from({length:7},(_,i)=>N.typeFor(N.dateAdd(weekStart,i))).filter(liftDays).length;
     const weekStrip=`<div class="vn-week" role="list">${Array.from({length:7},(_,i)=>{
-      const d=N.dateAdd(weekStart,i),t=N.typeFor(d),complete=work.some(row=>row.date===d),isToday=d===state.date;
+      const d=N.dateAdd(weekStart,i),t=N.typeFor(d),isToday=d===state.date;
+      const complete=t==='Zone2'?cardioDays.has(d):t==='Floorball'?floorDays.has(d):work.some(row=>row.date===d);
+      /* "Not logged" means nothing at all was recorded that day. A walk day with an add-on
+         lift is neither done (the plan was the walk) nor empty, so it stays a plain ring. */
+      const anything=work.some(row=>row.date===d)||cardioDays.has(d)||floorDays.has(d);
+      const missed=!complete&&!anything&&t!=='Rest'&&d<state.date,weighed=morningDays.has(d);
       const short=weekShort[t]||String(t).slice(0,3);
       const day=Number.isFinite(N.dateMs(d))?new Date(N.dateMs(d)).toLocaleDateString('en-SG',{weekday:'narrow',timeZone:'UTC'}):['M','T','W','T','F','S','S'][i];
-      return `<button type="button" class="vn-week-c${isToday?' is-today':''}${liftDays(t)?' is-lift':''} is-k-${({FullA:'full',FullB:'full',FullC:'full',Push:'push',Pull:'pull',Legs:'legs',Pump:'legs',Zone2:'walk',Floorball:'fb',Rest:'rest'})[t]||(liftDays(t)?'full':'rest')}" role="listitem" onclick="NXT.openDay('${d}')" aria-label="${esc(N.shortDate(d)+' · '+N.label(t))}" ${isToday?'aria-current="date"':''}><span class="vn-week-d">${esc(day)}</span><span class="vn-week-t">${esc(short)}</span><span class="vn-week-m" aria-hidden="true">${complete?'<i></i>':''}</span></button>`;
+      const stateWord=complete?'done':missed?'not logged':isToday?'today':d<state.date?(anything?'logged, plan not done':''):'planned';
+      return `<button type="button" class="vn-week-c${isToday?' is-today':''}${liftDays(t)?' is-lift':''}${complete?' is-done':''}${missed?' is-missed':''}${weighed?' is-weighed':''} is-k-${({FullA:'full',FullB:'full',FullC:'full',Push:'push',Pull:'pull',Legs:'legs',Pump:'legs',Zone2:'walk',Floorball:'fb',Rest:'rest'})[t]||(liftDays(t)?'full':'rest')}" role="listitem" onclick="NXT.openDay('${d}')" aria-label="${esc(N.shortDate(d)+' · '+N.label(t)+(stateWord?' · '+stateWord:'')+(weighed?' · weighed in':''))}" ${isToday?'aria-current="date"':''}><span class="vn-week-d">${esc(day)}</span><span class="vn-week-t">${esc(short)}</span><span class="vn-week-w" aria-hidden="true"></span><span class="vn-week-m" aria-hidden="true">${complete?'<i></i>':''}</span></button>`;
     }).join('')}</div>`;
     function liftDays(t){return !['Rest','Zone2','Floorball'].includes(t);}
+    const weekHead=`${weekLogged<=planLift?`${weekLogged}/${planLift} lifts`:`${weekLogged} lifts`} · ${cardioMins}/${cardioTarget} min`;
     const textAct=(label,fn,mute)=>`<button type="button" class="vn-text${mute?' is-mute':''}" onclick="${esc(fn)}">${label}</button>`;
     N.logSuggestion({kind:"review",subject:null,payload:{title:r.title,action:r.action,tone:r.tone,reason:r.reason}});
     const logged=list.reduce((a,e)=>a+Math.min(N.done(e.name),Number(e.sets)),0);
@@ -125,7 +140,7 @@ const NXP = (() => {
           </div>
           ${logged?ringHTML(logged,sets,'sets','var(--st-lift)'):''}
         </div>
-        <div class="st-tweek st-tweek-top"><div class="st-tweek-h"><span>This week · ${weekLogged} lifting ${weekLogged===1?'day':'days'}</span>${textAct('Edit plan',"NXT.more('training')",true)}</div>${weekStrip}</div>
+        <div class="st-tweek st-tweek-top"><div class="st-tweek-h"><span>This week · ${weekHead}</span>${textAct('Edit plan',"NXT.more('training')",true)}</div>${weekStrip}</div>
         <button type="button" class="st-cta" onclick="${esc(finished?"switchTab('train')":action)}">${esc(title)}<span aria-hidden="true">›</span></button>
         ${lastLiftLine?`<p class="st-meta st-mt2 st-center">${esc(lastLiftLine)}</p>`:''}
       </article>`:`
@@ -148,7 +163,7 @@ const NXP = (() => {
           </button>`:''}
         </div>
         <p class="st-meta st-mt3">${esc(nextLine)}</p>
-        <div class="st-tweek"><div class="st-tweek-h"><span>This week · ${weekLogged} lifting ${weekLogged===1?'day':'days'}</span>${textAct('Edit plan',"NXT.more('training')",true)}</div>${weekStrip}</div>
+        <div class="st-tweek"><div class="st-tweek-h"><span>This week · ${weekHead}</span>${textAct('Edit plan',"NXT.more('training')",true)}</div>${weekStrip}</div>
       </article>`;
     document.getElementById('homePage').innerHTML=`<div class="vn-today st-today">
       <div class="vn-pad">
@@ -169,11 +184,25 @@ const NXP = (() => {
               <span class="st-mini-bar"><i style="width:${Math.min(100,cardioTarget?cardioMins/cardioTarget*100:0).toFixed(0)}%"></i></span>
               <span class="st-meta">min/wk</span>
             </button>
-            <button type="button" class="st-tile st-mini" style="--c:var(--st-lift)" onclick="NXT.ui.view='strength';switchTab('weight')">
+            ${(()=>{
+              /* Recent session (≤7 days): lead with its D20 outcome — "3 of 5 beat" — and name the
+                 session; otherwise the engine status word as before. */
+              const ago=lastLift?Math.round((N.dateMs(state.date)-N.dateMs(lastLift))/864e5):null;
+              const oc=lastLift&&ago!==null&&ago<=7?liftOutcome(lastLift,(lastLiftRow&&lastLiftRow.gym)||state.gym):null;
+              if(oc&&oc.compared){
+                const when=ago===0?'today':ago===1?'yesterday':`${ago} days ago`;
+                return `<button type="button" class="st-tile st-mini st-mini-lifts" style="--c:var(--st-lift)" onclick="NXT.ui.view='strength';switchTab('weight')" aria-label="Lifts: ${oc.up} of ${oc.compared} beat last time, ${N.label(lastLiftRow.dayType||state.dayType)} ${when}">
+              <span class="st-cat">Lifts</span>
+              <span class="st-mini-v"><b class="vn-num">${oc.up}</b><small>/${oc.compared} beat</small></span>
+              <span class="st-meta">${esc(N.label(lastLiftRow.dayType||state.dayType))} · ${when}</span>
+            </button>`;
+              }
+              return `<button type="button" class="st-tile st-mini" style="--c:var(--st-lift)" onclick="NXT.ui.view='strength';switchTab('weight')">
               <span class="st-cat">Lifts</span>
               <span class="st-mini-v st-mini-w">${esc(perfLabel)}</span>
               <span class="st-meta">${perfLabel==='Older history'&&lastPerfDate?`Last ${esc(N.shortDate(lastPerfDate))}`:`${lifts.length} lifts`}</span>
-            </button>
+            </button>`;
+            })()}
           </div>
           <section class="st-tile st-t-dec${toneClass}" data-st-view aria-labelledby="vn-dec-h" style="--c:var(--st-accent)">
             <div class="st-tile-head"><span class="st-cat">Decision</span><button type="button" class="st-link st-why" onclick="NXT.openReview()">Why<span aria-hidden="true">›</span></button></div>
@@ -195,8 +224,7 @@ const NXP = (() => {
         <summary>More for today</summary>
         <div class="vn-more-body">
           ${recoveryHomeCard()}
-          <button type="button" class="nxp-home-kcal" onclick="NXT.openCalories()"><span><small>Calorie guide</small><strong>${cal?formatNumber(cal)+' <em>kcal</em>':'Set target'}</strong></span><span>${cal?'Edit':'Set up'}</span></button>
-          ${N.adherenceHTML()}
+          ${N.features&&N.features.calories?`<button type="button" class="nxp-home-kcal" onclick="NXT.openCalories()"><span><small>Calorie guide</small><strong>${cal?formatNumber(cal)+' <em>kcal</em>':'Set target'}</strong></span><span>${cal?'Edit':'Set up'}</span></button>${N.adherenceHTML()}`:''}
         </div>
       </details>
     </div>`;
@@ -248,7 +276,7 @@ const NXP = (() => {
   function decEvidenceHTML(trendEv,confEv,plateau) {
     const rate=N.finite(plateau&&plateau.weeklyRate);
     const dir=rate===null?'flat':rate<-0.05?'down':rate>0.05?'up':'flat';
-    const pts=N.trend(N.weights()).filter(p=>p.avg!==null).slice(-21).map(p=>p.avg);
+    const pts=N.trend(N.weights()).filter(p=>p.avg!==null).slice(-28).map(p=>p.avg); // 28 days: the same window as the four-week rate beside it (D48)
     let spark='';
     if(pts.length>=4){
       const lo=Math.min(...pts),hi=Math.max(...pts),span=(hi-lo)||1,W=64,H=24,pad=3;
@@ -274,8 +302,24 @@ const NXP = (() => {
     return `<button type="button" class="st-tile st-mini" style="--c:var(--st-weight)" onclick="NXT.ui.view='overview';switchTab('weight')">
       <span class="st-cat">Trend</span>
       <span class="st-mini-v"><b class="st-odo st-odo-sm" data-st-odo="${v.toFixed(1)}">${v.toFixed(1)}</b><small>kg</small></span>
-      <span class="st-meta">${rate!==null&&pl.ok?`${N.signed(rate)}/wk`:'7-day trend'}</span>
+      <span class="st-meta">${rate!==null&&pl.ok?(Math.abs(rate)<0.05?'Flat':`${N.signed(rate)}/wk`):'7-day trend'}</span>
     </button>`;
+  }
+  /* D20 comparison for any logged lifting day: best set per exercise against the
+     previous session of that exercise at that gym. Same rule as the finish card. */
+  function liftOutcome(date,gym) {
+    const rows=N.workRows().filter(r=>r.date===date&&(r.gym||'Gym A')===gym&&r.setType!=='warmup'),byEx={};
+    rows.forEach(r=>{(byEx[r.exercise||r.name]=byEx[r.exercise||r.name]||[]).push(r);});
+    let up=0,same=0,down=0,compared=0;
+    Object.entries(byEx).forEach(([name,sets])=>{
+      const prev=N.sessionRows(name,gym,date,100).at(-1);
+      if(!prev||!prev.sets||!prev.sets.length)return;
+      compared+=1;
+      const a=N.bestSet(sets),b=N.bestSet(prev.sets);
+      const dw=Number(a.weight)-Number(b.weight),dr=Number(a.reps)-Number(b.reps);
+      if(dw>0||(dw===0&&dr>0))up+=1; else if(dw===0&&dr===0)same+=1; else down+=1;
+    });
+    return {up,same,down,compared,exercises:Object.keys(byEx).length};
   }
   function weeklyTileHTML() {
     const rows=N.weights();if(!rows.length)return '';
@@ -1249,7 +1293,7 @@ const NXP = (() => {
     applyAppearance();
     syncTrainNav(false);
     const v=N.ui.view,r=N.ui.range;
-    const period=r===14?'Last 2 weeks':r===30?'Last month':r===90?'Last 3 months':'All recorded weigh-ins';
+    const period=r===14?'Last 2 weeks':r===30?'Last month':r===90?'Last 3 months':r==='cut'?'Since your cut started':'All recorded weigh-ins';
     const tabs=`<div class="n99-progress-tabs nxp-progress-tabs vn-progress-tabs" role="group" aria-label="Progress view">${[['overview','Weight'],['strength','Performance'],['body','Body']].map(([key,title])=>`<button type="button" class="${v===key?'active':''}" aria-pressed="${v===key}" onclick="NXT.setView('${key}')">${title}</button>`).join('')}</div>`;
     const chrome=`<header class="nxp-heading nxp-progress-chrome vn-progress-chrome"><div><h1>Progress</h1><p>${esc(period)}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>`;
     if(v==='body'){
@@ -1267,7 +1311,7 @@ const NXP = (() => {
     }
     /* Phase 2C — Weight owns its layout inside chartHTML (trajectory + journey).
        TDEE and weigh-in history are demoted below, not deleted. */
-    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${withGoalDate(N.chartHTML()).replace('<div class="vn-mhead"',downSoFarHTML()+weightHighlightsHTML()+slowWeekHTML()+'<div class="vn-mhead"')}<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details><button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${N.weights().length} readings</span></span><span class="vn-chev">›</span></button></div>`;
+    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${withGoalDate(N.chartHTML()).replace('<div class="vn-mhead"',downSoFarHTML()+weightHighlightsHTML()+slowWeekHTML()+'<div class="vn-mhead"')}${N.features&&N.features.calories?`<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details>`:''}<button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${N.weights().length} readings</span></span><span class="vn-chev">›</span></button></div>`;
   }
   function syncLatestControl() {
     const btn=document.getElementById('nxp-progress-latest');
@@ -1743,7 +1787,7 @@ const NXP = (() => {
     page.innerHTML=shell(`<h1 class="vn-set-title">Settings</h1>
       ${moreAccount()}
       ${setGroup('Plan',
-        setRow('Goals & calories',c.calories?formatNumber(c.calories)+' kcal':'Set up',"NXT.more('goals')",c.targetConfirmed?goalLow()+'–'+goalHigh()+' kg range':'Calorie guide and optional goal range')
+        (N.features&&N.features.calories?setRow('Goals & calories',c.calories?formatNumber(c.calories)+' kcal':'Set up',"NXT.more('goals')",c.targetConfirmed?goalLow()+'–'+goalHigh()+' kg range':'Calorie guide and optional goal range'):setRow('Goals',c.targetConfirmed?goalLow()+'–'+goalHigh()+' kg':'Set up',"NXT.more('goals')",settings.cutStart?'Goal range and cut start · from '+N.shortDate(settings.cutStart):'Optional goal range and cut start'))
         +setRow('Training',lifts+(lifts===1?' lifting day':' lifting days'),"NXT.more('training')",'Weekly plan, saved workouts and gyms')
         +setRow('Cardio & recovery',(Number(settings.zone2WeeklyTarget)||90)+' min / week',"NXT.more('coach')",'Weekly minutes and recovery check-ins'))}
       ${setGroup('Preferences',

@@ -85,6 +85,8 @@ Also shipped: gym A/B, programme/templates, readiness check-in, appearance (larg
 
 Philosophy: overlay existing signals; do not invent causes; `insufficient_context` is a valid outcome; never auto-apply calorie changes.
 
+**Calorie system off (D49, release 151).** `CALORIES_ENABLED=false` in `cut-support.js` hides the calorie guide, adherence taps, Energy estimate and kcal in Settings, and gates the adherence-dependent verdicts (`dietary_drift`, `metabolic_adaptation`; `water_masking` keeps its waist test only). Phases 1–2 code and the stored `calories` / `adherence` / `tdeeHistory` remain; flip the flag to restore.
+
 | Phase | What shipped | Where |
 |---|---|---|
 | 1 | Adherence taps + suggestion log | `cfg().adherence`, `cfg().suggestions` |
@@ -201,6 +203,6 @@ See `TASKS.md` **KNOWN ISSUE**. Do not fold them into unrelated chunks.
 
 ## Future product direction (not shipped)
 
-Preferred sequence after docs: **UI stabilization / Apple HIG audit**, then **V101 UI consolidation**, then **Phase 5** calorie **suggestion** (user confirms; never auto-write). IndexedDB durability and later coaching phases are backlog.
+Phase 5 (calorie suggestion) was built as release 150 and withdrawn (owner does not use calories; see D49). IndexedDB durability and later coaching phases are backlog.
 
 A local-only Git branch `preserve/v101-cache-version` (`68fa5ab`) holds a cache-name / version-check WIP. **Not shipped.**

@@ -1,0 +1,284 @@
+{
+  "when": "2026-10-10T14:11:58.652Z",
+  "failures": 0,
+  "results": [
+    {
+      "name": "rail: past planned days with nothing logged read \"not logged\"",
+      "ok": true,
+      "detail": [
+        "5 Oct · Full Body A · not logged · weighed in",
+        "6 Oct · Easy cardio · not logged · weighed in",
+        "7 Oct · Full Body B · not logged · weighed in",
+        "8 Oct · Easy cardio · not logged · weighed in",
+        "9 Oct · Full Body C · not logged · weighed in",
+        "10 Oct · Easy cardio · today · weighed in",
+        "11 Oct · Rest · planned"
+      ]
+    },
+    {
+      "name": "rail: every cell with a morning weigh-in says \"weighed in\" and carries the dot",
+      "ok": true
+    },
+    {
+      "name": "rail: no Cut range without a cut start",
+      "ok": true
+    },
+    {
+      "name": "baseline: no page errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "rail: Tuesday walk with 45 min logged is done (check badge, no dashed ring)",
+      "ok": true,
+      "detail": {
+        "a": "6 Oct · Easy cardio · done · weighed in",
+        "c": "vn-week-c is-done is-weighed is-k-walk"
+      }
+    },
+    {
+      "name": "rail: Thursday walk with an add-on lift is neither done nor \"not logged\"",
+      "ok": true,
+      "detail": {
+        "a": "8 Oct · Easy cardio · logged, plan not done · weighed in",
+        "c": "vn-week-c is-weighed is-k-walk"
+      }
+    },
+    {
+      "name": "header: plan vs actual — lifts and cardio minutes",
+      "ok": true,
+      "detail": "This week · 1/3 lifts · 45/90 min"
+    },
+    {
+      "name": "header: stays on one line at 390 and \"Edit plan\" does not wrap",
+      "ok": true,
+      "detail": {
+        "lines": 1,
+        "btnLines": 1
+      }
+    },
+    {
+      "name": "lifts mini: last session's D20 outcome \"4/6 beat\" + session name and recency",
+      "ok": true,
+      "detail": "Lifts 4 /6 beat Pull · 2 days ago"
+    },
+    {
+      "name": "lifts mini: the count matches NXT.bestSet() applied per exercise",
+      "ok": true,
+      "detail": {
+        "engine": 4,
+        "fixture": 4
+      }
+    },
+    {
+      "name": "decision sparkline: 28 points — the four-week window of the rate beside it",
+      "ok": true,
+      "detail": {
+        "points": 28
+      }
+    },
+    {
+      "name": "trend mini: shows rate or \"Flat\", never \"-0.00/wk\"",
+      "ok": true
+    },
+    {
+      "name": "progress: Cut range appears between 3M and All when a cut start exists",
+      "ok": true,
+      "detail": [
+        "2W",
+        "1M",
+        "3M",
+        "Cut",
+        "All"
+      ]
+    },
+    {
+      "name": "progress: Cut range plots from the cut start, subtitle and start mark follow",
+      "ok": true,
+      "detail": {
+        "range": "cut",
+        "first": "2026-08-11",
+        "start": "2026-08-11",
+        "sub": "Since your cut started",
+        "startMark": true,
+        "active": "Cut"
+      }
+    },
+    {
+      "name": "progress: Cut range keeps the data-only Y domain (D2) — the goal below the data does not stretch it",
+      "ok": true,
+      "detail": {
+        "low": 80,
+        "high": 88,
+        "min": 81.9,
+        "max": 85.90271790192814,
+        "goalLow": 78
+      }
+    },
+    {
+      "name": "ledger: no adherence marks or legend",
+      "ok": true
+    },
+    {
+      "name": "calories hidden: flag off, stored target untouched, no Energy estimate on Progress",
+      "ok": true,
+      "detail": {
+        "flag": false,
+        "stored": 2100,
+        "energy": false
+      }
+    },
+    {
+      "name": "calories hidden: no calorie guide or adherence taps under More for today",
+      "ok": true
+    },
+    {
+      "name": "calories hidden: Settings row reads Goals with the range, no kcal",
+      "ok": true,
+      "detail": "Settings\nLocal-only\n\nGym A · Stored on this device\n\nPlan\nGoals\nGoal range and cut start · from 11 Aug\n78–80 kg\nTraining\nWeekly plan, saved workouts and gyms\n3 lifting days\nCardio & recovery\nWeekly min"
+    },
+    {
+      "name": "calories hidden: Goals page has goal range + cut start, no calorie guide",
+      "ok": true
+    },
+    {
+      "name": "calories hidden: diagnosis evidence carries no Adherence/TDEE row and never asks for adherence",
+      "ok": true,
+      "detail": {
+        "labels": [
+          "Weight trend",
+          "Plateau",
+          "Forecast"
+        ],
+        "headline": "Cut is progressing.",
+        "verdict": "no_issue"
+      }
+    },
+    {
+      "name": "no page errors with the fixture",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "plateau_drift: verdict is no longer dietary_drift (insufficient_context)",
+      "ok": true,
+      "detail": "insufficient_context"
+    },
+    {
+      "name": "plateau_metabolic: verdict is no longer metabolic_adaptation (insufficient_context)",
+      "ok": true,
+      "detail": "insufficient_context"
+    },
+    {
+      "name": "water_masking: still detected from waist alone, reason no longer cites adherence",
+      "ok": true,
+      "detail": {
+        "v": "water_masking",
+        "reason": "Waist dropped while the scale stayed flat."
+      }
+    },
+    {
+      "name": "320px: no overflow, rail cells ≥44 tall and ≥34 wide, nothing clipped, header ≤2 lines",
+      "ok": true,
+      "detail": {
+        "sw": 320,
+        "iw": 320,
+        "minH": 65.9375,
+        "minW": 35.140625,
+        "railClip": false,
+        "headLines": 1
+      }
+    },
+    {
+      "name": "320px: five range buttons fit, ≥44 tall, no clipping",
+      "ok": true,
+      "detail": {
+        "n": 5,
+        "minW": 37.02983856201172,
+        "minH": 43.340087890625,
+        "clip": false,
+        "sw": 320,
+        "iw": 320
+      }
+    },
+    {
+      "name": "375px: no overflow, rail cells ≥44 tall and ≥40 wide, nothing clipped, header ≤2 lines",
+      "ok": true,
+      "detail": {
+        "sw": 375,
+        "iw": 375,
+        "minH": 71.9375,
+        "minW": 40.140625,
+        "railClip": false,
+        "headLines": 1
+      }
+    },
+    {
+      "name": "375px: five range buttons fit, ≥44 tall, no clipping",
+      "ok": true,
+      "detail": {
+        "n": 5,
+        "minW": 48.203125,
+        "minH": 44,
+        "clip": false,
+        "sw": 375,
+        "iw": 375
+      }
+    },
+    {
+      "name": "390px: no overflow, rail cells ≥44 tall and ≥40 wide, nothing clipped, header ≤2 lines",
+      "ok": true,
+      "detail": {
+        "sw": 390,
+        "iw": 390,
+        "minH": 71.9375,
+        "minW": 42.28125,
+        "railClip": false,
+        "headLines": 1
+      }
+    },
+    {
+      "name": "390px: five range buttons fit, ≥44 tall, no clipping",
+      "ok": true,
+      "detail": {
+        "n": 5,
+        "minW": 51.203125,
+        "minH": 44,
+        "clip": false,
+        "sw": 390,
+        "iw": 390
+      }
+    },
+    {
+      "name": "393px: no overflow, rail cells ≥44 tall and ≥40 wide, nothing clipped, header ≤2 lines",
+      "ok": true,
+      "detail": {
+        "sw": 393,
+        "iw": 393,
+        "minH": 71.9375,
+        "minW": 42.703125,
+        "railClip": false,
+        "headLines": 1
+      }
+    },
+    {
+      "name": "393px: five range buttons fit, ≥44 tall, no clipping",
+      "ok": true,
+      "detail": {
+        "n": 5,
+        "minW": 51.796875,
+        "minH": 44,
+        "clip": false,
+        "sw": 393,
+        "iw": 393
+      }
+    },
+    {
+      "name": "reduced motion: 0 running animations on the week rail",
+      "ok": true,
+      "detail": {
+        "running": 0
+      }
+    }
+  ]
+}
