@@ -2445,3 +2445,58 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
   background:linear-gradient(215deg,color-mix(in srgb,var(--c) 55%,transparent) 10%,transparent 60%) !important;-webkit-background-clip:text !important;background-clip:text !important}
 @media (max-width:359px){#homePage .st-t-train .st-ghost{font-size:120px !important}}
 @media (max-width:359px){#homePage .st-t-train{padding:20px 14px 18px !important}}
+
+/* =============================================================================
+   D56 · Buttons: one capsule family
+   Every actionable button is a capsule in Geist, in three tiers. Sizes and hit
+   areas are unchanged (paint, radius and type only), so no layout moves.
+   ========================================================================== */
+:root{
+  --btn-font:600 16px/1 var(--st-font-d);
+  --btn-primary:radial-gradient(120% 140% at 50% -20%,rgba(255,255,255,.28),transparent 55%),linear-gradient(180deg,#9B71FF 0%,#7C3AED 52%,#6522DA 100%);
+  --btn-primary-shadow:inset 0 1px 0 rgba(255,255,255,.38),inset 0 -1px 0 rgba(0,0,0,.22),0 0 0 1px rgba(196,181,253,.28),0 16px 34px -14px rgba(124,58,237,.9),0 4px 10px -4px rgba(76,29,149,.6);
+  --btn-glass:linear-gradient(180deg,rgba(255,255,255,.085),rgba(255,255,255,.025));
+  --btn-glass-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.075),0 8px 18px -12px rgba(0,0,0,.8);
+  --btn-ink:#EDE8FF;
+  --btn-text:#CDBBFF;
+}
+/* ---- Tier 1 · primary ------------------------------------------------------ */
+.st-cta,.n99-button:not(.secondary),#trainPage .st-log,#homePage .st-t-train .st-cta,.st-prop-apply{
+  border-radius:999px !important;border:0 !important;color:#fff !important;
+  background:var(--btn-primary) !important;box-shadow:var(--btn-primary-shadow) !important;
+  font-family:var(--st-font-d) !important;font-weight:620 !important;letter-spacing:-.012em !important;text-shadow:0 1px 1px rgba(46,16,101,.35);
+}
+#trainPage .st-train-active .st-log{box-shadow:var(--btn-primary-shadow),0 0 0 6px rgba(8,8,13,.55) !important}
+.st-cta>span[aria-hidden]{display:grid;place-items:center;width:28px;height:28px;margin-right:-6px;border-radius:50%;font-size:18px;line-height:1;
+  background:rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
+/* ---- Tier 2 · glass ------------------------------------------------------- */
+.n99-button.secondary,.st-chip,.st-link.st-why,.st-qa,.st-replay,#historyPage .nxp-cal-nav button,#historyPage .nxp-cal-today,.st-fold,#weightPage .vn-tog,.n99-modal .n99-icon,#morePage .vn-set-back,.st-dec-chip{
+  border-radius:999px !important;border:0 !important;
+  background:var(--btn-glass) !important;box-shadow:var(--btn-glass-shadow) !important;
+  color:var(--btn-ink) !important;font-family:var(--st-font-d) !important;font-weight:560 !important;letter-spacing:-.005em !important;
+}
+.st-dec-chip{border-radius:18px !important}                       /* evidence chips hold a chart, so they stay rounded rectangles */
+.st-dec-chip.st-dec-trend{background:linear-gradient(160deg,rgba(255,255,255,.075),rgba(255,255,255,.02) 60%,rgba(124,77,255,.06)) !important}
+.st-link.st-why{color:var(--btn-text) !important}
+.st-qa>span[aria-hidden]{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;font-weight:500;color:#fff;
+  background:color-mix(in srgb,var(--c,var(--st-accent)) 75%,#000 10%);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 4px 10px -4px var(--c,var(--st-accent))}
+#historyPage .nxp-cal-nav button:not(.nxp-cal-today){border-radius:50% !important}
+/* ---- Tier 3 · text --------------------------------------------------------- */
+.vn-text,.n99-text,.nxp-addon-add,#trainPage .nxp-train-idle-actions .n99-text{
+  background:none !important;box-shadow:none !important;border:0 !important;
+  color:var(--btn-text) !important;font-family:var(--st-font-d) !important;font-weight:560 !important;letter-spacing:-.005em !important;
+}
+.vn-text.is-mute{color:color-mix(in srgb,var(--btn-text) 70%,var(--st-ink-3)) !important}
+/* ---- Segmented controls: pill track, lit pill like the dock ----------------- */
+#weightPage .vn-seg,#weightPage .n99-segments,#weightPage .vn-progress-tabs,#weightPage .n99-progress-tabs,#historyPage .vn-hist-filters,#historyPage .nxp-history-filters{
+  border-radius:999px !important;background:rgba(255,255,255,.045) !important;border:0 !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),inset 0 1px 2px rgba(0,0,0,.3) !important}
+#weightPage .vn-seg button,#weightPage .vn-progress-tabs button,#weightPage .n99-progress-tabs button,#historyPage .vn-hist-filters button,#historyPage .nxp-history-filters button{border-radius:999px !important;font-family:var(--st-font-d) !important;font-weight:540 !important}
+.st-seg-pill,.vn-seg.st-segc .st-seg-pill,.n99-progress-tabs.st-segc .st-seg-pill,.vn-hist-filters.st-segc .st-seg-pill{border-radius:999px !important;
+  background:radial-gradient(120% 120% at 50% 0%,rgba(205,187,255,.4),transparent 65%),linear-gradient(180deg,rgba(139,92,246,.6),rgba(109,40,217,.38)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.32),0 8px 20px -10px rgba(139,92,246,.95),0 0 0 1px rgba(205,187,255,.22) !important}
+#weightPage .vn-seg button.active,#weightPage .vn-progress-tabs button.active,#weightPage .n99-progress-tabs button.active,#historyPage .vn-hist-filters button.active,#historyPage .nxp-history-filters button.active{color:#fff !important}
+/* ---- Focus: one ring for every tier ---------------------------------------- */
+.st-cta:focus-visible,.n99-button:focus-visible,.st-chip:focus-visible,.st-qa:focus-visible,.st-replay:focus-visible,.vn-text:focus-visible,.n99-text:focus-visible,.st-link:focus-visible{outline:2px solid #CDBBFF !important;outline-offset:3px !important}
+/* ---- Banner actions follow the glass tier ---------------------------------- */
+.cloud-local-banner .cloud-local-banner-login{border-radius:999px !important;border:0 !important;background:var(--btn-glass) !important;box-shadow:var(--btn-glass-shadow) !important;color:var(--btn-text) !important;font-family:var(--st-font-d) !important;font-weight:560 !important}
+.cloud-local-banner .cloud-local-banner-dismiss{font-family:var(--st-font-d) !important;color:var(--st-ink-3) !important}

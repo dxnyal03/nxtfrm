@@ -1,5 +1,5 @@
 {
-  "when": "2026-10-10T18:33:07.176Z",
+  "when": "2026-10-10T18:51:08.374Z",
   "failures": 0,
   "results": [
     {
@@ -263,6 +263,62 @@
         "text": "0.1 kg vs yesterdayTrend 82.51 · 0.3 kg below",
         "want": "82.51"
       }
+    },
+    {
+      "name": "D55: Today has no Check-in quick action and no empty \"More for today\"",
+      "ok": true,
+      "detail": {
+        "checkin": false,
+        "more": false
+      }
+    },
+    {
+      "name": "D55: Settings has no Reminders, Wearable or Classic app rows; Cardio replaces Cardio & recovery",
+      "ok": true,
+      "detail": [
+        "Goals",
+        "Training",
+        "Cardio",
+        "Your name",
+        "Appearance",
+        "Body & scans",
+        "Cloud & sync",
+        "Storage",
+        "App & install"
+      ]
+    },
+    {
+      "name": "D55: the session picker does not offer Floorball",
+      "ok": true
+    },
+    {
+      "name": "D55: Progress › Body has no waist section",
+      "ok": true
+    },
+    {
+      "name": "D55: diagnosis never asks for waist or check-ins",
+      "ok": true
+    },
+    {
+      "name": "D56: every Today button is a capsule (radius ≥ half its height) in Geist",
+      "ok": true,
+      "detail": [
+        {
+          "r": 999,
+          "h": 31.52001953125,
+          "f": "Geist"
+        },
+        {
+          "r": 999,
+          "h": 48,
+          "f": "Geist"
+        },
+        {
+          "r": 999,
+          "h": 48,
+          "f": "Geist"
+        }
+      ]
     },
     {
       "name": "no page errors",

@@ -127,6 +127,22 @@ try {
       return { text: document.querySelector('#historyPage .st-hw')?.textContent || '', want: t && t.avg !== null ? t.avg.toFixed(2) : null };
     });
     check('History: a morning weigh-in shows the change vs the previous morning and its trend value', /kg vs/.test(hw.text) && hw.want && hw.text.includes(hw.want), hw);
+    /* D55 — features the owner does not use stay hidden; D56 — one capsule family */
+    await tab(page, 'home');
+    const home = await page.evaluate(() => ({ checkin: [...document.querySelectorAll('#homePage .st-qa')].some((b) => /Check-in/.test(b.textContent)), more: !!document.querySelector('#homePage details.vn-more') }));
+    check('D55: Today has no Check-in quick action and no empty "More for today"', !home.checkin && !home.more, home);
+    await tab(page, 'more');
+    const rows = await page.evaluate(() => [...document.querySelectorAll('#morePage .vn-set-t')].map((e) => e.textContent.trim()));
+    check('D55: Settings has no Reminders, Wearable or Classic app rows; Cardio replaces Cardio & recovery', !rows.some((t) => /Reminders|Wearable|Classic app|Cardio & recovery/.test(t)) && rows.includes('Cardio'), rows);
+    const pick = await page.evaluate(() => { showSessionSheet(); const t = document.querySelector('#modalRoot').innerText; document.getElementById('modalRoot').innerHTML = ''; return t; });
+    check('D55: the session picker does not offer Floorball', !/Floorball/.test(pick));
+    await tab(page, 'weight'); await page.evaluate(() => NXT.setView('body')); await page.waitForTimeout(900);
+    check('D55: Progress › Body has no waist section', await page.evaluate(() => !/Log waist|All readings/.test(document.querySelector('#weightPage').innerText)));
+    check('D55: diagnosis never asks for waist or check-ins', await page.evaluate(() => !/waist|check-in/i.test(NXT.diagnose().headline)));
+    await page.evaluate(() => NXT.setView('overview'));
+    await tab(page, 'home');
+    const caps = await page.evaluate(() => [...document.querySelectorAll('#homePage .st-cta, #homePage .st-qa, #homePage .st-chip, #homePage .st-why')].filter((e) => e.offsetParent).map((e) => { const c = getComputedStyle(e); return { r: parseFloat(c.borderTopLeftRadius), h: e.getBoundingClientRect().height, f: c.fontFamily.split(',')[0].replace(/"/g, '') }; }));
+    check('D56: every Today button is a capsule (radius ≥ half its height) in Geist', caps.length > 0 && caps.every((b) => b.r >= b.h / 2 - 1 && b.f === 'Geist'), caps);
     check('no page errors', errors.length === 0, errors);
     await ctx.close();
   }

@@ -218,16 +218,16 @@ const NXP = (() => {
       <nav class="vn-pad st-quick" aria-label="Quick actions">
         <button type="button" class="st-qa" style="--c:var(--st-weight)" onclick="apx95OpenQuickWeight()"><span aria-hidden="true">+</span>Weight</button>
         ${state.dayType==='Zone2'?'':`<button type="button" class="st-qa" style="--c:var(--st-cardio)" onclick="showCardioSheet()"><span aria-hidden="true">+</span>Cardio</button>`}
-        <button type="button" class="st-qa" style="--c:var(--st-rest)" onclick="apx96OpenReadiness()"><span aria-hidden="true">+</span>Check-in</button>
+        ${N.features.checkin?`<button type="button" class="st-qa" style="--c:var(--st-rest)" onclick="apx96OpenReadiness()"><span aria-hidden="true">+</span>Check-in</button>`:''}
       </nav>
 
-      <details class="vn-more vn-pad st-more">
+      ${(N.features.wearable||N.features.checkin||N.features.calories)?`<details class="vn-more vn-pad st-more">
         <summary>More for today</summary>
         <div class="vn-more-body">
-          ${recoveryHomeCard()}
+          ${N.features.wearable||N.features.checkin?recoveryHomeCard():''}
           ${N.features&&N.features.calories?`<button type="button" class="nxp-home-kcal" onclick="NXT.openCalories()"><span><small>Calorie guide</small><strong>${cal?formatNumber(cal)+' <em>kcal</em>':'Set target'}</strong></span><span>${cal?'Edit':'Set up'}</span></button>${N.adherenceHTML()}`:''}
         </div>
-      </details>
+      </details>`:''}
     </div>`;
   }
   /* ---- Today tiles (Strata direction, D19) --------------------------------
@@ -537,11 +537,11 @@ const NXP = (() => {
   }
   function trainRest() {
     const w=cardioWeekLine();
-    trainIdle('nxp-train-rest',`<section class="nxp-train-idle-copy"><h2>No lifting session due</h2><p>Recovery is part of the plan. Nothing needs to be made up today.</p></section>${cardioMeterHTML(w)}<div class="nxp-train-idle-actions">${button('Quick recovery check-in','apx96OpenReadiness()')}${idleSecondary('Log cardio','showCardioSheet()')}</div>${upNextHTML()}${addOnSection()}`);
+    trainIdle('nxp-train-rest',`<section class="nxp-train-idle-copy"><h2>No lifting session due</h2><p>Recovery is part of the plan. Nothing needs to be made up today.</p></section>${cardioMeterHTML(w)}<div class="nxp-train-idle-actions">${N.features.checkin?button('Quick recovery check-in','apx96OpenReadiness()')+idleSecondary('Log cardio','showCardioSheet()'):button('Log cardio','showCardioSheet()')}</div>${upNextHTML()}${addOnSection()}`);
   }
   function trainZone2() {
     const w=cardioWeekLine();
-    trainIdle('nxp-train-zone2',`<section class="nxp-train-idle-copy"><p>Zone 2 — a conversational effort. No lifting session is due.</p></section><div class="nxp-train-pace"><span class="nxp-caption">This week</span><strong>${w.mins} <em>/ ${w.target} min</em></strong><div class="n99-session-rail" aria-hidden="true"><span style="width:${w.pct}%"></span></div></div><div class="nxp-train-idle-actions">${button('Log cardio','showCardioSheet()')}${idleSecondary('Check-in','apx96OpenReadiness()')}</div>${upNextHTML()}${addOnSection()}`);
+    trainIdle('nxp-train-zone2',`<section class="nxp-train-idle-copy"><p>Zone 2 — a conversational effort. No lifting session is due.</p></section><div class="nxp-train-pace"><span class="nxp-caption">This week</span><strong>${w.mins} <em>/ ${w.target} min</em></strong><div class="n99-session-rail" aria-hidden="true"><span style="width:${w.pct}%"></span></div></div><div class="nxp-train-idle-actions">${button('Log cardio','showCardioSheet()')}${N.features.checkin?idleSecondary('Check-in','apx96OpenReadiness()'):''}</div>${upNextHTML()}${addOnSection()}`);
   }
   function trainFloorball() {
     const recent=(state.floorball||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,3);
@@ -931,7 +931,7 @@ const NXP = (() => {
       </div>
       <div class="st-mgroup">
         ${row('undo','Undo last set','','closeModal();apx96UndoLastSet()')}
-        ${row('gear','Session options','Shorter session, notes, check-in','NXP.sessionMenu()')}
+        ${row('gear','Session options',N.features.checkin?'Shorter session, notes, check-in':'Shorter session and notes','NXP.sessionMenu()')}
       </div>
       ${addOnEligible()?`<div class="st-mgroup st-madd">${addOnSection()}</div>`:''}
     </div>`);
@@ -1270,7 +1270,7 @@ const NXP = (() => {
     try{base.logSet();}finally{ui.confirmFrom=null;}
     if(state.logs.length===before&&d)ui.drafts.set(key,d);
   }
-  function sessionMenu() {N.modal('Session options',row('Session',N.label(state.dayType),'showSessionSheet()')+row('Gym',state.gym,'closeModal();cycleGym()')+row('Equipment note',v88NoteFor(state.exercise)?'Saved':'Add note','NXP.equipmentNote()')+row('Recovery','Check-in','apx96OpenReadiness()')+row('Shorter session','First 3 exercises','NXT.shorter()')+row('Full session','Restore queue','NXT.fullSession()')+button('Finish workout','NXT.finish()',true));}
+  function sessionMenu() {N.modal('Session options',row('Session',N.label(state.dayType),'showSessionSheet()')+row('Gym',state.gym,'closeModal();cycleGym()')+row('Equipment note',v88NoteFor(state.exercise)?'Saved':'Add note','NXP.equipmentNote()')+(N.features.checkin?row('Recovery','Check-in','apx96OpenReadiness()'):'')+row('Shorter session','First 3 exercises','NXT.shorter()')+row('Full session','Restore queue','NXT.fullSession()')+button('Finish workout','NXT.finish()',true));}
   function equipmentNote() {v88OpenNoteModal(state.exercise);}
   /* Weight highlights (D28): facts read straight from the weigh-ins, shown only
      when true — a new lowest reading, and weeks of falling averages in a row.
@@ -1571,7 +1571,9 @@ const NXP = (() => {
   }
   function bodyView(waist,scans) {
     const waistRows=waist.slice().reverse().map(r=>`<button type="button" class="n99-list-row nxp-progress-body-row" onclick="NXT.openWaist('${r.date}')"><span>${esc(N.shortDate(r.date))}</span><b>${r.cm.toFixed(1)} cm</b><span>Edit ›</span></button>`).join('');
-    return `<section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">All readings</h2>${waist.length?waistRows:`<p class="nxp-progress-body-empty">No waist measurements yet. Optional, about once a week, with the same tape position.</p>`}${row('Log waist','+',"NXT.openWaist()",'Same position and similar conditions')}</section><section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Evo scans</h2>${bodyScanAnalysis(scans)}${row('New scan','Add','NXP.openBodyCapture()','Review and save in Settings')}${row('Import from Strata','Paste','NXT.importScans()','Bring in scans exported from Strata as CSV')}</section><p class="n99-small nxp-progress-body-note">Body fat and muscle figures only appear from saved Evo scans. They are not calculated from waist or scale weight.</p>`;
+    /* D55: the waist section shows only while the waist feature is on. */
+    const waistSec=`<section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">All readings</h2>${waist.length?waistRows:`<p class="nxp-progress-body-empty">No waist measurements yet. Optional, about once a week, with the same tape position.</p>`}${row('Log waist','+',"NXT.openWaist()",'Same position and similar conditions')}</section>`;
+    return `${N.features.waist?waistSec:''}<section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Evo scans</h2>${bodyScanAnalysis(scans)}${row('New scan','Add','NXP.openBodyCapture()','Review and save in Settings')}${row('Import from Strata','Paste','NXT.importScans()','Bring in scans exported from Strata as CSV')}</section><p class="n99-small nxp-progress-body-note">Body fat and muscle figures only appear from saved Evo scans. They are not calculated from waist or scale weight.</p>`;
   }
   /* Opens the Settings capture form. It does not paint that form here, and
      it does not send the user to the analysis board to go looking. */
@@ -1612,6 +1614,7 @@ const NXP = (() => {
     'Goals & calories':['#8B5CF6','<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1" fill="currentColor"/>'],
     'Training':['#7C6CF2','<path d="M6.5 8v8M17.5 8v8M3.5 10v4M20.5 10v4M6.5 12h11"/>'],
     'Cardio & recovery':['#D37732','<path d="M3.5 12.5h3.6l2.1-4.8 3.6 9.3 2.4-6.2 1.3 1.7h4"/>'],
+    'Cardio':['#D37732','<path d="M3.5 12.5h3.6l2.1-4.8 3.6 9.3 2.4-6.2 1.3 1.7h4"/>'],
     'Your name':['#9B7BFF','<circle cx="12" cy="9" r="3.6"/><path d="M5.5 19.2c1.3-3.3 3.8-4.9 6.5-4.9s5.2 1.6 6.5 4.9"/>'],
     'Appearance':['#6366F1','<circle cx="12" cy="12" r="7.6"/><path d="M12 4.4v15.2" /><path d="M12 4.4a7.6 7.6 0 0 1 0 15.2z" fill="currentColor" stroke="none"/>'],
     'Reminders':['#E8A93A','<path d="M7 16.5V11a5 5 0 0 1 10 0v5.5l1.5 1.5h-13z"/><path d="M10.3 20.2a1.9 1.9 0 0 0 3.4 0"/>'],
@@ -1691,7 +1694,7 @@ const NXP = (() => {
   function setRoutineGym(g){ui.routineGym=g;trainingView();}
   function pickDay(d){
     const cur=(settings.weeklyPlan||{})[d];
-    N.modal(DAY_LONG[d],`<div class="st-mgroup">${N.typeNames().map(ty=>`<button type="button" class="st-mrow st-pick${ty===cur?' is-on':''}" onclick="NXP.setDay(${d},'${ty}')"><span class="st-mrow-l"><b>${esc(N.label(ty))}</b>${NON_LIFT.includes(ty)?'':`<small>${N.templateFor(ty,routineGym()).length} exercises</small>`}</span><i aria-hidden="true">${ty===cur?'✓':''}</i></button>`).join('')}</div>`);
+    N.modal(DAY_LONG[d],`<div class="st-mgroup">${N.pickTypes(cur).map(ty=>`<button type="button" class="st-mrow st-pick${ty===cur?' is-on':''}" onclick="NXP.setDay(${d},'${ty}')"><span class="st-mrow-l"><b>${esc(N.label(ty))}</b>${NON_LIFT.includes(ty)?'':`<small>${N.templateFor(ty,routineGym()).length} exercises</small>`}</span><i aria-hidden="true">${ty===cur?'✓':''}</i></button>`).join('')}</div>`);
   }
   function setDay(d,ty){
     if(!N.typeNames().includes(ty))return;
@@ -1868,20 +1871,20 @@ const NXP = (() => {
       ${setGroup('Plan',
         (N.features&&N.features.calories?setRow('Goals & calories',c.calories?formatNumber(c.calories)+' kcal':'Set up',"NXT.more('goals')",c.targetConfirmed?goalLow()+'–'+goalHigh()+' kg range':'Calorie guide and optional goal range'):setRow('Goals',c.targetConfirmed?goalLow()+'–'+goalHigh()+' kg':'Set up',"NXT.more('goals')",settings.cutStart?'Goal range and cut start · from '+N.shortDate(settings.cutStart):'Optional goal range and cut start'))
         +setRow('Training',lifts+(lifts===1?' lifting day':' lifting days'),"NXT.more('training')",'Weekly plan, saved workouts and gyms')
-        +setRow('Cardio & recovery',(Number(settings.zone2WeeklyTarget)||90)+' min / week',"NXT.more('coach')",'Weekly minutes and recovery check-ins'))}
+        +setRow(N.features.checkin?'Cardio & recovery':'Cardio',(Number(settings.zone2WeeklyTarget)||90)+' min / week',"NXT.more('coach')",N.features.checkin?'Weekly minutes and recovery check-ins':'Weekly minutes'))}
       ${setGroup('Preferences',
         setRow('Your name',userName()||'Not set',"NXP.nameSheet()",'Used in the greeting on Today')
         +setRow('Appearance',look,"NXT.more('appearance')",'Text size and motion')
-        +setRow('Reminders',state.notifs?.enabled?'On':'Off',"NXT.more('notifications')",'Weigh-in, cardio and backup prompts'))}
+        +(N.features.reminders?setRow('Reminders',state.notifs?.enabled?'On':'Off',"NXT.more('notifications')",'Weigh-in, cardio and backup prompts'):''))}
       ${setGroup('Body',
         setRow('Body & scans',waist?waist+(waist===1?' waist entry':' waist entries'):'None yet',"NXT.more('body')",'Evo scans and measurements'))}
       ${setGroup('Data',
         setRow('Cloud & sync',cloud.word,"NXT.more('data')",cloud.sub,cloud.tone)
         +(()=>{const st=storageStatus();return st?setRow('Storage',st.used,"NXT.more('data')",st.sub,st.tone):'';})()
-        +setRow('Wearable',wearableConnectionLabel(),'NXP.openWearableConnection()','Connection stays off until a secure backend exists'))}
+        +(N.features.wearable?setRow('Wearable',wearableConnectionLabel(),'NXP.openWearableConnection()','Connection stays off until a secure backend exists'):''))}
       ${setGroup('About',
         setRow('App & install','',"NXT.more('app')",'Install, build version and safe reset')
-        +setRow('Classic app','Backup',"location.href='classic/'",'The previous design, using the same data'))}
+        +(N.features.classic?setRow('Classic app','Backup',"location.href='classic/'",'The previous design, using the same data'):''))}
       ${cloudUser?`<div class="vn-set-account-out"><button type="button" class="vn-set-text" onclick="cloudSignOut()">Sign out</button></div>`:''}
       <p class="vn-set-foot">NXTFRM · your next form</p>`,'vn-settings');
   }

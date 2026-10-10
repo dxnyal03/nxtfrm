@@ -1,5 +1,5 @@
 {
-  "when": "2026-10-10T18:34:13.360Z",
+  "when": "2026-10-10T18:46:20.675Z",
   "failures": 0,
   "results": [
     {
@@ -136,7 +136,7 @@
     {
       "name": "calories hidden: Settings row reads Goals with the range, no kcal",
       "ok": true,
-      "detail": "Settings\nD\nDan\nLocal-only\nGym A · Stored on this device\nPlan\nGoals\nGoal range and cut start · from 12 Aug\n78–80 kg\nTraining\nWeekly plan, saved workouts and gyms\n3 lifting days\nCardio & recovery\nWeekly"
+      "detail": "Settings\nD\nDan\nLocal-only\nGym A · Stored on this device\nPlan\nGoals\nGoal range and cut start · from 12 Aug\n78–80 kg\nTraining\nWeekly plan, saved workouts and gyms\n3 lifting days\nCardio\nWeekly minutes\n90"
     },
     {
       "name": "calories hidden: Goals page has goal range + cut start, no calorie guide",
@@ -195,8 +195,8 @@
       "ok": true,
       "detail": {
         "n": 4,
-        "minW": 47.03375244140625,
-        "minH": 43.340087890625,
+        "minW": 47.75,
+        "minH": 44,
         "clip": false,
         "sw": 320,
         "iw": 320

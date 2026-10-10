@@ -38,6 +38,9 @@ const NXT = (() => {
   const names = {FullA:"Full Body A",FullB:"Full Body B",FullC:"Full Body C",Push:"Push",Pull:"Pull",Pump:"Legs",Legs:"Legs",Zone2:"Easy cardio",Rest:"Rest",Floorball:"Floorball"};
   /* D33: one legs session. The plain "Legs" type is folded into Pump (shown as "Legs"); it stays in names only so old records still label. */
   const typeNames = () => Object.keys(names).filter(k=>k!=="Legs");
+  /* What the pickers offer. typeNames() stays the validation list, so a stored plan that
+     still holds a hidden type keeps saving. */
+  const pickTypes = (keep) => typeNames().filter(k=>k!=="Floorball"||(typeof FEATURES!=="undefined"&&FEATURES.floorball)||k===keep);
   const ui = {view:"overview", range:30, showGoal:false, showPost:false, showForecast:false, selected:null, draft:null, lastFocus:null};
   function cfg() {
     if(!settings.cutSupport || typeof settings.cutSupport!=="object" || Array.isArray(settings.cutSupport))settings.cutSupport={};
@@ -322,6 +325,10 @@ const NXT = (() => {
      (cfg().calories, adherence, tdeeHistory) is untouched and the maths is intact:
      flip the flag and everything returns. */
   const CALORIES_ENABLED=false;
+  /* D55 — features the owner does not use are switched off the same way: entry points
+     hidden, stored records and engine maths untouched, history still shows what exists.
+     Flip a flag to bring a feature back. */
+  const FEATURES={calories:CALORIES_ENABLED,floorball:false,wearable:false,waist:false,classic:false,reminders:false,checkin:false};
   const ADHERENCE_FACTORS = {yes:1, close:.95, no:.85, over:1.1};
   function adherenceIn(start,end) {
     const rows=[],map=cfg().adherence;
@@ -421,9 +428,9 @@ const NXT = (() => {
     const gap=()=>{
       if(!p.ok)return {what:"weigh-ins",need:Math.max(1,PLATEAU_MIN_READINGS-p.n)};
       if(CALORIES_ENABLED&&adhLogged<10)return {what:"adherence",need:10-adhLogged};
-      if(waistRows.length<2)return {what:"waist",need:Math.max(1,2-waistRows.length)};
+      if(FEATURES.waist&&waistRows.length<2)return {what:"waist",need:Math.max(1,2-waistRows.length)};
       if(CALORIES_ENABLED&&(hist.length<2&&!(hist.length>=1&&at.ok&&hist[0].date!==state.date)))return {what:"TDEE snapshots",need:Math.max(1,2-hist.length)};
-      if(lifts.length<2&&lowReady<5)return {what:"recovery check-ins",need:Math.max(1,5-lowReady)};
+      if(FEATURES.checkin&&lifts.length<2&&lowReady<5)return {what:"recovery check-ins",need:Math.max(1,5-lowReady)};
       return {what:"weigh-ins",need:7};
     };
     if(!p.plateau&&f.ok&&finite(f.slope)!==null&&f.slope<0) {
@@ -828,9 +835,9 @@ const NXT = (() => {
     maybeSnapshotTDEE(true);
     commit('Daily calorie target saved');
   }
-  function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any change to your plan stays your choice.</p><div class="n99-stack">${CALORIES_ENABLED?button('Review calorie guide','NXT.openCalories()',true):''}${button('Update recovery check-in','apx96OpenReadiness()',true)}${button('Done','closeModal()')}</div>`); }
+  function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any change to your plan stays your choice.</p><div class="n99-stack">${CALORIES_ENABLED?button('Review calorie guide','NXT.openCalories()',true):''}${FEATURES.checkin?button('Update recovery check-in','apx96OpenReadiness()',true):''}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,features:{calories:CALORIES_ENABLED},coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,features:FEATURES,pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
@@ -1458,7 +1465,7 @@ Object.assign(NXT, (()=>{
     if(!confirm(`Undo ${last.exercise} · ${last.weight} kg × ${last.reps}?`))return;
     state.logs=state.logs.filter(x=>x!==last);delete N.cfg().sessions[sessionKey()];state.exercise=last.exercise;N.commit('Last set undone');
   }
-  function sessionPicker() {N.modal('Choose today’s session',`<p>Your existing records and saved workout queues stay intact.</p><div class="n99-picker">${N.typeNames().map(t=>N.button(N.label(t),`NXT.chooseSession('${t}')`,state.dayType!==t)).join('')}</div>`);}
+  function sessionPicker() {N.modal('Choose today’s session',`<p>Your existing records and saved workout queues stay intact.</p><div class="n99-picker">${N.pickTypes(state.dayType).map(t=>N.button(N.label(t),`NXT.chooseSession('${t}')`,state.dayType!==t)).join('')}</div>`);}
   function chooseSession(type) {
     if(!N.typeNames().includes(type))return;
     settings.dayOverrides=settings.dayOverrides||{};settings.dayOverrides[state.date]=type;state.dayType=type;state.exercise=N.templateFor(type)[0]?.name||'';state.setNum=1;N.commit('Today’s session updated');
@@ -1492,7 +1499,7 @@ Object.assign(NXT, (()=>{
   function openDay(date) {
     const current=N.typeFor(date),dow=new Date(N.dateMs(date)).getUTCDay(),dn=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][dow];
     const logged=(state.logs||[]).some(r=>r.date===date);
-    N.modal(N.shortDate(date),`<p>${esc(N.label(current))}. Pick what this day should be.</p>${logged?'<p class="n99-small">This day already has logged sets, so it can’t be changed.</p>':`<div class="n99-picker">${N.typeNames().map(t=>N.button(N.label(t),`NXT.setDayType('${date}','${t}')`,t!==current)).join('')}</div><label class="n99-check"><input type="checkbox" id="n99-day-every"> Make every ${dn} this</label>`}${date===state.date?N.button('Choose a different session','showSessionSheet()',true):''}`);
+    N.modal(N.shortDate(date),`<p>${esc(N.label(current))}. Pick what this day should be.</p>${logged?'<p class="n99-small">This day already has logged sets, so it can’t be changed.</p>':`<div class="n99-picker">${N.pickTypes(current).map(t=>N.button(N.label(t),`NXT.setDayType('${date}','${t}')`,t!==current)).join('')}</div><label class="n99-check"><input type="checkbox" id="n99-day-every"> Make every ${dn} this</label>`}${date===state.date?N.button('Choose a different session','showSessionSheet()',true):''}`);
   }
   function setDayType(date,type) {
     if(!N.typeNames().includes(type))return;
@@ -1522,7 +1529,7 @@ Object.assign(NXT, (()=>{
     if(view==='hub') {
       document.getElementById('morePage').innerHTML=`<div class="n99">${N.heading('MAKE IT YOURS','Your setup.','<span class="n99-version">V99 PURPLE</span>')}${N.calorieCard()}<section class="n99-card n99-menu">${menuRow('Goals & calories','Your calorie guide and optional weight range','goals')}${menuRow('Training programme','Full Body A/B/C, saved routines and gym setup','training')}${menuRow('Cardio & recovery','Weekly minutes and quick check-ins','coach')}</section><div class="n99-section-label">APP & DATA</div><section class="n99-card n99-menu">${menuRow('Body & scans','Evo scans and body measurements','body')}${menuRow('Reminders','Your existing weigh-in and activity prompts','notifications')}${menuRow('Data & sync','Backup, restore, exports and cloud','data')}${menuRow('App & install','Version, installation and safe reset','app','V99 PURPLE')}</section><p class="n99-small">NXTFRM · workouts, progress and a clear calorie guide. No fixed programme deadline.</p></div>`;return;
     }
-    let content='',title={goals:N.features&&N.features.calories?'Goals & calories':'Goals',training:'Training programme',coach:'Cardio & recovery'}[view];
+    let content='',title={goals:N.features&&N.features.calories?'Goals & calories':'Goals',training:'Training programme',coach:N.features.checkin?'Cardio & recovery':'Cardio'}[view];
     if(view==='goals')content=goalsHTML();
     else if(view==='training')content=programmeHTML();
     else if(view==='coach')content=coachHTML();
@@ -1535,7 +1542,7 @@ Object.assign(NXT, (()=>{
   }
   function goalsHTML() {
     const c=N.cfg();
-    return N.calorieCard()+N.card('Your goal range',`<p>Optional. Set a checkpoint you can review alongside waist and strength. There is no deadline or automatic push to keep losing weight.</p>${!c.targetConfirmed?'<p class="n99-small">The values below come from your previous app settings. Save to confirm or change them.</p>':''}<form onsubmit="event.preventDefault();NXT.saveGoal()"><div class="n99-form-grid"><label>Lower weight · kg<input id="n99-goal-low" type="number" min="40" max="300" step="0.1" required value="${goalLow()}"></label><label>Upper weight · kg<input id="n99-goal-high" type="number" min="40" max="300" step="0.1" required value="${goalHigh()}"></label></div><button type="submit" class="n99-button">Save goal range</button></form>`)+N.card('Cut start',`<p>When your cut began and your weight that day. Used for the “down so far” line and the cut journey.</p><form onsubmit="event.preventDefault();NXT.saveCutStart()"><label>Start date<input id="n99-cut-date" type="date" max="${state.date}" value="${esc(settings.cutStart||'')}"></label><label>Start weight · kg<input id="n99-cut-weight" type="number" min="30" max="300" step="0.1" inputmode="decimal" value="${Number(settings.startWeight)||''}"></label><button type="submit" class="n99-button">Save cut start</button></form>`)+N.card('How your advice works',`<p>Weight averages, repeated strength comparisons and dated check-ins inform your review. Recommendations explain their evidence; nothing in your plan changes automatically.</p>${N.button('Open weekly review','NXT.openReview()',true)}`);
+    return N.calorieCard()+N.card('Your goal range',`<p>Optional. Set a checkpoint you can review alongside ${N.features.waist?'waist and strength':'your strength and scans'}. There is no deadline or automatic push to keep losing weight.</p>${!c.targetConfirmed?'<p class="n99-small">The values below come from your previous app settings. Save to confirm or change them.</p>':''}<form onsubmit="event.preventDefault();NXT.saveGoal()"><div class="n99-form-grid"><label>Lower weight · kg<input id="n99-goal-low" type="number" min="40" max="300" step="0.1" required value="${goalLow()}"></label><label>Upper weight · kg<input id="n99-goal-high" type="number" min="40" max="300" step="0.1" required value="${goalHigh()}"></label></div><button type="submit" class="n99-button">Save goal range</button></form>`)+N.card('Cut start',`<p>When your cut began and your weight that day. Used for the “down so far” line and the cut journey.</p><form onsubmit="event.preventDefault();NXT.saveCutStart()"><label>Start date<input id="n99-cut-date" type="date" max="${state.date}" value="${esc(settings.cutStart||'')}"></label><label>Start weight · kg<input id="n99-cut-weight" type="number" min="30" max="300" step="0.1" inputmode="decimal" value="${Number(settings.startWeight)||''}"></label><button type="submit" class="n99-button">Save cut start</button></form>`)+N.card('How your advice works',`<p>Weight averages, repeated strength comparisons and dated check-ins inform your review. Recommendations explain their evidence; nothing in your plan changes automatically.</p>${N.button('Open weekly review','NXT.openReview()',true)}`);
   }
   /* Cut start (D31): the day the cut began and the weight that day. Display and
      "down so far" only; no trend, forecast or calorie calculation reads it. */
@@ -1552,7 +1559,7 @@ Object.assign(NXT, (()=>{
     TARGET_LOW=lo;TARGET_HIGH=hi;settings.targetLow=lo;settings.targetHigh=hi;settings.goalLow=lo;settings.goalHigh=hi;N.cfg().targetConfirmed=true;N.commit('Goal range saved');
   }
   function programmeHTML() {
-    return N.card('Your weekly plan',`<p>Three full-body sessions, easy cardio between them, and a rest day. All routines remain editable.</p><form onsubmit="event.preventDefault();NXT.saveWeek()"><div class="n99-week-editor">${[1,2,3,4,5,6,0].map(d=>`<label>${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d]}<select id="n99-day-${d}">${N.typeNames().map(t=>`<option value="${t}" ${settings.weeklyPlan[d]===t?'selected':''}>${N.label(t)}</option>`).join('')}</select></label>`).join('')}</div><button type="submit" class="n99-button">Save weekly plan</button></form><p class="n99-small">Tap any day on Home to change what it is.</p>`)+N.card('Saved workouts',`<p>Edits apply to future sessions at the selected gym. Logged history and current workout queues are preserved.</p><button class="n99-chip" onclick="cycleGym()">${esc(state.gym)} · switch gym</button><div class="n99-stack">${['FullA','FullB','FullC'].map(t=>N.button(`${N.label(t)} · ${N.templateFor(t).length} exercises`,`NXT.editTemplate('${t}')`,true)).join('')}</div><details><summary>Other saved routines</summary><div class="n99-stack">${['Push','Pull','Pump','Legs'].map(t=>N.button(N.label(t),`NXT.editTemplate('${t}')`,true)).join('')}</div></details>`)+`<details class="n99-card"><summary>Gym names & equipment</summary>${gymSettingsHTML()}</details>`+N.card('Programme defaults',`<p>Restore the A/B/C weekly rhythm or return to the weekly plan saved before this upgrade.</p><div class="n99-stack">${N.button('Use A/B/C weekly rhythm','NXT.restoreWeek(false)',true)}${N.button('Use my previous weekly plan','NXT.restoreWeek(true)',true)}</div>`);
+    return N.card('Your weekly plan',`<p>Three full-body sessions, easy cardio between them, and a rest day. All routines remain editable.</p><form onsubmit="event.preventDefault();NXT.saveWeek()"><div class="n99-week-editor">${[1,2,3,4,5,6,0].map(d=>`<label>${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d]}<select id="n99-day-${d}">${N.pickTypes(settings.weeklyPlan[d]).map(t=>`<option value="${t}" ${settings.weeklyPlan[d]===t?'selected':''}>${N.label(t)}</option>`).join('')}</select></label>`).join('')}</div><button type="submit" class="n99-button">Save weekly plan</button></form><p class="n99-small">Tap any day on Home to change what it is.</p>`)+N.card('Saved workouts',`<p>Edits apply to future sessions at the selected gym. Logged history and current workout queues are preserved.</p><button class="n99-chip" onclick="cycleGym()">${esc(state.gym)} · switch gym</button><div class="n99-stack">${['FullA','FullB','FullC'].map(t=>N.button(`${N.label(t)} · ${N.templateFor(t).length} exercises`,`NXT.editTemplate('${t}')`,true)).join('')}</div><details><summary>Other saved routines</summary><div class="n99-stack">${['Push','Pull','Pump','Legs'].map(t=>N.button(N.label(t),`NXT.editTemplate('${t}')`,true)).join('')}</div></details>`)+`<details class="n99-card"><summary>Gym names & equipment</summary>${gymSettingsHTML()}</details>`+N.card('Programme defaults',`<p>Restore the A/B/C weekly rhythm or return to the weekly plan saved before this upgrade.</p><div class="n99-stack">${N.button('Use A/B/C weekly rhythm','NXT.restoreWeek(false)',true)}${N.button('Use my previous weekly plan','NXT.restoreWeek(true)',true)}</div>`);
   }
   function saveWeek() {
     const plan={};for(let i=0;i<7;i++){const t=val('n99-day-'+i);if(!N.typeNames().includes(t))return toast('Choose a session for every day.');plan[i]=t;}
@@ -1601,7 +1608,7 @@ Object.assign(NXT, (()=>{
   }
   function coachHTML() {
     const target=Number(settings.zone2WeeklyTarget)||90;
-    return N.card('Weekly cardio target',`<p>A minutes goal, not a calorie-burn score. Start with what you can recover from and review before increasing it.</p><form onsubmit="event.preventDefault();NXT.saveCardioGoal()"><label>Minutes per week<input id="n99-card-goal" type="number" min="30" max="600" step="5" inputmode="numeric" required value="${target}"></label><button type="submit" class="n99-button">Save weekly target</button></form>`)+N.card('Recovery check-ins',`<p>Sleep, energy and soreness are optional. An old check-in is never presented as today’s readiness.</p>${N.button('Update today','apx96OpenReadiness()',true)}<div class="n99-measurements">${Object.values(N.cfg().recovery).filter(r=>r.date&&r.date<=state.date).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,7).map(r=>`<div class="n99-list-row"><span>${N.shortDate(r.date)}</span><small>Sleep ${r.sleep===''?'—':r.sleep+'h'} · energy ${r.energy||'—'}/5</small></div>`).join('')}</div>`)+N.reviewCard();
+    return N.card('Weekly cardio target',`<p>A minutes goal, not a calorie-burn score. Start with what you can recover from and review before increasing it.</p><form onsubmit="event.preventDefault();NXT.saveCardioGoal()"><label>Minutes per week<input id="n99-card-goal" type="number" min="30" max="600" step="5" inputmode="numeric" required value="${target}"></label><button type="submit" class="n99-button">Save weekly target</button></form>`)+(N.features.checkin?N.card('Recovery check-ins',`<p>Sleep, energy and soreness are optional. An old check-in is never presented as today’s readiness.</p>${N.button('Update today','apx96OpenReadiness()',true)}<div class="n99-measurements">${Object.values(N.cfg().recovery).filter(r=>r.date&&r.date<=state.date).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,7).map(r=>`<div class="n99-list-row"><span>${N.shortDate(r.date)}</span><small>Sleep ${r.sleep===''?'—':r.sleep+'h'} · energy ${r.energy||'—'}/5</small></div>`).join('')}</div>`):'')+N.reviewCard();
   }
   function saveCardioGoal() {const n=N.finite(val('n99-card-goal'));if(n===null||n<30||n>600)return toast('Choose a weekly target between 30 and 600 minutes.');settings.zone2WeeklyTarget=n;ZONE2_WEEKLY_TARGET=n;N.commit('Weekly cardio target saved');}
   function history() {
