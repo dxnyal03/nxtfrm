@@ -100,6 +100,10 @@ Related preserved WIP (`68fa5ab`) is cache/version plumbing only, not the consol
 
 Built as release 150 (PR #28, branch `phase5-calorie-proposal`, 43/43 checks) and **withdrawn unmerged** on 2026-10-10: the owner does not use the calorie system. D49 (release 151) hides that system app-wide behind `CALORIES_ENABLED=false`; data and maths stay. If calories ever return, flip the flag and revisit the branch.
 
+## IN REVIEW — Release 152: charts and Today pass (D50), on top of 151
+
+Branch `release-152-design` (includes release 151). Verification: `node tasks/vnext/verify-152.mjs` (20 checks, every expected value read from `NXT.*`) and `verify-151.mjs` (34). Release gate green at 152.
+
 ## IN REVIEW — Release 151: week rail outcomes, Cut range, calories off (D48, D49)
 
 Branch `release-151-week-rail`, PR open. Verification: `node tasks/vnext/verify-151.mjs` (34 checks: rail states against stored rows, header, 28-point sparkline, Lifts mini vs `NXT.bestSet()`, Cut range + D2 domain, calorie surfaces absent, gated verdicts, 320/375/390/393, reduced motion).

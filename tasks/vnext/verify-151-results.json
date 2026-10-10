@@ -1,5 +1,5 @@
 {
-  "when": "2026-10-10T14:28:18.311Z",
+  "when": "2026-10-10T17:15:00.209Z",
   "failures": 0,
   "results": [
     {
@@ -11,8 +11,8 @@
         "7 Oct · Full Body B · not logged",
         "8 Oct · Easy cardio · not logged",
         "9 Oct · Full Body C · not logged",
-        "10 Oct · Easy cardio · today",
-        "11 Oct · Rest · planned"
+        "10 Oct · Easy cardio · not logged",
+        "11 Oct · Rest · today"
       ]
     },
     {
@@ -29,7 +29,7 @@
       "detail": []
     },
     {
-      "name": "rail: Tuesday walk with 45 min logged is done (check badge, no dashed ring)",
+      "name": "rail: Tuesday walk with 45 min logged is done (check badge, no hollow ring)",
       "ok": true,
       "detail": {
         "a": "6 Oct · Easy cardio · done",
@@ -37,17 +37,18 @@
       }
     },
     {
-      "name": "rail: Thursday walk with an add-on lift is neither done nor \"not logged\"",
+      "name": "rail: the day with the fixture lift is never \"not logged\" (done on a lift day, add-on on a walk day)",
       "ok": true,
       "detail": {
-        "a": "8 Oct · Easy cardio · logged, plan not done",
-        "c": "vn-week-c is-k-walk"
+        "a": "9 Oct · Full Body C · done",
+        "c": "vn-week-c is-lift is-done is-k-full",
+        "t": "FullC"
       }
     },
     {
-      "name": "header: plan vs actual — lifts and cardio minutes",
+      "name": "header: plan vs actual — lifting days done of planned (cardio minutes live in the Cardio tile, D50)",
       "ok": true,
-      "detail": "This week · 1/3 lifts · 45/90 min"
+      "detail": "This week · 1 of 3 lifts done"
     },
     {
       "name": "header: stays on one line at 390 and \"Edit plan\" does not wrap",
@@ -60,7 +61,7 @@
     {
       "name": "lifts mini: last session's D20 outcome \"4/6 beat\" + session name and recency",
       "ok": true,
-      "detail": "Lifts 4 /6 beat Pull · 2 days ago"
+      "detail": "Lifts 4 /6 beat Pull · 2d ago"
     },
     {
       "name": "lifts mini: the count matches NXT.bestSet() applied per exercise",
@@ -71,10 +72,11 @@
       }
     },
     {
-      "name": "decision sparkline: 28 points — the four-week window of the rate beside it",
+      "name": "decision chart: one trend point per day with a trend value in the last 28 days",
       "ok": true,
       "detail": {
-        "points": 28
+        "got": 27,
+        "want": 27
       }
     },
     {
@@ -97,8 +99,8 @@
       "ok": true,
       "detail": {
         "range": "cut",
-        "first": "2026-08-11",
-        "start": "2026-08-11",
+        "first": "2026-08-12",
+        "start": "2026-08-12",
         "sub": "Since your cut started",
         "startMark": true,
         "active": "Cut"
@@ -110,8 +112,8 @@
       "detail": {
         "low": 80,
         "high": 88,
-        "min": 81.9,
-        "max": 85.90271790192814,
+        "min": 81.8,
+        "max": 85.87090237990145,
         "goalLow": 78
       }
     },
@@ -135,7 +137,7 @@
     {
       "name": "calories hidden: Settings row reads Goals with the range, no kcal",
       "ok": true,
-      "detail": "Settings\nLocal-only\n\nGym A · Stored on this device\n\nPlan\nGoals\nGoal range and cut start · from 11 Aug\n78–80 kg\nTraining\nWeekly plan, saved workouts and gyms\n3 lifting days\nCardio & recovery\nWeekly min"
+      "detail": "Settings\nLocal-only\n\nGym A · Stored on this device\n\nPlan\nGoals\nGoal range and cut start · from 12 Aug\n78–80 kg\nTraining\nWeekly plan, saved workouts and gyms\n3 lifting days\nCardio & recovery\nWeekly min"
     },
     {
       "name": "calories hidden: Goals page has goal range + cut start, no calorie guide",

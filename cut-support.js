@@ -1146,6 +1146,19 @@ Object.assign(NXT, (()=>{
     /* All range: the first weigh-in is marked so the whole journey reads at a glance.
        Presentation only: the point is one the chart already plots. */
     const first=points[0],startMark=((!N.ui.range||N.ui.range==='cut')&&points.length>=2&&first)?`<g pointer-events="none"><circle cx="${px(first.x)}" cy="${px(first.y)}" r="5" fill="none" stroke="${CHART.ink}" stroke-width="1.6"/><text x="${px(Math.min(first.x+8,W-right-60))}" y="${px(Math.max(first.y-14,top+10))}" fill="${CHART.axisText}" font-size="11">Start ${first.weight.toFixed(1)} kg</text></g>`:'';
+    /* D50 — the range read: what this window says without scrubbing. Trend change from the
+       first to the last trend value plotted, the lowest morning reading, and how many of the
+       window's days were weighed. Descriptive only: no rate, no new statistic. */
+    const trPts=points.filter(q=>q.avg!==null);
+    const spanDays=Math.round((N.dateMs(points.at(-1).date)-N.dateMs(points[0].date))/864e5)+1;
+    const lowPt=points.reduce((m,q)=>q.weight<m.weight?q:m,points[0]);
+    const tChange=trPts.length>=2?trPts.at(-1).avg-trPts[0].avg:null;
+    const rangeRead=`<div class="st-rread" role="group" aria-label="This range">
+      <div><small>Trend change</small><b class="vn-num">${tChange===null?'—':(tChange>0?'+':tChange<0?'−':'')+Math.abs(tChange).toFixed(1)}<em>kg</em></b><span>${trPts.length>=2?'over '+(Math.round((N.dateMs(trPts.at(-1).date)-N.dateMs(trPts[0].date))/864e5))+' days':'building'}</span></div>
+      <div><small>Lowest morning</small><b class="vn-num">${lowPt.weight.toFixed(1)}<em>kg</em></b><span>${esc(N.shortDate(lowPt.date))}</span></div>
+      <div><small>Weighed</small><b class="vn-num">${points.length}<em>/${spanDays}</em></b><span>${Math.round(points.length/spanDays*100)}% of days</span></div>
+    </div>`;
+    const dense=points.length>90;
     const summary=`${points.length} readings, ${N.shortDate(points[0].date)} to ${N.shortDate(points.at(-1).date)}. Dotted steps mark each week’s morning average. The strip shows each reading against the trend: while you are cutting most land below it, because the trend averages the days before; several days above it in a row mean the drop is slowing.`
       +(forecast?' Projection is a model estimate, shown dashed — not a measurement.':'');
     return `<section class="vn-weight n99-chart" id="vn-weight">
@@ -1185,10 +1198,10 @@ Object.assign(NXT, (()=>{
             <linearGradient id="n99-chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".34"/><stop offset=".7" stop-color="${CHART.ink}" stop-opacity=".06"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity="0"/></linearGradient><filter id="st-glow" x="-10%" y="-40%" width="120%" height="180%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             <linearGradient id="n99-chart-cone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".10"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity=".02"/></linearGradient>
           </defs>
-          ${narrowTicks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}" pointer-events="none"/><text x="${left+2}" y="${t.y-5}" text-anchor="start" fill="${CHART.axisText}" font-size="11" pointer-events="none">${Number(t.value.toFixed(1))}</text>`).join('')}
+          ${narrowTicks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}" pointer-events="none"/><text x="${left+2}" y="${t.y-5}" text-anchor="start" fill="${CHART.axisText}" font-size="11" pointer-events="none">${Number(t.value.toFixed(1))}${t.value===Math.max(...narrowTicks.map(k=>k.value))?' kg':''}</text>`).join('')}
           <g clip-path="url(#vn-chart-clip)" pointer-events="none">
             ${today}${cone}${bandFill}${trendPaths}${forecastLine}${postSeries}
-            ${points.map(pt=>`<circle class="vn-raw-dot" cx="${pt.x}" cy="${pt.y}" r="2.8" fill="${CHART.raw}" fill-opacity=".85"/>`).join('')}
+            ${points.map(pt=>`<circle class="vn-raw-dot" cx="${pt.x}" cy="${pt.y}" r="${dense?1.7:2.8}" fill="${CHART.raw}" fill-opacity="${dense?.5:.85}"/>`).join('')}
             <line id="n99-chart-cursor" x1="${p.x}" x2="${p.x}" y1="${top}" y2="${baseline}" stroke="${CHART.cursor}" stroke-opacity=".38" stroke-dasharray="3 4"/>
             <circle id="st-chart-halo" class="st-halo" cx="${p.x}" cy="${p.y}" r="11" fill="${CHART.ink}"/>
             <circle id="n99-chart-active" cx="${p.x}" cy="${p.y}" r="${CHART.pointActive}" fill="${CHART.active}" stroke="${CHART.activeRing}" stroke-width="2"/>
@@ -1204,7 +1217,8 @@ Object.assign(NXT, (()=>{
         ${N.ui.showPost?'<span><i class="vn-key-post post"></i>Post-workout</span>':''}
         ${forecast?'<span><i class="vn-key-proj dash"></i>Projection</span>':''}
       </div>
-      <p class="vn-tiny vn-mt3" id="vn-csum">${esc(summary)}</p>
+      ${rangeRead}
+      <details class="st-csum-d"><summary>How to read this chart</summary><p class="vn-tiny" id="vn-csum">${esc(summary)}</p></details>
       <div class="vn-togs">${togPost}${togProj}</div>
       ${journeyHTML()}
       ${evidenceHTML(plateau,forecastRead)}

@@ -83,19 +83,22 @@ try {
     const fx = await fixture(page);
     await page.click('[data-tab="home"]'); await page.waitForTimeout(1200);
     const cells = await page.evaluate(() => [...document.querySelectorAll('#homePage .vn-week-c')].map((e) => ({ a: e.getAttribute('aria-label'), c: e.className })));
-    const tue = cells[1], thu = cells[3];
-    check('rail: Tuesday walk with 45 min logged is done (check badge, no dashed ring)', /Easy cardio · done/.test(tue.a) && /is-done/.test(tue.c) && !/is-missed/.test(tue.c), tue);
-    check('rail: Thursday walk with an add-on lift is neither done nor "not logged"', /logged, plan not done/.test(thu.a) && !/is-done|is-missed/.test(thu.c), thu);
+    const tue = cells[1];
+    check('rail: Tuesday walk with 45 min logged is done (check badge, no hollow ring)', /Easy cardio · done/.test(tue.a) && /is-done/.test(tue.c) && !/is-missed/.test(tue.c), tue);
+    /* The fixture lift lands two days before today. On a walk day that is an add-on (neither done nor
+       "not logged"); on a lift day it is done. Either way it must never read "not logged". */
+    const liftCell = await page.evaluate((d) => { const i = Math.round((NXT.dateMs(d) - NXT.dateMs(NXT.weekStart())) / 864e5); const e = document.querySelectorAll('#homePage .vn-week-c')[i]; return e ? { a: e.getAttribute('aria-label'), c: e.className, t: NXT.typeFor(d) } : null; }, fx.d);
+    check('rail: the day with the fixture lift is never "not logged" (done on a lift day, add-on on a walk day)', !liftCell || (!/is-missed/.test(liftCell.c) && (liftCell.t === 'Zone2' ? /logged, plan not done/.test(liftCell.a) : /done/.test(liftCell.a))), liftCell);
     const head = await page.evaluate(() => document.querySelector('#homePage .st-tweek-h span').textContent);
-    check('header: plan vs actual — lifts and cardio minutes', /This week · 1\/3 lifts · 45\/90 min/.test(head), head);
+    check('header: plan vs actual — lifting days done of planned (cardio minutes live in the Cardio tile, D50)', /This week · 1 of 3 lifts done/.test(head), head);
     const headBox = await page.evaluate(() => { const h = document.querySelector('#homePage .st-tweek-h'); const lines = (el) => { const r = document.createRange(); r.selectNodeContents(el); return r.getClientRects().length; }; return { lines: lines(h.querySelector('span')), btnLines: lines(h.querySelector('.vn-text')) }; });
     check('header: stays on one line at 390 and "Edit plan" does not wrap', headBox.lines <= 1 && headBox.btnLines <= 1, headBox);
     const lifts = await page.evaluate(() => document.querySelector('#homePage .st-minis .st-mini-lifts')?.innerText.replace(/\s+/g, ' '));
-    check(`lifts mini: last session's D20 outcome "${fx.up}/${fx.exercises} beat" + session name and recency`, lifts && new RegExp(`${fx.up} ?/${fx.exercises} beat`).test(lifts) && /2 days ago/.test(lifts), lifts);
+    check(`lifts mini: last session's D20 outcome "${fx.up}/${fx.exercises} beat" + session name and recency`, lifts && new RegExp(`${fx.up} ?/${fx.exercises} beat`).test(lifts) && /2d ago/.test(lifts), lifts);
     const engine = await page.evaluate(({ d, gym }) => { const rows = NXT.workRows().filter((r) => r.date === d && r.setType !== 'warmup'); const byEx = {}; rows.forEach((r) => { (byEx[r.exercise || r.name] = byEx[r.exercise || r.name] || []).push(r); }); let up = 0; Object.entries(byEx).forEach(([n, s]) => { const p = NXT.sessionRows(n, gym, d, 100).at(-1); if (!p) return; const a = NXT.bestSet(s), b = NXT.bestSet(p.sets); if (Number(a.weight) > Number(b.weight) || (Number(a.weight) === Number(b.weight) && Number(a.reps) > Number(b.reps))) up++; }); return up; }, fx);
     check('lifts mini: the count matches NXT.bestSet() applied per exercise', engine === fx.up, { engine, fixture: fx.up });
-    const spark = await page.evaluate(() => { const p = document.querySelector('.st-dec-spark path'); return p ? (p.getAttribute('d').match(/[ML]/g) || []).length : 0; });
-    check('decision sparkline: 28 points — the four-week window of the rate beside it', spark === 28, { points: spark });
+    const spark = await page.evaluate(() => { const p = document.querySelector('.st-dec-plot .st-dec-line'); const from = NXT.dateAdd(state.date, -27); const want = NXT.trend(NXT.weights()).filter((q) => q.date >= from && q.date <= state.date && q.avg !== null).length; return { got: p ? (p.getAttribute('d').match(/[ML]/g) || []).length : 0, want }; });
+    check('decision chart: one trend point per day with a trend value in the last 28 days', spark.got === spark.want && spark.want >= 20, spark);
     check('trend mini: shows rate or "Flat", never "-0.00/wk"', !/-0\.00\/wk/.test(await page.evaluate(() => document.querySelector('#homePage .st-minis .st-tile .st-meta').textContent)));
     /* Progress: Cut range */
     await page.evaluate(() => { NXT.ui.view = 'overview'; switchTab('weight'); }); await page.waitForTimeout(1200);

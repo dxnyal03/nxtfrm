@@ -2083,76 +2083,76 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
    foot (check = done, hollow ring = not logged), the session label beneath. No outer
    box, no dashed strokes, no dot rows. Status is a shape and a word (aria-label);
    hue only says which kind of day it is. Every transition has a reduced-motion path. */
-#homePage .st-tweek .vn-week.st-rail{display:flex !important;gap:4px !important;margin:0 !important;padding:0 !important;
+#homePage .st-tweek .vn-week[data-rail]{display:flex !important;gap:4px !important;margin:0 !important;padding:0 !important;
   background:none !important;box-shadow:none !important;-webkit-backdrop-filter:none;backdrop-filter:none;border-radius:0;position:relative;overflow:visible !important}
-#homePage .st-tweek .vn-week.st-rail::before,#homePage .st-tweek .vn-week.st-rail::after{display:none !important}
-#homePage .st-today .st-tweek .st-rail .vn-week-c{flex:1 1 0;min-width:0 !important;min-height:0 !important;padding:0 !important;margin:0;border-radius:0 !important;
+#homePage .st-tweek .vn-week[data-rail]::before,#homePage .st-tweek .vn-week[data-rail]::after{display:none !important}
+#homePage .st-today .st-tweek [data-rail] .vn-week-c{flex:1 1 0;min-width:0 !important;min-height:0 !important;padding:0 !important;margin:0;border-radius:0 !important;
   background:none !important;box-shadow:none !important;transform:none !important;display:flex;flex-direction:column;align-items:center;gap:7px;overflow:visible;position:relative}
-#homePage .st-tweek .st-rail .vn-week-c::after{display:none !important}
+#homePage .st-tweek [data-rail] .vn-week-c::after{display:none !important}
 /* capsule */
-#homePage .st-tweek .st-rail .st-cap{--k:#8b5cf6;position:relative;width:38px;height:56px;border-radius:19px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:9px 0 8px;
+#homePage .st-tweek [data-rail] .st-cap{--k:#8b5cf6;position:relative;width:38px;height:56px;border-radius:19px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:9px 0 8px;
   background:linear-gradient(170deg,rgba(255,255,255,.12),color-mix(in srgb,var(--k) 14%,transparent) 55%,color-mix(in srgb,var(--k) 20%,rgba(0,0,0,.25)));
   -webkit-backdrop-filter:blur(10px) saturate(1.2);backdrop-filter:blur(10px) saturate(1.2);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.26),inset 0 -8px 14px rgba(0,0,0,.18),inset 0 0 0 1px color-mix(in srgb,var(--k) 32%,rgba(255,255,255,.08)),0 6px 14px -8px rgba(0,0,0,.6)}
-#homePage .st-tweek .st-rail .vn-week-c.is-k-full .st-cap{--k:#8b5cf6}
-#homePage .st-tweek .st-rail .vn-week-c.is-k-push .st-cap{--k:#ff7b54}
-#homePage .st-tweek .st-rail .vn-week-c.is-k-pull .st-cap{--k:#4da3ff}
-#homePage .st-tweek .st-rail .vn-week-c.is-k-legs .st-cap{--k:#3ddc97}
-#homePage .st-tweek .st-rail .vn-week-c.is-k-walk .st-cap{--k:#2dd4d4}
-#homePage .st-tweek .st-rail .vn-week-c.is-k-fb .st-cap{--k:#f5c542}
-#homePage .st-tweek .st-rail .vn-week-c.is-k-rest .st-cap{--k:#8a879c;background:linear-gradient(170deg,rgba(255,255,255,.05),rgba(255,255,255,.015));box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.07)}
+#homePage .st-tweek [data-rail] .vn-week-c.is-k-full .st-cap{--k:#8b5cf6}
+#homePage .st-tweek [data-rail] .vn-week-c.is-k-push .st-cap{--k:#ff7b54}
+#homePage .st-tweek [data-rail] .vn-week-c.is-k-pull .st-cap{--k:#4da3ff}
+#homePage .st-tweek [data-rail] .vn-week-c.is-k-legs .st-cap{--k:#3ddc97}
+#homePage .st-tweek [data-rail] .vn-week-c.is-k-walk .st-cap{--k:#2dd4d4}
+#homePage .st-tweek [data-rail] .vn-week-c.is-k-fb .st-cap{--k:#f5c542}
+#homePage .st-tweek [data-rail] .vn-week-c.is-k-rest .st-cap{--k:#8a879c;background:linear-gradient(170deg,rgba(255,255,255,.05),rgba(255,255,255,.015));box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.07)}
 /* letter: overrides the ring recipe from earlier passes */
-#homePage .st-tweek .st-rail .vn-week-d{all:unset;display:block;font:700 13px/1 var(--st-font) !important;letter-spacing:.02em !important;color:color-mix(in srgb,var(--k) 55%,#fff) !important;font-variant-numeric:tabular-nums}
-#homePage .st-tweek .st-rail .vn-week-d::before{display:none}
+#homePage .st-tweek [data-rail] .vn-week-d{all:unset;display:block;font:700 13px/1 var(--st-font) !important;letter-spacing:.02em !important;color:color-mix(in srgb,var(--k) 55%,#fff) !important;font-variant-numeric:tabular-nums}
+#homePage .st-tweek [data-rail] .vn-week-d::before{display:none}
 /* the earlier ring passes style the letter span itself (today, rest); the capsule carries all of that now */
-#homePage .st-tweek .st-rail .vn-week-c .vn-week-d,#homePage .st-tweek .st-rail .vn-week-c.is-today .vn-week-d,#homePage .st-tweek .st-rail .vn-week-c.is-k-rest .vn-week-d,#homePage .st-tweek .st-rail .vn-week-c.is-missed .vn-week-d{
+#homePage .st-tweek [data-rail] .vn-week-c .vn-week-d,#homePage .st-tweek [data-rail] .vn-week-c.is-today .vn-week-d,#homePage .st-tweek [data-rail] .vn-week-c.is-k-rest .vn-week-d,#homePage .st-tweek [data-rail] .vn-week-c.is-missed .vn-week-d{
   width:auto !important;height:auto !important;background:none !important;box-shadow:none !important;transform:none !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;border-radius:0 !important;display:block !important}
-#homePage .st-tweek .st-rail .vn-week-c.is-k-rest .vn-week-d{color:var(--st-ink-4,#6b6880) !important}
+#homePage .st-tweek [data-rail] .vn-week-c.is-k-rest .vn-week-d{color:var(--st-ink-4,#6b6880) !important}
 /* status mark at the foot of the capsule */
-#homePage .st-tweek .st-rail .st-cap-s{display:grid;place-items:center;width:14px;height:14px;border-radius:50%}
-#homePage .st-tweek .st-rail .st-cap-s.is-done{background:var(--k);color:#0d0b16;box-shadow:0 0 0 1.5px rgba(13,11,22,.55),0 0 10px color-mix(in srgb,var(--k) 70%,transparent)}
-#homePage .st-tweek .st-rail .st-cap-s.is-done svg{width:10px;height:10px}
-#homePage .st-tweek .st-rail .st-cap-s.is-missed{width:9px;height:9px;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--k) 45%,rgba(255,255,255,.25))}
+#homePage .st-tweek [data-rail] .st-cap-s{display:grid;place-items:center;width:14px;height:14px;border-radius:50%}
+#homePage .st-tweek [data-rail] .st-cap-s.is-done{background:var(--k);color:#0d0b16;box-shadow:0 0 0 1.5px rgba(13,11,22,.55),0 0 10px color-mix(in srgb,var(--k) 70%,transparent)}
+#homePage .st-tweek [data-rail] .st-cap-s.is-done svg{width:10px;height:10px}
+#homePage .st-tweek [data-rail] .st-cap-s.is-missed{width:9px;height:9px;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--k) 45%,rgba(255,255,255,.25))}
 /* not logged: the capsule recedes; the label mutes */
-#homePage .st-tweek .st-rail .vn-week-c.is-missed .st-cap{background:linear-gradient(170deg,rgba(255,255,255,.045),rgba(255,255,255,.012));
+#homePage .st-tweek [data-rail] .vn-week-c.is-missed .st-cap{background:linear-gradient(170deg,rgba(255,255,255,.045),rgba(255,255,255,.012));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(255,255,255,.06)}
-#homePage .st-tweek .st-rail .vn-week-c.is-missed .vn-week-d{color:color-mix(in srgb,var(--k) 40%,var(--st-ink-4)) !important}
-#homePage .st-tweek .st-rail .vn-week-c.is-missed .vn-week-t{color:var(--st-ink-4,#6b6880) !important;font-weight:var(--fw-med,500) !important}
+#homePage .st-tweek [data-rail] .vn-week-c.is-missed .vn-week-d{color:color-mix(in srgb,var(--k) 40%,var(--st-ink-4)) !important}
+#homePage .st-tweek [data-rail] .vn-week-c.is-missed .vn-week-t{color:var(--st-ink-4,#6b6880) !important;font-weight:var(--fw-med,500) !important}
 /* done: the capsule fills with its hue */
-#homePage .st-tweek .st-rail .vn-week-c.is-done .st-cap{background:linear-gradient(170deg,color-mix(in srgb,var(--k) 46%,#fff 6%),color-mix(in srgb,var(--k) 34%,transparent) 60%,color-mix(in srgb,var(--k) 26%,rgba(0,0,0,.3)));
+#homePage .st-tweek [data-rail] .vn-week-c.is-done .st-cap{background:linear-gradient(170deg,color-mix(in srgb,var(--k) 46%,#fff 6%),color-mix(in srgb,var(--k) 34%,transparent) 60%,color-mix(in srgb,var(--k) 26%,rgba(0,0,0,.3)));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 0 0 1px color-mix(in srgb,var(--k) 60%,rgba(255,255,255,.2)),0 8px 18px -8px color-mix(in srgb,var(--k) 60%,transparent)}
-#homePage .st-tweek .st-rail .vn-week-c.is-done .vn-week-d{color:#fff !important}
+#homePage .st-tweek [data-rail] .vn-week-c.is-done .vn-week-d{color:#fff !important}
 /* future: quieter */
-#homePage .st-tweek .st-rail .vn-week-c.is-future .st-cap{opacity:.82}
+#homePage .st-tweek [data-rail] .vn-week-c.is-future .st-cap{opacity:.82}
 /* today: lit, in its own hue */
-#homePage .st-tweek .st-rail .vn-week-c.is-today .st-cap{background:linear-gradient(170deg,color-mix(in srgb,var(--k) 88%,#fff 10%),color-mix(in srgb,var(--k) 62%,#000 10%)) !important;
+#homePage .st-tweek [data-rail] .vn-week-c.is-today .st-cap{background:linear-gradient(170deg,color-mix(in srgb,var(--k) 88%,#fff 10%),color-mix(in srgb,var(--k) 62%,#000 10%)) !important;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 0 0 3px color-mix(in srgb,var(--k) 22%,transparent),0 10px 24px -6px color-mix(in srgb,var(--k) 70%,transparent),0 0 30px color-mix(in srgb,var(--k) 30%,transparent) !important}
-#homePage .st-tweek .st-rail .vn-week-c.is-today .vn-week-d{color:#fff !important}
-#homePage .st-tweek .st-rail .vn-week-c.is-today .st-cap-s.is-done{background:#fff;color:var(--k)}
+#homePage .st-tweek [data-rail] .vn-week-c.is-today .vn-week-d{color:#fff !important}
+#homePage .st-tweek [data-rail] .vn-week-c.is-today .st-cap-s.is-done{background:#fff;color:var(--k)}
 /* labels */
-#homePage .st-tweek .st-rail .vn-week-t,#homePage .st-tweek .st-rail .vn-week-c.is-today .vn-week-t,#homePage .st-tweek .st-rail .vn-week-c.is-lift .vn-week-t,#homePage .st-tweek .st-rail .vn-week-c:not(.is-lift) .vn-week-t,#homePage .st-tweek .st-rail .vn-week-c.is-k-rest .vn-week-t{
+#homePage .st-tweek [data-rail] .vn-week-t,#homePage .st-tweek [data-rail] .vn-week-c.is-today .vn-week-t,#homePage .st-tweek [data-rail] .vn-week-c.is-lift .vn-week-t,#homePage .st-tweek [data-rail] .vn-week-c:not(.is-lift) .vn-week-t,#homePage .st-tweek [data-rail] .vn-week-c.is-k-rest .vn-week-t{
   font:var(--fw-med,550) var(--fs-micro,11px)/1.1 var(--st-font) !important;letter-spacing:0 !important;white-space:nowrap;color:var(--st-ink-3) !important}
-#homePage .st-tweek .st-rail .vn-week-c.is-today .vn-week-t{color:#fff !important;font-weight:var(--fw-semi,600) !important}
-#homePage .st-tweek .st-rail .vn-week-c.is-done .vn-week-t{color:var(--st-ink) !important}
-#homePage .st-tweek .st-rail .vn-week-c.is-k-rest .vn-week-t{color:var(--st-ink-4,#6b6880) !important}
+#homePage .st-tweek [data-rail] .vn-week-c.is-today .vn-week-t{color:#fff !important;font-weight:var(--fw-semi,600) !important}
+#homePage .st-tweek [data-rail] .vn-week-c.is-done .vn-week-t{color:var(--st-ink) !important}
+#homePage .st-tweek [data-rail] .vn-week-c.is-k-rest .vn-week-t{color:var(--st-ink-4,#6b6880) !important}
 /* motion: capsules settle in on entering Today; done marks pop. Reduced motion: final state. */
 @media (prefers-reduced-motion:no-preference){
-  #homePage .st-tweek .st-rail .st-cap{transition:transform .25s var(--st-spring),box-shadow .25s ease}
-  #homePage .st-tweek .st-rail .vn-week-c:active .st-cap{transform:scale(.94)}
-  #homePage .st-enter .st-rail .st-cap-s.is-done{animation:st-cap-pop .5s var(--st-spring) both;animation-delay:calc(.35s + var(--i,0)*40ms)}
+  #homePage .st-tweek [data-rail] .st-cap{transition:transform .25s var(--st-spring),box-shadow .25s ease}
+  #homePage .st-tweek [data-rail] .vn-week-c:active .st-cap{transform:scale(.94)}
+  #homePage .st-enter [data-rail] .st-cap-s.is-done{animation:st-cap-pop .5s var(--st-spring) both;animation-delay:calc(.35s + var(--i,0)*40ms)}
 }
 @keyframes st-cap-pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
-:root[data-nxp-motion="reduced"] .st-rail .st-cap-s.is-done{animation:none !important;opacity:1 !important;transform:none !important}
-@media (prefers-reduced-transparency:reduce){#homePage .st-tweek .st-rail .st-cap{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(40,36,60,.92)}}
+:root[data-nxp-motion="reduced"] [data-rail] .st-cap-s.is-done{animation:none !important;opacity:1 !important;transform:none !important}
+@media (prefers-reduced-transparency:reduce){#homePage .st-tweek [data-rail] .st-cap{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(40,36,60,.92)}}
 @media (max-width:389px){
-  #homePage .st-tweek .vn-week.st-rail{gap:2px !important}
-  #homePage .st-tweek .st-rail .st-cap{width:36px}
+  #homePage .st-tweek .vn-week[data-rail]{gap:2px !important}
+  #homePage .st-tweek [data-rail] .st-cap{width:36px}
 }
 @media (max-width:359px){
-  #homePage .st-tweek .vn-week.st-rail{gap:2px !important}
-  #homePage .st-tweek .st-rail .st-cap{width:32px;height:50px;border-radius:16px;padding:8px 0 7px}
-  #homePage .st-tweek .st-rail .vn-week-d{font-size:12px !important}
-  #homePage .st-tweek .st-rail .vn-week-t{font-size:10px !important;letter-spacing:-.01em !important}
+  #homePage .st-tweek .vn-week[data-rail]{gap:2px !important}
+  #homePage .st-tweek [data-rail] .st-cap{width:32px;height:50px;border-radius:16px;padding:8px 0 7px}
+  #homePage .st-tweek [data-rail] .vn-week-d{font-size:12px !important}
+  #homePage .st-tweek [data-rail] .vn-week-t{font-size:10px !important;letter-spacing:-.01em !important}
 }
 #homePage .st-tweek-h span{min-width:0;line-height:1.3;font-variant-numeric:tabular-nums}
 #homePage .st-tweek-h{align-items:baseline;gap:10px}
@@ -2166,3 +2166,107 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
   #weightPage .st-range-row{gap:8px}
   #weightPage .st-range-row .vn-seg button{min-width:0 !important;padding:8px 2px !important;font-size:12px !important;letter-spacing:0 !important}
 }
+
+/* ==== Release 152 · charts and Today (D50) ======================================
+   Presentation only. Every figure comes from the engine. Every motion has a
+   reduced-motion path. Status stays a word first, shape second, hue third. */
+
+/* -- Today: Decision trend chip as a 28-day mini chart -- */
+.st-dec-ev.has-plot{grid-template-columns:1fr !important}
+.st-dec-chip.st-dec-chart{flex-direction:column;align-items:stretch;gap:8px;padding:12px 12px 8px}
+.st-dec-chart .st-dec-top{display:flex;align-items:center;gap:10px;min-width:0}
+.st-dec-range{margin-left:auto;font:550 12.5px var(--st-font);color:var(--st-ink-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.st-dec-plot{display:block;width:100%;height:auto;aspect-ratio:300/64;color:var(--e);overflow:visible}
+.st-dec-plot .st-dec-raw{fill:var(--st-ink-3);opacity:.45}
+.st-dec-plot .st-dec-dot{stroke:#14121f;stroke-width:1.5}
+.st-dec-chart .vn-chev,.st-dec-chart::after{display:none}
+@media (prefers-reduced-motion:no-preference){
+  .st-t-dec.st-play .st-dec-area{opacity:0;animation:st-fade .7s var(--st-out) 1.1s forwards}
+  .st-t-dec.st-play .st-dec-raw{opacity:0;animation:st-cm-fade .5s var(--st-out) .3s forwards}
+}
+@keyframes st-cm-fade{to{opacity:.45}}
+:root[data-nxp-motion="reduced"] .st-dec-area,:root[data-nxp-motion="reduced"] .st-dec-raw{animation:none !important}
+:root[data-nxp-motion="reduced"] .st-dec-area{opacity:1 !important}
+:root[data-nxp-motion="reduced"] .st-dec-raw{opacity:.45 !important}
+
+/* -- Today: minis never truncate; recap names wrap -- */
+.st-mini .st-meta{white-space:normal !important;overflow:visible !important;text-overflow:clip !important;line-height:1.25}
+.st-recap .st-rc-best li span{white-space:normal !important;overflow:visible !important;text-overflow:clip !important;line-height:1.3}
+
+/* -- Progress › Weight: range read -- */
+#weightPage .st-rread{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:14px 0 4px;border-radius:18px;
+  background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.015));box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(var(--st-hl),.07)}
+#weightPage .st-rread>div{display:flex;flex-direction:column;gap:3px;min-width:0;padding:12px 12px 11px}
+#weightPage .st-rread>div+div{border-left:1px solid rgba(var(--st-hl),.07)}
+#weightPage .st-rread small{font:550 11px/1.2 var(--st-font);color:var(--st-ink-3)}
+#weightPage .st-rread b{font:300 22px/1.05 var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+#weightPage .st-rread b em{font:500 11.5px var(--st-font);font-style:normal;color:var(--st-ink-3);margin-left:2px;letter-spacing:0}
+#weightPage .st-rread span{font:500 11.5px/1.2 var(--st-font);color:var(--st-ink-3)}
+@media (max-width:359px){#weightPage .st-rread>div{padding:10px 8px}#weightPage .st-rread b{font-size:19px}}
+#weightPage .st-csum-d{margin:10px 0 0}
+#weightPage .st-csum-d summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-height:44px;font:550 13px var(--st-font);color:var(--st-ink-3)}
+#weightPage .st-csum-d summary::-webkit-details-marker{display:none}
+#weightPage .st-csum-d summary::after{content:"›";font-size:16px;transition:transform .2s var(--st-out)}
+#weightPage .st-csum-d[open] summary::after{transform:rotate(90deg)}
+#weightPage .st-csum-d p{margin:0 0 6px}
+
+/* -- Progress › Performance: instrument rows -- */
+#weightPage .st-perf{grid-template-columns:minmax(0,1fr) 112px !important;column-gap:14px;align-items:center !important}
+#weightPage .st-perf-line{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin-top:6px}
+#weightPage .st-perf-line .st-perf-best{margin:0}
+#weightPage .st-perf-pill{flex:0 0 auto;gap:6px !important;padding:3px 9px 3px 8px;border-radius:999px;font:600 11.5px/1.3 var(--st-font) !important;
+  background:rgba(var(--st-hl),.06);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.09);white-space:nowrap}
+#weightPage .st-perf-pill i{width:7px !important;height:7px !important}
+#weightPage .st-perf-pill b{font:inherit;color:var(--st-ink)}
+#weightPage .st-perf-pill.is-improving,#weightPage .st-perf-pill.is-holding{background:color-mix(in srgb,var(--st-accent) 16%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--st-accent-lift) 30%,transparent)}
+#weightPage .st-perf-pill.is-review{background:color-mix(in srgb,#B8842A 18%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,#D9A15B 35%,transparent)}
+#weightPage .st-perf-best{margin:6px 0 0;font:300 24px/1 var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink);font-variant-numeric:tabular-nums}
+#weightPage .st-perf-best small{font:500 12px var(--st-font);color:var(--st-ink-3);margin:0 3px 0 2px;letter-spacing:0}
+#weightPage .st-perf .vn-perf-meta{margin-top:6px}
+#weightPage .st-perf .vn-perf-read{margin-top:4px}
+#weightPage .st-perf .vn-perf-plot{width:112px;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+#weightPage .st-perf .vn-perf-spark{height:46px}
+#weightPage .vn-perf-area{stroke:none}
+#weightPage .vn-perf-spark{color:var(--st-accent-lift)}
+#weightPage .st-perf[data-status="Review"] .vn-perf-spark{color:#D9A15B}
+#weightPage .vn-perf-dot{fill:var(--st-ink-3);opacity:.8}
+#weightPage .st-perf .vn-perf-line.is-neutral{stroke:color-mix(in srgb,var(--st-accent-lift) 55%,var(--st-ink-3))}
+#weightPage .vn-perf-e1rm{font:500 11px var(--st-font);color:var(--st-ink-3);font-variant-numeric:tabular-nums}
+#weightPage .st-perf .vn-perf-statusline{display:none !important}
+@media (max-width:359px){#weightPage .st-perf{grid-template-columns:minmax(0,1fr) 86px !important;column-gap:10px}#weightPage .st-perf .vn-perf-plot{width:86px}#weightPage .st-perf-best{font-size:21px}}
+
+/* -- Progress › Body: composition map zone -- */
+.st-cm-zone{fill:color-mix(in srgb,var(--st-lean) 9%,transparent);stroke:color-mix(in srgb,var(--st-lean) 22%,transparent);stroke-width:1}
+.st-cm-zl{fill:color-mix(in srgb,var(--st-lean) 70%,var(--st-ink-2));font:600 10.5px var(--st-font);letter-spacing:.01em}
+.st-cm-ref{stroke:rgba(var(--st-hl),.14);stroke-width:1;stroke-dasharray:2 4}
+.st-cm-pt:not(.is-first):not(.is-last){fill:var(--st-bg);stroke:var(--st-accent-lift);stroke-width:1.8}
+
+/* -- Train idle: cardio meter and Up next -- */
+#trainPage .st-cmeter{margin:16px 0 4px;padding:14px 16px;border-radius:18px;background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.015));box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(var(--st-hl),.07)}
+#trainPage .st-cmeter-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;--c:var(--st-cardio)}
+#trainPage .st-cmeter-h .vn-num{font:500 13px var(--st-font);color:var(--st-ink-3)}
+#trainPage .st-cmeter-h .vn-num b{font:300 22px var(--st-font-d);color:var(--st-ink);letter-spacing:-.02em}
+#trainPage .st-cmeter-bar{margin-top:10px;height:6px;border-radius:3px;background:rgba(var(--st-hl),.08);overflow:hidden}
+#trainPage .st-cmeter-bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,color-mix(in srgb,var(--st-cardio) 60%,#fff),var(--st-cardio));box-shadow:0 0 10px color-mix(in srgb,var(--st-cardio) 60%,transparent)}
+#trainPage .st-next{margin-top:22px}
+#trainPage .st-next .st-h3{margin:6px 0 12px}
+#trainPage .st-next-h,#trainPage .st-next-row{display:grid;grid-template-columns:minmax(0,1fr) 64px 78px;gap:10px;align-items:baseline}
+#trainPage .st-next-h{padding:0 0 6px;font:550 11px var(--st-font);color:var(--st-ink-3);border-bottom:1px solid rgba(var(--st-hl),.07)}
+#trainPage .st-next-h span:nth-child(n+2),#trainPage .st-next-row>span:nth-child(n+2){text-align:right}
+#trainPage .st-next-l{list-style:none;margin:0;padding:0}
+#trainPage .st-next-row{padding:11px 0;border-bottom:1px solid rgba(var(--st-hl),.06)}
+#trainPage .st-next-row:last-child{border-bottom:0;padding-bottom:2px}
+#trainPage .st-next-n{font:500 14.5px/1.3 var(--st-font);color:var(--st-ink);min-width:0}
+#trainPage .st-next-s{font:500 12.5px var(--st-font);color:var(--st-ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+#trainPage .st-next-b{font:600 14px var(--st-font);color:var(--st-accent-lift);white-space:nowrap}
+#trainPage .st-next-b.is-new{color:var(--st-ink-3);font-weight:500}
+@media (max-width:359px){#trainPage .st-next-h,#trainPage .st-next-row{grid-template-columns:minmax(0,1fr) 54px 66px;gap:8px}}
+
+/* -- History: morning weigh-in context -- */
+#historyPage .st-hw{display:flex;flex-wrap:wrap;gap:6px 14px;margin:8px 0 0}
+#historyPage .st-hw>span{display:inline-flex;align-items:baseline;gap:4px;font:600 13.5px var(--st-font);color:var(--st-ink);font-variant-numeric:tabular-nums}
+#historyPage .st-hw small{font:500 12.5px var(--st-font);color:var(--st-ink-3)}
+#historyPage .st-hw-c i{font-style:normal}
+#historyPage .st-hw-c.is-dn i{color:var(--st-lean)}
+#historyPage .st-hw-c.is-up i{color:#ff9b7a}
+#historyPage .st-hw-t b{font:inherit;color:var(--st-accent-lift)}
