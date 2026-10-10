@@ -132,7 +132,7 @@ const NXP = (() => {
     N.logSuggestion({kind:"review",subject:null,payload:{title:r.title,action:r.action,tone:r.tone,reason:r.reason}});
     const logged=list.reduce((a,e)=>a+Math.min(N.done(e.name),Number(e.sets)),0);
     const trainTile=lift?`
-      <article class="st-tile st-t-train" style="--c:var(--st-lift)">
+      <article class="st-tile st-t-train" style="--c:var(--st-lift)"><span class="st-ghost" aria-hidden="true">${esc(weekShort[state.dayType]||N.label(state.dayType))}</span>
         <div class="st-tile-head"><span class="st-cat">${finished?'Workout saved':'Today’s training'}</span>${textAct('Change','showSessionSheet()',true)}</div>
         <div class="st-train-row">
           <div class="st-train-id">
@@ -145,7 +145,7 @@ const NXP = (() => {
         <button type="button" class="st-cta" onclick="${esc(finished?"switchTab('train')":action)}">${esc(title)}<span aria-hidden="true">›</span></button>
         ${lastLiftLine?`<p class="st-meta st-mt2 st-center">${esc(lastLiftLine)}</p>`:''}
       </article>`:`
-      <article class="st-tile st-t-train" style="--c:${state.dayType==='Zone2'?'var(--st-cardio)':state.dayType==='Floorball'?'var(--st-floor)':'var(--st-rest)'}">
+      <article class="st-tile st-t-train" style="--c:${state.dayType==='Zone2'?'var(--st-cardio)':state.dayType==='Floorball'?'var(--st-floor)':'var(--st-rest)'}"><span class="st-ghost" aria-hidden="true">${esc(state.dayType==='Zone2'?'Walk':state.dayType==='Floorball'?'Floorball':N.label(state.dayType))}</span>
         <div class="st-tile-head"><span class="st-cat">Today</span>${textAct('Change','showSessionSheet()',true)}</div>
         <h2 class="st-h2">${esc(N.label(state.dayType))}</h2>
         <p class="st-body st-mt2">${state.dayType==='Rest'?'A planned recovery day. Nothing is scheduled.':state.dayType==='Zone2'?'An easy, conversational effort. No lifting session is due.':'Hard conditioning day. Log duration and effort.'}</p>
@@ -1605,8 +1605,29 @@ const NXP = (() => {
     const sub=(ph.bytes>262144?'Scan photos use '+(ph.bytes/1048576).toFixed(1)+' MB \u2014 open to remove them. ':nearFull?'Getting full \u2014 export a backup. ':pct+'% of roughly 5 MB. ')+'Backup: '+(ts?backupLabel()+(stale?' \u2014 over a month ago':''):'none recorded yet');
     return {used,sub,tone:(nearFull||stale||ph.bytes>262144)?'watch':''};
   }
+  /* D53 — Settings rows carry an iOS-style icon tile in a category hue. Decorative only
+     (aria-hidden); the row's text still names it. Unknown titles get no icon. */
+  const SET_ICONS={
+    'Goals':['#8B5CF6','<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1" fill="currentColor"/>'],
+    'Goals & calories':['#8B5CF6','<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1" fill="currentColor"/>'],
+    'Training':['#7C6CF2','<path d="M6.5 8v8M17.5 8v8M3.5 10v4M20.5 10v4M6.5 12h11"/>'],
+    'Cardio & recovery':['#22B8D6','<path d="M3.5 12.5h3.6l2.1-4.8 3.6 9.3 2.4-6.2 1.3 1.7h4"/>'],
+    'Your name':['#9B7BFF','<circle cx="12" cy="9" r="3.6"/><path d="M5.5 19.2c1.3-3.3 3.8-4.9 6.5-4.9s5.2 1.6 6.5 4.9"/>'],
+    'Appearance':['#6366F1','<circle cx="12" cy="12" r="7.6"/><path d="M12 4.4v15.2" /><path d="M12 4.4a7.6 7.6 0 0 1 0 15.2z" fill="currentColor" stroke="none"/>'],
+    'Reminders':['#E8A93A','<path d="M7 16.5V11a5 5 0 0 1 10 0v5.5l1.5 1.5h-13z"/><path d="M10.3 20.2a1.9 1.9 0 0 0 3.4 0"/>'],
+    'Body & scans':['#F07A52','<path d="M4.5 8V5.5a1 1 0 0 1 1-1H8M16 4.5h2.5a1 1 0 0 1 1 1V8M19.5 16v2.5a1 1 0 0 1-1 1H16M8 19.5H5.5a1 1 0 0 1-1-1V16"/><path d="M8 12h8"/>'],
+    'Cloud & sync':['#3B8FF0','<path d="M7.5 18.5h9a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 6.6 9.3 4.6 4.6 0 0 0 7.5 18.5z"/>'],
+    'Storage':['#7D7891','<ellipse cx="12" cy="6.8" rx="6.5" ry="2.6"/><path d="M5.5 6.8v10.4c0 1.4 2.9 2.6 6.5 2.6s6.5-1.2 6.5-2.6V6.8M5.5 12c0 1.4 2.9 2.6 6.5 2.6s6.5-1.2 6.5-2.6"/>'],
+    'Wearable':['#2FBF86','<rect x="7" y="6.5" width="10" height="11" rx="3"/><path d="M9 6.5l.7-3h4.6l.7 3M9 17.5l.7 3h4.6l.7-3M12 9.8V12l1.5 1"/>'],
+    'App & install':['#8B5CF6','<rect x="7" y="3.5" width="10" height="17" rx="2.6"/><path d="M10.5 17.6h3"/>'],
+    'Classic app':['#7D7891','<path d="M4.8 12a7.2 7.2 0 1 0 2.1-5.1"/><path d="M4.5 4.8v3.4h3.4M12 8.2V12l2.6 1.6"/>']
+  };
+  function setIcon(title) {
+    const ic=SET_ICONS[title];
+    return ic?`<span class="st-set-ic" style="--ic:${ic[0]}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ic[1]}</svg></span>`:'';
+  }
   function setRow(title,value,action,sub='',tone='') {
-    return `<button type="button" class="vn-set-row" onclick="${esc(action)}">`
+    return `<button type="button" class="vn-set-row${SET_ICONS[title]?' has-ic':''}" onclick="${esc(action)}">`+setIcon(title)
       +`<span class="vn-set-l"><span class="vn-set-t">${esc(title)}</span>${sub?`<span class="vn-set-s">${esc(sub)}</span>`:''}</span>`
       +`<span class="vn-set-v${tone?' vn-set-flag is-'+tone:''}">${tone?'<i aria-hidden="true"></i>':''}${esc(value||'')}</span>`
       +`<i class="vn-chev" aria-hidden="true">›</i></button>`;
@@ -1869,7 +1890,9 @@ const NXP = (() => {
     const configured=!!((localStorage.getItem('apm_sb_url')||'').trim()&&(localStorage.getItem('apm_sb_key')||'').trim());
     const title=signed?(cloudUser.email||'Signed in'):configured?'Sign-in needed':'Local-only';
     const detail=[state.gym||null,signed?'Cloud session on this device':'Stored on this device'].filter(Boolean).join(' · ');
-    return `<section class="vn-set-account"><span class="vn-set-eyebrow">Account</span><h2>${esc(title)}</h2><p>${esc(detail)}</p></section>`;
+    /* D53: the account block is an identity card — monogram, name, storage state. */
+    const name=userName(),mono=(name||'N').trim().charAt(0).toUpperCase();
+    return `<section class="vn-set-account st-id"><span class="st-id-mono" aria-hidden="true">${esc(mono)}</span><span class="st-id-t"><b>${esc(name||'NXTFRM')}</b><span class="st-id-s">${esc(title)}</span><small>${esc(detail)}</small></span></section>`;
   }
   /* Tier 2 / Tier 3 (§3.5): the bodies of goals / training / coach live in
      cut-support.js and body / notifications / app in index.html, neither of
@@ -2210,7 +2233,7 @@ const NXP = (() => {
        summary line would just repeat "82 kg". */
     if(parts.length===1&&scope.body&&r.bw&&!(scope.lift&&r.logs.length)&&!(scope.cond&&(r.cardio.length||r.floorball.length)))parts.length=0;
     const emptyCopy=filter==='strength'?'No lifting logged on this date.':filter==='conditioning'?'No cardio logged on this date.':filter==='body'?'No weigh-in recorded on this date.':'No training or measurements logged.';
-    return `<section class="nxp-history-selected vn-hist-day"><header class="nxp-history-selected-head"><h2>${esc(when.toLocaleDateString('en-SG',{weekday:'short'}))} ${esc(when.toLocaleDateString('en-SG',{day:'numeric',month:'long'}))} <em>${esc(String(when.getFullYear()))}</em></h2>${parts.length?`<p class="nxp-history-selected-summary">${esc(parts.join(' · '))}</p>`:''}${(()=>{const k=[scope.lift&&r.logs.length?'<span class="lift"><i></i>Lifting</span>':'',scope.cond&&r.cardio.length?'<span class="cond"><i></i>Cardio</span>':'',scope.cond&&r.floorball.length?'<span class="floor"><i></i>Floorball</span>':'',scope.body&&r.bw?'<span class="body"><i></i>Weigh-in</span>':''].join('');return k?`<p class="st-day-k" aria-hidden="true">${k}</p>`:'';})()}</header>${blocks.length?blocks.join(''):`<p class="nxp-history-empty">${esc(emptyCopy)}</p>`}${historyAuditLanes()}</section>`;
+    return `<section class="nxp-history-selected vn-hist-day"><header class="nxp-history-selected-head"><h2 class="st-dayhead" aria-label="${esc(when.toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))}"><span class="st-dayhead-n" aria-hidden="true">${when.getDate()}</span><span class="st-dayhead-t" aria-hidden="true"><b>${esc(when.toLocaleDateString('en-SG',{weekday:'long'}))}</b><em>${esc(when.toLocaleDateString('en-SG',{month:'long'}))} ${esc(String(when.getFullYear()))}</em></span></h2>${parts.length?`<p class="nxp-history-selected-summary">${esc(parts.join(' · '))}</p>`:''}${(()=>{const k=[scope.lift&&r.logs.length?'<span class="lift"><i></i>Lifting</span>':'',scope.cond&&r.cardio.length?'<span class="cond"><i></i>Cardio</span>':'',scope.cond&&r.floorball.length?'<span class="floor"><i></i>Floorball</span>':'',scope.body&&r.bw?'<span class="body"><i></i>Weigh-in</span>':''].join('');return k?`<p class="st-day-k" aria-hidden="true">${k}</p>`:'';})()}</header>${blocks.length?blocks.join(''):`<p class="nxp-history-empty">${esc(emptyCopy)}</p>`}${historyAuditLanes()}</section>`;
   }
   function historyPaintDay(date) {
     const host=document.getElementById('vn-hist-dayhost');

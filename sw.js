@@ -1,5 +1,5 @@
-const RELEASE = '154';
-const CACHE_NAME = 'nxtfrm-v154-premium-cache';
+const RELEASE = '155';
+const CACHE_NAME = 'nxtfrm-v155-premium-cache';
 
 // The offline shell. Versioned URLs match exactly what index.html requests, so
 // a cold start offline serves the same files the page asks for rather than an
@@ -36,7 +36,8 @@ const ASSETS = [
   './logo-mark.svg',
   './icon-192.png',
   './icon-512.png',
-  './apple-touch-icon.png'
+  './apple-touch-icon.png',
+  './fonts/geist-latin-wght.woff2'
 ].concat(VERSIONED.map(function (f) { return './' + f + '?v=' + RELEASE; }));
 
 self.addEventListener('install', event => {

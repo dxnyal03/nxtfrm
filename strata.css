@@ -2280,3 +2280,168 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 /* ---- D52 · weight chart edge to edge across the card ---- */
 #weightPage #vn-chart-wrap{margin-inline:-18px !important;padding-inline:0 !important;border-radius:0}
 @media (max-width:359px){#weightPage #vn-chart-wrap{margin-inline:-14px !important}}
+
+/* =============================================================================
+   D53 · "Night session" — visual system v2
+   The app as a lit instrument in a dark room. Violet identity and category hues
+   unchanged. Three moves: a display face (Geist) for titles and numerals, a
+   "lit glass" material on every card, and three signature moments (Today hero,
+   dock capsule, Settings icon tiles). Body text and the active Train loop keep
+   SF so the working layout and its measured contracts (D18) do not move.
+   ========================================================================== */
+@font-face{font-family:"Geist";src:url("fonts/geist-latin-wght.woff2") format("woff2");font-weight:100 900;font-style:normal;font-display:swap}
+:root{
+  --st-font-d:"Geist",-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",system-ui,sans-serif;
+  --st-edge:linear-gradient(155deg,rgba(255,255,255,.30) 0%,rgba(255,255,255,.07) 26%,rgba(255,255,255,.02) 55%,rgba(180,154,255,.16) 100%);
+  --st-depth:0 1px 0 rgba(255,255,255,.05) inset,0 30px 60px -32px rgba(0,0,0,.95),0 10px 22px -14px rgba(0,0,0,.7);
+}
+/* The working Train loop keeps the system face: its title wrap is a measured contract (D18). */
+#trainPage .st-train-active{--st-font-d:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",system-ui,sans-serif}
+
+/* ---- Type: titles and numerals in Geist -------------------------------------- */
+.st-h1,#weightPage h1,#historyPage h1,#morePage h1,#morePage .vn-set-head h1,#trainPage .nxp-train-idle h1{
+  font-family:var(--st-font-d) !important;font-weight:640 !important;letter-spacing:-.04em !important;
+  background:linear-gradient(180deg,#FFFFFF 35%,#D9CCFF 100%);-webkit-background-clip:text;background-clip:text;color:transparent !important;
+}
+.st-h1{font-size:32px !important;line-height:1.05 !important}
+#weightPage h1,#historyPage h1,#morePage h1{font-size:36px !important;line-height:1.05 !important}
+.st-h2,.st-h3,#weightPage .vn-weight .vn-h-sub#vn-traj-headline,.vn-perf-name,#trainPage .st-next .st-h3{font-family:var(--st-font-d) !important;letter-spacing:-.025em !important}
+.st-h2{font-weight:620 !important}.st-h3{font-weight:600 !important}
+.st-eyebrow,.st-head .st-eyebrow{font-family:var(--st-font-d) !important;font-weight:520 !important;letter-spacing:.01em !important;color:color-mix(in srgb,var(--st-accent-lift) 70%,var(--st-ink-3)) !important}
+.st-odo,.st-od,.st-od-s i,#weightPage .vn-weight .vn-metric-v,#weightPage .st-rread b,#weightPage .st-perf-best,#weightPage .wx-ledger .wx-v,.st-recap .st-rc-stats b,.st-mini-v,.st-mini-v b,#homePage .st-minis .st-odo,.st-count-v b,.st-scan-c b,#weightPage .vn-journey-metrics .vn-metric-v,#trainPage .st-cmeter-h .vn-num b{
+  font-family:var(--st-font-d) !important;font-weight:220 !important;font-feature-settings:"tnum" 1,"ss01" 1;
+}
+#weightPage .vn-weight .vn-trend-val,.st-dec-txt b,.st-dec-range,#weightPage .st-perf-pill,.st-cat{font-family:var(--st-font-d) !important}
+.st-cat{font-weight:560 !important;letter-spacing:.02em !important}
+.st-dec-txt b{font-weight:560 !important;letter-spacing:-.01em !important}
+
+/* ---- Material: lit glass on every card --------------------------------------- */
+.st-tile,#weightPage .vn-weight,#weightPage .vn-perf-rows,#weightPage .nxp-progress-body-section,#historyPage .vn-hist-calendar,#historyPage .nxp-history-calendar,#historyPage .vn-hist-day,#morePage .vn-set-group,#trainPage .nxp-train-idle-copy,#trainPage .st-cmeter{
+  border-color:transparent !important;box-shadow:var(--st-depth) !important;
+}
+.st-tile::before,#weightPage .vn-weight::before,#weightPage .vn-perf-rows::before,#weightPage .nxp-progress-body-section::before,#historyPage .vn-hist-calendar::before,#historyPage .vn-hist-day::before,#morePage .vn-set-group::before,#trainPage .nxp-train-idle-copy::before,#trainPage .st-cmeter::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;z-index:2;
+  background:var(--st-edge);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+}
+#weightPage .vn-perf-rows,#weightPage .nxp-progress-body-section,#historyPage .vn-hist-calendar,#historyPage .vn-hist-day,#morePage .vn-set-group,#trainPage .nxp-train-idle-copy,#trainPage .st-cmeter{position:relative;isolation:isolate}
+/* Category bloom: each tile lights its own corner in its own hue */
+.st-tile{background:
+  radial-gradient(120% 90% at 0% 0%,color-mix(in srgb,var(--c,var(--st-accent)) 20%,transparent),transparent 55%),
+  radial-gradient(90% 70% at 100% 100%,rgba(99,102,241,.06),transparent 60%),
+  linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012)),rgba(18,17,27,.72) !important}
+
+/* ---- Signature 1 · Today hero: the training card is lit in its session hue --- */
+#homePage .st-t-train{
+  padding:22px 20px 20px !important;
+  background:
+    radial-gradient(140% 85% at 15% -10%,color-mix(in srgb,var(--c) 42%,transparent),transparent 62%),
+    radial-gradient(80% 60% at 110% 10%,color-mix(in srgb,var(--c) 18%,transparent),transparent 70%),
+    linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.01)),rgba(16,15,24,.78) !important;
+  box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 40px 80px -40px color-mix(in srgb,var(--c) 55%,transparent),0 30px 60px -32px rgba(0,0,0,.95) !important;
+}
+#homePage .st-t-train .st-h2{font-size:38px !important;line-height:1 !important;font-weight:650 !important;letter-spacing:-.045em !important;margin-top:6px !important;
+  background:linear-gradient(180deg,#fff 40%,color-mix(in srgb,var(--c) 45%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent}
+#homePage .st-t-train .st-cta{box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 14px 30px -12px rgba(124,58,237,.85),0 0 0 1px rgba(255,255,255,.08) inset !important}
+#homePage .st-head .st-h1{font-size:34px !important}
+
+/* ---- Signature 2 · the dock's active tab is a lit capsule ------------------ */
+.tabs .tabs-inner.st-dock::before{
+  background:
+    radial-gradient(120% 120% at 50% 0%,rgba(205,187,255,.45),transparent 65%),
+    linear-gradient(180deg,rgba(139,92,246,.55),rgba(109,40,217,.32)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -1px 0 rgba(0,0,0,.25),0 10px 26px -10px rgba(139,92,246,.95),0 0 0 1px rgba(205,187,255,.22) !important;
+}
+.tabs .tab.active .tab-icon svg{filter:drop-shadow(0 0 8px rgba(205,187,255,.65))}
+.tabs .tab .tab-label{font-family:var(--st-font-d) !important;font-weight:540 !important}
+
+/* ---- Signature 3 · Settings icon tiles --------------------------------------- */
+#morePage .vn-set-row.has-ic{display:grid !important;grid-template-columns:32px minmax(0,1fr) auto auto;column-gap:14px;align-items:center}
+#morePage .st-set-ic{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:#fff;
+  background:linear-gradient(160deg,color-mix(in srgb,var(--ic) 88%,#fff 12%),color-mix(in srgb,var(--ic) 78%,#000 22%));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 14px -6px color-mix(in srgb,var(--ic) 80%,transparent)}
+#morePage .st-set-ic svg{width:19px;height:19px}
+
+/* ---- History: active days glow in their activity hue ------------------------- */
+#historyPage .nxp-cal-day.has-lift{background:linear-gradient(170deg,rgba(139,124,255,.42),rgba(139,124,255,.14)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 6px 16px -8px rgba(139,124,255,.7) !important}
+#historyPage .nxp-cal-day[data-k="cardio"]{background:linear-gradient(170deg,rgba(60,200,230,.32),rgba(60,200,230,.1)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 6px 16px -8px rgba(60,200,230,.6) !important}
+#historyPage .nxp-cal-day.is-selected{background:linear-gradient(170deg,#9A6BFF,#6D28D9) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 10px 24px -8px rgba(139,92,246,.95),0 0 0 3px rgba(139,92,246,.22) !important}
+#historyPage .nxp-cal-month span{font-family:var(--st-font-d) !important;font-weight:640 !important;letter-spacing:-.03em !important}
+#historyPage .vn-hist-day h2{font-family:var(--st-font-d) !important;letter-spacing:-.035em !important;font-weight:640 !important}
+
+/* ---- Progress: segmented controls and chart header in the new voice ---------- */
+#weightPage .vn-progress-tabs button.active,#weightPage .n99-progress-tabs button.active,#weightPage .vn-seg button.active,#historyPage .vn-hist-filters button.active{font-family:var(--st-font-d) !important}
+#weightPage .vn-weight{background:
+  radial-gradient(130% 55% at 0% 0%,rgba(139,92,246,.22),transparent 60%),
+  radial-gradient(90% 50% at 100% 20%,rgba(99,102,241,.10),transparent 70%),
+  linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012)),rgba(18,17,27,.72) !important}
+
+@media (prefers-reduced-transparency:reduce){
+  .st-tile,#homePage .st-t-train,#weightPage .vn-weight{background:rgba(30,27,44,.96) !important}
+}
+@media (max-width:359px){
+  #homePage .st-t-train .st-h2{font-size:32px !important}
+  #weightPage h1,#historyPage h1,#morePage h1{font-size:31px !important}
+}
+/* The three minis are one instrument strip (D44): the strip carries the lit edge, not each tile. */
+#homePage .st-minis{position:relative;isolation:isolate;box-shadow:var(--st-depth) !important}
+#homePage .st-minis::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;z-index:2;background:var(--st-edge);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+#homePage .st-minis>.st-tile{background:none !important;box-shadow:none !important}
+#homePage .st-minis>.st-tile:first-child::before{display:none !important}
+#homePage .st-minis>.st-tile+.st-tile::before{padding:0 !important;-webkit-mask:none !important;mask:none !important;background:rgba(var(--st-hl),.09) !important}
+
+/* ---- D53 · bolder moves ------------------------------------------------------ */
+/* Page mastheads: every page title sits on its own light bloom, in the page's hue. */
+#homePage .st-head,#trainPage .nxp-train-chrome,#weightPage .nxp-progress-chrome,#historyPage .vn-hist-chrome,#morePage .vn-set-title{position:relative;isolation:isolate}
+#homePage .st-head::before,#trainPage .nxp-train-chrome::before,#weightPage .nxp-progress-chrome::before,#historyPage .vn-hist-chrome::before,#morePage .vn-set-title::before{
+  content:"";position:absolute;z-index:-1;left:-40px;top:-60px;width:340px;height:220px;pointer-events:none;
+  background:radial-gradient(closest-side,var(--st-mast,rgba(139,92,246,.42)),transparent);filter:blur(8px);opacity:.9}
+#trainPage{--st-mast:rgba(124,58,237,.45)}
+#weightPage{--st-mast:rgba(99,102,241,.42)}
+#historyPage{--st-mast:rgba(45,212,212,.24)}
+#morePage{--st-mast:rgba(139,92,246,.30)}
+#morePage .vn-set-title{font-size:38px !important}
+
+/* Today hero: the session word, huge and ghosted, sits behind the card's content. */
+#homePage .st-t-train .st-ghost{position:absolute;z-index:-1;right:-14px;top:-6px;pointer-events:none;user-select:none;white-space:nowrap;
+  font:800 128px/1 var(--st-font-d);letter-spacing:-.07em;
+  background:linear-gradient(200deg,color-mix(in srgb,var(--c) 38%,transparent),transparent 72%);-webkit-background-clip:text;background-clip:text;color:transparent;opacity:.55}
+@media (max-width:359px){#homePage .st-t-train .st-ghost{font-size:104px}}
+
+/* Settings: identity card with a monogram */
+#morePage .st-id{display:flex !important;align-items:center;gap:16px;padding:18px !important;margin:6px 0 4px;border-radius:24px;position:relative;isolation:isolate;
+  background:radial-gradient(120% 120% at 0% 0%,rgba(139,92,246,.28),transparent 60%),linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.012)),rgba(18,17,27,.72);
+  box-shadow:var(--st-depth)}
+#morePage .st-id::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;background:var(--st-edge);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+#morePage .st-id-mono{flex:0 0 58px;height:58px;border-radius:50%;display:grid;place-items:center;font:600 26px/1 var(--st-font-d);color:#fff;
+  background:radial-gradient(120% 120% at 30% 20%,#C4A8FF,#7C3AED 55%,#4C1D95);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 10px 26px -10px rgba(139,92,246,.95),0 0 0 3px rgba(139,92,246,.18)}
+#morePage .st-id-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+#morePage .st-id-t b{font:620 22px/1.15 var(--st-font-d);letter-spacing:-.03em;color:var(--st-ink)}
+#morePage .st-id-s{font:560 13.5px var(--st-font);color:var(--st-accent-lift)}
+#morePage .st-id-t small{font:450 12.5px/1.35 var(--st-font);color:var(--st-ink-3)}
+/* Settings rows: icon tile, then label, then the value at its natural width (no ellipsis) */
+#morePage .vn-set-row.has-ic{grid-template-columns:32px minmax(0,1fr) auto 12px !important}
+#morePage .vn-set-row.has-ic .vn-set-v{max-width:none !important;overflow:visible !important;text-overflow:clip !important}
+#morePage .vn-set-row.has-ic .vn-set-t{font-family:var(--st-font) !important}
+
+/* History: big-numeral day header */
+#historyPage .st-dayhead{display:flex !important;align-items:center;gap:14px;font:inherit !important;margin:0}
+#historyPage .st-dayhead-n{font:200 64px/.9 var(--st-font-d);letter-spacing:-.06em;font-feature-settings:"tnum" 1;
+  background:linear-gradient(180deg,#fff 30%,#B49AFF);-webkit-background-clip:text;background-clip:text;color:transparent}
+#historyPage .st-dayhead-t{display:flex;flex-direction:column;gap:2px}
+#historyPage .st-dayhead-t b{font:620 20px/1.15 var(--st-font-d);letter-spacing:-.025em;color:var(--st-ink)}
+#historyPage .st-dayhead-t em{font:450 13.5px var(--st-font);font-style:normal;color:var(--st-ink-3)}
+/* History: active days lit in their activity hue (beats the D42 generic tint) */
+#historyPage .vn-hist-calendar .nxp-cal-day[data-k="lift"]:not(.is-selected){background:linear-gradient(170deg,rgba(139,124,255,.46),rgba(139,124,255,.14)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.24),0 8px 18px -10px rgba(139,124,255,.85) !important}
+#historyPage .vn-hist-calendar .nxp-cal-day[data-k="cardio"]:not(.is-selected){background:linear-gradient(170deg,rgba(60,200,230,.36),rgba(60,200,230,.1)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 8px 18px -10px rgba(60,200,230,.7) !important}
+#historyPage .vn-hist-calendar .nxp-cal-day[data-k="floor"]:not(.is-selected){background:linear-gradient(170deg,rgba(255,194,74,.32),rgba(255,194,74,.08)) !important}
+#historyPage .vn-hist-calendar .nxp-cal-day[data-k].is-selected{background:linear-gradient(170deg,#A77BFF,#6D28D9) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 12px 26px -10px rgba(139,92,246,1),0 0 0 3px rgba(139,92,246,.22) !important}
+#historyPage .nxp-cal-month{font-family:var(--st-font-d) !important}
+#historyPage .nxp-cal-month span{font-size:24px !important}
+/* Ghost word: cropped off the top-right edge, never behind the title. */
+#homePage .st-t-train .st-ghost{right:-34px !important;top:-30px !important;font-size:150px !important;opacity:.32 !important;
+  background:linear-gradient(215deg,color-mix(in srgb,var(--c) 55%,transparent) 10%,transparent 60%) !important;-webkit-background-clip:text !important;background-clip:text !important}
+@media (max-width:359px){#homePage .st-t-train .st-ghost{font-size:120px !important}}
+@media (max-width:359px){#homePage .st-t-train{padding:20px 14px 18px !important}}
