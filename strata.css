@@ -2276,3 +2276,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #weightPage .st-pillg.is-start-ref text{fill:var(--st-ink-2);font:590 10.5px var(--st-font)}
 /* Over 45 readings the weekly steps step back so the trend reads first; the Week by week list carries them. */
 #weightPage .vn-chart-svg.is-busy .st-wstep{opacity:.35}
+
+/* ---- D52 · weight chart edge to edge across the card ---- */
+#weightPage #vn-chart-wrap{margin-inline:-18px !important;padding-inline:0 !important;border-radius:0}
+@media (max-width:359px){#weightPage #vn-chart-wrap{margin-inline:-14px !important}}

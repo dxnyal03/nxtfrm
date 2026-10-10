@@ -917,7 +917,9 @@ Object.assign(NXT, (()=>{
        the starting point. */
     if(range==='cut')range=cutRangeDays()||0;
     const series=N.trend(rows),start=range?N.dateAdd(state.date,1-range):rows[0]?.date||N.dateAdd(state.date,-29);
-    const visible=series.filter(r=>r.date>=start),W=420,H=392,left=20,right=20,top=18,bottom=110;
+    /* D52: taller plot (H 392→460) and thin side margins (20→8); the wrap runs edge to edge
+       across the card, so the plot uses the full card width. */
+    const visible=series.filter(r=>r.date>=start),W=420,H=460,left=8,right=8,top=18,bottom=110;
     if(!visible.length)return {visible,start,W,H,left,right,top,bottom,low:null,high:null,step:null};
     /* D2 — Y-domain from visible morning readings + trend ONLY.
        Goal band, target reference, forecast cone/endpoint, confidence band
