@@ -20,11 +20,11 @@
   --st-accent-deep:#6D28D9;
   --st-weight:#B49AFF;
   --st-lift:#8B7CFF;
-  --st-cardio:#3CC8E6;
-  --st-floor:#FFC24A;
-  --st-rest:#FF7A9A;
-  --st-fat:#FF8A5B;
-  --st-lean:#3DD598;
+  --st-cardio:#D37732;
+  --st-floor:#E2B04A;
+  --st-rest:#9B8BB8;
+  --st-fat:#F0709A;
+  --st-lean:#C4B5FD;
 
   --st-tile-bg:rgba(20,19,30,.66);
   --st-tile:linear-gradient(180deg,rgba(var(--st-hl),.055),rgba(var(--st-hl),.015));
@@ -49,12 +49,12 @@
    pattern that shared body::before is fully reset here. */
 @property --st-a1{syntax:'<color>';inherits:true;initial-value:rgba(139,92,246,.42)}
 @property --st-a2{syntax:'<color>';inherits:true;initial-value:rgba(236,72,153,.18)}
-@property --st-a3{syntax:'<color>';inherits:true;initial-value:rgba(59,130,246,.16)}
-@property --st-a4{syntax:'<color>';inherits:true;initial-value:rgba(60,200,230,.08)}
+@property --st-a3{syntax:'<color>';inherits:true;initial-value:rgba(85,82,187,.16)}
+@property --st-a4{syntax:'<color>';inherits:true;initial-value:rgba(211,119,50,.08)}
 :root{transition:--st-a1 1.2s ease,--st-a2 1.2s ease,--st-a3 1.2s ease,--st-a4 1.2s ease}
 :root[data-st-tab="train"]{--st-a1:rgba(124,58,237,.5);--st-a2:rgba(99,102,241,.22);--st-a3:rgba(168,85,247,.16);--st-a4:rgba(236,72,153,.08)}
-:root[data-st-tab="weight"]{--st-a1:rgba(139,92,246,.4);--st-a2:rgba(59,130,246,.2);--st-a3:rgba(180,154,255,.14);--st-a4:rgba(60,200,230,.1)}
-:root[data-st-tab="history"]{--st-a1:rgba(99,102,241,.34);--st-a2:rgba(60,200,230,.16);--st-a3:rgba(139,92,246,.18);--st-a4:rgba(61,213,152,.07)}
+:root[data-st-tab="weight"]{--st-a1:rgba(139,92,246,.4);--st-a2:rgba(85,82,187,.2);--st-a3:rgba(180,154,255,.14);--st-a4:rgba(211,119,50,.1)}
+:root[data-st-tab="history"]{--st-a1:rgba(99,102,241,.34);--st-a2:rgba(211,119,50,.16);--st-a3:rgba(139,92,246,.18);--st-a4:rgba(196,181,253,.07)}
 :root[data-st-tab="more"]{--st-a1:rgba(139,92,246,.3);--st-a2:rgba(148,163,184,.1);--st-a3:rgba(99,102,241,.14);--st-a4:rgba(236,72,153,.06)}
 html{background:#07060B !important}
 body{background:transparent !important}
@@ -521,7 +521,7 @@ button.st-tile:active{transform:scale(.985)}
 /* Rest */
 .st-rest{
   position:relative;display:flex !important;align-items:center;gap:12px;margin:0 0 12px;padding:8px 8px 8px 20px;border-radius:22px;overflow:hidden;
-  background:rgba(60,200,230,.12);border:1px solid rgba(60,200,230,.24);
+  background:rgba(211,119,50,.12);border:1px solid rgba(211,119,50,.24);
 }
 .st-rest[hidden]{display:none !important}
 .st-rest .nxp-rest-rail{position:absolute;left:0;right:0;bottom:0;height:3px;background:transparent}
@@ -556,8 +556,8 @@ button.st-tile:active{transform:scale(.985)}
   background:rgba(var(--st-hl),.07);color:var(--st-ink);font:550 13.5px var(--st-font);font-variant-numeric:tabular-nums;
 }
 .st-chip2>span{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:rgba(var(--st-hl),.1);font-size:11.5px;color:var(--st-ink-2)}
-.st-chip2 i{font-style:normal;color:#7EEBC0}
-.st-chip2.is-up>span{background:rgba(61,213,152,.2);color:#7EEBC0}
+.st-chip2 i{font-style:normal;color:#DCD0FF}
+.st-chip2.is-up>span{background:rgba(196,181,253,.2);color:#DCD0FF}
 .st-chip2.is-warm{color:var(--st-ink-3)}
 .st-chip2.is-fresh{animation:st-land .5s var(--st-spring)}
 @keyframes st-land{from{opacity:0;transform:scale(.8)}}
@@ -618,7 +618,7 @@ button.st-refc:active{transform:scale(.97)}
 #trainPage .st-train .st-card .nxp-seg-rir .nxp-seg button{height:44px;min-height:44px;padding:0}
 
 .st-log{margin-top:16px !important;height:58px;min-height:58px !important;width:100% !important;border-radius:999px !important;font:590 17px var(--st-font) !important;letter-spacing:-.01em}
-.is-just-logged .st-log{background:linear-gradient(180deg,#46E0A3,#15A86C) !important;box-shadow:0 12px 26px -12px rgba(61,213,152,.7) !important}
+.is-just-logged .st-log{background:linear-gradient(180deg,#C9B5FF,#7C3AED) !important;box-shadow:0 12px 26px -12px rgba(196,181,253,.7) !important}
 .st-extra{margin:0;border-radius:22px;background:rgba(var(--st-hl),.05);padding:0 18px}
 .st-extra>summary{min-height:54px;display:flex;align-items:center;cursor:pointer;font:550 15px var(--st-font);color:var(--st-ink);list-style:none}
 .st-extra>summary::-webkit-details-marker{display:none}
@@ -673,12 +673,12 @@ button.st-refc:active{transform:scale(.97)}
 #trainPage .nxp-train-idle .nxp-train-idle-copy,#trainPage .nxp-train-idle .nxp-train-pace,#trainPage .nxp-train-floorball-log{
   padding:20px;border-radius:var(--st-r);border:1px solid var(--st-tile-line);background:var(--st-tile),var(--st-tile-bg);box-shadow:var(--st-tile-hl),var(--st-shadow);
 }
-#trainPage .n99-session-rail span{background:linear-gradient(90deg,var(--st-cardio),#8FE6F7) !important;box-shadow:0 0 12px rgba(60,200,230,.6)}
+#trainPage .n99-session-rail span{background:linear-gradient(90deg,var(--st-cardio),#F2B48A) !important;box-shadow:0 0 12px rgba(211,119,50,.6)}
 
 /* ---- HISTORY --------------------------------------------------------------------- */
 #historyPage .vn-hist-calendar,#historyPage .nxp-history-calendar{
   padding:18px 14px 14px;border-radius:var(--st-r);border:1px solid var(--st-tile-line);
-  background:radial-gradient(110% 60% at 100% 0%,rgba(60,200,230,.1),transparent 58%),var(--st-tile),var(--st-tile-bg);box-shadow:var(--st-tile-hl),var(--st-shadow);
+  background:radial-gradient(110% 60% at 100% 0%,rgba(211,119,50,.1),transparent 58%),var(--st-tile),var(--st-tile-bg);box-shadow:var(--st-tile-hl),var(--st-shadow);
 }
 /* History calendar in the Strata tile style: rounded day cells, today ringed,
    selected filled, future dimmed. Marks keep their shapes (I6). */
@@ -924,7 +924,7 @@ html.st-sheet-open main{transform:scale(.94) translateY(10px);filter:brightness(
 .st-scan-c b{font:500 19px/1.1 var(--st-font-d) !important}
 .st-scan-c b em{font-size:10.5px !important;margin-left:1px !important}
 .st-scan-d{font:550 11.5px var(--st-font);color:var(--st-ink-3)}
-.st-scan-d.is-dn{color:#7EEBC0}
+.st-scan-d.is-dn{color:#DCD0FF}
 .st-quick{display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px !important;margin:16px 0 4px !important}
 .st-qa{justify-content:center;padding:0 8px !important;min-height:48px;font-size:14px !important;gap:6px !important;white-space:nowrap}
 .st-qa span{width:22px !important;height:22px !important;font-size:15px !important;flex:none}
@@ -1280,14 +1280,14 @@ body,button,input{-webkit-font-smoothing:antialiased}
 @media (prefers-reduced-motion:reduce){#trainPage .st-vs{transition:none}}
 /* Log set stays reachable: it rides the bottom edge while the set card is on screen. */
 #trainPage .st-train-active .st-log{position:sticky;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:5;box-shadow:0 14px 30px -10px rgba(109,40,217,.75),0 0 0 6px rgba(8,8,13,.55)}
-#trainPage .st-train-active .is-just-logged .st-log{box-shadow:0 14px 30px -10px rgba(61,213,152,.7),0 0 0 6px rgba(8,8,13,.55) !important}
+#trainPage .st-train-active .is-just-logged .st-log{box-shadow:0 14px 30px -10px rgba(196,181,253,.7),0 0 0 6px rgba(8,8,13,.55) !important}
 /* .app is overflow:hidden auto, which would make it the sticky container; clip keeps the horizontal guard without becoming a scroller. */
 body:has(.st-train-active) .app{overflow:clip !important}
 body:has(.st-train-active){overflow:visible !important}
 
 /* Train, v7: a set that beats last time earns a mint edge on the button (before logging, never on repaint);
    the rest timer drops its tinted box and reads as a quiet tile with a hairline rail. */
-#trainPage .st-train-active .st-log[data-beat="1"]{box-shadow:0 14px 30px -10px rgba(109,40,217,.7),0 0 0 1.5px rgba(61,213,152,.7),0 0 0 6px rgba(8,8,13,.55)}
+#trainPage .st-train-active .st-log[data-beat="1"]{box-shadow:0 14px 30px -10px rgba(109,40,217,.7),0 0 0 1.5px rgba(196,181,253,.7),0 0 0 6px rgba(8,8,13,.55)}
 #trainPage .st-train-active .st-log{transition:box-shadow .3s var(--st-out),transform .15s var(--st-out)}
 .st-rest{padding:6px 6px 6px 18px !important;margin:0 0 10px !important;border-radius:20px !important;
   background:var(--st-tile),rgba(20,19,30,.62) !important;border:1px solid var(--st-tile-line) !important;box-shadow:var(--st-tile-hl);
@@ -1314,7 +1314,7 @@ body:has(.st-train-active){overflow:visible !important}
 .st-recap .st-rc-best li{display:flex;align-items:center;gap:10px;min-height:36px}
 .st-recap .st-rc-best li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:500 14.5px var(--st-font);color:var(--st-ink)}
 .st-recap .st-rc-best li b{font:600 14.5px var(--st-font);color:var(--st-ink);white-space:nowrap}
-.st-recap .st-rc-best li i{font:550 11.5px/1 var(--st-font);font-style:normal;color:var(--st-lean);display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;background:rgba(61,213,152,.12)}
+.st-recap .st-rc-best li i{font:550 11.5px/1 var(--st-font);font-style:normal;color:var(--st-lean);display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;background:rgba(196,181,253,.12)}
 .st-recap .st-rc-best li i::before{content:"";border-left:3.5px solid transparent;border-right:3.5px solid transparent;border-bottom:5.5px solid currentColor}
 @media (max-width:359px){.st-recap .st-rc-stats b{font-size:25px}.st-recap .st-rc-stats>div{padding:0 8px}}
 
@@ -1462,7 +1462,7 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
   box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 14px 30px -18px rgba(109,40,217,.75)}
 .st-coach{display:flex;flex-direction:column;gap:8px;margin:10px 0 0;padding:13px 14px;border:0;border-radius:20px;box-sizing:border-box;overflow:hidden;
   color:var(--st-ink);font-family:var(--st-font);
-  background:radial-gradient(90% 120% at 100% 0%,rgba(139,92,246,.30),transparent 60%),radial-gradient(70% 90% at 0% 100%,rgba(60,200,230,.07),transparent 65%),linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.03) 55%,rgba(255,255,255,.05));
+  background:radial-gradient(90% 120% at 100% 0%,rgba(139,92,246,.30),transparent 60%),radial-gradient(70% 90% at 0% 100%,rgba(211,119,50,.07),transparent 65%),linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.03) 55%,rgba(255,255,255,.05));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 22px 44px -26px rgba(109,40,217,.8),0 2px 6px -2px rgba(0,0,0,.4)}
 .st-coach::after{content:"";position:absolute;left:-20%;right:-20%;top:0;height:46%;z-index:-1;pointer-events:none;
   background:linear-gradient(180deg,rgba(255,255,255,.07),transparent);transform:skewY(-6deg);transform-origin:top left}
@@ -1476,7 +1476,7 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
   background:linear-gradient(180deg,#fff,#D9CCFF);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .st-coach-pill{flex:none;padding:5px 10px;border-radius:999px;font:590 12.5px/1 var(--st-font);letter-spacing:-.01em;white-space:nowrap;color:#E3D8FF;
   background:rgba(139,92,246,.22);box-shadow:inset 0 0 0 1px rgba(180,154,255,.34)}
-.st-coach.is-load .st-coach-pill{color:#8FF0C4;background:rgba(61,213,152,.14);box-shadow:inset 0 0 0 1px rgba(61,213,152,.38)}
+.st-coach.is-load .st-coach-pill{color:#DCD0FF;background:rgba(196,181,253,.14);box-shadow:inset 0 0 0 1px rgba(196,181,253,.38)}
 .st-coach.is-tired .st-coach-pill,.st-coach.is-reentry .st-coach-pill{color:#FFD98A;background:rgba(255,194,74,.13);box-shadow:inset 0 0 0 1px rgba(255,194,74,.34)}
 .st-coach.is-stall .st-coach-pill{color:#FFB08C;background:rgba(255,138,91,.13);box-shadow:inset 0 0 0 1px rgba(255,138,91,.34)}
 .st-coach-n{margin:0;font:450 13.5px/1.4 var(--st-font);color:var(--st-ink-2)}
@@ -1490,7 +1490,7 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 .st-cs.is-now{background:linear-gradient(160deg,rgba(139,92,246,.42),rgba(139,92,246,.16));box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 10px 22px -10px rgba(139,92,246,.95),0 0 0 1px rgba(180,154,255,.5)}
 .st-cs.is-now small{color:#E3D8FF}
 .st-cs.is-done{opacity:.55}
-.st-cs.is-done small::after{content:" ✓";color:#8FF0C4}
+.st-cs.is-done small::after{content:" ✓";color:#DCD0FF}
 .st-coach-hint{margin:-2px 0 0;text-align:center;font:450 11.5px/1 var(--st-font);color:var(--st-ink-4)}
 @media (prefers-reduced-transparency:reduce){.st-refc,.st-coach{-webkit-backdrop-filter:none;backdrop-filter:none;background-color:rgba(28,26,40,.96)}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.st-refc,.st-coach{background-color:rgba(28,26,40,.92)}}
@@ -1566,12 +1566,12 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 /* Week rail: every session type has its own hue, and always its own text label (never colour alone) */
 #homePage .st-tweek .vn-week-c{--k:#8b5cf6}
 #homePage .st-tweek .vn-week-c.is-k-full{--k:#8b5cf6}
-#homePage .st-tweek .vn-week-c.is-k-push{--k:#ff7b54}
-#homePage .st-tweek .vn-week-c.is-k-pull{--k:#4da3ff}
-#homePage .st-tweek .vn-week-c.is-k-legs{--k:#3ddc97}
-#homePage .st-tweek .vn-week-c.is-k-walk{--k:#2dd4d4}
-#homePage .st-tweek .vn-week-c.is-k-fb{--k:#f5c542}
-#homePage .st-tweek .vn-week-c.is-k-rest{--k:#8a879c}
+#homePage .st-tweek .vn-week-c.is-k-push{--k:#BF75C5}
+#homePage .st-tweek .vn-week-c.is-k-pull{--k:#5552BB}
+#homePage .st-tweek .vn-week-c.is-k-legs{--k:#A43066}
+#homePage .st-tweek .vn-week-c.is-k-walk{--k:#D37732}
+#homePage .st-tweek .vn-week-c.is-k-fb{--k:#E2B04A}
+#homePage .st-tweek .vn-week-c.is-k-rest{--k:#9B8BB8}
 #homePage .st-tweek .vn-week-c:not(.is-k-rest):not(.is-today){background:linear-gradient(180deg,color-mix(in srgb,var(--k) 22%,transparent),color-mix(in srgb,var(--k) 6%,transparent));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--k) 32%,transparent)}
 #homePage .st-tweek .vn-week-c:not(.is-k-rest) .vn-week-t{color:color-mix(in srgb,var(--k) 42%,#fff) !important}
 #homePage .st-tweek .vn-week-c:not(.is-k-rest) .vn-week-d{color:color-mix(in srgb,var(--k) 70%,#9a97aa) !important}
@@ -1619,7 +1619,7 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 #homePage .st-tweek .vn-week{margin-left:0 !important;margin-right:0 !important;padding:2px 0 0 !important;gap:0 !important;border-radius:0;
   background:none !important;box-shadow:none !important;-webkit-backdrop-filter:none;backdrop-filter:none;position:relative}
 #homePage .st-tweek .vn-week::before{inset:auto;left:7%;right:7%;top:21px;height:2px;padding:0;border-radius:2px;-webkit-mask:none;mask:none;
-  background:linear-gradient(90deg,#ff7b54,#4da3ff,#2dd4d4,#3ddc97,#8b5cf6,#f5c542,#8a879c);opacity:.28}
+  background:linear-gradient(90deg,#BF75C5,#5552BB,#D37732,#A43066,#8b5cf6,#E2B04A,#9B8BB8);opacity:.28}
 #homePage .st-today .st-tweek .vn-week-c{min-height:0 !important;padding:0 !important;border-radius:0 !important;background:none !important;box-shadow:none !important;transform:none;
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:7px;overflow:visible;position:relative}
 #homePage .st-tweek .vn-week-c::after{display:none}
@@ -1691,7 +1691,7 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 .st-dec-txt b{font-size:var(--fs-body,14.5px);font-weight:var(--fw-semi,600);color:var(--st-ink);white-space:nowrap;text-transform:capitalize}
 .st-dec-trend .st-dec-txt b{text-transform:none}
 .st-dec-ico{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;color:var(--st-ink-2);background:rgba(var(--st-hl),.07);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.12)}
-.st-dec-trend.is-down{--e:#3ddc97}.st-dec-trend.is-up{--e:#ff7b54}.st-dec-trend.is-flat{--e:#b9b5cc}
+.st-dec-trend.is-down{--e:#C4B5FD}.st-dec-trend.is-up{--e:#F0709A}.st-dec-trend.is-flat{--e:#b9b5cc}
 .st-dec-trend .st-dec-ico{color:var(--e);background:color-mix(in srgb,var(--e) 14%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--e) 35%,transparent)}
 .st-dec-spark{margin-left:auto;flex:0 0 auto;color:var(--e)}
 .st-dec-bars{margin-left:auto;display:flex;gap:3px;align-items:flex-end}
@@ -1864,8 +1864,8 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 .wx-chip{display:inline-flex;align-items:center;gap:3px;justify-self:start;padding:4px 9px 4px 7px;border-radius:99px;font:600 12.5px/1 var(--st-font);font-variant-numeric:tabular-nums;color:var(--st-ink-2);
   background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.02));box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(var(--st-hl),.1)}
 .wx-chip svg{width:12px;height:12px}
-.wx-chip.is-down{color:#3ddc97;background:linear-gradient(160deg,rgba(61,220,151,.14),rgba(61,220,151,.04));box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(61,220,151,.28)}
-.wx-chip.is-up{color:#ff9b7a;background:linear-gradient(160deg,rgba(255,123,84,.14),rgba(255,123,84,.04));box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(255,123,84,.3)}
+.wx-chip.is-down{color:#C4B5FD;background:linear-gradient(160deg,rgba(196,181,253,.16),rgba(196,181,253,.04));box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(196,181,253,.28)}
+.wx-chip.is-up{color:#F58BAE;background:linear-gradient(160deg,rgba(240,112,154,.16),rgba(240,112,154,.04));box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(240,112,154,.3)}
 .wx-chip.is-none{color:var(--st-ink-3);font-weight:500}
 #weightPage .wx-ledger .st-wk-l{display:grid;gap:2px;list-style:none;margin:0;padding:0}
 #weightPage .wx-ledger .st-wk{display:grid;grid-template-columns:76px 1fr auto;grid-template-areas:"d v c" "d dots dots";align-items:center;column-gap:12px;row-gap:6px;padding:12px 10px;margin:0 -10px;border-radius:16px;min-height:0;border:0}
@@ -1912,9 +1912,9 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 #historyPage .st-cal-stats span.is-zero{display:none}
 #vn-hist-dayhost{scroll-margin-bottom:120px}
 /* Settings */
-#morePage .apx96-danger{box-shadow:none !important;margin-top:28px;border-color:rgba(255,123,84,.26) !important}
+#morePage .apx96-danger{box-shadow:none !important;margin-top:28px;border-color:rgba(240,112,154,.26) !important}
 #morePage .apx96-kicker{font:550 13px/1.2 var(--st-font) !important;letter-spacing:0 !important;text-transform:none !important;color:var(--st-ink-3) !important}
-#morePage .apx96-danger .apx96-kicker{color:#ff9b7a !important}
+#morePage .apx96-danger .apx96-kicker{color:#F58BAE !important}
 #morePage button,#morePage .apx96-btn{text-transform:none !important;letter-spacing:0 !important}
 #morePage h1,#morePage h2,#morePage h3{font-weight:600 !important;letter-spacing:-.01em !important}
 #morePage .vn-set-group{border-radius:var(--st-r,26px) !important;-webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3)}
@@ -1951,7 +1951,7 @@ html{caret-color:#B49AFF;-webkit-tap-highlight-color:transparent}
 /* ---- Toast: a dark glass pill that drops in, not a lilac slab ---- */
 .toast{background:rgba(26,23,38,.92) !important;color:var(--st-ink) !important;font:550 13.5px/1.2 var(--st-font) !important;letter-spacing:0 !important;padding:12px 18px 12px 14px !important;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(180,154,255,.28),0 18px 40px -12px rgba(0,0,0,.8) !important;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
-.toast::before{content:"";display:inline-block;width:8px;height:8px;margin-right:9px;border-radius:50%;vertical-align:1px;background:#3ddc97;box-shadow:0 0 0 3px rgba(61,220,151,.18)}
+.toast::before{content:"";display:inline-block;width:8px;height:8px;margin-right:9px;border-radius:50%;vertical-align:1px;background:#C4B5FD;box-shadow:0 0 0 3px rgba(196,181,253,.18)}
 .toast{animation:st-toast-in .5s var(--st-spring-snappy) both}
 @keyframes st-toast-in{from{opacity:0;translate:0 -14px;scale:.94}}
 
@@ -2095,12 +2095,12 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
   -webkit-backdrop-filter:blur(10px) saturate(1.2);backdrop-filter:blur(10px) saturate(1.2);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.26),inset 0 -8px 14px rgba(0,0,0,.18),inset 0 0 0 1px color-mix(in srgb,var(--k) 32%,rgba(255,255,255,.08)),0 6px 14px -8px rgba(0,0,0,.6)}
 #homePage .st-tweek [data-rail] .vn-week-c.is-k-full .st-cap{--k:#8b5cf6}
-#homePage .st-tweek [data-rail] .vn-week-c.is-k-push .st-cap{--k:#ff7b54}
-#homePage .st-tweek [data-rail] .vn-week-c.is-k-pull .st-cap{--k:#4da3ff}
-#homePage .st-tweek [data-rail] .vn-week-c.is-k-legs .st-cap{--k:#3ddc97}
-#homePage .st-tweek [data-rail] .vn-week-c.is-k-walk .st-cap{--k:#2dd4d4}
-#homePage .st-tweek [data-rail] .vn-week-c.is-k-fb .st-cap{--k:#f5c542}
-#homePage .st-tweek [data-rail] .vn-week-c.is-k-rest .st-cap{--k:#8a879c;background:linear-gradient(170deg,rgba(255,255,255,.05),rgba(255,255,255,.015));box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.07)}
+#homePage .st-tweek [data-rail] .vn-week-c.is-k-push .st-cap{--k:#BF75C5}
+#homePage .st-tweek [data-rail] .vn-week-c.is-k-pull .st-cap{--k:#5552BB}
+#homePage .st-tweek [data-rail] .vn-week-c.is-k-legs .st-cap{--k:#A43066}
+#homePage .st-tweek [data-rail] .vn-week-c.is-k-walk .st-cap{--k:#D37732}
+#homePage .st-tweek [data-rail] .vn-week-c.is-k-fb .st-cap{--k:#E2B04A}
+#homePage .st-tweek [data-rail] .vn-week-c.is-k-rest .st-cap{--k:#9B8BB8;background:linear-gradient(170deg,rgba(255,255,255,.05),rgba(255,255,255,.015));box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.07)}
 /* letter: overrides the ring recipe from earlier passes */
 #homePage .st-tweek [data-rail] .vn-week-d{all:unset;display:block;font:700 13px/1 var(--st-font) !important;letter-spacing:.02em !important;color:color-mix(in srgb,var(--k) 55%,#fff) !important;font-variant-numeric:tabular-nums}
 #homePage .st-tweek [data-rail] .vn-week-d::before{display:none}
@@ -2268,7 +2268,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #historyPage .st-hw small{font:500 12.5px var(--st-font);color:var(--st-ink-3)}
 #historyPage .st-hw-c i{font-style:normal}
 #historyPage .st-hw-c.is-dn i{color:var(--st-lean)}
-#historyPage .st-hw-c.is-up i{color:#ff9b7a}
+#historyPage .st-hw-c.is-up i{color:#F58BAE}
 #historyPage .st-hw-t b{font:inherit;color:var(--st-accent-lift)}
 
 /* ---- D51 · Cut range: start reference, busy windows ---- */
@@ -2364,7 +2364,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 
 /* ---- History: active days glow in their activity hue ------------------------- */
 #historyPage .nxp-cal-day.has-lift{background:linear-gradient(170deg,rgba(139,124,255,.42),rgba(139,124,255,.14)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 6px 16px -8px rgba(139,124,255,.7) !important}
-#historyPage .nxp-cal-day[data-k="cardio"]{background:linear-gradient(170deg,rgba(60,200,230,.32),rgba(60,200,230,.1)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 6px 16px -8px rgba(60,200,230,.6) !important}
+#historyPage .nxp-cal-day[data-k="cardio"]{background:linear-gradient(170deg,rgba(211,119,50,.32),rgba(211,119,50,.1)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 6px 16px -8px rgba(211,119,50,.6) !important}
 #historyPage .nxp-cal-day.is-selected{background:linear-gradient(170deg,#9A6BFF,#6D28D9) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 10px 24px -8px rgba(139,92,246,.95),0 0 0 3px rgba(139,92,246,.22) !important}
 #historyPage .nxp-cal-month span{font-family:var(--st-font-d) !important;font-weight:640 !important;letter-spacing:-.03em !important}
 #historyPage .vn-hist-day h2{font-family:var(--st-font-d) !important;letter-spacing:-.035em !important;font-weight:640 !important}
@@ -2399,7 +2399,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
   background:radial-gradient(closest-side,var(--st-mast,rgba(139,92,246,.42)),transparent);filter:blur(8px);opacity:.9}
 #trainPage{--st-mast:rgba(124,58,237,.45)}
 #weightPage{--st-mast:rgba(99,102,241,.42)}
-#historyPage{--st-mast:rgba(45,212,212,.24)}
+#historyPage{--st-mast:rgba(191,117,197,.26)}
 #morePage{--st-mast:rgba(139,92,246,.30)}
 #morePage .vn-set-title{font-size:38px !important}
 
@@ -2435,7 +2435,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #historyPage .st-dayhead-t em{font:450 13.5px var(--st-font);font-style:normal;color:var(--st-ink-3)}
 /* History: active days lit in their activity hue (beats the D42 generic tint) */
 #historyPage .vn-hist-calendar .nxp-cal-day[data-k="lift"]:not(.is-selected){background:linear-gradient(170deg,rgba(139,124,255,.46),rgba(139,124,255,.14)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.24),0 8px 18px -10px rgba(139,124,255,.85) !important}
-#historyPage .vn-hist-calendar .nxp-cal-day[data-k="cardio"]:not(.is-selected){background:linear-gradient(170deg,rgba(60,200,230,.36),rgba(60,200,230,.1)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 8px 18px -10px rgba(60,200,230,.7) !important}
+#historyPage .vn-hist-calendar .nxp-cal-day[data-k="cardio"]:not(.is-selected){background:linear-gradient(170deg,rgba(211,119,50,.36),rgba(211,119,50,.1)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 8px 18px -10px rgba(211,119,50,.7) !important}
 #historyPage .vn-hist-calendar .nxp-cal-day[data-k="floor"]:not(.is-selected){background:linear-gradient(170deg,rgba(255,194,74,.32),rgba(255,194,74,.08)) !important}
 #historyPage .vn-hist-calendar .nxp-cal-day[data-k].is-selected{background:linear-gradient(170deg,#A77BFF,#6D28D9) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 12px 26px -10px rgba(139,92,246,1),0 0 0 3px rgba(139,92,246,.22) !important}
 #historyPage .nxp-cal-month{font-family:var(--st-font-d) !important}

@@ -1611,14 +1611,14 @@ const NXP = (() => {
     'Goals':['#8B5CF6','<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1" fill="currentColor"/>'],
     'Goals & calories':['#8B5CF6','<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1" fill="currentColor"/>'],
     'Training':['#7C6CF2','<path d="M6.5 8v8M17.5 8v8M3.5 10v4M20.5 10v4M6.5 12h11"/>'],
-    'Cardio & recovery':['#22B8D6','<path d="M3.5 12.5h3.6l2.1-4.8 3.6 9.3 2.4-6.2 1.3 1.7h4"/>'],
+    'Cardio & recovery':['#D37732','<path d="M3.5 12.5h3.6l2.1-4.8 3.6 9.3 2.4-6.2 1.3 1.7h4"/>'],
     'Your name':['#9B7BFF','<circle cx="12" cy="9" r="3.6"/><path d="M5.5 19.2c1.3-3.3 3.8-4.9 6.5-4.9s5.2 1.6 6.5 4.9"/>'],
     'Appearance':['#6366F1','<circle cx="12" cy="12" r="7.6"/><path d="M12 4.4v15.2" /><path d="M12 4.4a7.6 7.6 0 0 1 0 15.2z" fill="currentColor" stroke="none"/>'],
     'Reminders':['#E8A93A','<path d="M7 16.5V11a5 5 0 0 1 10 0v5.5l1.5 1.5h-13z"/><path d="M10.3 20.2a1.9 1.9 0 0 0 3.4 0"/>'],
     'Body & scans':['#F07A52','<path d="M4.5 8V5.5a1 1 0 0 1 1-1H8M16 4.5h2.5a1 1 0 0 1 1 1V8M19.5 16v2.5a1 1 0 0 1-1 1H16M8 19.5H5.5a1 1 0 0 1-1-1V16"/><path d="M8 12h8"/>'],
-    'Cloud & sync':['#3B8FF0','<path d="M7.5 18.5h9a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 6.6 9.3 4.6 4.6 0 0 0 7.5 18.5z"/>'],
+    'Cloud & sync':['#5552BB','<path d="M7.5 18.5h9a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 6.6 9.3 4.6 4.6 0 0 0 7.5 18.5z"/>'],
     'Storage':['#7D7891','<ellipse cx="12" cy="6.8" rx="6.5" ry="2.6"/><path d="M5.5 6.8v10.4c0 1.4 2.9 2.6 6.5 2.6s6.5-1.2 6.5-2.6V6.8M5.5 12c0 1.4 2.9 2.6 6.5 2.6s6.5-1.2 6.5-2.6"/>'],
-    'Wearable':['#2FBF86','<rect x="7" y="6.5" width="10" height="11" rx="3"/><path d="M9 6.5l.7-3h4.6l.7 3M9 17.5l.7 3h4.6l.7-3M12 9.8V12l1.5 1"/>'],
+    'Wearable':['#A43066','<rect x="7" y="6.5" width="10" height="11" rx="3"/><path d="M9 6.5l.7-3h4.6l.7 3M9 17.5l.7 3h4.6l.7-3M12 9.8V12l1.5 1"/>'],
     'App & install':['#8B5CF6','<rect x="7" y="3.5" width="10" height="17" rx="2.6"/><path d="M10.5 17.6h3"/>'],
     'Classic app':['#7D7891','<path d="M4.8 12a7.2 7.2 0 1 0 2.1-5.1"/><path d="M4.5 4.8v3.4h3.4M12 8.2V12l2.6 1.6"/>']
   };

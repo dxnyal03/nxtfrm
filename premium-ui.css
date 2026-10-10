@@ -51,8 +51,8 @@
   /* ---- Status -----------------------------------------------------------
      Green is reserved for positive / good recovery / on-track. It is never a
      general UI accent. */
-  --nxt-success: #6fdba0;
-  --nxt-success-tint: rgba(111, 219, 160, .12);
+  --nxt-success: #C4B5FD;
+  --nxt-success-tint: rgba(196, 181, 253, .12);
   --nxt-warning: #e8b271;
   --nxt-warning-tint: rgba(232, 178, 113, .12);
   --nxt-warning-edge: rgba(232, 178, 113, .34); /* visible warm border; tint is too faint to read as an edge */
