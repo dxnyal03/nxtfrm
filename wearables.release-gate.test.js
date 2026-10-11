@@ -550,6 +550,20 @@ test("reset restores the programme a session is seeded from", function () {
   });
 });
 
+test("leaving minimum-workout mode restores the saved programme, not the factory default", function () {
+  // Reported as "I save my new split but the exercises revert to the default":
+  // FULL after MINIMUM re-seeded the queue from TEMPLATES, discarding the
+  // routine saved in Settings > Training.
+  const start = html.indexOf("function setMinimumWorkoutMode(");
+  assert.ok(start !== -1);
+  const body = html.slice(start, html.indexOf("\nfunction ", start + 1));
+  assert.ok(body.indexOf("NXT.templateFor(state.dayType)") !== -1,
+    "the full session must come from the same base ensureSessionPlan() seeds from");
+  assert.strictEqual(/state\.sessionPlans\[key\]=\(TEMPLATES/.test(body), false,
+    "the factory list must not be written over a saved routine");
+  assert.ok(body.indexOf("sessionTargets[key]") !== -1, "targets follow the restored programme");
+});
+
 test("queue reordering is offered only through accessible controls", function () {
   assert.ok(ui.indexOf("function queueMove(index,delta)") !== -1);
   assert.ok(ui.indexOf("moveSessionExercise(index,delta)") !== -1, "reorder goes through the engine");

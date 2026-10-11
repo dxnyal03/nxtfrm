@@ -6965,8 +6965,12 @@ function setMinimumWorkoutMode(on){
     const min=minimumPlanNames();
     if(min.length)state.sessionPlans[key]=min;
   }else{
-    const base=(TEMPLATES[state.dayType]||[]).map(e=>e.name);
+    // Leaving minimum mode restores the programme this session is built from —
+    // the saved routine for this gym when one exists. Reading TEMPLATES here
+    // threw the lifter's own routine away and put the factory default back.
+    const base=((typeof NXT!=="undefined"&&NXT.templateFor)?NXT.templateFor(state.dayType):(TEMPLATES[state.dayType]||[])).map(e=>e.name);
     state.sessionPlans[key]=base;
+    if(typeof NXT!=="undefined"&&NXT.cfg&&NXT.templateFor)NXT.cfg().sessionTargets[key]=NXT.copy(NXT.templateFor(state.dayType));
   }
   state.exercise=(template()[0]&&template()[0].name)||"";
   state.setNum=1;
