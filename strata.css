@@ -2507,3 +2507,297 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #weightPage .st-rread small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:14px}
 #weightPage .st-rread span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:359px){#weightPage .st-rread>div{padding:10px 6px 9px 9px}#weightPage .st-rread small,#weightPage .st-rread span{font-size:10.5px;letter-spacing:-.01em}}
+
+/* =============================================================================
+   NXTFRM 2.0 · Progress › Training — the activity ledger
+   Counts and sums over stored rows (N.activityWeeks), drawn in the lit-glass
+   recipe of the weight card. Three bar charts share one selected week and one
+   stable readout. Lifting is violet, cardio apricot (D54); the plan and target
+   lines are dashed references and say so in text. Every motion below has a
+   reduced-motion path at the end of the block.
+   ========================================================================== */
+.st-sr{position:absolute !important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+#weightPage .st-act{
+  position:relative;padding:20px 18px 14px;margin-top:14px;border-radius:var(--st-r);border:1px solid var(--st-tile-line);
+  background:radial-gradient(110% 60% at 100% 0%,rgba(139,92,246,.16),transparent 58%),var(--st-tile),var(--st-tile-bg);
+  box-shadow:var(--st-tile-hl),var(--st-shadow);
+}
+#weightPage .st-act.is-empty{padding-bottom:20px}
+#weightPage .st-act .st-sect{margin-bottom:6px}
+#weightPage .st-act .st-h3{font:590 23px/1.2 var(--st-font-d);letter-spacing:-.02em}
+#weightPage .st-act-range{margin-top:16px}
+#weightPage .st-act-range .vn-seg{flex:1}
+
+/* Readout: the stable text the charts point at. Values are tabular so a scrub
+   never reflows the row. */
+#weightPage .st-act-read{margin-top:14px;padding:12px 14px 12px;border-radius:18px;
+  background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.015));box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(var(--st-hl),.07)}
+#weightPage .st-act-rl{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin:0 0 8px;font:500 12.5px var(--st-font);color:var(--st-ink-3)}
+#weightPage .st-act-rl b{font:590 14px var(--st-font);color:var(--st-ink)}
+#weightPage .st-act-rv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+#weightPage .st-act-rv>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+#weightPage .st-act-rv>div+div{padding-left:10px;border-left:1px solid rgba(var(--st-hl),.07)}
+#weightPage .st-act-rv b{font:300 24px/1.05 var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink);white-space:nowrap;font-variant-numeric:tabular-nums;transition:color .25s}
+#weightPage .st-act-rv small{font:500 11px/1.2 var(--st-font);color:var(--st-ink-3)}
+#weightPage .st-act-rv>div::before{content:"";width:18px;height:3px;border-radius:2px;background:var(--c,var(--st-lift));box-shadow:0 0 8px var(--c,var(--st-lift));margin-bottom:4px}
+
+/* Chart blocks: hairline-separated, no inner boxes. */
+#weightPage .st-act-blk{margin-top:18px;padding-top:16px;border-top:1px solid rgba(var(--st-hl),.07)}
+#weightPage .st-act-bh{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px}
+#weightPage .st-act-bh .st-meta{white-space:nowrap;font-variant-numeric:tabular-nums}
+#weightPage .st-act-wrap{margin:0 -4px;border-radius:12px;touch-action:pan-y;user-select:none;-webkit-user-select:none;outline:none;cursor:crosshair}
+#weightPage .st-act-wrap:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:4px}
+#weightPage .st-act-svg{display:block;width:100%;height:auto;overflow:visible}
+#weightPage .st-act-grid{stroke:rgba(var(--st-hl),.07);stroke-width:1}
+#weightPage .st-act-base{stroke:rgba(var(--st-hl),.14);stroke-width:1}
+#weightPage .st-act-gl{fill:var(--st-ink-4);font:500 10px var(--st-font)}
+#weightPage .st-act-bar{fill:color-mix(in srgb,var(--c) 62%,transparent);transition:fill .2s var(--st-out),opacity .2s;transform-box:fill-box;transform-origin:bottom}
+#weightPage .st-act-bar.is-cur{fill:color-mix(in srgb,var(--c) 38%,transparent);stroke:color-mix(in srgb,var(--c) 70%,transparent);stroke-width:1.5;stroke-dasharray:3 3}
+#weightPage .st-act-bar.is-zero{fill:rgba(var(--st-hl),.18)}
+#weightPage .st-act-bar.is-sel{fill:var(--c);filter:drop-shadow(0 0 8px color-mix(in srgb,var(--c) 70%,transparent))}
+#weightPage .st-act-bar.is-cur.is-sel{stroke:var(--c);stroke-dasharray:none}
+#weightPage .st-act-val{fill:var(--st-ink-3);font:550 10.5px var(--st-font);font-variant-numeric:tabular-nums;opacity:0;transition:opacity .2s}
+#weightPage .st-act-val.is-sel{fill:var(--st-ink);opacity:1}
+#weightPage .st-act-wrap:hover .st-act-val{opacity:.75}
+#weightPage .st-act-ref{stroke:rgba(var(--st-hl),.5);stroke-width:1;stroke-dasharray:2 5;stroke-linecap:round}
+#weightPage .st-act-refl{fill:var(--st-ink-2);font:550 10.5px var(--st-font);letter-spacing:.01em}
+#weightPage .st-act-svg .st-ax{fill:var(--st-ink-3);font:500 10.5px var(--st-font)}
+
+/* Weeks at plan: one capsule per week — filled = plan met, hollow = below,
+   dashed = this week in progress. Word in the accessible text, shape here. */
+#weightPage .st-act-cons{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;margin:10px 0 0;padding:0;list-style:none}
+#weightPage .st-act-cons li{position:relative;min-width:0;height:28px;display:flex;align-items:center;justify-content:center}
+#weightPage .st-act-cd{display:block;width:100%;max-width:26px;height:10px;border-radius:999px;box-sizing:border-box}
+#weightPage .st-act-cons .is-met .st-act-cd{background:var(--st-accent-lift);box-shadow:0 0 10px rgba(180,154,255,.55)}
+#weightPage .st-act-cons .is-miss .st-act-cd{border:1.5px solid rgba(var(--st-hl),.28)}
+#weightPage .st-act-cons .is-cur .st-act-cd{border:1.5px dashed color-mix(in srgb,var(--st-accent-lift) 70%,transparent)}
+#weightPage .st-act-consblk .st-meta{margin:0}
+
+/* Arrival: bars grow, capsules pop. Entering the tab or changing the range only. */
+@media (prefers-reduced-motion:no-preference){
+  #weightPage .st-act-wrap.is-draw .st-act-bar{animation:st-grow .8s var(--st-spring) both;animation-delay:calc(var(--i) * 30ms + .08s)}
+  #weightPage .st-act-wrap.is-draw .st-act-val{animation:none}
+  #weightPage.st-enter .st-act-cons li{animation:st-pop .5s var(--st-spring) both;animation-delay:calc(var(--i) * 25ms + .2s)}
+}
+:root[data-nxp-motion="reduced"] #weightPage .st-act-wrap.is-draw .st-act-bar,
+:root[data-nxp-motion="reduced"] #weightPage.st-enter .st-act-cons li{animation:none !important}
+:root[data-nxp-motion="reduced"] #weightPage .st-act-bar,:root[data-nxp-motion="reduced"] #weightPage .st-act-val{transition:none !important}
+
+@media (max-width:359px){
+  #weightPage .st-act{padding:16px 14px 12px}
+  #weightPage .st-act-rv{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 8px}
+  #weightPage .st-act-rv>div:nth-child(3){padding-left:0;border-left:0}
+  #weightPage .st-act-rv b{font-size:21px}
+  #weightPage .st-act .st-h3{font-size:20px}
+}
+
+/* =============================================================================
+   NXTFRM 2.0 · Wide layouts — tablet and desktop
+   The product is phone-first and every measured contract (D18, fold budgets)
+   is a phone contract; nothing below changes layout under 768px. On a tablet
+   the column widens so the instrument strip and charts get room. On a desktop
+   the floating dock becomes a side rail and the column widens again, so the
+   app no longer floats as a 470px strip in the middle of the screen. The rail
+   still recedes in an active workout (D6). Same markup, same tab order.
+   ========================================================================== */
+@media (min-width:768px){
+  .app{max-width:600px !important}
+  .sheet,.n99-modal .sheet{max-width:560px !important}
+  .tabs{max-width:520px !important}
+  #cloudLocalBanner,.cloud-local-banner{max-width:600px;margin-inline:auto}
+}
+@media (min-width:1024px){
+  :root{--st-rail:84px;--st-col:680px}
+  .app{max-width:var(--st-col) !important}
+  body{padding-bottom:48px !important}
+  .content,.nxp-progress{padding-bottom:48px !important}
+  .tabs{
+    left:max(16px,calc(50% - var(--st-col) / 2 - 28px - var(--st-rail))) !important;right:auto !important;
+    top:50% !important;bottom:auto !important;
+    width:var(--st-rail) !important;max-width:none !important;
+    transform:translateY(-50%) !important;
+    border-radius:30px !important;padding:8px !important;
+  }
+  .tabs.vn-recede{transform:translateY(-50%) translateX(-220%) !important}
+  .tabs .tabs-inner{display:grid !important;grid-template-columns:minmax(0,1fr) !important;grid-auto-rows:64px;gap:4px !important}
+  .tabs .tabs-inner.st-dock::before{width:100%;height:calc(100% / var(--tab-n,5));transform:translateY(calc(var(--tab-i,0) * 100%))}
+  .tabs .tab{min-height:64px !important;border-radius:24px}
+  .tabs .tab .tab-label{font-size:11px !important}
+  /* The canvas light fields were tuned for a phone; on a wide screen keep the
+     brightest field near the column rather than off in the corner. */
+  body::before{inset:-6% !important}
+}
+@media (min-width:1440px){
+  :root{--st-col:720px}
+}
+
+/* Four Progress tabs: under 360px "Performance" takes its short name, "Lifts"
+   (the same word the Today tile uses); the accessible name stays "Performance". */
+#weightPage .vn-progress-tabs .st-tab-s{display:none}
+@media (max-width:359px){
+  #weightPage .vn-progress-tabs button,#weightPage .n99-progress-tabs button{font-size:12.5px !important;padding:0 4px !important}
+  #weightPage .vn-progress-tabs .st-tab-l{display:none}
+  #weightPage .vn-progress-tabs .st-tab-s{display:inline}
+}
+
+/* =============================================================================
+   NXTFRM 2.0 · Train v2 — the instrument stack
+   Order is what the hand needs: exercise, the reference line (Aim · Best ·
+   Rest), one coach line, rest, then the set card as a ledger whose current row
+   is the entry and whose last line is Log. The card is as tall as the session,
+   never as tall as the screen; Log sits in flow and docks over the keyboard
+   only while a field is focused. The figure is the whole body, out of flow,
+   so the head's height is the title's height (D18's intent, D19's look).
+   ========================================================================== */
+/* -- Exercise head: whole figure, lit muscle -- */
+.st-train-active .st-ex{min-height:112px;margin-top:14px;padding:6px 0;align-items:center;gap:0}
+.st-train-active .st-ex-info{flex:1 1 auto;max-width:calc(100% - 90px)}
+.st-ex-fig{
+  position:absolute;right:-4px;top:50%;z-index:0;display:block;width:78px;height:126px;padding:0;border:0;background:none;cursor:pointer;
+  transform:translateY(-50%);filter:none;-webkit-tap-highlight-color:transparent;transition:transform .2s var(--st-out);
+}
+.st-ex-fig:active{transform:translateY(-50%) scale(.96)}
+.st-ex-fig .nxa{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 12px 22px rgba(139,92,246,.32))}
+.st-ex.is-forward .st-ex-fig{animation:st-fig-in .5s var(--st-glide)}
+.st-ex.is-back .st-ex-fig{animation:st-fig-back .5s var(--st-glide)}
+@keyframes st-fig-in{from{opacity:0;transform:translateY(-50%) translateX(18px)}}
+@keyframes st-fig-back{from{opacity:0;transform:translateY(-50%) translateX(-18px)}}
+.st-ex-fig:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:4px;border-radius:14px}
+
+/* -- The figure itself, everywhere it appears: graphite body, lit muscle -- */
+.nxa{--nxa-body-hi:#403B4F;--nxa-body-lo:#1E1C28;--nxa-prim-hi:#F2ECFF;--nxa-prim-mid:#B49AFF;--nxa-prim-lo:#6A49D8;--nxa-sec-hi:#7D6BB3;--nxa-sec-lo:#3A3256}
+.nxa .nxa-body,.nxa .nxa-m{stroke:rgba(255,255,255,.075);stroke-width:1.6}
+.nxa .nxa-hi path{stroke:rgba(242,236,255,.4);stroke-width:1.3}
+.nxa .nxa-hi.is-primary{filter:drop-shadow(0 0 7px rgba(180,154,255,.9))}
+.nxa .nxa-hi.is-secondary{opacity:.85}
+
+/* -- Reference line: Aim · Best · Rest, typography on a hairline -- */
+.st-refline{display:grid;grid-template-columns:1.25fr 1fr .85fr;margin:2px 0 12px;padding:10px 0;border-top:1px solid rgba(var(--st-hl),.07);border-bottom:1px solid rgba(var(--st-hl),.07)}
+.st-ref{display:flex;flex-direction:column;gap:3px;min-width:0;padding:4px 10px 4px 0;border:0;border-radius:12px;background:none;color:var(--st-ink);text-align:left;font-family:var(--st-font);box-sizing:border-box}
+.st-ref+.st-ref{padding-left:12px;border-left:1px solid rgba(var(--st-hl),.07);border-radius:0}
+.st-ref small{font:550 11.5px/1 var(--st-font);color:var(--st-ink-3);letter-spacing:.02em;white-space:nowrap}
+.st-ref b{font:300 23px/1.1 var(--st-font-d);letter-spacing:-.02em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.st-ref span{font:450 12px/1.2 var(--st-font);color:var(--st-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button.st-ref{cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;transition:background .2s}
+button.st-ref:active{background:rgba(139,92,246,.14)}
+.st-ref.is-aim small{color:#CBB8FF}
+.st-ref.is-aim b{color:var(--st-accent-lift);text-shadow:0 0 14px rgba(180,154,255,.4)}
+button.st-ref.is-aim small::after{content:" · tap to fill";color:var(--st-ink-3);font-weight:500;letter-spacing:0}
+
+/* -- Coach: one line, folded note -- */
+.st-coachline{margin:0 0 12px;border-radius:16px;background:rgba(var(--st-hl),.045);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.06);overflow:hidden}
+.st-coachline summary{display:flex;align-items:center;gap:10px;min-height:48px;padding:6px 12px 6px 8px;list-style:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.st-coachline summary::-webkit-details-marker{display:none}
+.st-coachline .st-coach-ico{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:10px;background:rgba(139,92,246,.22);color:#E3D8FF}
+.st-coachline .st-coach-ico svg{width:15px;height:15px;fill:currentColor}
+.st-coachline summary>b{flex:1;min-width:0;font:550 14.5px/1.25 var(--st-font);color:var(--st-ink)}
+.st-coachline .st-coach-pill{flex:none;padding:5px 10px;border-radius:999px;font:590 12px/1 var(--st-font);font-style:normal;white-space:nowrap;color:#E3D8FF;background:rgba(139,92,246,.2)}
+.st-coachline.is-load .st-coach-pill{color:#DCD0FF;background:rgba(196,181,253,.14);box-shadow:inset 0 0 0 1px rgba(196,181,253,.38)}
+.st-coachline.is-tired .st-coach-pill,.st-coachline.is-reentry .st-coach-pill{color:#FFD98A;background:rgba(255,194,74,.13);box-shadow:inset 0 0 0 1px rgba(255,194,74,.34)}
+.st-coachline.is-stall .st-coach-pill{color:#FFB08C;background:rgba(255,138,91,.13);box-shadow:inset 0 0 0 1px rgba(255,138,91,.34)}
+.st-coachline-why{display:inline-flex;align-items:center;gap:1px;flex:none;font:550 13px var(--st-font);color:var(--st-accent-lift);white-space:nowrap}
+.st-coachline-why i{font-style:normal;font-size:16px;line-height:1;transition:transform .2s var(--st-out)}
+.st-coachline[open] .st-coachline-why i{transform:rotate(90deg)}
+.st-coachline>p{margin:0;padding:0 14px 12px 48px;font:450 13.5px/1.45 var(--st-font);color:var(--st-ink-2)}
+.st-coachline.is-enter{animation:st-coach-in .5s var(--st-out) backwards}
+
+/* -- Set card: sized to the session -- */
+#trainPage .st-train .st-card{flex:0 0 auto}
+#trainPage .st-train .st-entry{flex:none;margin:0}
+.st-dots{margin-top:10px}
+.st-ledger{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.st-lrow{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 12px 0 8px;border-radius:16px;box-sizing:border-box;color:var(--st-ink)}
+.st-lrow>button{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;margin:0 -12px 0 -8px;padding:0 12px 0 8px;border:0;border-radius:16px;background:rgba(var(--st-hl),.045);color:var(--st-ink);text-align:left;cursor:pointer;font-family:var(--st-font);box-sizing:border-box;width:calc(100% + 20px);-webkit-tap-highlight-color:transparent;transition:background .2s}
+.st-lrow>button:active{background:rgba(var(--st-hl),.09)}
+.st-ln{display:grid;place-items:center;width:30px;height:30px;flex:none;border-radius:50%;background:rgba(var(--st-hl),.08);font:590 12.5px var(--st-font);color:var(--st-ink-2);font-variant-numeric:tabular-nums}
+.st-lrow b{flex:1;min-width:0;font:300 22px/1 var(--st-font-d);letter-spacing:-.02em;white-space:nowrap}
+.st-lrow b i{font-style:normal;font-size:15px;color:var(--st-ink-4);margin:0 1px}
+.st-lrow small{display:inline-flex;align-items:center;gap:5px;flex:none;font:500 12px var(--st-font);color:var(--st-ink-3);white-space:nowrap}
+.st-lrow small svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.st-lrow.is-done .st-ln{background:rgba(203,184,255,.2);color:#E8DFFF}
+.st-lrow.is-up small{color:#DCD0FF}
+.st-lrow.is-warm{opacity:.72}
+.st-lrow.is-next{box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.07)}
+.st-lrow.is-next>button{background:transparent;box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.07)}
+.st-lrow.is-next{box-shadow:none}
+.st-lrow.is-next b{color:var(--st-ink-3)}
+.st-lrow.is-next:not(:has(button)){box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.06)}
+.st-lrow.is-now{align-items:flex-start;gap:6px;min-height:0;padding:12px 0 6px;border-radius:0}
+.st-lrow.is-now .st-ln{margin-top:22px;background:var(--st-accent);color:#fff;box-shadow:0 0 16px rgba(139,92,246,.6)}
+.st-lrow.is-now .st-entry{flex:1 1 auto;min-width:0}
+.st-lrow.is-fresh{animation:st-land .5s var(--st-spring)}
+#trainPage .st-train .st-entry .nxp-stepper-row{column-gap:12px}
+
+/* -- Log: in flow at the card foot; docks above the keyboard only while typing -- */
+#trainPage .st-train-active .st-log{position:static;margin-top:16px !important}
+#trainPage .st-train-active .st-log.is-kb{position:fixed;z-index:70;margin:0 !important;left:20px;right:20px;width:auto !important;bottom:var(--nxp-kb-bottom,max(8px,env(safe-area-inset-bottom,0px)));transition:none;animation:none}
+#trainPage .st-train-active form.is-kb{padding-bottom:calc(58px + 16px)}
+
+@media (max-width:359px){
+  .st-train-active .st-ex{min-height:100px}
+  .st-train-active .st-ex-info{max-width:calc(100% - 74px)}
+  .st-ex-fig{width:64px;height:104px;right:-2px}
+  .st-refline{grid-template-columns:1.2fr 1fr .9fr}
+  .st-ref b{font-size:19px}
+  .st-ref span{font-size:11px}
+  button.st-ref.is-aim small::after{content:""}
+  .st-lrow b{font-size:20px}
+  .st-lrow small{font-size:11px}
+  .st-lrow.is-now .st-ln{margin-top:18px}
+  #trainPage .st-train-active .st-log.is-kb{left:16px;right:16px}
+}
+@media (prefers-reduced-motion:reduce){
+  .st-ex.is-forward .st-ex-fig,.st-ex.is-back .st-ex-fig,.st-lrow.is-fresh,.st-coachline.is-enter{animation:none !important}
+  .st-ex-fig,.st-coachline-why i{transition:none}
+}
+:root[data-nxp-motion="reduced"] .st-ex.is-forward .st-ex-fig,:root[data-nxp-motion="reduced"] .st-ex.is-back .st-ex-fig,
+:root[data-nxp-motion="reduced"] .st-lrow.is-fresh,:root[data-nxp-motion="reduced"] .st-coachline.is-enter{animation:none !important}
+/* Train v2 follow-ups: the ledger replaces the dots row; the legacy form
+   clearance and the generic disclosure marker do not apply to this card. */
+#trainPage .st-train-active #nxp-set-form{padding-bottom:20px}
+#trainPage .st-train-active #nxp-set-form.is-kb{padding-bottom:calc(58px + 16px)}
+.n99 .st-coachline>summary::after,.st-coachline>summary::after{content:none !important;display:none !important}
+.st-coachline summary{gap:8px;padding-right:10px}
+.st-coachline summary>b{font-size:14px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.st-coachline .st-coach-pill{padding:4px 9px;font-size:11.5px}
+@media (max-width:359px){.st-coachline .st-coach-pill{display:none}}
+.st-ex-title{min-height:44px;display:inline-flex;align-items:center}
+/* 320: the entry row and the rest strip fit inside the card; nothing clips. */
+@media (max-width:359px){
+  .st-lrow.is-now{gap:4px}
+  .st-lrow.is-now .st-ln{width:26px;height:26px;font-size:11.5px;margin-top:20px}
+  #trainPage .st-train .st-lrow.is-now .st-entry{grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr)}
+  #trainPage .st-train .st-lrow.is-now .st-entry .nxp-stepper-row{grid-template-columns:40px 40px;column-gap:8px}
+  #trainPage .st-train .st-lrow.is-now .st-entry .nxp-step{width:40px;height:40px;font-size:22px}
+  #trainPage .st-train .st-lrow.is-now .st-entry .nxp-stepper-row input{font-size:44px !important;height:60px}
+  #trainPage .st-train .st-lrow.is-now .st-entry .nxp-stepper-row input[data-len="4"]{font-size:36px !important}
+  #trainPage .st-train .st-lrow.is-now .st-entry .nxp-stepper-row input[data-len="5"]{font-size:30px !important}
+  .st-lrow.is-now .st-x{font-size:22px;margin-top:38px}
+  .st-rest{padding:8px 6px 8px 14px;gap:8px}
+  .st-rest-l{gap:8px}
+  .st-rest-l b{font-size:26px}
+  .st-rest .vn-rest-actions{gap:4px}
+  .st-rest .vn-rest-actions .n99-button{padding:0 12px !important;font-size:13.5px !important}
+}
+/* The anatomy lens: a square crop of the worked region inside a soft round
+   vignette. Centred on the muscle, graphite body around it, lit region on top. */
+.st-ex-fig.is-lens{
+  width:104px;height:104px;right:-6px;border-radius:50%;overflow:hidden;
+  background:radial-gradient(circle at 50% 42%,rgba(139,92,246,.26),rgba(255,255,255,.035) 58%,transparent 74%);
+  -webkit-mask-image:radial-gradient(circle at 50% 50%,#000 54%,transparent 71%);mask-image:radial-gradient(circle at 50% 50%,#000 54%,transparent 71%);
+}
+.st-ex-fig.is-lens .nxa{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 6px 16px rgba(139,92,246,.35)) saturate(1.15)}
+.st-ex-fig.is-lens .nxa .nxa-hi.is-primary{filter:drop-shadow(0 0 9px rgba(180,154,255,.95))}
+.st-train-active .st-ex-info{max-width:calc(100% - 104px)}
+/* Logged rows: the comparison word has a short form under 360px. */
+.st-lrow .st-lw-s{display:none}
+@media (max-width:359px){
+  .st-ex-fig.is-lens{width:88px;height:88px;right:-4px}
+  .st-train-active .st-ex-info{max-width:calc(100% - 88px)}
+  .st-lrow .st-lw{display:none}.st-lrow .st-lw-s{display:inline}
+  .st-lrow b{font-size:19px}
+}
+@media (max-width:359px){
+  #trainPage .st-train .st-lrow.is-now .st-entry .nxp-stepper-row{grid-template-columns:44px 44px;column-gap:6px}
+  #trainPage .st-train .st-lrow.is-now .st-entry .nxp-step{width:44px;height:44px}
+}

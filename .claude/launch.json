@@ -2,17 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "nxtfrm",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["/private/tmp/claude-501/-Users-alidanial-Documents-NXTFRM/74ffb0d1-f264-42c4-8d98-b952d3959da5/scratchpad/devserver.py", "8761", "/Users/alidanial/Documents/NXTFRM"],
-      "port": 8761
-    },
-    {
-      "name": "nxtfrm-sw",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["/private/tmp/claude-501/-Users-alidanial-Documents-NXTFRM/74ffb0d1-f264-42c4-8d98-b952d3959da5/scratchpad/devserver.py", "8762", "/Users/alidanial/Documents/NXTFRM"],
-      "port": 8762,
-      "url": "http://app.localhost:8762"
+      "name": "nxtfrm-dev",
+      "runtimeExecutable": "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+      "runtimeArgs": ["-u", "/Users/alidanial/Documents/NXTFRM/tasks/vnext/devserver.py", "8763", "/Users/alidanial/Documents/NXTFRM"],
+      "port": 8763,
+      "url": "http://localhost:8763"
     }
   ]
 }
