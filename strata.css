@@ -2500,3 +2500,10 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 /* ---- Banner actions follow the glass tier ---------------------------------- */
 .cloud-local-banner .cloud-local-banner-login{border-radius:999px !important;border:0 !important;background:var(--btn-glass) !important;box-shadow:var(--btn-glass-shadow) !important;color:var(--btn-text) !important;font-family:var(--st-font-d) !important;font-weight:560 !important}
 .cloud-local-banner .cloud-local-banner-dismiss{font-family:var(--st-font-d) !important;color:var(--st-ink-3) !important}
+
+/* D57 — range read alignment: every column is the same three-row grid, labels never wrap,
+   so the three values sit on one baseline whatever the label length. */
+#weightPage .st-rread>div{display:grid;grid-template-rows:14px auto auto;row-gap:4px;align-content:start}
+#weightPage .st-rread small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:14px}
+#weightPage .st-rread span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:359px){#weightPage .st-rread>div{padding:10px 6px 9px 9px}#weightPage .st-rread small,#weightPage .st-rread span{font-size:10.5px;letter-spacing:-.01em}}

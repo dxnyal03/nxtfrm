@@ -1174,7 +1174,7 @@ Object.assign(NXT, (()=>{
     const tChange=trPts.length>=2?trPts.at(-1).avg-trPts[0].avg:null;
     const rangeRead=`<div class="st-rread" role="group" aria-label="This range">
       <div><small>Trend change</small><b class="vn-num">${tChange===null?'—':(tChange>0?'+':tChange<0?'−':'')+Math.abs(tChange).toFixed(1)}<em>kg</em></b><span>${trPts.length>=2?'over '+(Math.round((N.dateMs(trPts.at(-1).date)-N.dateMs(trPts[0].date))/864e5))+' days':'building'}</span></div>
-      <div><small>Lowest morning</small><b class="vn-num">${lowPt.weight.toFixed(1)}<em>kg</em></b><span>${esc(N.shortDate(lowPt.date))}</span></div>
+      <div><small>Lowest</small><b class="vn-num">${lowPt.weight.toFixed(1)}<em>kg</em></b><span>${esc(N.shortDate(lowPt.date))}</span></div>
       <div><small>Weighed</small><b class="vn-num">${points.length}<em>/${spanDays}</em></b><span>${Math.round(points.length/spanDays*100)}% of days</span></div>
     </div>`;
     const dense=points.length>90;
