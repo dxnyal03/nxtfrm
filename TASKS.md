@@ -96,13 +96,17 @@ Related preserved WIP (`68fa5ab`) is cache/version plumbing only, not the consol
 
 ---
 
-## PLANNED — Phase 5 calorie target suggestion
+## WITHDRAWN — Phase 5 calorie target suggestion
 
-Consume `NXT.diagnose()` (verdict, headline, evidence, actions, confidence). Propose a calorie-target **suggestion**. The user must confirm. **Never auto-write** `cfg().calories` or equivalent.
+Built as release 150 (PR #28, branch `phase5-calorie-proposal`, 43/43 checks) and **withdrawn unmerged** on 2026-10-10: the owner does not use the calorie system. D49 (release 151) hides that system app-wide behind `CALORIES_ENABLED=false`; data and maths stay. If calories ever return, flip the flag and revisit the branch.
 
-Do not mix with Safe Sync, seed, or UI redesign.
+## IN REVIEW — Release 152: charts and Today pass (D50), on top of 151
 
-Sync-matrix testing is required only if this phase touches cloud (it should not).
+Branch `release-152-design` (includes release 151). Verification: `node tasks/vnext/verify-152.mjs` (20 checks, every expected value read from `NXT.*`) and `verify-151.mjs` (34). Release gate green at 152.
+
+## IN REVIEW — Release 151: week rail outcomes, Cut range, calories off (D48, D49)
+
+Branch `release-151-week-rail`, PR open. Verification: `node tasks/vnext/verify-151.mjs` (34 checks: rail states against stored rows, header, 28-point sparkline, Lifts mini vs `NXT.bestSet()`, Cut range + D2 domain, calorie surfaces absent, gated verdicts, 320/375/390/393, reduced motion).
 
 ---
 
@@ -119,6 +123,7 @@ Sync-matrix testing is required only if this phase touches cloud (it should not)
 ## KNOWN ISSUE
 
 - Plateau diagnosis headline currently wins over the acute recovery `review()` warning when both apply. Flagged as Phase 4.5; do not change unless requested.
+- `wearables.train-enrichment.test.js` fails 3 of 34 on `main` since release 149 (anatomy markup assertions predate the D42 Train pass: muscle text, `nxp-ex-title` onclick, exercise-change class). Pre-existing; not weakened or adapted in release 151 — needs its own slice.
 - Seed cloud-write protection (`cloudUser` → `cloudSignOutSilent`) is in `seed.scenarios.js` but was only exercised signed-out.
 - `?scenario=` stays in the URL after overlay (by design so refresh does not wipe the fixture).
 - Multiple GoTrueClient console warning (Supabase client construction). Known, not a blocker.
