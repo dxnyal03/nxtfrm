@@ -76,7 +76,7 @@ try {
     });
     check('Weight: range read equals the plotted model (trend change, lowest morning, mornings weighed)', JSON.stringify(rr.cells) === JSON.stringify(rr.want), rr);
     check('Weight: chart caption is folded behind "How to read this chart"', await page.evaluate(() => { const d = document.querySelector('#weightPage .st-csum-d'); return !!d && !d.open && !!d.querySelector('#vn-csum'); }));
-    check('Weight: the top axis tick carries the unit', await page.evaluate(() => [...document.querySelectorAll('#n99-chart-svg > text')].some((t) => / kg$/.test(t.textContent))));
+    check('Weight: the y-axis carries the unit (D58: its own label above the tick gutter)', await page.evaluate(() => [...document.querySelectorAll('#n99-chart-svg > text')].some((t) => /(^| )kg$/.test(t.textContent.trim()))));
     await page.evaluate(() => NXT.setRange(0)); await page.waitForTimeout(900);
     const dense = await page.evaluate(() => { const d = document.querySelectorAll('#n99-chart-svg .vn-raw-dot'); return { n: d.length, r: d[0]?.getAttribute('r') }; });
     check('Weight: a range over 90 readings thins its dots', dense.n <= 90 || dense.r === '1.7', dense);

@@ -1,5 +1,5 @@
 {
-  "when": "2026-10-11T02:07:10.099Z",
+  "when": "2026-10-11T02:23:38.286Z",
   "failures": 0,
   "results": [
     {
@@ -61,7 +61,7 @@
       "ok": true
     },
     {
-      "name": "Weight: the top axis tick carries the unit",
+      "name": "Weight: the y-axis carries the unit (D58: its own label above the tick gutter)",
       "ok": true
     },
     {

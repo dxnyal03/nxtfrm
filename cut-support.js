@@ -926,7 +926,9 @@ Object.assign(NXT, (()=>{
     const series=N.trend(rows),start=range?N.dateAdd(state.date,1-range):rows[0]?.date||N.dateAdd(state.date,-29);
     /* D52: taller plot (H 392→460) and thin side margins (20→8); the wrap runs edge to edge
        across the card, so the plot uses the full card width. */
-    const visible=series.filter(r=>r.date>=start),W=420,H=460,left=8,right=8,top=18,bottom=110;
+    /* D58: the plot's left edge is moved in by a label gutter (8→34), so tick numbers sit beside
+       the plot instead of on it and no reading, start marker or step ever paints over them. */
+    const visible=series.filter(r=>r.date>=start),W=420,H=460,left=34,right=8,top=28,bottom=110;
     if(!visible.length)return {visible,start,W,H,left,right,top,bottom,low:null,high:null,step:null};
     /* D2 — Y-domain from visible morning readings + trend ONLY.
        Goal band, target reference, forecast cone/endpoint, confidence band
@@ -1130,7 +1132,9 @@ Object.assign(NXT, (()=>{
     const px=v=>v.toFixed(2);
     const headline=trajectoryHeadline(plateau);
     const readLine=trendReadText(N.cfg().targetConfirmed?forecastRead:{ok:false,reason:''},plateau);
-    const narrowTicks=ticks.length>5?ticks.filter((_,i)=>i%2===0||i===ticks.length-1):ticks;
+    /* D58: thin from the top tick down, so the kept ticks stay evenly spaced (it used to keep the top
+       tick as well as every other one, which could leave two labels one step apart). */
+    const narrowTicks=ticks.length>5?ticks.filter((_,i)=>(ticks.length-1-i)%2===0):ticks;
     const bandFill=bands.map(run=>`<path d="M ${run.map(b=>`${px(b.x)} ${px(b.upper)}`).join(' L ')} L ${[...run].reverse().map(b=>`${px(b.x)} ${px(b.lower)}`).join(' L ')} Z" fill="${CHART.ink}" fill-opacity=".06" pointer-events="none"/>`).join('');
     const today=futureDays?`<line x1="${px(todayX)}" x2="${px(todayX)}" y1="${top}" y2="${baseline}" stroke="${CHART.grid}" stroke-opacity=".12" pointer-events="none"/>`:'';
     const cone=forecast?`<polygon points="${forecast.cone.map(([cx,cy])=>`${px(cx)},${px(cy)}`).join(' ')}" fill="url(#n99-chart-cone)" pointer-events="none"/>`:'';
@@ -1217,7 +1221,7 @@ Object.assign(NXT, (()=>{
             <linearGradient id="n99-chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".34"/><stop offset=".7" stop-color="${CHART.ink}" stop-opacity=".06"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity="0"/></linearGradient><filter id="st-glow" x="-10%" y="-40%" width="120%" height="180%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             <linearGradient id="n99-chart-cone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".10"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity=".02"/></linearGradient>
           </defs>
-          ${narrowTicks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}" pointer-events="none"/><text x="${left+2}" y="${t.y-5}" text-anchor="start" fill="${CHART.axisText}" font-size="11" paint-order="stroke" stroke="#16141f" stroke-width="3" stroke-linejoin="round" pointer-events="none">${Number(t.value.toFixed(1))}${t.value===Math.max(...narrowTicks.map(k=>k.value))?' kg':''}</text>`).join('')}
+          ${narrowTicks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}" pointer-events="none"/><text class="vn-ytick" x="${left-7}" y="${px(t.y+3.8)}" text-anchor="end" fill="${CHART.axisText}" font-size="11" pointer-events="none">${Number(t.value.toFixed(1))}</text>`).join('')}<text class="vn-yunit" x="${left-7}" y="${px(Math.max(11,Math.min(...narrowTicks.map(k=>k.y))-11))}" text-anchor="end" fill="${CHART.axisText}" font-size="10" pointer-events="none">kg</text>
           <g clip-path="url(#vn-chart-clip)" pointer-events="none">
             ${today}${cone}${bandFill}${trendPaths}${forecastLine}${postSeries}
             ${points.map(pt=>`<circle class="vn-raw-dot" cx="${pt.x}" cy="${pt.y}" r="${dense?1.7:points.length>45?2.2:2.8}" fill="${CHART.raw}" fill-opacity="${dense?.5:points.length>45?.7:.85}"/>`).join('')}
