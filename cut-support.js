@@ -504,6 +504,67 @@ const NXT = (() => {
   }
   function cardioWeek() { return (state.cardio||[]).filter(r=>r&&r.date>=weekStart()&&r.date<=state.date&&finite(r.duration)>0).reduce((s,r)=>s+Number(r.duration),0); }
   function completedWeek() { return new Set(workRows().filter(r=>r.date>=weekStart()).map(r=>r.date)).size; }
+  /* ---- Training activity (Progress › Training) ------------------------------
+     Weekly ledger of what was actually recorded: lifting days, working sets,
+     tonnage, cardio minutes. Every figure is a count or a sum over stored rows
+     through the same workRows() filter the rest of the engine uses — nothing is
+     estimated, smoothed or scored. Weeks are Mon–Sun, the same weekStart() as
+     Today. Weeks that end before the first stored record are not returned at
+     all: before tracking began there is no observation, and absence must not
+     be drawn as zero. A week after that with nothing in it is a real zero.
+     Tonnage is load × reps over working sets; a set logged at 0 kg (bodyweight)
+     adds no tonnage, and the view says so. */
+  function activityWeeks(weeks=12,end=state.date) {
+    const n=Math.max(1,Math.min(104,Number(weeks)||12));
+    const ok=d=>Number.isFinite(dateMs(d))&&d<=end;
+    const lifts=workRows();
+    const cardio=(state.cardio||[]).filter(r=>r&&ok(r.date)&&finite(r.duration)>0);
+    const floor=(state.floorball||[]).filter(r=>r&&ok(r.date));
+    const first=[...lifts.map(r=>r.date),...cardio.map(r=>r.date),...floor.map(r=>r.date)].sort()[0]||null;
+    const ws0=weekStart(end),out=[];
+    for(let i=n-1;i>=0;i--) {
+      const start=dateAdd(ws0,-7*i),stop=dateAdd(start,6);
+      if(!first||stop<first)continue;
+      const within=r=>r.date>=start&&r.date<=stop;
+      const lr=lifts.filter(within),cr=cardio.filter(within),fr=floor.filter(within);
+      const sum=(rows,f)=>rows.reduce((a,r)=>a+f(r),0);
+      out.push({
+        start,end:stop,current:start===ws0,
+        daysElapsed:stop<=end?7:Math.round((dateMs(end)-dateMs(start))/DAY)+1,
+        liftDays:new Set(lr.map(r=>r.date)).size,
+        sets:lr.length,
+        tonnage:Math.round(sum(lr,r=>Number(r.weight)*Number(r.reps))),
+        exercises:new Set(lr.map(r=>r.exercise||r.name)).size,
+        cardioMin:Math.round(sum(cr,r=>Number(r.duration))),
+        cardioSessions:cr.length,
+        floorSessions:fr.length,
+        floorMin:Math.round(sum(fr,r=>Math.max(0,Number(r.duration)||0)))
+      });
+    }
+    return out;
+  }
+  /* Plain totals over the ledger, against the CURRENT weekly plan and cardio
+     target. The plan is read as it stands today and applied to past weeks as
+     well, because the app does not store plan history; the view states that.
+     "Met" is a count of weeks, never a percentage score. The current partial
+     week is reported separately and excluded from the met/avg figures. */
+  function activitySummary(items=activityWeeks()) {
+    const planLifts=Object.values((typeof settings==="object"&&settings&&settings.weeklyPlan)||{}).filter(t=>t&&!["Rest","Zone2","Floorball"].includes(t)).length;
+    const cardioTarget=Number(typeof settings==="object"&&settings&&settings.zone2WeeklyTarget)||90;
+    const full=items.filter(w=>!w.current),cur=items.find(w=>w.current)||null;
+    const tot=k=>items.reduce((a,w)=>a+(Number(w[k])||0),0);
+    const avg=k=>full.length?full.reduce((a,w)=>a+(Number(w[k])||0),0)/full.length:null;
+    let streak=0,best=0;
+    for(const w of full){ if(planLifts>0&&w.liftDays>=planLifts){streak++;best=Math.max(best,streak);} else streak=0; }
+    return {
+      weeks:items.length,fullWeeks:full.length,current:cur,planLifts,cardioTarget,
+      weeksAtPlan:planLifts>0?full.filter(w=>w.liftDays>=planLifts).length:null,
+      weeksAtCardio:full.filter(w=>w.cardioMin>=cardioTarget).length,
+      bestRun:best,
+      totalLiftDays:tot("liftDays"),totalSets:tot("sets"),totalTonnage:tot("tonnage"),totalCardioMin:tot("cardioMin"),totalCardioSessions:tot("cardioSessions"),
+      avgLiftDays:avg("liftDays"),avgSets:avg("sets"),avgCardioMin:avg("cardioMin")
+    };
+  }
   /* Delegates to index.html's resolveDayType so dated overrides, the weekly plan
      and the built-in split are read in one order everywhere. The local fallback
      keeps this module usable if it is ever loaded on its own. */
@@ -837,7 +898,7 @@ const NXT = (() => {
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any change to your plan stays your choice.</p><div class="n99-stack">${CALORIES_ENABLED?button('Review calorie guide','NXT.openCalories()',true):''}${FEATURES.checkin?button('Update recovery check-in','apx96OpenReadiness()',true):''}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,features:FEATURES,pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,features:FEATURES,pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{

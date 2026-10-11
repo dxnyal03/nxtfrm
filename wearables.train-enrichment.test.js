@@ -167,20 +167,26 @@ test("anatomy: no runtime measurement and no network", function () {
 
 test("train: muscle text and anatomy come from the library, together", function () {
   assert.ok(ui.indexOf("NXTLIB.musclesFor(ex)") !== -1);
-  assert.ok(ui.indexOf("nxp-ex-muscles") !== -1, "muscles are named in text");
-  assert.ok(ui.indexOf("anatomyStrip(ex)") !== -1, "the crop is rendered from the same exercise");
+  /* Strata (D19/D42) renamed the head classes: the muscle line is .st-ex-mus
+     and the crop is drawn by bleedHTML(ex), which wraps anatomyStrip(). The
+     intent is unchanged: muscles are named in text, and text and figure read
+     the same `ex` inside one head section. */
+  assert.ok(ui.indexOf("st-ex-mus") !== -1 || ui.indexOf("nxp-ex-muscles") !== -1, "muscles are named in text");
+  assert.ok(ui.indexOf("anatomyStrip(ex)") !== -1 || ui.indexOf("bleedHTML(ex)") !== -1, "the crop is rendered from the same exercise");
   /* Both read the same `ex`, so a Prev/Next change cannot update one and not
-     the other. Scope to the exercise head section — Session tools (and its
-     nxp-ex-actions) now live in the mode bar, so that class is no longer a
-     reliable end delimiter after the head. */
-  const headStart = ui.indexOf('<section class="nxp-ex-head">');
+     the other. Scope to the exercise head section. */
+  const headStart = ui.indexOf('<section class="st-ex${exMove}">') !== -1
+    ? ui.indexOf('<section class="st-ex${exMove}">')
+    : ui.indexOf('<section class="nxp-ex-head">');
   assert.ok(headStart !== -1, "exercise head is present");
   const head = ui.slice(headStart, ui.indexOf("</section>", headStart));
-  assert.ok(head.indexOf("muscleLine(ex)") !== -1 && head.indexOf("anatomyStrip(ex)") !== -1);
+  assert.ok(/muscleLine\(ex\)|NXTANAT\.label/.test(head) && /anatomyStrip\(ex\)|bleedHTML\(ex\)/.test(head));
 });
 
 test("train: the title and the anatomy open the existing detail sheet", function () {
-  assert.ok(ui.indexOf('class="nxp-ex-title" onclick="NXP.exerciseDetails()"') !== -1);
+  /* The title button is .st-ex-title since Strata; the destination is unchanged. */
+  assert.ok(ui.indexOf('class="st-ex-title" onclick="NXP.exerciseDetails()"') !== -1
+    || ui.indexOf('class="nxp-ex-title" onclick="NXP.exerciseDetails()"') !== -1);
   assert.ok(ui.indexOf('class="nxp-ex-anat" onclick="NXP.exerciseDetails()"') !== -1);
   /* One destination, not a competing modal. */
   const strip = ui.slice(ui.indexOf("function anatomyStrip("), ui.indexOf("function addOnEligible("));
@@ -308,7 +314,8 @@ test("motion: the exercise change animates only on a genuine change", function (
     "direction follows the queue order");
   assert.ok(ui.indexOf("ui.lastExercise=ex; ui.lastIndex=index;") !== -1,
     "the comparison point is updated every paint");
-  assert.ok(/class="nxp-ex-top\$\{exMove\}"/.test(ui), "the class reaches the markup");
+  /* Strata moved the direction class from .nxp-ex-top to the .st-ex section. */
+  assert.ok(/class="(st-ex|nxp-ex-top)\$\{exMove\}"/.test(ui), "the class reaches the markup");
   for (const name of ["nxp-ex-enter-forward", "nxp-ex-enter-back", "nxp-ex-anat-enter"]) {
     assert.ok(css.indexOf("@keyframes " + name) !== -1, name + " is defined");
   }
