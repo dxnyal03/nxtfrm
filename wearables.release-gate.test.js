@@ -27,7 +27,7 @@ const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
 const fixtures = fs.readFileSync(path.join(ROOT, "wearables.fixtures.js"), "utf8");
 
 // Bump with each shipped release; the gate asserts the SW cache matches.
-const RELEASE_CACHE = "nxtfrm-v160-premium-cache";
+const RELEASE_CACHE = "nxtfrm-v161-premium-cache";
 
 test("index does not statically load fixtures on every host", function () {
   assert.ok(!/<script src="wearables\.fixtures\.js"><\/script>/.test(html));
@@ -548,6 +548,20 @@ test("reset restores the programme a session is seeded from", function () {
   ["state.logs", "exerciseNotes", "cfg().templates", "sessionTargets"].forEach(function (store) {
     assert.strictEqual(body.indexOf(store + "="), -1, "reset must not clear " + store);
   });
+});
+
+test("leaving minimum-workout mode restores the saved programme, not the factory default", function () {
+  // Reported as "I save my new split but the exercises revert to the default":
+  // FULL after MINIMUM re-seeded the queue from TEMPLATES, discarding the
+  // routine saved in Settings > Training.
+  const start = html.indexOf("function setMinimumWorkoutMode(");
+  assert.ok(start !== -1);
+  const body = html.slice(start, html.indexOf("\nfunction ", start + 1));
+  assert.ok(body.indexOf("NXT.templateFor(state.dayType)") !== -1,
+    "the full session must come from the same base ensureSessionPlan() seeds from");
+  assert.strictEqual(/state\.sessionPlans\[key\]=\(TEMPLATES/.test(body), false,
+    "the factory list must not be written over a saved routine");
+  assert.ok(body.indexOf("sessionTargets[key]") !== -1, "targets follow the restored programme");
 });
 
 test("queue reordering is offered only through accessible controls", function () {
