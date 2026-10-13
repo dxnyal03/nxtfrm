@@ -757,11 +757,37 @@ const NXT = (() => {
     }
   }
   function repaint() { document.activeElement?.blur?.();window.__apexTyping=false;state.typingWeight=false;render(); }
+  /* Programme edit stamps, the cloud merge's conflict rule. A load keeps the newer copy of
+     the weekly plan, of each dated override and of each saved routine, so an edit records
+     when it happened: settings.planUpdatedAt, cfg().overrideMeta[date] (also kept when a
+     day is cleared, so the clear survives a merge) and cfg().templateMeta[gym__type]. All
+     optional ISO strings beside the records they describe; no record shape changes.
+     commit() is the door every programme edit goes through, so the stamp is taken there,
+     against the programme as it was last installed, merged or committed. install() and the
+     merge re-base without stamping: a factory default, a migration or a copy that came from
+     the cloud never looks like a fresh edit. */
+  let programmeBase=null;
+  function programmeNow() {
+    const over=settings.dayOverrides&&typeof settings.dayOverrides==="object"?settings.dayOverrides:{},tpl={},saved=cfg().templates;
+    for(const k of Object.keys(saved))tpl[k]=JSON.stringify(saved[k]);
+    return {plan:JSON.stringify(settings.weeklyPlan||{}),over:{...over},tpl};
+  }
+  function rebaseProgramme() { programmeBase=programmeNow(); }
+  function stampProgramme() {
+    const was=programmeBase,now=programmeNow();programmeBase=now;
+    if(!was)return;
+    const at=new Date().toISOString(),c=cfg(),meta=k=>c[k]&&typeof c[k]==="object"&&!Array.isArray(c[k])?c[k]:(c[k]={});
+    if(now.plan!==was.plan)settings.planUpdatedAt=at;
+    for(const d of new Set([...Object.keys(was.over),...Object.keys(now.over)]))if(was.over[d]!==now.over[d])meta("overrideMeta")[d]=at;
+    for(const k of Object.keys(now.tpl))if(was.tpl[k]!==now.tpl[k])meta("templateMeta")[k]=at;
+  }
   function commit(message) {
+    stampProgramme();
     let localFail=false;
     try{persist();}catch(e){localFail=true;}
-    /* A signed-in account still gets the change: persist() starts the cloud save before it reports a local failure. */
-    if(localFail&&typeof cloudUser!=='undefined'&&cloudUser){toast('Saved online. This device’s storage is full, so export a backup and free some space.');old.closeModal();repaint();return true;}
+    /* A signed-in account still gets the change: persist() starts the cloud save before it reports a local failure.
+       That save has not finished yet, so the message says the change is on its way, not that it is saved. */
+    if(localFail&&typeof cloudUser!=='undefined'&&cloudUser){toast('This device’s storage is full. Sending the change to your account; export a backup and free some space.');old.closeModal();repaint();return true;}
     if(localFail){toast('Could not save on this device. Export a backup and free storage before retrying.');return false;}
     old.closeModal();repaint();if(message)toast(message);return true;
   }
@@ -898,7 +924,7 @@ const NXT = (() => {
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any change to your plan stays your choice.</p><div class="n99-stack">${CALORIES_ENABLED?button('Review calorie guide','NXT.openCalories()',true):''}${FEATURES.checkin?button('Update recovery check-in','apx96OpenReadiness()',true):''}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,features:FEATURES,pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,features:FEATURES,pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
@@ -1176,7 +1202,7 @@ Object.assign(NXT, (()=>{
     }).join('')}</div>`;
     if(!visible.length){
       const emptyTitle=N.weights().length?'No weigh-ins in this period':'Your first weigh-in starts here';
-      const emptyBody=N.weights().length?'Choose All to see older entries, or log a current weight.':'Your actual readings will appear as dots. A trend line starts when a seven-day window has three readings.';
+      const emptyBody=N.weights().length?'Choose Cut to see older entries, or log a current weight.':'Your actual readings will appear as dots. A trend line starts when a seven-day window has three readings.';
       return `<section class="vn-weight n99-chart" id="vn-weight">
         <h2 class="vn-h-sub">Building your baseline</h2>
         <div class="vn-mt4">${rangeBtns}</div>
@@ -1243,7 +1269,7 @@ Object.assign(NXT, (()=>{
       <div><small>Weighed</small><b class="vn-num">${points.length}<em>/${spanDays}</em></b><span>${Math.round(points.length/spanDays*100)}% of days</span></div>
     </div>`;
     const dense=points.length>90;
-    const summary=`${points.length} readings, ${N.shortDate(points[0].date)} to ${N.shortDate(points.at(-1).date)}. Dotted steps mark each week’s morning average. The strip shows each reading against the trend: while you are cutting most land below it, because the trend averages the days before; several days above it in a row mean the drop is slowing.`
+    const summary=`${points.length} readings, ${N.shortDate(points[0].date)} to ${N.shortDate(points.at(-1).date)}. Dashed steps mark each week’s morning average. The strip shows each reading against the trend: while you are cutting most land below it, because the trend averages the days before; several days above it in a row mean the drop is slowing.`
       +(forecast?' Projection is a model estimate, shown dashed — not a measurement.':'');
     return `<section class="vn-weight n99-chart" id="vn-weight">
       <div class="vn-read">
@@ -1533,6 +1559,8 @@ Object.assign(NXT, (()=>{
   function sessionPicker() {N.modal('Choose today’s session',`<p>Your existing records and saved workout queues stay intact.</p><div class="n99-picker">${N.pickTypes(state.dayType).map(t=>N.button(N.label(t),`NXT.chooseSession('${t}')`,state.dayType!==t)).join('')}</div>`);}
   function chooseSession(type) {
     if(!N.typeNames().includes(type))return;
+    // Same rule as the day sheet (D35): a day with logged sets keeps its type.
+    if((state.logs||[]).some(r=>r.date===state.date))return toast('This day already has logged sets.');
     settings.dayOverrides=settings.dayOverrides||{};settings.dayOverrides[state.date]=type;state.dayType=type;state.exercise=N.templateFor(type)[0]?.name||'';state.setNum=1;N.commit('Today’s session updated');
   }
   function cardioModal(date) {
@@ -1564,7 +1592,17 @@ Object.assign(NXT, (()=>{
   function openDay(date) {
     const current=N.typeFor(date),dow=new Date(N.dateMs(date)).getUTCDay(),dn=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][dow];
     const logged=(state.logs||[]).some(r=>r.date===date);
-    N.modal(N.shortDate(date),`<p>${esc(N.label(current))}. Pick what this day should be.</p>${logged?'<p class="n99-small">This day already has logged sets, so it can’t be changed.</p>':`<div class="n99-picker">${N.pickTypes(current).map(t=>N.button(N.label(t),`NXT.setDayType('${date}','${t}')`,t!==current)).join('')}</div><label class="n99-check"><input type="checkbox" id="n99-day-every"> Make every ${dn} this</label>`}${date===state.date?N.button('Choose a different session','showSessionSheet()',true):''}`);
+    /* Ascension — "Didn't happen?" (coach.js). A past planned day the coach reads as missed or
+       partial can be excused; an excused day shows its reason and can be restored; a moved day
+       says where it went. The picker below and its rules are exactly as they were. */
+    let didnt='';
+    try{
+      const cx=N.coach&&typeof N.coach.dayContext==='function'?N.coach.dayContext(date):null;
+      if(cx&&cx.status==='excused')didnt=`<section class="co-dh"><h3 class="co-dh-t">Excused${cx.reason&&cx.reason!=='other'?' · '+esc(cx.reason):''}</h3><p class="n99-small">It does not count as missed. Your plan and your logged records do not change.</p>${N.button('Remove excuse',`NXT.coach.unexcuse('${date}')`,true)}</section>`;
+      else if(cx&&date<state.date&&!logged&&(cx.status==='missed'||cx.status==='partial'))didnt=`<section class="co-dh"><h3 class="co-dh-t">Didn’t happen?</h3><p class="n99-small">Mark it excused so it stops counting as missed. Your plan and your logged records do not change.</p><div class="n99-picker co-reasons">${[['sick','Sick'],['travel','Travel'],['rest','Rest'],['other','Other']].map(([k,t])=>N.button(t,`NXT.coach.excuse('${date}','${k}')`,true)).join('')}</div></section>`;
+      else if(cx&&cx.status==='moved'&&cx.movedTo)didnt=`<p class="n99-small co-dh-note">Moved to ${esc(N.shortDate(cx.movedTo))}.</p>`;
+    }catch(e){didnt='';}
+    N.modal(N.shortDate(date),`${didnt?`<p>${esc(N.label(current))}.</p>${didnt}<p>Pick what this day should be.</p>`:`<p>${esc(N.label(current))}. Pick what this day should be.</p>`}${logged?'<p class="n99-small">This day already has logged sets, so it can’t be changed.</p>':`<div class="n99-picker">${N.pickTypes(current).map(t=>N.button(N.label(t),`NXT.setDayType('${date}','${t}')`,t!==current)).join('')}</div><label class="n99-check"><input type="checkbox" id="n99-day-every"> Make every ${dn} this</label>`}${date===state.date?N.button('Choose a different session','showSessionSheet()',true):''}`);
   }
   function setDayType(date,type) {
     if(!N.typeNames().includes(type))return;
@@ -1607,7 +1645,7 @@ Object.assign(NXT, (()=>{
   }
   function goalsHTML() {
     const c=N.cfg();
-    return N.calorieCard()+N.card('Your goal range',`<p>Optional. Set a checkpoint you can review alongside ${N.features.waist?'waist and strength':'your strength and scans'}. There is no deadline or automatic push to keep losing weight.</p>${!c.targetConfirmed?'<p class="n99-small">The values below come from your previous app settings. Save to confirm or change them.</p>':''}<form onsubmit="event.preventDefault();NXT.saveGoal()"><div class="n99-form-grid"><label>Lower weight · kg<input id="n99-goal-low" type="number" min="40" max="300" step="0.1" required value="${goalLow()}"></label><label>Upper weight · kg<input id="n99-goal-high" type="number" min="40" max="300" step="0.1" required value="${goalHigh()}"></label></div><button type="submit" class="n99-button">Save goal range</button></form>`)+N.card('Cut start',`<p>When your cut began and your weight that day. Used for the “down so far” line and the cut journey.</p><form onsubmit="event.preventDefault();NXT.saveCutStart()"><label>Start date<input id="n99-cut-date" type="date" max="${state.date}" value="${esc(settings.cutStart||'')}"></label><label>Start weight · kg<input id="n99-cut-weight" type="number" min="30" max="300" step="0.1" inputmode="decimal" value="${Number(settings.startWeight)||''}"></label><button type="submit" class="n99-button">Save cut start</button></form>`)+N.card('How your advice works',`<p>Weight averages, repeated strength comparisons and dated check-ins inform your review. Recommendations explain their evidence; nothing in your plan changes automatically.</p>${N.button('Open weekly review','NXT.openReview()',true)}`);
+    return N.calorieCard()+N.card('Your goal range',`<p>Optional. Set a checkpoint you can review alongside ${N.features.waist?'waist and strength':'your strength and scans'}. There is no deadline or automatic push to keep losing weight.</p>${!c.targetConfirmed?'<p class="n99-small">The values below come from your previous app settings. Save to confirm or change them.</p>':''}<form onsubmit="event.preventDefault();NXT.saveGoal()"><div class="n99-form-grid"><label>Lower weight · kg<input id="n99-goal-low" type="number" min="40" max="300" step="0.1" required value="${goalLow()}"></label><label>Upper weight · kg<input id="n99-goal-high" type="number" min="40" max="300" step="0.1" required value="${goalHigh()}"></label></div><button type="submit" class="n99-button">Save goal range</button></form>`)+N.card('Cut start',`<p>When your cut began and your weight that day. Used for the “down so far” line and the cut journey.</p><form onsubmit="event.preventDefault();NXT.saveCutStart()"><label>Start date<input id="n99-cut-date" type="date" max="${state.date}" value="${esc(settings.cutStart||'')}"></label><label>Start weight · kg<input id="n99-cut-weight" type="number" min="30" max="300" step="0.1" inputmode="decimal" value="${Number(settings.startWeight)||''}"></label><button type="submit" class="n99-button">Save cut start</button></form>`)+N.card('How your advice works',`<p>Weight averages and repeated strength comparisons inform your review. Recommendations explain their evidence; nothing in your plan changes automatically.</p>${N.button('Open weekly review','NXT.openReview()',true)}`);
   }
   /* Cut start (D31): the day the cut began and the weight that day. Display and
      "down so far" only; no trend, forecast or calorie calculation reads it. */
@@ -1709,7 +1747,8 @@ Object.assign(NXT, (()=>{
     if(!confirm(message)||!N.snapshot('Before backup restore'))return;
     for(const key of ['logs','cardio','floorball','bws','scans','rest'])state[key]=d[key];
     const incoming={...SETTINGS_DEFAULTS,...d.settings};settings=incoming;
-    for(const [field,key,fallback] of [['sessionPlans','apm_session_plans',{}],['coachInsights','apm_coach_insights',{}],['exerciseNotes','apm_exercise_notes',{}]]) {
+    // Add-on lifts ride in the backup's storage dump like session plans; an older backup without them restores an empty map.
+    for(const [field,key,fallback] of [['sessionPlans','apm_session_plans',{}],['addOns','apm_addons',{}],['coachInsights','apm_coach_insights',{}],['exerciseNotes','apm_exercise_notes',{}]]) {
       try{state[field]=JSON.parse(d.dump[key]||JSON.stringify(fallback));}catch(e){state[field]=fallback;}
     }
     state.gym=d.current.gym||state.gym;state.gyms=d.current.gyms||state.gyms;state.read=d.current.read||state.read;state.notifs=d.notifications||state.notifs;
@@ -1719,7 +1758,7 @@ Object.assign(NXT, (()=>{
   function resetData() {
     if(!confirm('Reset NXTFRM records on this device? A safety copy will be kept. Other sites and unrelated storage will not be touched.'))return;
     if(!N.snapshot('Before local reset'))return;
-    const keys=['apm_logs','apm_cardio','apm_floorball','apm_bws','apm_evo_scans','apm_rest','apm_current_read','apm_current_gym','apm_gyms','apm_notifications','apm_coach_insights','apm_session_plans','apm_exercise_notes','apm_settings','apm_last_open_date'];
+    const keys=['apm_logs','apm_cardio','apm_floorball','apm_bws','apm_evo_scans','apm_rest','apm_current_read','apm_current_gym','apm_gyms','apm_notifications','apm_coach_insights','apm_session_plans','apm_addons','apm_exercise_notes','apm_settings','apm_last_open_date'];
     for(const key of keys)localStorage.removeItem(key);
     // Prevent an automatic cloud write while this device reloads after its local-only reset.
     clearTimeout(cloudTimer);cloudUser=null;
@@ -1757,8 +1796,10 @@ Object.assign(NXT, (()=>{
     for(const [type,rows] of Object.entries(N.defaults))TEMPLATES[type]=N.copy(rows);
     const c=N.cfg();
     if(!c.version&&migrate) {
-      if(!N.snapshot('Before V99 upgrade'))return;
+      if(!N.snapshot('Before V99 upgrade')){N.rebaseProgramme();return;}
       c.previousWeeklyPlan=N.copy(settings.weeklyPlan||{});settings.weeklyPlan=N.copy(N.split);
+      // A migrated plan is not an edit: an older edit stamp must not make the factory split win a merge.
+      delete settings.planUpdatedAt;
       c.previousCardioTarget=settings.zone2WeeklyTarget;
       if(Number(settings.zone2WeeklyTarget)===180){settings.zone2WeeklyTarget=90;ZONE2_WEEKLY_TARGET=90;}
       // Preserve an already-started day and all explicit date overrides.
@@ -1772,7 +1813,13 @@ Object.assign(NXT, (()=>{
     mergeLegsIntoPump();
     settings.weeklyPlan={...N.split,...settings.weeklyPlan};
     state.dayType=N.typeFor(state.date);state.exercise=N.templateFor()[0]?.name||'';
-    persist();
+    /* persist() rethrows its first refused write (D29). On a full phone that exception
+       used to end cut-support.js at load, before the Safe Sync merge and the cloud
+       overrides below were installed. The state stays in memory; the next save that fits
+       writes it. */
+    try{persist();}catch(e){console.error('NXTFRM: storage refused the installed state',e);}
+    // What install() normalised or migrated is the base later edits are stamped against.
+    N.rebaseProgramme();
     // Once per app load; the function itself skips a day already recorded.
     N.maybeSnapshotTDEE();
   }
@@ -1917,6 +1964,10 @@ document.addEventListener('keydown',function(event){
   const focusable=[...modal.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea,a[href]')],first=focusable[0],last=focusable.at(-1);
   if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}
 });
+/* install() must not throw on a full phone: below it are the Safe Sync merge and the
+   cloud overrides, and without them the page keeps index.html's original
+   applyCloudPayload, which replaces local records with the cloud's. Every storage write
+   inside it is caught (persist, snapshot, D33, TDEE). A programming error still surfaces. */
 NXT.install();
 document.title='NXTFRM — Your Cut Companion';
 if(document.readyState!=='loading')NXT.repaint();
@@ -1972,15 +2023,123 @@ let lastCloudSyncAt=null;
         out[key]=nonEmpty(lv)?lv:cv;
         continue;
       }
+      /* Waist rows are records like weigh-ins: union by id, the later ts winning. cfg()
+         gives every device an array, which used to win outright and drop the account's. */
+      if(key==='waist'){out[key]=unionById(lv,cv).rows;continue;}
       if(isPlain(lv)&&isPlain(cv))out[key]=mergeObjectsLocalWins(cv,lv);
       else if(lv!==undefined)out[key]=lv;
       else out[key]=cv;
     }
     return out;
   }
+  /* ---- Programme conflict strategy ------------------------------------------------
+     The weekly plan, dated overrides and saved routines are settings, not records, so
+     union by id cannot merge them, and "this device wins" let a fresh or reset phone,
+     which holds the factory plan before it has read anything, overwrite the account's
+     split and then write it back. Each is now settled on its edit stamp (commit() in the
+     engine): the newer copy wins. A copy without a stamp predates stamping and loses to
+     a stamped one. When neither side is stamped, a factory value on this device counts
+     as unset and the account's copy wins; two unstamped customised copies keep this
+     device's, as before. */
+  const stampMs=v=>{const n=Date.parse(v);return Number.isFinite(n)?n:0;};
+  const legs=t=>t==='Legs'?'Pump':t; // D33, as install() maps it
+  function planKey(p){return isPlain(p)?[0,1,2,3,4,5,6].map(d=>legs(p[d]||'')).join('|'):'';}
+  // The factory plans: index.html's default split, and the A/B/C rhythm install() writes on a new device.
+  function factoryPlan(p){return [NXT.split,typeof DEFAULT_WEEKLY_PLAN!=='undefined'?DEFAULT_WEEKLY_PLAN:null].some(f=>f&&planKey(f)===planKey(p));}
+  function rowsKey(rows){return JSON.stringify((Array.isArray(rows)?rows:[]).map(r=>r&&[r.name,Number(r.sets),Array.isArray(r.reps)?r.reps.map(Number):null,Number(r.inc)]));}
+  function factoryRoutine(key,rows){
+    const type=legs(String(key).split('__').pop());
+    return [NXT.defaults[type],typeof TEMPLATES!=='undefined'?TEMPLATES[type]:null].some(f=>Array.isArray(f)&&rowsKey(f)===rowsKey(rows));
+  }
+  const metaOf=(cs,name)=>isPlain(cs)&&isPlain(cs[name])?cs[name]:{};
+  // The account's copy wins when its stamp is newer, or when neither is stamped and this device's carries nothing of the user's.
+  function cloudWins(local,cloud,unset){const l=stampMs(local),c=stampMs(cloud);return c!==l?c>l:!l&&unset;}
+  function resolveProgramme(out,L,C){
+    const LC=isPlain(L.cutSupport)?L.cutSupport:{},CC=isPlain(C.cutSupport)?C.cutSupport:{};
+    // Weekly plan. The plan it replaced (restoreWeek's "previous plan") travels with it.
+    const fromCloud=isPlain(C.weeklyPlan)&&cloudWins(L.planUpdatedAt,C.planUpdatedAt,!isPlain(L.weeklyPlan)||(factoryPlan(L.weeklyPlan)&&planKey(L.weeklyPlan)!==planKey(C.weeklyPlan)));
+    const P=fromCloud?C:L;
+    if(isPlain(P.weeklyPlan))out.weeklyPlan={...P.weeklyPlan};
+    if(P.planUpdatedAt)out.planUpdatedAt=P.planUpdatedAt;else delete out.planUpdatedAt;
+    if(fromCloud&&isPlain(CC.previousWeeklyPlan))out.cutSupport.previousWeeklyPlan={...CC.previousWeeklyPlan};
+    // Dated overrides: union by date. Where both sides know a date the newer stamp decides,
+    // and a stamp without a value is a day that was cleared.
+    const LO=isPlain(L.dayOverrides)?L.dayOverrides:{},CO=isPlain(C.dayOverrides)?C.dayOverrides:{};
+    const LM=metaOf(LC,'overrideMeta'),CM=metaOf(CC,'overrideMeta'),days={},dayMeta={};
+    for(const d of new Set([...Object.keys(CO),...Object.keys(LO),...Object.keys(CM),...Object.keys(LM)])){
+      const useCloud=cloudWins(LM[d],CM[d],!Object.prototype.hasOwnProperty.call(LO,d));
+      const v=useCloud?CO[d]:LO[d],at=useCloud?CM[d]:LM[d];
+      if(typeof v==='string'&&v)days[d]=v;
+      if(at)dayMeta[d]=at;
+    }
+    if(isPlain(L.dayOverrides)||isPlain(C.dayOverrides))out.dayOverrides=days;
+    if(Object.keys(dayMeta).length)out.cutSupport.overrideMeta=dayMeta;else delete out.cutSupport.overrideMeta;
+    // Saved routines, per gym and type. Unstamped on both sides, a routine this device
+    // cannot use (validTemplate) or holds at the factory list counts as unset.
+    const LT=isPlain(LC.templates)?LC.templates:{},CT=isPlain(CC.templates)?CC.templates:{};
+    const LTM=metaOf(LC,'templateMeta'),CTM=metaOf(CC,'templateMeta'),tpl={},tplMeta={};
+    const usable=v=>!!(NXT.validTemplate&&NXT.validTemplate(v));
+    for(const k of new Set([...Object.keys(CT),...Object.keys(LT)])){
+      const lv=LT[k],cv=CT[k];
+      const useCloud=lv===undefined||(cv!==undefined&&cloudWins(LTM[k],CTM[k],(!usable(lv)&&usable(cv))||(factoryRoutine(k,lv)&&rowsKey(lv)!==rowsKey(cv))));
+      tpl[k]=useCloud?cv:lv;
+      const at=useCloud?CTM[k]:LTM[k];if(at)tplMeta[k]=at;
+    }
+    out.cutSupport.templates=tpl;
+    if(Object.keys(tplMeta).length)out.cutSupport.templateMeta=tplMeta;else delete out.cutSupport.templateMeta;
+  }
+  /* The same rule for the values every fresh device starts with: boot fills SETTINGS_DEFAULTS
+     and install() turns a 180-minute cardio target into 90, so a phone that has read nothing
+     holds a factory goal range, start weight, TDEE and cardio target, and these used to
+     replace the account's. When this device's copy is the factory one and the account's
+     differs, the account's wins; a customised copy here is kept, as before. Values saved
+     together move together, so a range or a cut start is never half-taken: the goal range
+     with its confirmation (saveGoal), the start weight with its date (saveCutStart). */
+  function resolveDefaults(out,L,C){
+    const D=typeof SETTINGS_DEFAULTS!=='undefined'?SETTINGS_DEFAULTS:{},LC=isPlain(L.cutSupport)?L.cutSupport:{},CC=isPlain(C.cutSupport)?C.cutSupport:{};
+    const none=v=>v===undefined||v===null||v==='';
+    const at=(k,...factory)=>none(L[k])||factory.some(f=>Number(L[k])===Number(f));
+    for(const [keys,factory] of [
+      [['targetLow','targetHigh','goalLow','goalHigh'],LC.targetConfirmed!==true&&at('targetLow',D.targetLow)&&at('targetHigh',D.targetHigh)&&at('goalLow',D.targetLow)&&at('goalHigh',D.targetHigh)],
+      [['startWeight','cutStart'],at('startWeight',D.startWeight)&&none(L.cutStart)],
+      [['tdee'],at('tdee',D.tdee)],
+      [['zone2WeeklyTarget'],at('zone2WeeklyTarget',D.zone2WeeklyTarget,90)]
+    ]){
+      if(!factory||keys.every(k=>none(C[k])||String(C[k])===String(L[k])))continue;
+      for(const k of keys){if(none(C[k]))delete out[k];else out[k]=C[k];}
+      if(keys[0]==='targetLow'&&CC.targetConfirmed===true)out.cutSupport.targetConfirmed=true;
+    }
+    // An unset name greets as "Dan" (userName); an empty name is a choice and is kept.
+    if((L.name===undefined||L.name==='Dan')&&typeof C.name==='string'&&C.name!==L.name)out.name=C.name;
+  }
+  /* Today's queues are seeded from this device's routines when the page first draws,
+     before the account has been read (on a fresh phone, the factory list), and session
+     plans are not part of the cloud row. A queue that is still exactly its seed, with no
+     set logged in it on this device, is re-seeded from the routine the merge settled on:
+     the D22 rule for a routine save. Started and edited queues are kept. */
+  function untouchedToday(){
+    const day=state.date,plans=isPlain(state.sessionPlans)?state.sessionPlans:{},targets=NXT.cfg().sessionTargets,out=[];
+    for(const key of Object.keys(plans)){
+      if(!key.startsWith(day+'__'))continue;
+      const rest=key.slice(day.length+2),cut=rest.lastIndexOf('__');if(cut<1)continue;
+      const gym=rest.slice(0,cut),type=rest.slice(cut+2),seed=NXT.templateFor(type,gym);
+      const logged=(state.logs||[]).some(x=>x&&x.date===day&&(x.gym||'Gym A')===gym&&(!x.dayType||x.dayType===type));
+      const same=Array.isArray(plans[key])&&plans[key].join('\n')===seed.map(e=>e.name).join('\n')&&(!Array.isArray(targets[key])||rowsKey(targets[key])===rowsKey(seed));
+      if(!logged&&same)out.push({key,gym,type,seed:rowsKey(seed)});
+    }
+    return out;
+  }
+  function reseedToday(list){
+    for(const s of list){
+      const rows=NXT.templateFor(s.type,s.gym);
+      if(rowsKey(rows)===s.seed)continue;
+      state.sessionPlans[s.key]=rows.map(e=>e.name);NXT.cfg().sessionTargets[s.key]=NXT.copy(rows);
+    }
+  }
   NXT.old.applyCloudPayload=function(d){
     lastCloudMergeOk=false;
     if(!d)return;
+    const today=untouchedToday(); // read before anything merges in
     const added={};
     for(const field of ['logs','bws','cardio','floorball','scans','rest']){
       if(d[field]===undefined){added[field]=0;continue;}
@@ -1990,10 +2149,14 @@ let lastCloudSyncAt=null;
     }
     if(d.gyms)state.gyms=d.gyms;
     if(d.gym)state.gym=d.gym;
+    // Add-on lifts are per session, like queues: union by session, this device's list first.
+    if(isPlain(d.addOns))state.addOns=mergeObjectsLocalWins(d.addOns,state.addOns);
     if(d.settings&&isPlain(d.settings)){
       const localSettings=settings&&isPlain(settings)?settings:{};
       const merged={...d.settings,...localSettings};
       merged.cutSupport=mergeCutSupport(localSettings.cutSupport,d.settings.cutSupport);
+      resolveProgramme(merged,localSettings,d.settings);
+      resolveDefaults(merged,localSettings,d.settings);
       settings=merged;
       START_WEIGHT=Number(settings.startWeight)||START_WEIGHT;
       TARGET_HIGH=Number(settings.targetHigh)||TARGET_HIGH;
@@ -2001,8 +2164,13 @@ let lastCloudSyncAt=null;
       USER_TDEE=Number(settings.tdee)||USER_TDEE;
       ZONE2_WEEKLY_TARGET=Number(settings.zone2WeeklyTarget)||ZONE2_WEEKLY_TARGET;
     }
+    reseedToday(today);
     console.log(`Merged cloud: +${added.logs} logs, +${added.bws} bws, +${added.cardio} cardio, +${added.floorball} floorball, +${added.scans} scans, +${added.rest} rest`);
-    persist();
+    /* A refused local write (full phone) does not undo the merge: the load still sends
+       the merged result to the account (D29). */
+    try{persist();}catch(e){console.error('NXTFRM: storage refused the merged state',e);}
+    // A merged copy keeps the stamps it arrived with; it is not a new edit.
+    NXT.rebaseProgramme();
     lastCloudMergeOk=true;
   };
 })();
@@ -2042,11 +2210,18 @@ async function cloudSignOutSilent(){
 }
 initCloudFromStorage=async function(){
   try{
+    /* The page no longer waits for supabase-js (loadSupabase). This restore does, however long it takes, and
+       then runs exactly as it always has: session, read before write, merge, save. A library that is already
+       there is not waited for, so the normal path does not yield and keeps its order. */
+    if(typeof loadSupabase==='function'&&!window.supabase)await loadSupabase();
     const client=initSupabaseClient();
     const stored=hasStoredSbAuthToken();
     if(!client){
       cloudSessionChecked=true;
-      if(stored)await cloudSignOutSilent();
+      /* A library that could not load says nothing about the account, so a stored session is left for the next
+         launch. Only a device with no project URL or key (nothing could use the session) clears it, as before. */
+      const libraryMissing=!window.supabase&&!!(localStorage.getItem('apm_sb_url')&&localStorage.getItem('apm_sb_key'));
+      if(stored&&!libraryMissing)await cloudSignOutSilent();
       return;
     }
     let data=null,error=null;
@@ -2157,14 +2332,34 @@ window.openCloudLoginFromBanner=openCloudLoginFromBanner;
 const _render=render;
 render=function(){_render.apply(this,arguments);updateCloudSyncStatus();readiness();};
 
+/* Read before write. A save replaces the whole cloud row, so a page that has not read the
+   account yet would upload whatever this device holds: on a fresh or reset phone, the
+   factory plan and no workouts, which the load that follows then reads back. Until this
+   page has fetched the row for the signed-in user, a save fetches it first; a merge ends
+   with its own save of the result, and a failed fetch writes nothing. A row that was
+   fetched but not merged (no safety copy on a full phone, or a row the app cannot apply)
+   leaves saves as they were, so a change still reaches the account (D29). */
+let cloudReadUser=null,cloudReading=null;
 let cloudSaveQuiet=false;
-saveCloudNow=async function(show=true){
+/* afterRead: the save a load makes of its own merge; it must not wait on that load. */
+saveCloudNow=async function(show=true,afterRead=false){
   try{
+    if(!window.supabase&&typeof loadSupabase==="function")await loadSupabase(); // library loads lazily (non-blocking boot)
+
     const client=initSupabaseClient();
     if(!client||!cloudUser){
       if(show)toast('Cloud not connected');
       return;
     }
+    // Twice at most: a read already running may belong to the sign-in this one replaced.
+    for(let tries=0;!afterRead&&cloudUser&&cloudReadUser!==cloudUser&&tries<2;tries++){
+      const read=await loadCloudNow(!show);
+      if(read==='failed'||read==='offline')return;
+      if(cloudReadUser!==cloudUser)continue;
+      // Merged: that load has already saved the result. Empty or unmerged: this save writes.
+      if(read==='merged'){if(show&&!lastCloudError)toast('Saved to Supabase');return;}
+    }
+    if(!cloudUser||(!afterRead&&cloudReadUser!==cloudUser))return;
     cloudStatusText='Syncing...';
     updateCloudSyncStatus();
     const payload=getCloudPayload();
@@ -2190,33 +2385,47 @@ saveCloudNow=async function(show=true){
   }
 };
 
-loadCloudNow=async function(){
+/* Resolves to what happened: 'merged', 'empty', 'unmerged', 'failed' or 'offline'.
+   quiet (a save reading first) keeps toasts out of normal operation (D11). */
+loadCloudNow=function(quiet){
+  // One read at a time: a save that needs the account waits for the read already running.
+  if(!cloudReading)cloudReading=readCloudRow(quiet===true).finally(()=>{cloudReading=null;});
+  return cloudReading;
+};
+async function readCloudRow(quiet){
+  const say=m=>{if(!quiet)toast(m);};
   try{
+    if(!window.supabase&&typeof loadSupabase==="function")await loadSupabase();
+
     const client=initSupabaseClient();
     if(!client||!cloudUser){
-      toast('Cloud not connected');
-      return;
+      say('Cloud not connected');
+      return 'offline';
     }
+    const user=cloudUser;
     cloudStatusText='Syncing...';
     updateCloudSyncStatus();
-    const {data,error}=await client.from('apexcut_profiles').select('data').eq('user_id',cloudUser.id).maybeSingle();
+    const {data,error}=await client.from('apexcut_profiles').select('data').eq('user_id',user.id).maybeSingle();
     if(error)throw error;
     if(!(data&&data.data)){
+      cloudReadUser=user; // nothing to merge: this device writes the first copy
       cloudStatusText='Loaded online';
-      toast('No cloud data yet');
+      say('No cloud data yet');
       updateCloudSyncStatus();
-      return;
+      return 'empty';
     }
     lastCloudMergeOk=false;
     applyCloudPayload(data.data);
-    if(!lastCloudMergeOk)return;
+    cloudReadUser=user;
+    if(!lastCloudMergeOk)return 'unmerged';
     cloudStatusText='Loaded online';
-    toast('Loaded from Supabase');
+    say('Loaded from Supabase');
     const prevToast=toast;
     toast=function(){};
     cloudSaveQuiet=true;
     try{
-      await saveCloudNow(false);
+      // The merged result goes back to the account it came from; a sign-in that changed hands mid-load waits for its own read.
+      if(cloudUser===user)await saveCloudNow(false,true);
     }catch(e){
       lastCloudError=e;
       console.error(e);
@@ -2225,13 +2434,15 @@ loadCloudNow=async function(){
       toast=prevToast;
     }
     render();
+    return 'merged';
   }catch(e){
     lastCloudError=e;
     cloudStatusText='Sync error';
     updateCloudSyncStatus();
-    toast(e.message||'Cloud load failed');
+    say(e.message||'Cloud load failed');
+    return 'failed';
   }
-};
+}
 
 initCloudFromStorage();
 
