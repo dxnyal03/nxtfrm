@@ -41,7 +41,144 @@
 
   --st-font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",system-ui,sans-serif;
   --st-font-d:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",system-ui,sans-serif;
+
+  /* ---- Ascension · canonical set --------------------------------------------------------
+     One token set. The names in this file are canonical; the older names in index.html,
+     cut-support.css, premium-ui.css and vnext.css resolve to them in the alias block just
+     below. Further down this file keep their single definitions: the type scale --fs-* and
+     --fw-*, the radii --r-tile / --r-card / --r-ctl, the buttons --btn-*, and the Geist
+     face with its depth tokens (--st-font-d, --st-edge, --st-depth). Added here are the
+     values the older layers each carried, now named once: */
+  --st-surface:#15141D;                                                            /* opaque sheet / card surface (the .n99-modal .sheet literal) */
+  --st-surface-2:#1F1E29;                                                          /* the raised step above it (premium-ui's --nxt-surface-alt) */
+  --st-s1:4px;--st-s2:8px;--st-s3:12px;--st-s4:16px;--st-s5:20px;--st-s6:24px;--st-s7:32px;--st-s8:40px;  /* space ramp (was --nxt-space-N and --vn-sN) */
+  --st-t-touch:120ms;--st-t-state:200ms;--st-t-move:280ms;                          /* motion tiers (I8); the easing is --st-out */
+  --st-ok:#8B5CF6;--st-review:#B8842A;--st-concern:#DC5A76;                          /* the I2 status trio */
 }
+
+/* ---- Ascension · one token set; older names resolve to Strata -----------------------------
+   strata.css loads last, so these win and the older layers inherit Strata's values. The older
+   definitions stay where they are (minimal diff). A name is aliased when its value is already
+   Strata's, when nothing reads it, or when a computed-style diff of every screen and sheet (43
+   states) shows the only rendered change is under a just-noticeable step (CIEDE2000 < 2: the
+   inherited body ink, the Evo chart marker fill, hairlines). Names that would move visible pixels
+   are left alone and listed below for the owner. */
+:root{
+  /* canvas: eight names for one colour (--nxt-bg and --n99-bg already chain to --nxt-background) */
+  --bg:var(--st-bg);--nxt-background:var(--st-bg);--vn-canvas:var(--st-bg);--premium-bg:var(--st-bg);
+  /* opaque surfaces: base and raised (--n99-surface, --n99-raised and --nxt-raised chain to these) */
+  --nxt-surface:var(--st-surface);--nxt-surface-alt:var(--st-surface-2);--nxt-surface-2:var(--st-surface-2);
+  --panel:var(--st-surface);--panel2:var(--st-surface);--panel3:var(--st-surface);--premium-card:var(--st-surface);--premium-card2:var(--st-surface);
+  /* ink and hairlines (--vn-ink*, --nxt-text-* and --n99-text/-muted are already Strata's, set further down) */
+  --text:var(--st-ink);--ink:var(--st-ink);--faint:var(--st-ink-4);
+  --line:var(--st-tile-line);--nxt-border-subtle:var(--st-tile-line);
+  /* violet and status (--nxt-accent, --nxt-purple, --n99-accent chain to --nxt-purple-primary) */
+  --nxt-purple-primary:var(--st-accent-lift);--nxt-chart-ink:var(--st-weight);--vn-violet:var(--st-accent);--vn-action:var(--st-accent-deep);
+  --purple2:var(--st-accent);--violet:var(--st-accent-lift);--nxt-success:var(--st-lean);
+  --vn-ok:var(--st-ok);--vn-review:var(--st-review);--vn-concern:var(--st-concern);
+  --rose:var(--st-fat);--yellow:var(--st-floor);--amber:var(--st-floor);--orange:var(--st-cardio);
+  /* radius, font */
+  --radius:var(--st-r);--nxt-radius-lg:var(--r-card);--nxt-radius-md:var(--r-ctl);--nxt-font:var(--st-font);
+  /* motion and space: one easing, one set of tiers, one ramp */
+  --vn-ease:var(--st-out);--nxt-ease:var(--st-out);--nxt-ease-out:var(--st-out);--ease:var(--st-out);
+  --vn-t-touch:var(--st-t-touch);--vn-t-state:var(--st-t-state);--vn-t-move:var(--st-t-move);
+  --nxt-space-1:var(--st-s1);--nxt-space-2:var(--st-s2);--nxt-space-3:var(--st-s3);--nxt-space-4:var(--st-s4);
+  --nxt-space-5:var(--st-s5);--nxt-space-6:var(--st-s6);--nxt-space-7:var(--st-s7);--nxt-space-8:var(--st-s8);
+  --vn-s1:var(--st-s1);--vn-s2:var(--st-s2);--vn-s3:var(--st-s3);--vn-s4:var(--st-s4);
+  --vn-s5:var(--st-s5);--vn-s6:var(--st-s6);--vn-s7:var(--st-s7);--vn-s8:var(--st-s8);
+}
+/* Left alone on purpose, because each would move visible pixels (ΔE = CIEDE2000): --purple and --green (#b18aff) and --sky (#aa7afa) to
+   accent-lift #B49AFF (4.3 and 8.4: the dock tab icon, legacy buttons); --vn-violet-lift #A78BFA (4.2: Evo chart strokes, status text);
+   --vn-surface, -2, -3 (4.1, 5.6, 8.1: Evo bars, review cards, quiet buttons); --vn-r-surface 20px and --vn-r-control 12px (to 26 and 14:
+   segment pills, Settings actions); --muted and --muted2 (6.9 and 14.4: legacy .sub, .kicker, .label); --red (the invalid-field border).
+   --vn-ink-4 (#8A85A0) differs from --st-ink-4 (#8A859C) by 4 in blue (ΔE 1.5); the declaration further down this file wins, so an alias here would not apply. */
+/* Today's aurora set, explicit. It is the @property initial-value set registered just below; stating it keeps Today's light from
+   depending on that registration (Safari before 16.4, or a WebView that ignores @property, would otherwise read it as unset). */
+:root[data-st-tab="home"]{--st-a1:rgba(139,92,246,.42);--st-a2:rgba(236,72,153,.18);--st-a3:rgba(85,82,187,.16);--st-a4:rgba(211,119,50,.08)}
+
+/* ===== Ascension · sheet unification & targets ===== */
+/* 1 · One sheet. The twelve legacy builders in index.html open `.modal > .sheet` without `.n99-modal`, so Strata's sheet rules
+   (surface, radius, grip, title, D44 field recipe, D56 capsules) never reached them. They get the same recipe here. Selectors lead
+   with #modalRoot so they beat the older layers' !important rules without adding to them; `.n99-modal` sheets keep their own rules.
+   No ids, fields or handlers change; swipe-to-close and the page recede are strata.js behaviours keyed to `.n99-modal`. */
+#modalRoot .modal:not(.n99-modal){-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);background:rgba(4,4,8,.55) !important;animation:nxt-dim-in var(--nxt-duration-fast) var(--nxt-ease-out) both}
+#modalRoot .modal:not(.n99-modal) .sheet{
+  max-width:580px !important;padding:12px 22px calc(24px + var(--nxt-safe-bottom,0px)) !important;
+  border:1px solid rgba(var(--st-hl),.08) !important;border-bottom:0 !important;border-radius:28px 28px 0 0 !important;
+  background:radial-gradient(90% 40% at 50% 0%,rgba(139,92,246,.14),transparent 70%),var(--st-surface) !important;
+  box-shadow:0 -20px 60px -20px rgba(0,0,0,.9) !important;color:var(--st-ink);
+  overscroll-behavior:contain;touch-action:pan-y;transition:transform .35s var(--st-glide);
+  animation:st-sheet-in .55s var(--st-spring-soft) both !important;
+}
+#modalRoot .modal:not(.n99-modal) .sheet::before{content:"";display:block;width:40px;height:5px;margin:2px auto 16px;border-radius:999px;background:rgba(var(--st-hl),.25)}
+@media (min-width:768px){#modalRoot .modal:not(.n99-modal) .sheet{max-width:560px !important}}
+@media (prefers-reduced-motion:reduce){#modalRoot .modal:not(.n99-modal),#modalRoot .modal:not(.n99-modal) .sheet{animation:none !important}}
+:root[data-nxp-motion="reduced"] #modalRoot .modal:not(.n99-modal),:root[data-nxp-motion="reduced"] #modalRoot .modal:not(.n99-modal) .sheet{animation:none !important}
+
+/* title, kicker, note and label onto the sheet type scale (the old 8.5–11px labels sat under the 11px floor) */
+#modalRoot .modal:not(.n99-modal) .sheet>.title,#modalRoot .modal:not(.n99-modal) .sheet .apx96-card-head .title{font:600 22px/1.2 var(--st-font) !important;letter-spacing:-.015em !important;color:var(--st-ink) !important}
+#modalRoot .modal:not(.n99-modal) .sheet :is(.kicker,.apx95-card-kicker,.smart-section-label,.apx96-kicker,.coach-panel-title){font:560 13px/1.2 var(--st-font) !important;letter-spacing:0 !important;text-transform:none !important;color:var(--st-ink-2) !important}/* the calm label of .st-cat (D42): sentence case, no tracked caps */
+#modalRoot .modal:not(.n99-modal) .sheet :is(.sub,.apx96-soft,.apx95-sheet-note){font:450 13px/1.5 var(--st-font) !important;color:var(--st-ink-3) !important}
+#modalRoot .modal:not(.n99-modal) .sheet :is(label,.label){font:550 13px/1.3 var(--st-font) !important;letter-spacing:0 !important;text-transform:none !important;color:var(--st-ink-2) !important;margin-bottom:6px !important}
+
+/* the 8–10px tags and captions left inside these sheets climb above the 11px floor and lose their tracked caps and 900–1000 weight (D42); the queue rows (8px notes, 9px numbers, 11px names, truncated) get a readable scale */
+#modalRoot .modal:not(.n99-modal) .sheet :is(.pill,.coach-source){font-family:var(--st-font-d) !important;font-size:12px !important;font-weight:560 !important;letter-spacing:0 !important;text-transform:none !important}
+#modalRoot .modal:not(.n99-modal) .sheet .pr-tag{font:600 13px/1.2 var(--st-font) !important;letter-spacing:0 !important;text-transform:none !important}
+#modalRoot .modal:not(.n99-modal) .sheet .metric span{font:500 12px/1.2 var(--st-font) !important;letter-spacing:0 !important;text-transform:none !important;color:var(--st-ink-3) !important}/* #6a686e on the dark cards was 3.8:1; ink-3 is 6:1 (I4) */
+#modalRoot .modal:not(.n99-modal) .sheet :is(.title,.coach-title){font-weight:600 !important;letter-spacing:-.015em !important}/* the session summary's 950 and 1000 weights (D42) */
+#modalRoot .modal:not(.n99-modal) .sheet .coach-panel-main{font-weight:560 !important}
+#modalRoot .modal:not(.n99-modal) .sheet .apx96-queue-num{font:600 12px/1 var(--st-font-d) !important;color:var(--st-ink-3) !important}
+#modalRoot .modal:not(.n99-modal) .sheet .apx96-queue-name b{font:590 15px/1.25 var(--st-font) !important;white-space:normal !important;color:var(--st-ink)}
+#modalRoot .modal:not(.n99-modal) .sheet .apx96-queue-name span{font:450 12px/1.3 var(--st-font) !important;color:var(--st-ink-3) !important}
+
+/* 2 · One field (D44). The inline `.input,.select,.textarea{min-height:45px !important}` used to beat the 52px recipe; here 52px wins for every
+   field in a sheet and in Settings. The weigh-in big number (.st-qw-field) and its compact date row (.st-qw-date) are designed exceptions, as are the
+   Train set numerals and steppers (#trainPage, untouched). Settings textareas keep their own min-height (the Evo scan box is 88px). */
+#modalRoot .sheet :where(input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=range]),select,textarea):not(.st-qw-field *,.st-qw-date *),
+#morePage :where(input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=range]):not([type=file]),select){min-height:52px !important}
+#modalRoot .modal:not(.n99-modal) .sheet :where(input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=range]),select,textarea),
+#morePage :where(input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=range]):not([type=file]),select,textarea){
+  border-radius:var(--r-ctl) !important;background:rgba(255,255,255,.045) !important;border:1px solid rgba(var(--st-hl),.11) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04) !important;color:var(--st-ink) !important;font:450 16px var(--st-font) !important;
+  transition:border-color .2s,background-color .2s,box-shadow .25s var(--st-out)}
+#modalRoot .modal:not(.n99-modal) .sheet :where(input,select,textarea):focus,#morePage :where(input,select,textarea):focus{outline:none !important;border-color:rgba(180,154,255,.6) !important;background:rgba(139,92,246,.09) !important;box-shadow:0 0 0 4px rgba(139,92,246,.18) !important}
+#modalRoot .modal:not(.n99-modal) .sheet ::placeholder,#morePage ::placeholder{color:rgba(var(--st-hl),.32)}
+
+/* 3 · One button (D56). `.btn` is the primary capsule, `.btn.secondary` the glass capsule, `.btn.danger` glass with the rose word (I2), all in the n99 buttons' own type:
+   Geist 16px, primary 620 and glass 560, the same tracking, no text-transform. Several labels are capitals in the markup itself (SAVE CHANGES, CANCEL, NICE, LOG ZONE 2 ...):
+   CSS leaves them as written, so sentence case there is a copy edit in the index.html templates. */
+#modalRoot .modal:not(.n99-modal) .sheet .btn{
+  display:flex !important;align-items:center;justify-content:center;min-height:50px !important;padding:0 20px !important;
+  border:0 !important;border-radius:999px !important;background:var(--btn-primary) !important;box-shadow:var(--btn-primary-shadow) !important;color:#fff !important;
+  font:620 16px/24px var(--st-font-d) !important;letter-spacing:-.012em !important;text-transform:none !important;text-shadow:0 1px 1px rgba(46,16,101,.35)}
+#modalRoot .modal:not(.n99-modal) .sheet .btn.secondary,#modalRoot .modal:not(.n99-modal) .sheet .btn.danger{
+  background:var(--btn-glass) !important;box-shadow:var(--btn-glass-shadow) !important;color:var(--btn-ink) !important;font-weight:560 !important;letter-spacing:-.005em !important;text-shadow:none}
+#modalRoot .modal:not(.n99-modal) .sheet .btn.danger{color:var(--st-fat) !important}
+#modalRoot .modal:not(.n99-modal) .sheet .apx96-chip{min-height:44px !important;min-width:44px;padding:0 16px !important;border:0 !important;border-radius:999px !important;
+  background:var(--btn-glass) !important;box-shadow:var(--btn-glass-shadow) !important;color:var(--btn-ink);font:560 14px/1 var(--st-font-d) !important;letter-spacing:-.005em !important;text-transform:none !important}
+#modalRoot .modal:not(.n99-modal) .sheet .apx96-chip.lime{color:var(--btn-text)}
+#modalRoot .modal:not(.n99-modal) .sheet .apx96-chip:disabled{opacity:.4}
+
+/* 4 · Touch targets (I5). Where the design wants a small control, the painted capsule keeps its size and the box is 44px with the same
+   footprint (negative margin), so nothing moves; where the control is a row or a track, it simply grows to 44px. */
+#cloudLocalBanner .cloud-local-banner-login,#cloudLocalBanner .cloud-local-banner-dismiss{position:relative;min-height:44px;margin-block:-4px}
+#cloudLocalBanner .cloud-local-banner-login{isolation:isolate;background:none !important;box-shadow:none !important}
+#cloudLocalBanner .cloud-local-banner-login::before{content:"";position:absolute;inset:4px 0;z-index:-1;border-radius:999px;background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);pointer-events:none}
+.st-t-dec .st-link.st-why{position:relative;isolation:isolate;min-height:44px !important;margin-block:-6px;background:none !important;box-shadow:none !important}
+.st-t-dec .st-link.st-why::before{content:"";position:absolute;inset:6px 0;z-index:-1;border-radius:999px;background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);pointer-events:none}
+.st-t-dec .st-dec-chip.st-dec-conf{min-height:44px}
+#historyPage .nxp-history-filters button{min-height:44px !important}
+/* D42 asked for day cells of 44px or more; aspect-ratio:1 and min-height:0 !important (further down this file) held them at 36px */
+#historyPage .nxp-cal-grid>.nxp-cal-day{aspect-ratio:auto !important;min-height:44px !important}
+/* and the month arrows, which flex-shrank to 40px (36px at 320) although D42 specified three 44px targets; the title still fits */
+#historyPage .nxp-cal-nav button:not(.nxp-cal-today){min-width:44px !important}
+
+/* 5 · Text floor (11px): the composition-map axis labels, the Progress range-read labels on narrow phones, and the month-start day label */
+svg.st-cmap :is(.st-ax,.st-cm-zl){font-size:11px !important}
+@media (max-width:359px){#weightPage .st-rread small,#weightPage .st-rread span{font-size:11px !important}}
+/* at 320 "Trend change" is 2px wider than its column at 11px: a little tighter tracking and 1px less right padding, so it is not clipped */
+@media (max-width:339px){#weightPage .st-rread small,#weightPage .st-rread span{letter-spacing:-.03em !important}#weightPage .st-rread>div{padding-right:5px !important}}
+#historyPage .nxp-cal-grid>.nxp-cal-day b.is-m1{font-size:11px !important}
 
 /* ---- CANVAS ----------------------------------------------------------------
    Aurora: four slow colour fields, tinted per tab, over a near-black base, with
@@ -2425,6 +2562,17 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #morePage .vn-set-row.has-ic{grid-template-columns:32px minmax(0,1fr) auto 12px !important}
 #morePage .vn-set-row.has-ic .vn-set-v{max-width:none !important;overflow:visible !important;text-overflow:clip !important}
 #morePage .vn-set-row.has-ic .vn-set-t{font-family:var(--st-font) !important}
+/* Under 360px the value drops under the label (vnext's own rule for the flex row) instead of
+   wrapping one character per line in a collapsed grid column: label and chevron on line 1,
+   the value on line 2, the icon tile centred across both. Pre-existing at release 161. */
+@media (max-width:359px){
+  #morePage .vn-set-row.has-ic{grid-template-columns:32px minmax(0,1fr) 12px !important;grid-template-rows:auto auto;row-gap:2px}
+  #morePage .vn-set-row.has-ic .st-set-ic{grid-column:1;grid-row:1 / span 2;align-self:center}
+  #morePage .vn-set-row.has-ic .vn-set-l{grid-column:2;grid-row:1}
+  #morePage .vn-set-row.has-ic .vn-chev{grid-column:3;grid-row:1}
+  #morePage .vn-set-row.has-ic .vn-set-v{grid-column:2 / 4;grid-row:2;justify-self:start;text-align:left;white-space:nowrap;max-width:100%;overflow:hidden !important;text-overflow:ellipsis !important}
+  #morePage .vn-set-row.has-ic .vn-set-v.vn-set-flag{display:inline-flex}
+}
 
 /* History: big-numeral day header */
 #historyPage .st-dayhead{display:flex !important;align-items:center;gap:14px;font:inherit !important;margin:0}
@@ -2801,3 +2949,398 @@ button.st-ref.is-aim small::after{content:" · tap to fill";color:var(--st-ink-3
   #trainPage .st-train .st-lrow.is-now .st-entry .nxp-stepper-row{grid-template-columns:44px 44px;column-gap:6px}
   #trainPage .st-train .st-lrow.is-now .st-entry .nxp-step{width:44px;height:44px}
 }
+
+/* ===== Ascension · launch reveal ===== */
+/* The launch overlay in index.html toggles two classes on <html>, once per launch:
+   nx-launching while the overlay holds, nx-reveal for the ~500 ms of the single reveal.
+   The overlay's own exit (mark out in 140 ms, backdrop lifting over 360 ms after a 60 ms
+   lead) is the other half of the transition; this block is the shell's one subtle settle
+   (6px over 420 ms, the app's easing), started on the same 60 ms lead so it rises as the
+   backdrop lifts. It is the only place the entrance is defined and it cannot replay on tab
+   repaints: the class exists only while the overlay lifts, and the script that adds it runs
+   once per session.
+   Scoped to <main> and the dock, not to .app. Anything transformed becomes the containing
+   block of its position:fixed descendants, and the dock is position:fixed inside .app, so a
+   transform on .app would re-anchor it to the app's box for the whole entrance. The dock
+   already owns transform:translateX(-50%) !important, so it takes the individual translate
+   property, which composes with that transform instead of replacing it.
+   Transform only, no opacity. The overlay's backdrop is the fade. Opacity below 1 (or an
+   animation on it) makes <main> a backdrop root, so every glass tile inside it would blur
+   only its own surroundings instead of the aurora behind <main> for 420 ms and then snap
+   back: measured at the last frame of the entrance, 6.6% of the screen differed by up to
+   29/255 with opacity and 0.001% (max 3) without. Nothing here changes layout. */
+@keyframes nx-shell-in{from{transform:translateY(6px)}to{transform:none}}
+@keyframes nx-dock-in{from{translate:0 6px}to{translate:0 0}}
+html.nx-reveal main,
+html.nx-reveal #cloudLocalBanner{animation:nx-shell-in .42s cubic-bezier(.32,.72,0,1) .06s backwards}
+html.nx-reveal .tabs{animation:nx-dock-in .42s cubic-bezier(.32,.72,0,1) .06s backwards}
+/* Reduced motion: no entrance (the launch script does not add the class either). */
+@media (prefers-reduced-motion:reduce){
+  html.nx-reveal main,html.nx-reveal #cloudLocalBanner,html.nx-reveal .tabs{animation:none}
+}
+:root[data-nxp-motion="reduced"].nx-reveal main,
+:root[data-nxp-motion="reduced"].nx-reveal #cloudLocalBanner,
+:root[data-nxp-motion="reduced"].nx-reveal .tabs{animation:none}
+
+/* ===== Ascension · exercise history ===== */
+/* Exercise Details › History, and the Performance row that opens it. One chart, one
+   question: how has my best working set for this exercise moved across sessions?
+   Lit-glass vocabulary (D53), Dusk palette (D54: violet identity, no green, teal or
+   cyan), every colour paired with a word or a shape (I6), the estimate dashed and
+   named (I11). Presentation only: no calculation, storage key or record changes. */
+.n99-modal .exh-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:0 0 6px}
+.n99-modal .nxp-detail-block.exh .exh-head h3{margin:0;flex:1 1 auto;min-width:0}
+.n99-modal .nxp-detail-block.exh .exh-head:has(.exh-seg) h3{flex-basis:100%}
+.n99-modal .nxp-detail-block.exh>h3{margin:0 0 8px}
+
+/* Range: the same pill track as the other segmented controls (the sliding pill is strata.js's). */
+.n99-modal .exh-seg{display:inline-flex;flex:none;gap:2px;padding:3px;border:0;border-radius:999px;background:rgba(255,255,255,.045);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),inset 0 1px 2px rgba(0,0,0,.3)}
+.n99-modal .exh-seg button{min-width:64px;min-height:44px;padding:0 16px;border:0;border-radius:999px;background:transparent;color:var(--st-ink-3);font:540 13px/1 var(--st-font-d) !important;cursor:pointer;touch-action:manipulation;transition:color .25s var(--st-out)}
+.n99-modal .exh-seg button[aria-pressed="true"]{color:#fff}
+.n99-modal .exh-seg button:focus-visible{outline:2px solid #CDBBFF;outline-offset:2px}
+
+/* e1RM: a glass toggle (D56), off by default like the weight chart's Projection (I11). The check
+   box and the dashed key are the state and the series in shapes, not just a colour. */
+.n99-modal .exh-head .exh-tog{margin-left:auto}
+.n99-modal .exh-tog{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px 0 12px;border:0;border-radius:999px;background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);color:var(--btn-ink);font:560 13px/1 var(--st-font-d) !important;letter-spacing:-.005em;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:background .2s var(--st-out),box-shadow .2s var(--st-out),color .2s var(--st-out)}
+.n99-modal .exh-tog-box{width:16px;height:16px;border-radius:5px;flex:none;display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px var(--st-ink-4)}
+.n99-modal .exh-tog-key{flex:none;margin-left:2px;opacity:.9}
+.n99-modal .exh-tog[aria-pressed="true"]{background:linear-gradient(180deg,rgba(139,92,246,.34),rgba(139,92,246,.16));box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 0 0 1px rgba(180,154,255,.46),0 8px 18px -12px rgba(124,58,237,.75);color:#fff}
+.n99-modal .exh-tog[aria-pressed="true"] .exh-tog-box{background:var(--st-accent);box-shadow:none}
+.n99-modal .exh-tog[aria-pressed="true"] .exh-tog-box::after{content:"";width:8px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translate(1px,-1px)}
+.n99-modal .exh-tog:focus-visible{outline:2px solid #CDBBFF;outline-offset:2px}
+
+/* The readout: three stable rows, so nothing moves while the finger scrubs. */
+.n99-modal .exh-read{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"d c" "v v" "e e";align-items:center;gap:2px 10px;min-height:86px;margin:0 0 6px}
+.n99-modal .exh-read .exh-r-d{grid-area:d}
+.n99-modal .exh-r-d{font:550 13px/1.3 var(--st-font);color:var(--st-ink-2);white-space:nowrap}
+.n99-modal .exh-read .exh-r-c{grid-area:c}
+.n99-modal .exh-r-c{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px 0 9px;border-radius:999px;font:600 12px/1 var(--st-font);color:var(--st-ink);white-space:nowrap;background:color-mix(in srgb,var(--c) 13%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 34%,transparent)}
+.n99-modal .exh-r-c svg{width:12px;height:12px;flex:none;fill:none;stroke:var(--c);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.n99-modal .exh-r-c.is-up{--c:var(--st-lean)}
+.n99-modal .exh-r-c.is-eq{--c:var(--st-accent-lift)}
+.n99-modal .exh-r-c.is-down{--c:var(--st-fat)}
+.n99-modal .exh-r-c.is-first{--c:var(--st-ink-3)}
+.n99-modal .exh-read .exh-r-v{grid-area:v}
+.n99-modal .exh-r-v{display:block;font:300 30px/1.12 var(--st-font-d) !important;letter-spacing:-.025em;color:var(--st-ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.n99-modal .exh-r-v small{font:500 13px var(--st-font) !important;letter-spacing:0;color:var(--st-ink-3);margin:0 0 0 4px}
+.n99-modal .exh-r-v i{font-style:normal;color:var(--st-ink-4);margin:0 5px}
+.n99-modal .exh-read .exh-r-e{grid-area:e}
+.n99-modal .exh-r-e{min-height:16px;font:450 12.5px/1.3 var(--st-font);color:var(--st-ink-3)}
+
+/* The plot. pan-y keeps the sheet scrollable; a horizontal drag scrubs. */
+.n99-modal .exh-plot{position:relative;margin:2px -2px 0;min-height:216px;border-radius:14px;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;outline:none;cursor:crosshair}
+.n99-modal .exh-plot:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:3px}
+.n99-modal .exh-svg{display:block;width:100%;height:auto;overflow:visible}
+.exh-grid{stroke:rgba(var(--st-hl),.07);stroke-width:1}
+.exh-ytick{fill:var(--st-ink-3);font:500 11px var(--st-font);font-variant-numeric:tabular-nums}
+.exh-yunit{fill:var(--st-ink-4);font:500 10.5px var(--st-font)}
+.exh-ax{fill:var(--st-ink-3);font:500 11px var(--st-font);font-variant-numeric:tabular-nums}
+.exh-area{stroke:none}
+.exh-line{fill:none;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round}
+.exh-e1{fill:none;stroke:rgba(180,154,255,.62);stroke-width:1.6;stroke-dasharray:2 5;stroke-linecap:round}
+.exh-e1l{fill:var(--st-accent-lift);font:550 11px var(--st-font);paint-order:stroke;stroke:#15141D;stroke-width:3px;stroke-linejoin:round}
+.exh-dot{fill:#D9CCFF;stroke:#15141D;stroke-width:1.2;paint-order:stroke}
+.exh-ring{fill:none;stroke:var(--st-accent-lift);stroke-width:1.6}
+.exh-best{fill:var(--st-ink);font:640 11px var(--st-font);paint-order:stroke;stroke:#15141D;stroke-width:3px;stroke-linejoin:round}
+.exh-reps{fill:var(--st-ink-2);font:550 11.5px var(--st-font);font-variant-numeric:tabular-nums;paint-order:stroke;stroke:#15141D;stroke-width:3px;stroke-linejoin:round}
+.exh-reps.is-sel{fill:var(--st-ink);font-weight:650}
+.exh-reps.is-off:not(.is-sel){display:none}
+.exh-cur{stroke:rgba(180,154,255,.55);stroke-width:1;stroke-dasharray:3 4}
+.exh-act{fill:#fff;stroke:#8B5CF6;stroke-width:3}
+
+.n99-modal .exh-cap{margin:6px 0 0;font:450 12.5px/1.4 var(--st-font);color:var(--st-ink-3)}
+.n99-modal .exh-how{margin:2px 0 0}
+.n99-modal .exh-how summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:flex-start;gap:6px;min-height:44px;font:550 13px var(--st-font);color:var(--st-ink-3)}
+.n99-modal .exh-how summary::-webkit-details-marker{display:none}
+.n99-modal .exh-how summary::after{content:"›";font-size:16px;transition:transform .2s var(--st-out)}
+.n99-modal .exh-how[open] summary::after{transform:rotate(90deg)}
+.n99-modal .exh-how p{margin:0 0 8px;font:450 13px/1.5 var(--st-font);color:var(--st-ink-3)}
+
+/* Zero sessions and one session: text, never a blank panel. */
+.n99-modal .exh-empty{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:18px;background:rgba(var(--st-hl),.035);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.07)}
+.n99-modal .exh-empty b{font:590 15px/1.3 var(--st-font);color:var(--st-ink)}
+.n99-modal .exh-empty span{font:450 13px/1.45 var(--st-font);color:var(--st-ink-3)}
+.n99-modal .exh-one{display:grid;gap:3px}
+.n99-modal .exh-one span{font:450 13px/1.4 var(--st-font);color:var(--st-ink-3)}
+.n99-modal .exh-hint{margin:6px 0 0;font:450 12.5px/1.4 var(--st-font);color:var(--st-ink-3)}
+
+/* Draw-in on open and on a range change, at most 480 ms. Motion is only declared where
+   it is allowed: under reduced motion nothing here animates and the final state is the
+   state, so there is nothing to undo. */
+@keyframes exh-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes exh-fade{from{opacity:0}to{opacity:1}}
+@keyframes exh-pop{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:no-preference){
+  :root:not([data-nxp-motion="reduced"]) .exh-plot.is-draw .exh-line{stroke-dasharray:1 2;animation:exh-draw .44s var(--st-out) both}
+  :root:not([data-nxp-motion="reduced"]) .exh-plot.is-draw .exh-area{animation:exh-fade .3s var(--st-out) .12s both}
+  :root:not([data-nxp-motion="reduced"]) .exh-plot.is-draw .exh-e1{animation:exh-fade .3s var(--st-out) .14s both}
+  :root:not([data-nxp-motion="reduced"]) .exh-plot.is-draw .exh-dot{transform-box:fill-box;transform-origin:center;animation:exh-pop .2s var(--st-out) var(--d,0ms) both}
+  :root:not([data-nxp-motion="reduced"]) .exh-plot.is-draw .exh-reps{animation:exh-fade .2s var(--st-out) var(--d,200ms) both}
+  :root:not([data-nxp-motion="reduced"]) .exh-plot.is-draw .exh-ring,
+  :root:not([data-nxp-motion="reduced"]) .exh-plot.is-draw .exh-best{animation:exh-fade .2s var(--st-out) .22s both}
+  :root:not([data-nxp-motion="reduced"]) .exh-plot.is-draw .exh-e1l{animation:exh-fade .2s var(--st-out) .24s both}
+  :root:not([data-nxp-motion="reduced"]) .exh-plot.is-draw .exh-sel{animation:exh-fade .2s var(--st-out) .26s both}
+  :root:not([data-nxp-motion="reduced"]) .exh-plot.is-wait *{animation-play-state:paused !important}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .n99-modal .exh-how summary::after,.n99-modal .exh-seg button,.n99-modal .exh-tog,#weightPage .st-perf-open{transition:none}
+}
+:root[data-nxp-motion="reduced"] .n99-modal .exh-how summary::after,
+:root[data-nxp-motion="reduced"] .n99-modal .exh-seg button,
+:root[data-nxp-motion="reduced"] .n99-modal .exh-tog,
+:root[data-nxp-motion="reduced"] #weightPage .st-perf-open{transition:none}
+
+/* Progress › Performance: the whole row opens the lift's details. The button is a
+   transparent layer over the row, so the row's own markup and layout do not move. */
+#weightPage .vn-perf-row.st-perf{position:relative}
+#weightPage .st-perf-open{position:absolute;inset:3px -10px;z-index:2;display:block;width:auto;height:auto;margin:0;padding:0;border:0;border-radius:16px;background:transparent;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:background .2s var(--st-out)}
+#weightPage .st-perf-open:active{background:rgba(var(--st-hl),.05)}
+@media (hover:hover){#weightPage .st-perf-open:hover{background:rgba(var(--st-hl),.03)}}
+#weightPage .st-perf-open:focus-visible{outline:2px solid #CDBBFF;outline-offset:-2px}
+#weightPage .st-perf-chev{width:15px;height:15px;margin-left:5px;vertical-align:-2px;color:var(--st-ink-4)}
+
+/* ===== Ascension · coaching UI ===== */
+/* The presentation of NXT.coach: Today's Coach stack and Week in review, the catch-up and
+   excuse sheets, the History calendar's status marks and day card, the week rail's excused
+   and moved capsules, Train's catch-up row. Lit-glass vocabulary (D53), Dusk palette (D54:
+   violet identity, no green, teal or cyan), capsule buttons (D56), the D44 field recipe in
+   sheets. Every colour is paired with a word or a shape (I6); status uses the I2 trio only
+   as a 6px shape beside its word. Presentation only: no calculation, storage key or record
+   shape changes. The only motion is the existing tile reveal (strata.js) and a chevron turn;
+   both have a reduced-motion path at the end of the block. */
+:root{
+  --co-schedule:#8B5CF6;
+  --co-strength:#C4B5FD;
+  --co-cardio:var(--st-cardio,#D37732);
+  --co-weight:var(--st-weight,#B49AFF);
+  --co-data:var(--st-rest,#9B8BB8);
+}
+
+/* ---- Today · Coach stack: one lit-glass tile per insight --------------------------------- */
+.st-tile.co-tile{--c:var(--co-schedule);padding:18px 20px 12px}
+.co-tile.is-d-schedule{--c:var(--co-schedule)}
+.co-tile.is-d-strength{--c:var(--co-strength)}
+.co-tile.is-d-cardio{--c:var(--co-cardio)}
+.co-tile.is-d-weight{--c:var(--co-weight)}
+.co-tile.is-d-data{--c:var(--co-data)}
+/* act: lit edge and bloom in the domain's hue. watch: the default quiet edge. info: plain. */
+.st-tile.co-tile.is-act{
+  --st-edge:linear-gradient(155deg,color-mix(in srgb,var(--c) 70%,#fff) 0%,color-mix(in srgb,var(--c) 42%,transparent) 26%,rgba(255,255,255,.05) 58%,color-mix(in srgb,var(--c) 52%,transparent) 100%);
+  background:
+    radial-gradient(130% 92% at 10% -14%,color-mix(in srgb,var(--c) 36%,transparent),transparent 62%),
+    radial-gradient(80% 60% at 108% 6%,color-mix(in srgb,var(--c) 14%,transparent),transparent 70%),
+    linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.012)),rgba(17,16,26,.78) !important;
+  box-shadow:var(--st-depth),0 34px 64px -42px color-mix(in srgb,var(--c) 75%,transparent) !important;
+}
+.st-tile.co-tile.is-info{background:
+  radial-gradient(120% 90% at 0% 0%,color-mix(in srgb,var(--c) 11%,transparent),transparent 55%),
+  linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01)),rgba(18,17,27,.72) !important}
+
+/* eyebrow: the domain's small shape and word, then severity as a word and a 6px shape;
+   Dismiss is the quiet text button at the right (the tile-head rule keeps it 44px tall). */
+.co-eb{margin-bottom:8px}
+.co-tags{display:flex;flex:1 1 auto;flex-wrap:wrap;align-items:center;gap:2px 12px;min-width:0}
+.co-dom{flex:0 1 auto;min-width:0;gap:7px}
+.co-gl{display:block;width:14px;height:14px;flex:none;color:color-mix(in srgb,var(--c) 78%,#fff)}
+.co-sev{display:inline-flex;align-items:center;gap:7px;flex:none;font:560 12px/1 var(--st-font-d) !important;color:var(--st-ink-2)}
+.co-sh{display:block;width:6px;height:6px;flex:none;border-radius:50%;background:#8B5CF6}
+.co-tile.is-watch .co-sh{border-radius:1.5px;background:#B8842A;transform:rotate(45deg)}
+.co-eb .vn-text{flex:none;min-width:44px;margin-right:-10px;padding:0 10px;font-size:14px}
+
+.co-title{margin:0;font:600 18px/1.25 var(--st-font-d) !important;letter-spacing:-.02em !important;color:var(--st-ink);text-wrap:balance}
+.co-body{margin:6px 0 0;font:400 14.5px/1.5 var(--st-font);color:var(--st-ink-2)}
+
+/* evidence: glass chips, "label · value" */
+.co-chips{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 0;padding:0;list-style:none}
+.co-chip{display:inline-flex;align-items:baseline;flex-wrap:wrap;gap:0 6px;min-width:0;max-width:100%;padding:6px 11px 6px 10px;border-radius:14px;
+  background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);font:450 12px/1.35 var(--st-font);color:var(--st-ink-3)}
+.co-chip-l{font-weight:500;color:var(--st-ink-3)}
+.co-chip-d{color:var(--st-ink-4)}
+.co-chip-v{font:560 12.5px/1.35 var(--st-font-d) !important;color:var(--st-ink);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+
+/* the engine's action as the primary capsule, then Why: a fold with four short labelled lines */
+.co-act{display:flex;width:100%;min-height:48px;margin:14px 0 0;padding:0 16px}
+.co-act.is-q{align-items:center;justify-content:center;gap:8px;border:0;border-radius:999px;cursor:pointer;color:var(--btn-ink,#EDE8FF);
+  background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);font:560 15px/1 var(--st-font-d) !important;-webkit-tap-highlight-color:transparent}
+.co-act.is-q span{font-size:18px;line-height:1;opacity:.7}
+.co-act.is-q:active{transform:scale(.975)}
+.co-act.is-q:focus-visible{outline:2px solid #CDBBFF;outline-offset:3px}
+.co-why{margin:4px 0 0}
+.co-act+.co-why{margin-top:2px}
+.co-why>summary{display:inline-flex;align-items:center;gap:3px;min-height:44px;padding:0 6px 0 0;list-style:none;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  font:560 13px/1 var(--st-font);color:var(--btn-text,#CDBBFF)}
+.co-why>summary::-webkit-details-marker{display:none}
+.co-why>summary i{font-style:normal;font-size:17px;line-height:1;transition:transform .2s var(--st-out)}
+.co-why[open]>summary i{transform:rotate(90deg)}
+.co-why>summary:focus-visible{outline:2px solid #CDBBFF;outline-offset:2px;border-radius:8px}
+.co-why dl{display:grid;gap:12px;margin:0 0 8px;padding:2px 0 0}
+.co-why dt{margin:0 0 3px;font:560 11.5px/1.2 var(--st-font);letter-spacing:.01em;color:var(--st-ink-3)}
+.co-why dd{margin:0;font:400 13.5px/1.5 var(--st-font);color:var(--st-ink-2)}
+
+/* ---- Today · Week in review ------------------------------------------------------------- */
+.co-review{--c:var(--co-schedule)}
+.co-open{position:absolute;inset:0;z-index:1;width:100%;height:100%;margin:0;padding:0;border:0;border-radius:inherit;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.co-open:active{background:rgba(var(--st-hl),.035)}
+.co-open:focus-visible{outline:2px solid #CDBBFF;outline-offset:-4px}
+.co-review .co-got{position:relative;z-index:2}
+.co-fig{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:14px 0 0;padding:14px 0 0;border-top:1px solid rgba(var(--st-hl),.07)}
+.co-fig-c{display:flex;flex-direction:column;gap:3px;min-width:0;padding:0 9px}
+.co-fig-c:first-child{padding-left:0}
+.co-fig-c:last-child{padding-right:0}
+.co-fig-c+.co-fig-c{border-left:1px solid rgba(var(--st-hl),.07)}
+.co-fig-c small{font:500 11.5px/1.2 var(--st-font);color:var(--st-ink-3)}
+.co-fig-c b{display:block;font:300 25px/1.05 var(--st-font-d) !important;letter-spacing:-.03em;color:var(--st-ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+.co-fig-c b em{margin-left:1px;font:500 12.5px var(--st-font) !important;font-style:normal;letter-spacing:0;color:var(--st-ink-3)}
+.co-fig-s{display:flex;align-items:flex-start;gap:3px;min-height:29px;font:500 11.5px/1.25 var(--st-font);color:var(--st-ink-3)}
+.co-fig-s svg{display:block;width:10px;height:10px;flex:none;margin-top:1.5px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.co-fig-s.is-good{color:var(--st-lean)}
+.co-fig-s.is-up{color:var(--st-fat)}
+.co-out{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:12px 0 0;font:500 13px/1.35 var(--st-font);color:var(--st-ink-2)}
+.co-out-l{flex:0 0 100%;font:500 11.5px/1.2 var(--st-font);color:var(--st-ink-3)}
+.co-out span:not(.co-out-l){display:inline-flex;align-items:center;gap:6px}
+.co-out b{font-weight:650;color:var(--st-ink)}
+.co-out i{display:block;width:6px;height:6px;flex:none;border-radius:50%;background:var(--oc)}
+.co-out .is-beat{--oc:var(--st-lean)}
+.co-out .is-same{--oc:var(--st-accent)}
+.co-out .is-below{--oc:var(--st-fat)}
+.co-xm{margin:6px 0 0;font:450 12.5px/1.4 var(--st-font);color:var(--st-ink-3)}
+.co-more{display:flex;align-items:center;justify-content:flex-end;gap:2px;margin:8px 0 2px;font:560 13px/1 var(--st-font-d);color:var(--btn-text,#CDBBFF)}
+.co-more i{font-style:normal;font-size:17px;line-height:1}
+/* Monday's old "Last week" recap (strata.js) says the same thing; it shows only when the review does not. */
+.co-rv-on .st-recap{display:none !important}
+
+/* ---- Sheets: catch-up confirmation, excuse, week review --------------------------------- */
+.n99-modal .co-sheet .co-lead{margin:10px 0 0;font:400 14.5px/1.5 var(--st-font);color:var(--st-ink-2)}
+.n99-modal .co-sheet .co-lead-h{margin:2px 0 0;font:590 17px/1.3 var(--st-font-d) !important;letter-spacing:-.015em !important;color:var(--st-ink)}
+.n99-modal .co-sheet .co-sec{margin:22px 0 8px;font:590 13px/1.3 var(--st-font-d) !important;letter-spacing:.01em !important;color:var(--st-ink-3)}
+.n99-modal .co-sheet .co-eff{display:grid;gap:11px;margin:0;padding:0;list-style:none}
+.n99-modal .co-sheet .co-eff li{display:grid;grid-template-columns:14px minmax(0,1fr);gap:10px;align-items:start;font:450 14.5px/1.45 var(--st-font);color:var(--st-ink)}
+.n99-modal .co-sheet .co-eff i{display:block;width:6px;height:6px;margin:8px 0 0 4px;border-radius:50%;background:var(--st-accent-lift)}
+.n99-modal .co-sheet .n99-stack{margin-top:22px}
+.n99-modal .co-sheet .co-reasons{margin:16px 0 0}
+.n99-modal .co-sheet .co-reasons .n99-button.is-on{background:linear-gradient(170deg,rgba(139,92,246,.5),rgba(109,40,217,.3)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.28),inset 0 0 0 1px rgba(196,181,253,.5) !important;color:#fff !important}
+.n99-modal .co-sheet .co-days{margin:14px 0 0;padding:0;list-style:none}
+.n99-modal .co-sheet .co-day{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;gap:10px;min-height:46px;padding:5px 0;border-top:1px solid rgba(var(--st-hl),.06)}
+.n99-modal .co-sheet .co-day:first-child{border-top:0}
+.n99-modal .co-sheet .co-day-d{display:flex;align-items:baseline;gap:5px;line-height:1.2}
+.n99-modal .co-sheet .co-day-d b{font:600 13.5px/1.2 var(--st-font-d) !important;color:var(--st-ink)}
+.n99-modal .co-sheet .co-day-d small{font:450 12px/1.2 var(--st-font);color:var(--st-ink-3)}
+.n99-modal .co-sheet .co-day-t{display:flex;flex-direction:column;gap:1px;min-width:0;font:500 14.5px/1.3 var(--st-font);color:var(--st-ink)}
+.n99-modal .co-sheet .co-day-t small{font:450 12.5px/1.3 var(--st-font);color:var(--st-ink-3)}
+.n99-modal .co-sheet .co-day-s{display:inline-flex;align-items:center;justify-content:flex-end;gap:7px;text-align:right}
+.n99-modal .co-sheet .co-day-s span{font:550 13px/1.2 var(--st-font);color:var(--st-ink-2)}
+.n99-modal .co-sheet .co-day-s .co-cm{display:block;width:12px;height:12px;flex:none}
+.n99-modal .co-sheet .co-lines{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.n99-modal .co-sheet .co-lines li{font:450 14px/1.45 var(--st-font);color:var(--st-ink-2)}
+.n99-modal .co-sheet .co-nw{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:0;padding:0;list-style:none}
+.n99-modal .co-sheet .co-nw-c{--k:#8B5CF6;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;padding:9px 0 8px;border-radius:14px;
+  background:linear-gradient(170deg,rgba(255,255,255,.08),color-mix(in srgb,var(--k) 14%,transparent));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px color-mix(in srgb,var(--k) 30%,rgba(255,255,255,.06))}
+.n99-modal .co-sheet .co-nw-c b{font:700 12.5px/1 var(--st-font);color:color-mix(in srgb,var(--k) 55%,#fff)}
+.n99-modal .co-sheet .co-nw-c span{font:550 11px/1.1 var(--st-font);white-space:nowrap;color:var(--st-ink)}
+.n99-modal .co-sheet .co-nw-c.is-k-push{--k:#BF75C5}
+.n99-modal .co-sheet .co-nw-c.is-k-pull{--k:#5552BB}
+.n99-modal .co-sheet .co-nw-c.is-k-legs{--k:#A43066}
+.n99-modal .co-sheet .co-nw-c.is-k-walk{--k:#D37732}
+.n99-modal .co-sheet .co-nw-c.is-k-fb{--k:#E2B04A}
+.n99-modal .co-sheet .co-nw-c.is-k-rest{--k:#9B8BB8;background:linear-gradient(170deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}
+.n99-modal .co-sheet .co-nw-c.is-k-rest span{color:var(--st-ink-3)}
+/* the week sheet is long: Done stays in reach at the foot of the sheet */
+.n99-modal .co-rvs .n99-stack{position:sticky;bottom:0;z-index:3;margin:14px -4px 0;padding:16px 4px calc(10px + var(--nxt-safe-bottom,0px));background:linear-gradient(180deg,rgba(21,20,29,0),#15141D 34%)}
+/* status shapes in a sheet row take their hue from the status; the word is always beside them */
+.n99-modal .co-sheet .co-day.is-done .co-cm{color:var(--st-lean)}
+.n99-modal .co-sheet .co-day.is-partial .co-cm,.n99-modal .co-sheet .co-day.is-excused .co-cm,.n99-modal .co-sheet .co-day.is-moved .co-cm{color:var(--st-accent-lift)}
+.n99-modal .co-sheet .co-day.is-missed .co-cm,.n99-modal .co-sheet .co-day.is-none .co-cm,.n99-modal .co-sheet .co-day.is-rest .co-cm{color:var(--st-rest)}
+/* the day sheet's "Didn't happen?" block (cut-support.js openDay) */
+.n99-modal .co-dh{margin:12px 0 2px}
+.n99-modal .co-dh .co-dh-t{margin:0 0 4px;font:600 15.5px/1.3 var(--st-font-d) !important;color:var(--st-ink)}
+.n99-modal .co-dh .n99-picker{margin:12px 0 4px}
+.n99-modal .co-dh>.n99-button{margin-top:10px}
+.n99-modal .co-dh-note{margin:10px 0 0}
+
+/* ---- Train: the catch-up row ------------------------------------------------------------- */
+.co-row{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;margin:12px 0 14px;padding:10px 14px 10px 12px;border:0;border-radius:20px;text-align:left;cursor:pointer;color:var(--st-ink);
+  background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);-webkit-tap-highlight-color:transparent}
+.co-row-i{display:grid;place-items:center;flex:none;width:34px;height:34px;border-radius:50%;color:#fff;
+  background:linear-gradient(160deg,color-mix(in srgb,var(--co-schedule) 88%,#fff 12%),color-mix(in srgb,var(--co-schedule) 78%,#000 22%));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 14px -6px color-mix(in srgb,var(--co-schedule) 80%,transparent)}
+.co-row-i svg{display:block;width:14px;height:14px}
+.co-row-t{display:flex;flex:1 1 auto;flex-direction:column;gap:2px;min-width:0}
+.co-row-t b{font:560 14.5px/1.3 var(--st-font-d) !important;color:var(--st-ink)}
+.co-row-s{font:450 12.5px/1.35 var(--st-font);color:var(--st-ink-3)}
+.co-row-c{flex:none;font-style:normal;font-size:20px;line-height:1;color:var(--st-ink-3)}
+.co-row:focus-visible{outline:2px solid #CDBBFF;outline-offset:3px}
+.co-row:active{transform:scale(.985)}
+
+/* Train's coordinated hold: the same quiet coach line. Its headline names the weight decision, so the whole
+   headline shows (up to three lines) and the pill, which would only repeat "Hold", steps aside. */
+.st-coachline.is-hold .st-coach-pill{color:#DCD0FF;background:rgba(196,181,253,.14);box-shadow:inset 0 0 0 1px rgba(196,181,253,.38)}
+.st-coachline.is-coordinated summary>b{-webkit-line-clamp:3}
+.st-coachline.is-coordinated .st-coach-pill{display:none}
+
+/* ---- Today · the week rail: excused and moved capsules ----------------------------------- */
+#homePage .st-tweek [data-rail] .vn-week-c.is-excused .st-cap,
+#homePage .st-tweek [data-rail] .vn-week-c.is-moved .st-cap{background:linear-gradient(170deg,rgba(255,255,255,.045),rgba(255,255,255,.012));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(255,255,255,.06)}
+#homePage .st-tweek [data-rail] .vn-week-c.is-excused .vn-week-d,
+#homePage .st-tweek [data-rail] .vn-week-c.is-moved .vn-week-d{color:color-mix(in srgb,var(--k) 40%,var(--st-ink-4)) !important}
+#homePage .st-tweek [data-rail] .vn-week-c.is-excused .vn-week-t,
+#homePage .st-tweek [data-rail] .vn-week-c.is-moved .vn-week-t{color:var(--st-ink-4,#6b6880) !important;font-weight:var(--fw-med,500) !important}
+/* "Moved" is the widest label in the rail; at 320px it needs a touch of tracking to sit inside its column */
+#homePage .st-tweek [data-rail] .vn-week-c.is-moved .vn-week-t{letter-spacing:-.03em !important}
+#homePage .st-tweek [data-rail] .st-cap-s.is-excused,#homePage .st-tweek [data-rail] .st-cap-s.is-moved{width:12px;height:12px;border-radius:0;color:color-mix(in srgb,var(--k) 55%,#fff)}
+#homePage .st-tweek [data-rail] .st-cap-s .co-rm{display:block;width:12px;height:12px}
+
+/* ---- History · calendar status marks, legend and the day card ---------------------------- */
+#historyPage .nxp-cal-marks{min-height:9px}
+#historyPage .co-cm{display:block;width:9px;height:9px;flex:none;color:var(--st-ink-3)}
+#historyPage .co-cm.is-missed{color:color-mix(in srgb,var(--st-rest) 80%,#fff)}
+#historyPage .co-cm.is-excused{color:var(--st-accent-lift)}
+#historyPage .co-cm.is-moved{color:var(--st-lean)}
+#historyPage .co-cm-l{font:650 11px/9px var(--st-font);font-style:normal;letter-spacing:0;color:var(--st-ink-4)}
+#historyPage .nxp-cal-day.is-selected .co-cm,#historyPage .nxp-cal-day.is-selected .co-cm-l{color:#fff}
+#historyPage .st-cal-stats .co-lg .co-cm{width:10px;height:10px}
+#historyPage .st-cal-stats .co-lg em{font:650 11px/1 var(--st-font);font-style:normal;letter-spacing:.02em;color:var(--st-ink-3)}
+#historyPage .co-ds{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px;margin:10px 0 0}
+#historyPage .co-ds-w{display:inline-flex;align-items:center;gap:8px;min-height:30px;padding:0 12px 0 10px;border-radius:999px;background:rgba(var(--st-hl),.055);font:500 12.5px/1 var(--st-font);color:var(--st-ink-3);white-space:nowrap}
+#historyPage .co-ds-w b{font-weight:650;color:var(--st-ink)}
+#historyPage .co-ds-w .co-cm{width:11px;height:11px}
+#historyPage .co-ds-a{flex:none;min-height:44px;padding:0 10px;font-size:14px}
+#historyPage .co-ds-n{margin:2px 0 0;font:450 13px/1.4 var(--st-font);color:var(--st-ink-3)}
+
+/* ---- Reduced motion: the final state is the state ---------------------------------------- */
+@media (prefers-reduced-motion:reduce){
+  .co-why>summary i,.co-row,.co-open{transition:none}
+  .co-row:active,.co-act.is-q:active{transform:none}
+}
+:root[data-nxp-motion="reduced"] .co-why>summary i,
+:root[data-nxp-motion="reduced"] .co-row,
+:root[data-nxp-motion="reduced"] .co-open{transition:none}
+:root[data-nxp-motion="reduced"] .co-row:active,:root[data-nxp-motion="reduced"] .co-act.is-q:active{transform:none}
+@media (max-width:359px){
+  .st-tile.co-tile{padding:16px 16px 10px}
+  .co-title{font-size:17px}
+  .co-fig{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:14px}
+  .co-fig-c:nth-child(3){padding-left:0;border-left:0}
+  .co-fig-c:nth-child(2){padding-right:0}
+  .n99-modal .co-sheet .co-day{grid-template-columns:46px minmax(0,1fr) auto;gap:8px}
+}
+@media (min-width:600px){
+  .co-fig-c{padding:0 14px}
+}
+
+/* ===== Ascension · polish ===== */
+/* Uncaught-error notice (window.onerror in index.html): one small dismissible line above Today, which stays as it is.
+   A shape, the words "App error" and the rose of the I2 concern hue say it together, so colour is never alone. */
+.nx-err{display:flex;align-items:flex-start;gap:12px;margin:12px var(--vn-gutter,16px) 6px;padding:12px 4px 12px 14px;border-radius:var(--st-r-3,14px);border:1px solid rgba(220,90,118,.34);background:linear-gradient(180deg,rgba(220,90,118,.13),rgba(220,90,118,.05)),var(--st-surface,#15141D);color:var(--st-ink-2,#B9B5C8)}
+.nx-err-m{flex:none;width:9px;height:9px;margin-top:6px;border-radius:2px;background:var(--st-concern,#DC5A76);transform:rotate(45deg)}
+.nx-err p{flex:1;min-width:0;margin:0;font:400 13px/1.45 var(--st-font);overflow-wrap:anywhere}
+.nx-err p b{display:block;margin-bottom:1px;font:600 14px/1.3 var(--st-font);color:var(--st-ink,#F4F2FA)}
+.nx-err-x{flex:none;min-width:44px;min-height:44px;margin:-9px 0;padding:0 12px;border:0;border-radius:999px;background:none;color:var(--st-accent-lift,#B49AFF);font:550 13px var(--st-font);cursor:pointer}
+/* Week sheet: its Done bar is sticky and carries its own safe-area padding, so the sheet adds none beneath it. With the sheet's
+   padding there the bar floated above the sheet's edge, and the rows and the Next week strip scrolled through the gap under
+   Done. Flush with the edge, nothing shows beneath it and the last strip scrolls clear of it. */
+.n99-modal .sheet:has(.co-rvs){padding-bottom:0 !important}
+.n99-modal .co-rvs .n99-stack{padding-bottom:calc(22px + var(--nxt-safe-bottom,0px))}

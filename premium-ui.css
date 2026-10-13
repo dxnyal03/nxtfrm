@@ -594,31 +594,7 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   text-transform: uppercase;
   color: var(--nxt-text-muted);
 }
-/* Large figures read as instrument readouts: tight, tabular, unit de-emphasised. */
-.nxp-display,
-.nxp-metric {
-  font-weight: var(--nxt-weight-hero);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: var(--nxt-tracking-tight);
-  line-height: 1;
-}
-.nxp-display { font-size: var(--nxt-type-display); }
-.nxp-metric { font-size: var(--nxt-type-metric); }
-.nxp-display small,
-.nxp-metric small,
-.nxp-display em,
-.nxp-metric em {
-  font-style: normal;
-  font-size: .4em;
-  font-weight: var(--nxt-weight-meta);
-  letter-spacing: 0;
-  color: var(--nxt-text-muted);
-}
 
-/* ---- Status text ------------------------------------------------------ */
-.nxp-good { color: var(--nxt-success); }
-.nxp-watch { color: var(--nxt-warning); }
-.nxp-bad { color: var(--nxt-danger); }
 
 /* ---- Legacy markup, current system -------------------------------------
    Some dialogs still emit the pre-V99 .btn / .card markup. Rather than let a
@@ -830,45 +806,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   font-weight: var(--nxt-weight-metric);
 }
 
-.nxp-action,
-.nxp-link {
-  font: inherit;
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: color var(--nxt-motion), background-color var(--nxt-motion), border-color var(--nxt-motion), opacity var(--nxt-motion), transform .12s ease;
-}
-.nxp-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--nxt-space-2);
-  min-height: var(--nxt-control);
-  padding: 12px 16px;
-  border: 1px solid var(--nxt-hairline);
-  border-radius: var(--nxt-radius-control);
-  background: var(--nxt-interactive);
-  color: var(--nxt-text);
-  font-weight: var(--nxt-weight-cta);
-  box-shadow: inset 1px 0 0 var(--nxt-purple-edge);
-}
-.nxp-action:active {
-  transform: scale(.985);
-  opacity: .92;
-}
-.nxp-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: var(--nxt-control-compact);
-  min-width: 44px;
-  padding: 8px 0;
-  border: 0;
-  background: none;
-  color: var(--nxt-purple);
-  font-weight: var(--nxt-weight-cta);
-  text-align: left;
-}
-.nxp-link:active { opacity: .82; }
 .nxp h1 { font-size:2rem;line-height:1.2;letter-spacing:-.03em; }
 .nxp h2 { font-size:1.35rem;letter-spacing:-.02em; }
 .nxp p { font-size:1rem; }
@@ -878,15 +815,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp .n99-card { border-radius:20px;padding:20px;box-shadow:0 2px 7px rgba(0,0,0,.035); }
 .nxp .n99-small,.nxp .n99-list-row small { font-size:.875rem; }
 .nxp .n99-eyebrow { font-size:.8125rem;letter-spacing:.035em;text-transform:none; }
-.nxp-today { background:radial-gradient(ellipse at 100% 0,rgba(173,145,245,.09),transparent 70%),var(--nxt-surface-alt);padding:20px;border-radius:var(--nxt-radius-xl); }
-.nxp-today h2 { margin-top:5px;font-size:1.9rem; }
-.nxp-today p { font-size:.9375rem;margin:8px 0 22px; }
-.nxp-calories { width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px;border:1px solid var(--nxt-border-strong);border-radius:var(--nxt-radius-lg);background:var(--nxt-surface-interactive);color:var(--n99-text);text-align:left; }
-.nxp-calories small { display:block;font-size:.875rem;color:var(--nxt-text-secondary); }
-.nxp-calories strong { display:block;font-size:1.8rem;letter-spacing:-.035em;margin-top:5px;font-weight:650; }
-.nxp-calories em { font-style:normal;font-size:.875rem;font-weight:400;color:var(--nxt-text-secondary); }
-.nxp-calories > span:last-child { color:var(--nxt-text-secondary);font-size:.875rem;white-space:nowrap; }
-.nxp-calories i { font-style:normal;margin-left:8px; }
 .nxp-calories + .n99-quick { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 16px; }
 .nxp-calories + .n99-quick .n99-button { width:100%;min-width:0;min-height:44px;margin:0;padding:10px 8px;font-size:.8125rem!important;white-space:normal;overflow-wrap:anywhere;line-height:1.25; }
 .nxp-calories + .n99-small { margin:8px 0 16px;color:var(--n99-muted); }
@@ -894,19 +822,10 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp .n99-metric { border:0;padding:5px 0; }
 .nxp .n99-metric strong { font-size:1.7rem; }
 .nxp .n99-metric > small { font-size:.8125rem; }
-.nxp-card-foot { display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--n99-border);margin-top:12px;padding-top:8px;color:var(--n99-muted);font-size:.8125rem; }
-.nxp-quick { display:flex;gap:10px;margin:16px 0; }
 .nxp-quick > .n99-button { flex:1;margin:0;padding:12px 8px;font-size:.875rem!important; }
 .nxp-disclosure summary small { font-size:.8125rem;color:var(--n99-muted);font-weight:400;margin-left:auto;padding-left:10px; }
-.nxp-insight { display:flex;flex-direction:column;gap:8px;text-align:left;padding:20px 4px;width:100%;background:none;border:0;color:var(--n99-text); }
-.nxp-insight b { font-size:1.125rem;font-weight:600; }
-.nxp-insight > span:last-child { font-size:.875rem;color:var(--n99-accent); }
-.nxp-insight.watch { border-left:2px solid var(--nxt-warning);padding-left:16px; }
 
 /* V102.1 Home — command centre. Scoped; does not alter Train, Progress, History, More, or shell algebra. */
-.nxp-home { min-width:0; }
-.nxp-home > .nxp-heading { margin:var(--nxt-space-2) 0 var(--nxt-space-3); }
-.nxp-home > .nxp-heading h1 { font-size:1.25rem;letter-spacing:-.03em;font-weight:var(--nxt-weight-hero); }
 .nxp-home-chrome .n99-button {
   min-height:var(--nxt-control-compact);
   padding:8px 12px;
@@ -917,99 +836,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   font-size:.75rem!important;
   font-weight:var(--nxt-weight-meta);
 }
-.nxp-home-card {
-  margin:0 0 var(--nxt-space-3);
-  padding:var(--nxt-space-4);
-  border:1px solid var(--nxt-border);
-  border-radius:var(--nxt-radius-card);
-  background:var(--nxt-surface);
-  min-width:0;
-}
-.nxp-home-decision {
-  display:block;
-  width:100%;
-  margin:0 0 var(--nxt-space-3);
-  padding:var(--nxt-space-4);
-  border:1px solid var(--nxt-purple-edge);
-  border-radius:var(--nxt-radius-card);
-  background:
-    radial-gradient(72% 80% at 100% 0%, var(--nxt-atmosphere), transparent 70%),
-    var(--nxt-surface);
-  color:var(--nxt-text);
-  text-align:left;
-  font:inherit;
-}
-.nxp-home-decision .nxp-caption {
-  color:var(--nxt-purple);
-  letter-spacing:.04em;
-  text-transform:uppercase;
-  font-size:.6875rem;
-}
-.nxp-home-decision b {
-  display:block;
-  margin-top:var(--nxt-space-2);
-  font-size:clamp(1.35rem,6.2vw,1.75rem);
-  font-weight:var(--nxt-weight-hero);
-  letter-spacing:-.04em;
-  line-height:1.2;
-  overflow-wrap:break-word;
-  text-wrap:pretty;
-  text-wrap:balance;
-}
-.nxp-home-decision p {
-  margin:var(--nxt-space-2) 0 0;
-  font-size:.875rem;
-  color:var(--nxt-text-secondary);
-  overflow-wrap:anywhere;
-}
-.nxp-home-review {
-  display:block;
-  margin-top:var(--nxt-space-3);
-  font-size:.875rem;
-  font-weight:var(--nxt-weight-cta);
-  color:var(--nxt-purple);
-}
-.nxp-home-decision.watch { border-color:rgba(237,196,129,.45); }
-.nxp-home-decision.good { border-color:var(--nxt-purple-edge); }
-.nxp-home-today { padding-bottom:var(--nxt-space-4); }
-.nxp-home-today h2 { margin:4px 0 0;font-size:1.5rem;letter-spacing:-.04em;overflow-wrap:anywhere; }
-.nxp-home-today p { margin:6px 0 var(--nxt-space-3);font-size:.875rem; }
-.nxp-home .nxp-home-cta {
-  width:100%;
-  min-height:var(--nxt-control);
-  margin:0;
-  border-radius:var(--nxt-radius-pill);
-  background:var(--nxt-purple);
-  color:var(--nxt-on-purple);
-  font-weight:var(--nxt-weight-cta);
-}
-.nxp-home-last {
-  display:flex;
-  flex-direction:column;
-  align-items:flex-start;
-  gap:2px;
-  margin:var(--nxt-space-3) 0 0!important;
-  font-size:.8125rem!important;
-  color:var(--nxt-text-tertiary)!important;
-}
-.nxp-home-last .nxp-caption {
-  font-size:.6875rem;
-  letter-spacing:.04em;
-  text-transform:uppercase;
-  color:var(--nxt-muted);
-}
-.nxp-home-weight strong {
-  display:block;
-  margin-top:var(--nxt-space-1);
-  font-size:clamp(1.75rem,8vw,2.25rem);
-  font-weight:var(--nxt-weight-metric);
-  letter-spacing:-.045em;
-  line-height:1.1;
-  overflow-wrap:anywhere;
-}
-.nxp-home-weight em { font-style:normal;font-size:1rem;font-weight:var(--nxt-weight-body);color:var(--nxt-text-tertiary); }
-.nxp-home-weight p { margin:6px 0 0;font-size:.9375rem;color:var(--nxt-text); }
-.nxp-home-weight small { display:block;margin-top:4px;font-size:.75rem;color:var(--nxt-muted);overflow-wrap:anywhere; }
 .nxp-home-weight .n99-text { display:inline-flex;margin-top:var(--nxt-space-2); }
 .nxp-home-recovery {
   display:flex;
@@ -1057,12 +883,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp-rec-signal b { display:block;font-size:.75rem;color:var(--nxt-muted); }
 .nxp-rec-signal strong { display:block;font-size:1rem; }
 .nxp-rec-signal p { margin:2px 0 0;font-size:.8125rem;color:var(--nxt-text-tertiary); }
-.nxp-home-signals {
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:var(--nxt-space-2);
-  margin:0 0 var(--nxt-space-3);
-}
 .nxp-home-signal {
   display:flex;
   flex-direction:column;
@@ -1106,7 +926,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp-home .n99-quick { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--nxt-space-2);margin:0 0 var(--nxt-space-3); }
 .nxp-home .n99-quick .n99-button { width:100%;min-width:0;min-height:var(--nxt-control-compact);margin:0;padding:10px 8px;font-size:.8125rem!important;white-space:normal;overflow-wrap:anywhere;line-height:1.25; }
 .nxp-home > .n99-small { margin:0 0 var(--nxt-space-3);color:var(--nxt-muted); }
-.nxp-home-secondary { display:flex;flex-wrap:wrap;align-items:center;gap:var(--nxt-space-1) var(--nxt-space-4);margin:0 0 var(--nxt-space-4); }
 .nxp-home-secondary .n99-text { min-height:var(--nxt-control-compact);min-width:44px; }
 .nxp-home-week,.nxp-home-trend { margin:0;padding:var(--nxt-space-2) 0 0;border-top:1px solid var(--nxt-border); }
 .nxp-home .n99-week { margin-top:var(--nxt-space-2); }
@@ -1131,13 +950,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   }
 }
 @media (max-width: 340px) and (max-height: 600px) {
-  .nxp-home > .nxp-heading { margin: 0; }
-  .nxp-home-chrome p { margin-top: 0; }
-  .nxp-home-decision { margin-bottom: 2px; padding: 6px 12px; }
-  .nxp-home-decision b { margin-top: 2px; }
-  .nxp-home-decision p { margin-top: 4px; }
-  .nxp-home-review { margin-top: 2px; }
-  .nxp-home-today { padding: 6px 12px 12px; }
   .nxp-home-today > .n99-row { align-items: flex-start; }
 }
 .nxp .n99-session-rail { margin:4px 0 16px;height:3px; }
@@ -1310,37 +1122,8 @@ body:has(.cloud-local-banner:not([hidden])) .content {
    V108 keeps that geometry and spends the budget on the controls instead:
    load and reps are steppers, the comparison line is type rather than boxes,
    and everything below the CTA is ordered by how often a thumb reaches it. */
-.nxp-train-lift {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--nxt-space-4);
-  padding-bottom: var(--nxt-bottom-reserve);
-}
 
 /* ---- Header ---- */
-.nxp-train-lift .nxp-train-chrome {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--nxt-space-3);
-  margin: 0;
-}
-.nxp-train-lift .nxp-train-chrome > div { min-width: 0; }
-.nxp-train-lift .nxp-train-chrome h1 {
-  margin: 0;
-  font-size: 1.375rem;
-  line-height: 1.15;
-  font-weight: var(--nxt-weight-hero);
-  letter-spacing: -.02em;
-  overflow-wrap: anywhere;
-}
-.nxp-train-lift .nxp-train-chrome p {
-  margin: 2px 0 0;
-  font-size: var(--nxt-type-meta);
-  color: var(--nxt-text-tertiary);
-  overflow-wrap: anywhere;
-}
 .nxp-train-lift .nxp-train-chrome .n99-button {
   width: auto;
   min-height: var(--nxt-touch-min);
@@ -1356,35 +1139,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
    Presentation only. Splitting a six-exercise session into six 4px targets
    would be a row of controls too small to hit reliably, so the rail shows
    position and the full-size row below it does the navigating. */
-.nxp-ex-rail { display: block; }
-.nxp-ex-rail ol {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.nxp-ex-rail li {
-  flex: 1 1 0;
-  min-width: 0;
-  height: 4px;
-  border-radius: var(--nxt-radius-pill);
-  background: var(--nxt-surface-interactive);
-  transition: background-color var(--nxt-motion);
-}
-.nxp-ex-rail li.is-done { background: var(--nxt-purple-deep); }
-.nxp-ex-rail li.is-current { background: var(--nxt-purple-primary); }
-.nxp-ex-rail p {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--nxt-space-3);
-  margin: 0;
-  font-size: var(--nxt-type-label);
-  color: var(--nxt-text-tertiary);
-}
-.nxp-ex-rail p > span { flex-shrink: 0; font-variant-numeric: tabular-nums; }
 .nxp-train-lift .nxp-rail-jump {
   display: inline-flex;
   align-items: center;
@@ -1401,8 +1155,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   font-family: inherit;
   text-align: left;
 }
-.nxp-train-lift .nxp-rail-jump i { font-style: normal; }
-.nxp-train-lift .nxp-rail-jump:active { color: var(--nxt-purple-soft); }
 
 /* ---- Exercise header ----
    The name is the hero of the screen. The purple edge marks it as the current
@@ -1413,13 +1165,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   gap: var(--nxt-space-3);
   min-width: 0;
 }
-.nxp-ex-bar {
-  flex: 0 0 3px;
-  width: 3px;
-  border-radius: var(--nxt-radius-pill);
-  background: linear-gradient(180deg, var(--nxt-purple-primary), var(--nxt-purple-deep));
-}
-.nxp-ex-main { min-width: 0; flex: 1 1 auto; }
 /* The exercise is what this screen is about, so it has to lead. It was 26px
    against a 36px stepper digit, which made the number you are typing the
    loudest thing on the page and the thing it belongs to the quieter one. The
@@ -1434,19 +1179,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   letter-spacing: -.022em;
   text-wrap: balance;
   overflow-wrap: anywhere;
-}
-.nxp-ex-meta {
-  margin: 6px 0 0;
-  font-size: var(--nxt-type-meta);
-  color: var(--nxt-text-tertiary);
-  overflow-wrap: anywhere;
-}
-.nxp-ex-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--nxt-space-2);
-  margin-top: 6px;
 }
 .nxp-train-lift .nxp-ex-chip {
   display: inline-flex;
@@ -1463,25 +1195,10 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   font-weight: var(--nxt-weight-meta);
   transition: background-color var(--nxt-motion), color var(--nxt-motion);
 }
-.nxp-train-lift .nxp-ex-chip i { font-style: normal; color: var(--nxt-text-muted); }
-.nxp-train-lift .nxp-ex-chip:active { background: var(--nxt-surface-interactive); color: var(--nxt-text-primary); }
-/* Swap is the rarer of the two, so it keeps the tap target and drops the fill. */
-.nxp-ex-actions .nxp-ex-chip:last-child {
-  padding: 0 4px;
-  border-color: transparent;
-  background: none;
-  color: var(--nxt-text-muted);
-}
-.nxp-ex-actions .nxp-ex-chip:last-child:active { background: none; color: var(--nxt-purple-primary); }
 
 /* ---- Last / Target / Rest ----
    One line of three readings. Dividers rather than boxes: three bordered tiles
    made three equal-weight cards out of one comparison. */
-.nxp-aim {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0;
-}
 .nxp-train-lift .nxp-aim-cell {
   display: flex;
   flex-direction: column;
@@ -1514,44 +1231,10 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   line-height: 1;
   color: var(--nxt-purple-primary);
 }
-.nxp-aim .nxp-caption {
-  display: block;
-  min-width: 0;
-  font-size: var(--nxt-type-micro);
-  letter-spacing: var(--nxt-tracking-eyebrow);
-  text-transform: uppercase;
-  color: var(--nxt-text-muted);
-  overflow-wrap: anywhere;
-}
-.nxp-aim b {
-  display: block;
-  margin-top: 5px;
-  font-size: 1.0625rem;
-  line-height: 1.15;
-  font-weight: var(--nxt-weight-metric);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -.01em;
-  overflow-wrap: anywhere;
-}
 /* The unit rides with the figure but never competes with it. */
-.nxp-aim b em {
-  font-style: normal;
-  font-size: .75rem;
-  font-weight: var(--nxt-weight-body);
-  color: var(--nxt-text-muted);
-  padding-left: 1px;
-}
-.nxp-aim small {
-  display: block;
-  margin-top: 3px;
-  font-size: var(--nxt-type-label);
-  color: var(--nxt-text-muted);
-  overflow-wrap: anywhere;
-}
 .nxp-train-lift .nxp-aim-cell.is-tappable:active b { color: var(--nxt-purple-soft); }
 
 /* ---- Coach note ---- */
-.nxp-train-lift .nxp-coach { margin: 0; border: 0; padding: 0; }
 .nxp-train-lift .nxp-coach summary {
   min-height: var(--nxt-touch-min);
   display: flex;
@@ -1564,80 +1247,15 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   cursor: pointer;
   list-style: none;
 }
-.nxp-train-lift .nxp-coach summary::-webkit-details-marker { display: none; }
-.nxp-train-lift .nxp-coach summary::after {
-  content: '+';
-  flex-shrink: 0;
-  color: var(--nxt-text-muted);
-}
-.nxp-train-lift .nxp-coach[open] summary::after { content: '–'; }
-.nxp-train-lift .nxp-coach p {
-  margin: 0 0 var(--nxt-space-2);
-  font-size: var(--nxt-type-meta);
-  line-height: 1.5;
-  color: var(--nxt-text-secondary);
-  overflow-wrap: anywhere;
-}
 
-/* ---- Set dots ---- */
-.nxp-train-lift .nxp-set-dots {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin: 0;
-}
-.nxp-train-lift .nxp-set-dots > span {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  flex-shrink: 0;
-  border: 1px solid var(--nxt-border-subtle);
-  border-radius: var(--nxt-radius-pill);
-  background: var(--nxt-surface);
-  font-size: var(--nxt-type-label);
-  font-weight: var(--nxt-weight-meta);
-  color: var(--nxt-text-muted);
-}
-.nxp-train-lift .nxp-set-dots > span.done {
-  border-color: transparent;
-  background: var(--nxt-purple-deep);
-  color: var(--nxt-text-primary);
-}
-.nxp-train-lift .nxp-set-dots > span.next {
-  border-color: var(--nxt-purple-primary);
-  background: var(--nxt-purple-tint);
-  color: var(--nxt-purple-primary);
-}
 /* The one dot that changed when the set was logged. One short pop, once. */
-.nxp-train-lift .nxp-set-dots > span.is-new { animation: nxp-dot-in var(--nxt-motion-normal) var(--nxt-ease) 1; }
 @keyframes nxp-dot-in {
   0% { transform: scale(.7); opacity: .4; }
   60% { transform: scale(1.12); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
 }
-.nxp-train-lift .nxp-set-dots > small {
-  margin-left: auto;
-  font-size: var(--nxt-type-label);
-  color: var(--nxt-text-muted);
-}
 
 /* ---- Set entry form ---- */
-.nxp-train-lift #nxp-set-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--nxt-space-4);
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-}
-.nxp-steppers {
-  display: flex;
-  flex-direction: column;
-  gap: var(--nxt-space-3);
-  min-width: 0;
-}
 .nxp-stepper { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .nxp-stepper .nxp-field-label {
   font-size: var(--nxt-type-label);
@@ -1660,28 +1278,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   gap: var(--nxt-space-2);
   min-width: 0;
 }
-.nxp-train-lift .nxp-step {
-  display: grid;
-  place-items: center;
-  min-width: 58px;
-  min-height: 64px;
-  padding: 0;
-  border: 1px solid var(--nxt-border-subtle);
-  border-radius: var(--nxt-radius-lg);
-  background: var(--nxt-surface-interactive);
-  color: var(--nxt-text-primary);
-  font-family: inherit;
-  font-size: 1.75rem;
-  line-height: 1;
-  font-weight: var(--nxt-weight-metric);
-  /* Allows the page to scroll from a press that turns into a drag, and stops
-     the double-tap zoom that a fast repeat tap would otherwise trigger. */
-  touch-action: manipulation;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  transition: background-color var(--nxt-motion), color var(--nxt-motion), border-color var(--nxt-motion);
-}
 .nxp-train-lift .nxp-step:active,
 .nxp-train-lift .nxp-step.is-held {
   border-color: var(--nxt-purple-edge);
@@ -1689,55 +1285,11 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   color: var(--nxt-purple-primary);
 }
 .nxp-train-lift .nxp-step:disabled { opacity: .35; }
-.nxp-train-lift .nxp-stepper input[type="number"] {
-  width: 100%;
-  min-width: 0;
-  min-height: 64px;
-  padding: 8px 6px;
-  /* Beats the global input{font-size:16px!important} that exists to stop iOS
-     zooming on focus; iOS only zooms below 16px, so going up is safe. */
-  font-size: 2rem !important;
-  border: 1px solid var(--nxt-border-subtle);
-  border-radius: var(--nxt-radius-lg);
-  background: var(--nxt-surface);
-  color: var(--nxt-text-primary);
-  font-size: 2rem;
-  line-height: 1;
-  font-weight: var(--nxt-weight-hero);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: var(--nxt-tracking-tight);
-  text-align: center;
-  /* The steppers are the increment control; the browser's own spinners would
-     be a second, 12px-tall one. */
-  -moz-appearance: textfield;
-  appearance: textfield;
-  scroll-margin-block: var(--nxt-space-6);
-}
-.nxp-train-lift .nxp-stepper input[type="number"]::-webkit-outer-spin-button,
-.nxp-train-lift .nxp-stepper input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-.nxp-train-lift .nxp-stepper input:focus {
-  border-color: var(--nxt-purple-edge);
-  background: var(--nxt-purple-tint);
-}
-.nxp-train-lift .nxp-stepper input::placeholder {
-  color: var(--nxt-text-disabled);
-  font-weight: var(--nxt-weight-body);
-}
 
 /* ---- Segmented controls (set type + reps left) ----
    Both stay comfortable to hit, but neither is allowed to read as loud as the
    two steppers above or the CTA below: no fill, small label, muted type. */
-.nxp-seg-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--nxt-space-3);
-  min-width: 0;
-}
 .nxp-seg-block.nxp-seg-type .nxp-seg { max-width: 220px; }
-.nxp-train-lift .nxp-seg-type .nxp-seg button { font-size: var(--nxt-type-meta); font-weight: var(--nxt-weight-meta); }
 .nxp-seg-block { min-width: 0; margin: 0; padding: 0; border: 0; }
 .nxp-seg-block legend {
   padding: 0 0 6px;
@@ -1749,35 +1301,8 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 }
 .nxp-seg-block legend small { font-weight: var(--nxt-weight-body); text-transform: none; letter-spacing: 0; }
 .nxp-train-lift .nxp-seg button { min-height: var(--nxt-touch-min); }
-.nxp-train-lift .nxp-seg-rir .nxp-seg button {
-  font-size: var(--nxt-type-body);
-  font-weight: var(--nxt-weight-metric);
-}
-.nxp-train-lift .nxp-seg button.is-on {
-  background: var(--nxt-purple-tint);
-  color: var(--nxt-purple-primary);
-  box-shadow: inset 0 0 0 1.5px var(--nxt-purple-edge);
-}
 
 /* ---- Primary action ---- */
-.nxp-train-lift .nxp-train-cta {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 56px;
-  margin: 0;
-  border: 0;
-  border-radius: var(--nxt-radius-pill);
-  background: var(--nxt-purple-primary);
-  color: var(--nxt-on-purple);
-  font-size: 1.0625rem !important;
-  font-weight: var(--nxt-weight-cta);
-  letter-spacing: -.01em;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, .28);
-  transition: background-color var(--nxt-motion), transform var(--nxt-motion-fast) var(--nxt-ease);
-}
 .nxp-train-lift .nxp-train-cta:active {
   background: var(--nxt-purple-soft);
   transform: scale(.985);
@@ -1799,50 +1324,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 /* ---- Rest timer ----
    A first-class region of the screen, not an overlay: it sits in flow directly
    under the CTA that starts it, so it can never cover a control. */
-.nxp-train-lift .nxp-rest {
-  display: flex;
-  flex-direction: column;
-  gap: var(--nxt-space-3);
-  margin: 0;
-  padding: var(--nxt-space-3) var(--nxt-space-4);
-  border: 1px solid var(--nxt-border-subtle);
-  border-radius: var(--nxt-radius-lg);
-  background: var(--nxt-surface);
-  transition: background-color var(--nxt-motion), border-color var(--nxt-motion);
-}
-.nxp-rest-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--nxt-space-2);
-  min-height: 44px;
-  min-width: 0;
-}
-.nxp-train-lift .nxp-rest > .nxp-rest-row > span {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-.nxp-train-lift .nxp-rest small {
-  font-size: var(--nxt-type-micro);
-  font-weight: var(--nxt-weight-meta);
-  letter-spacing: var(--nxt-tracking-eyebrow);
-  text-transform: uppercase;
-  color: var(--nxt-text-muted);
-}
-.nxp-train-lift .nxp-rest b {
-  font-size: 1.75rem;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--nxt-weight-hero);
-  letter-spacing: var(--nxt-tracking-tight);
-  color: var(--nxt-text-disabled);
-}
-.nxp-train-lift .nxp-rest:not(.is-active) b { font-size: 1.25rem; font-weight: var(--nxt-weight-metric); }
-.nxp-train-lift .nxp-rest.is-active { border-color: var(--nxt-purple-edge); background: var(--nxt-purple-tint); }
-.nxp-train-lift .nxp-rest.is-active b { color: var(--nxt-purple-primary); }
-.nxp-train-lift .nxp-rest > .nxp-rest-row > div { display: flex; gap: var(--nxt-space-2); flex-shrink: 0; }
 .nxp-train-lift .nxp-rest .n99-button {
   width: auto;
   min-height: var(--nxt-touch-min);
@@ -1910,21 +1391,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp-ex-nav .nxp-ex-nav-pos:active { background: none; color: var(--nxt-purple-primary); }
 
 /* ---- Today's sets ---- */
-.nxp-train-lift .nxp-set-history {
-  margin: 0;
-  padding: var(--nxt-space-3) var(--nxt-space-4);
-  border: 1px solid var(--nxt-border-subtle);
-  border-radius: var(--nxt-radius-lg);
-  background: var(--nxt-surface);
-}
-.nxp-train-lift .nxp-set-history h3 {
-  margin: 0 0 var(--nxt-space-1);
-  font-size: var(--nxt-type-micro);
-  font-weight: var(--nxt-weight-meta);
-  letter-spacing: var(--nxt-tracking-eyebrow);
-  text-transform: uppercase;
-  color: var(--nxt-text-muted);
-}
 .nxp-train-lift .nxp-set-row {
   width: 100%;
   display: flex;
@@ -1939,70 +1405,11 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   font-family: inherit;
   text-align: left;
 }
-.nxp-train-lift .nxp-set-row:last-child { border-bottom: 0; }
-.nxp-train-lift .nxp-set-row:active { background: var(--nxt-surface-alt); }
-.nxp-train-lift .nxp-set-row > span:first-child {
-  width: 20px;
-  flex-shrink: 0;
-  color: var(--nxt-text-muted);
-  font-size: var(--nxt-type-meta);
-  font-variant-numeric: tabular-nums;
-}
-.nxp-train-lift .nxp-set-row.is-latest > span:first-child { color: var(--nxt-purple-primary); }
-.nxp-train-lift .nxp-set-row b {
-  min-width: 0;
-  font-size: var(--nxt-type-body);
-  font-weight: var(--nxt-weight-metric);
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-.nxp-train-lift .nxp-set-row b em {
-  font-style: normal;
-  font-size: var(--nxt-type-label);
-  font-weight: var(--nxt-weight-body);
-  color: var(--nxt-text-muted);
-  padding-left: 1px;
-}
-.nxp-train-lift .nxp-set-row > small { font-size: var(--nxt-type-label); color: var(--nxt-text-muted); }
-.nxp-train-lift .nxp-set-row > span:last-child {
-  margin-left: auto;
-  flex-shrink: 0;
-  font-size: var(--nxt-type-label);
-  color: var(--nxt-purple-primary);
-}
 
-/* ---- Queue entry point ---- */
-.nxp-train-lift .nxp-queue-open {
-  display: flex;
-  align-items: center;
-  gap: var(--nxt-space-2);
-  width: 100%;
-  min-height: 52px;
-  margin: 0;
-  padding: 0 var(--nxt-space-4);
-  border: 1px solid var(--nxt-border-subtle);
-  border-radius: var(--nxt-radius-lg);
-  background: var(--nxt-surface);
-  color: var(--nxt-text-primary);
-  font-family: inherit;
-  font-size: var(--nxt-type-body);
-  font-weight: var(--nxt-weight-meta);
-  text-align: left;
-  transition: background-color var(--nxt-motion);
-}
-.nxp-train-lift .nxp-queue-open:active { background: var(--nxt-surface-interactive); }
-.nxp-train-lift .nxp-queue-open small { color: var(--nxt-text-muted); font-size: var(--nxt-type-meta); font-weight: var(--nxt-weight-body); }
-.nxp-train-lift .nxp-queue-open i { margin-left: auto; font-style: normal; color: var(--nxt-text-muted); }
 
 /* ---- Session tools ----
    Deliberately last and deliberately quiet: undo and finish must not compete
    for the same thumb position as Log Set. */
-.nxp-train-lift .nxp-session-tools {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--nxt-space-2);
-  margin: 0;
-}
 .nxp-train-lift .nxp-session-tools .n99-button {
   width: 100%;
   min-height: var(--nxt-touch-min);
@@ -2065,7 +1472,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 /* ---- Narrow phones: reflow instead of shrinking ---- */
 @media (max-width: 359px) {
   .nxp-seg-block.nxp-seg-type .nxp-seg { max-width: none; }
-  .nxp-aim { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--nxt-space-3); }
   .nxp-train-lift .nxp-aim-cell:nth-child(3) {
     grid-column: 1 / -1;
     padding-left: 0;
@@ -2074,14 +1480,10 @@ body:has(.cloud-local-banner:not([hidden])) .content {
     border-top: 1px solid var(--nxt-border-subtle);
   }
   .nxp-stepper-row { grid-template-columns: 52px minmax(0, 1fr) 52px; }
-  .nxp-train-lift .nxp-step { min-width: 52px; min-height: 58px; }
-  .nxp-train-lift .nxp-stepper input[type="number"] { font-size: 1.6875rem !important; min-height: 58px; }
   .nxp-train-lift .nxp-ex-head h2 { font-size: 1.5625rem; }
   .nxp-ex-nav button { padding: 0 8px; }
-  .nxp-train-lift .nxp-rest b { font-size: 1.5rem; }
 }
 
-.nxp-progress-metrics { display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:25px 0 12px; }
 .nxp .n99-chart { padding:0; background:none; }
 .nxp .n99-chart-selected strong { font-size:2.5rem; }
 /* Post-workout readout: same block rhythm as the 7-day average beside it, one
@@ -2148,8 +1550,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   border-color:transparent;
   box-shadow:inset 0 -2px 0 var(--nxt-purple);
 }
-.nxp-progress-hero { margin:0 0 var(--nxt-space-2);min-width:0; }
-.nxp-progress-hero-primary { display:flex;flex-wrap:wrap;align-items:center;gap:0 10px; }
 .nxp-progress-hero-primary #n99-chart-weight { flex:1 0 100%; }
 /* Instrument readout, not three columns fighting for a 390px line. The headline
    figure spans the full width; every other metric is a label/value row on one
@@ -2329,25 +1729,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 /* V102.3B Progress Performance — list instrument. Scoped; Weight/Body markup unchanged. */
 .nxp-progress-strength { min-width:0; }
 .nxp-progress-strength > .nxp-heading p { overflow-wrap:anywhere; }
-.nxp-progress-strength-summary { margin:0 0 var(--nxt-space-3);min-width:0; }
-.nxp-progress-strength-summary .nxp-caption { display:block;font-size:.75rem; }
-.nxp-progress-strength-summary strong {
-  display:block;
-  margin:2px 0 4px;
-  font-size:1.25rem;
-  font-weight:var(--nxt-weight-metric);
-  letter-spacing:-.03em;
-  line-height:1.2;
-  overflow-wrap:anywhere;
-}
-.nxp-progress-strength-summary p {
-  margin:0;
-  font-size:.8125rem;
-  line-height:1.45;
-  color:var(--nxt-text-secondary);
-  overflow-wrap:anywhere;
-}
-.nxp-progress-strength-body { min-width:0; }
 .nxp-progress-strength-body > .n99-card {
   margin:0;
   padding:0;
@@ -2356,27 +1737,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   box-shadow:none;
   border-radius:0;
   overflow:visible;
-}
-.nxp-progress-strength-note {
-  margin:var(--nxt-space-3) 0 0;
-  padding:var(--nxt-space-3) 0 0;
-  border:0;
-  border-top:1px solid var(--nxt-hairline);
-}
-.nxp-progress-strength-note p {
-  margin:0;
-  font-size:.75rem;
-  line-height:1.45;
-  color:var(--nxt-text-tertiary);
-  overflow-wrap:anywhere;
-}
-.nxp-progress-strength-heading {
-  display:block;
-  margin:0 0 var(--nxt-space-1);
-  font-size:.75rem!important;
-  font-weight:var(--nxt-weight-meta);
-  letter-spacing:0;
-  color:var(--nxt-text-tertiary);
 }
 .nxp-progress-strength .n99-strength-row {
   align-items:flex-start;
@@ -2510,26 +1870,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp-progress-body .n99-list-row > span:first-child { min-width:0;flex:1 1 88px;overflow-wrap:anywhere; }
 .nxp-progress-body .n99-list-row b { min-width:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums; }
 .nxp-progress-body .n99-list-row > span:last-child { flex:0 0 auto;color:var(--nxt-text-tertiary); }
-.nxp-progress-body-scan {
-  display:flex;
-  flex-wrap:wrap;
-  align-items:baseline;
-  gap:4px 10px;
-  min-width:0;
-  min-height:var(--nxt-control-compact);
-  padding:10px 0;
-  border-bottom:1px solid var(--nxt-hairline);
-}
-.nxp-progress-body-scan > span:first-child { flex:0 1 auto;min-width:0;overflow-wrap:anywhere;color:var(--nxt-text-secondary); }
-.nxp-progress-body-scan b { min-width:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums; }
-.nxp-progress-body-scan small {
-  flex:1 1 100%;
-  margin:0;
-  font-size:.75rem;
-  line-height:1.4;
-  color:var(--nxt-text-tertiary);
-  overflow-wrap:anywhere;
-}
 .nxp-progress-body-note {
   margin:var(--nxt-space-3) 0 0;
   font-size:.75rem;
@@ -2539,16 +1879,12 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 }
 @media(max-width:360px) {
   .nxp-progress > .nxp-heading { margin:0 0 var(--nxt-space-2); }
-  .nxp-progress-hero { margin-bottom:var(--nxt-space-2); }
   .nxp-progress-tabs button { font-size:.6875rem;padding:10px 4px; }
   .nxp-progress-hero .n99-chart-selected { flex-wrap:wrap;align-items:flex-end;gap:var(--nxt-space-2); }
   .nxp-progress-hero .n99-chart-selected strong { font-size:1.5rem; }
   .nxp-progress-hero .n99-chart-selected > div:last-child { text-align:left; }
   .nxp-progress p.nxp-progress-compare { margin-top:4px; }
   .nxp-progress-weight .n99-chart.n99-card { padding:8px 8px 10px; }
-  .nxp-progress-strength-summary { margin-bottom:var(--nxt-space-2); }
-  .nxp-progress-strength-summary strong { font-size:1.125rem; }
-  .nxp-progress-strength-note { margin-top:var(--nxt-space-2);padding-top:var(--nxt-space-2); }
   .nxp-progress-strength .n99-strength-row { gap:8px;padding:10px 0; }
   .nxp-progress-strength .n99-spark { flex:0 0 72px;width:72px;max-width:72px;height:28px; }
   .nxp-progress-body-summary { margin-bottom:var(--nxt-space-2); }
@@ -2561,10 +1897,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp-setting small { display:block;font-size:.8125rem;line-height:1.45;margin-top:5px;color:var(--n99-muted); }
 .nxp-setting-value { display:flex;align-items:center;justify-content:flex-end;gap:12px;max-width:44%;font-size:.875rem;color:var(--nxt-text-secondary);text-align:right;overflow-wrap:anywhere; }
 .nxp-setting-value i { font-style:normal;font-size:1.25rem;color:var(--nxt-text-muted); }
-.nxp-identity { display:flex;align-items:center;gap:14px;padding:4px 0 18px; }
-.nxp-identity img { width:48px;height:48px;border-radius:13px; }
-.nxp-identity b { display:block;font-size:1.125rem;font-weight:600; }
-.nxp-identity span { display:block;font-size:.875rem;color:var(--n99-muted);margin-top:5px; }
 .n99.nxp .nxp-group-title {
   margin: var(--nxt-space-6) var(--nxt-space-1) var(--nxt-space-2);
   font-size: var(--nxt-type-micro);
@@ -2574,10 +1906,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
   color: var(--nxt-text-muted);
   line-height: 1.2;
 }
-.nxp-settings-group { background:var(--nxt-surface-alt);border:1px solid var(--nxt-border-subtle);border-radius:var(--nxt-radius-lg);padding:0 17px; }
-.nxp-settings-group .nxp-setting:last-child { border-bottom:0; }
-.nxp .nxp-footer { margin:28px 0 4px;text-align:center;color:var(--nxt-text-muted);font-size:.8125rem; }
-.nxp-tag { padding:6px 8px;border:1px solid var(--nxt-border-strong);border-radius:var(--nxt-radius-sm);font-size:.75rem;color:var(--nxt-text-secondary); }
 .nxp-connection { padding:15px;margin:15px 0;background:var(--nxt-surface-interactive);border:1px solid var(--nxt-purple-edge);border-radius:var(--nxt-radius-md); }
 .nxp-connection b { font-size:.9375rem;font-weight:550; }
 .nxp-connection ul { padding-left:20px;margin:12px 0; }
@@ -2683,7 +2011,6 @@ html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[dat
 /* Selected day: the transition from month to record. */
 .nxp-history-selected { min-width:0; }
 .nxp-history-selected-head { margin:0 0 var(--nxt-space-2);padding-left:2px; }
-.nxp-history-weekday { display:block;font-size:.75rem;font-weight:var(--nxt-weight-meta);letter-spacing:.08em;text-transform:uppercase;color:var(--nxt-purple-bright); }
 .nxp-history-selected-head h2 { margin:3px 0 0;font-size:1.125rem;font-weight:620;letter-spacing:-.02em; }
 .nxp-history-selected-summary { margin:5px 0 0;font-size:.875rem;color:var(--nxt-text-secondary);overflow-wrap:anywhere; }
 .nxp-history-empty { margin:var(--nxt-space-3) 0 0;padding-left:2px;font-size:.875rem;color:var(--nxt-text-tertiary); }
@@ -2722,42 +2049,7 @@ html[data-nxp-motion=reduced] *,html[data-nxp-motion=reduced] *::before,html[dat
 }
 
 /* V102.6 More — settings hub. Scoped; does not alter Home, Train, Progress, History, or shell algebra. */
-.nxp-more { min-width:0; }
-.nxp .nxp-more-chrome { margin:var(--nxt-space-2) 0 var(--nxt-space-3); }
-.nxp .nxp-more-chrome h1 { font-size:1.25rem;letter-spacing:-.03em;font-weight:650; }
-.nxp-more-account { margin:0 0 var(--nxt-space-4);padding:0 2px 14px;border-bottom:1px solid var(--nxt-hairline); }
-.nxp-more-account .nxp-caption { color:var(--nxt-text-tertiary); }
-.nxp-more-account h2 { margin:4px 0 0;font-size:1.125rem;font-weight:620;letter-spacing:-.02em;overflow-wrap:anywhere; }
-.nxp-more-account p { margin:4px 0 0;font-size:.875rem;color:var(--nxt-text-secondary);overflow-wrap:anywhere; }
 .n99.nxp.nxp-more .nxp-group-title { margin: var(--nxt-space-5) 2px var(--nxt-space-1); }
-.nxp-more .nxp-more-account + .nxp-group-title { margin-top:var(--nxt-space-2); }
-.nxp-more-group { margin:0;padding:0;background:transparent;border:0; }
-.nxp-more .nxp-setting { align-items:flex-start;gap:8px 12px;padding:12px 2px;min-height:var(--nxt-control-compact);border-bottom:1px solid var(--nxt-hairline); }
-.nxp-more-group .nxp-setting:last-child { border-bottom:0; }
-.nxp-more .nxp-setting > span:first-child { flex:1 1 0;min-width:0; }
-.nxp-more .nxp-setting small { margin-top:2px;overflow-wrap:anywhere; }
-.nxp-more .nxp-setting-value { max-width:42%;flex:0 1 auto;overflow-wrap:anywhere;white-space:normal; }
-.nxp-more-signout {
-  display:flex;align-items:center;justify-content:center;
-  width:100%;min-height:var(--nxt-control-compact);margin:var(--nxt-space-4) 0 0;padding:0;
-  border:0;background:transparent;color:var(--nxt-danger);font-size:.9375rem;font-weight:var(--nxt-weight-meta);
-}
-.nxp-more .nxp-footer { margin:20px 2px 4px;font-size:.75rem;color:var(--nxt-text-tertiary); }
-@media(max-width:360px) {
-  .nxp-more-account { margin-bottom:6px;padding-bottom:8px; }
-  .nxp-more .nxp-more-account + .nxp-group-title { margin-top:4px; }
-  .nxp-more .nxp-group-title { margin:10px 2px 0; }
-  .nxp-more .nxp-setting { padding:10px 2px; }
-}
-@media (max-width:340px) and (max-height:600px) {
-  .nxp .nxp-more-chrome { margin:4px 0 8px; }
-  .nxp-more-account { margin-bottom:4px;padding-bottom:6px; }
-  .nxp-more-account h2 { margin-top:2px; }
-  .nxp-more-account p { margin-top:2px; }
-  .nxp-more .nxp-more-account + .nxp-group-title { margin-top:2px; }
-  .nxp-more .nxp-group-title { margin:8px 2px 0; }
-  .nxp-more .nxp-setting { padding:8px 2px;min-height:var(--nxt-control-compact); }
-}
 #morePage.nxp-settings-page .n99-heading { margin:var(--nxt-space-2) 0 var(--nxt-space-3); }
 #morePage.nxp-settings-page .n99-heading h1 { font-size:1.25rem;letter-spacing:-.03em;font-weight:650; }
 #morePage.nxp-settings-page .n99-calorie { padding:14px 16px;border-radius:16px;background:var(--nxt-raised); }
@@ -2946,8 +2238,6 @@ body.apex-keyboard-open .tabs {
   font-size: 1.375rem;
   line-height: 1.2;
 }
-.nxp-train-lift .nxp-set-history,
-.nxp-train-lift .nxp-queue { margin-top: var(--nxt-space-3); }
 
 /* =========================================================================
    Train interaction motion. Deliberately the LAST rules in this file: the V107
@@ -2956,27 +2246,12 @@ body.apex-keyboard-open .tabs {
    animates a value, a width or a layout property — long-press repeat must never
    wait on a transition.
    ========================================================================= */
-.nxp-train-lift .nxp-step {
-  transition: background-color var(--nxt-duration-press) var(--nxt-ease-out),
-              border-color var(--nxt-duration-press) var(--nxt-ease-out),
-              transform var(--nxt-duration-press) var(--nxt-ease-out);
-}
 .nxp-train-lift .nxp-step:active,
 .nxp-train-lift .nxp-step.is-held { transform: scale(.94); }
-.nxp-train-lift .nxp-stepper input[type="number"] {
-  transition: border-color var(--nxt-duration-fast) var(--nxt-ease-out),
-              background-color var(--nxt-duration-fast) var(--nxt-ease-out);
-}
 
 /* Log Set: a press, then a calm hand-off into the rest state. */
-.nxp-train-lift .nxp-train-cta { transition: background-color var(--nxt-duration-fast) var(--nxt-ease-out), transform var(--nxt-duration-press) var(--nxt-ease-out); }
 .nxp-train-lift .nxp-train-cta:active { transform: scale(.985); }
-.nxp-train-lift .nxp-rest { transition: border-color var(--nxt-duration-normal) var(--nxt-ease-out), background-color var(--nxt-duration-normal) var(--nxt-ease-out); }
 
-/* Rest rail drains at a constant rate, so it takes linear — an eased countdown
-   misrepresents how much time is actually left. */
-.nxp-train-lift .nxp-rest .nxp-rest-rail > span { transition: width 1s var(--nxt-ease-linear); }
-.nxp-train-lift .nxp-rest b { transition: color var(--nxt-duration-normal) var(--nxt-ease-out); }
 
 /* Prev/Next: the exercise block settles in from the direction of travel. The
    navigation itself is never delayed — this paints after the DOM has changed. */
@@ -3232,7 +2507,6 @@ body.apex-keyboard-open .tabs {
   align-items: start;
   gap: var(--nxt-space-3);
 }
-.nxp-train-lift .nxp-ex-text { min-width: 0; }
 
 .nxp-train-lift .nxp-ex-anat {
   display: block;
@@ -3249,15 +2523,12 @@ body.apex-keyboard-open .tabs {
   touch-action: manipulation;
   transition: opacity var(--nxt-duration-fast) var(--nxt-ease-out);
 }
-.nxp-train-lift .nxp-ex-anat:active { opacity: .75; }
 .nxp-train-lift .nxp-ex-anat:focus-visible {
   outline: 2px solid var(--nxt-purple-primary);
   outline-offset: 4px;
   border-radius: var(--nxt-radius-sm);
 }
-.nxp-train-lift .nxp-ex-anat .nxa { height: 84px; width: auto; max-width: 108px; display: block; }
 @media (max-width: 359px) {
-  .nxp-train-lift .nxp-ex-anat .nxa { height: 68px; max-width: 84px; }
   .nxp-train-lift .nxp-ex-top { gap: var(--nxt-space-2); }
 }
 
@@ -3340,20 +2611,6 @@ body.apex-keyboard-open .tabs {
   letter-spacing: .06em; text-transform: uppercase;
 }
 
-/* Today's focus: a quiet line in the existing rail, not a second module. The
-   current exercise keeps visual priority; this only frames it. */
-.nxp-train-lift .nxp-session-focus {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--nxt-space-2);
-  margin: 6px 0 0;
-  font-size: var(--nxt-type-label);
-}
-.nxp-train-lift .nxp-session-focus > span {
-  color: var(--nxt-text-muted); letter-spacing: .06em; text-transform: uppercase;
-}
-.nxp-train-lift .nxp-session-focus > b {
-  font-weight: var(--nxt-weight-meta); color: var(--nxt-text-secondary);
-  overflow-wrap: anywhere;
-}
 
 /* =========================================================================
    OPTIONAL ADD-ONS on Rest / Zone 2.

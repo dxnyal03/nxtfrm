@@ -1,8 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="background:#07060B;color-scheme:dark">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<!-- One launch colour, #07060B (the canvas colour in strata.css), declared before any
+     stylesheet is parsed so no frame, before or after the CSS arrives, is light or a
+     different dark: the style attribute on <html> and this color-scheme meta set the canvas
+     and native controls, theme-color and manifest.webmanifest (background_color,
+     theme_color) tint the browser / OS chrome and the OS launch screen, and the launch
+     splash further down uses the same value. It is an attribute rather than a second inline
+     style element because wearables.release-gate.test.js pins exactly one of those. -->
+<meta name="color-scheme" content="dark"/>
 <title>NXTFRM — Build Your Next Form</title>
 <meta name="description" content="Lean transformation, gym progression and athletic performance in one private fitness OS."/>
 <meta property="og:title" content="NXTFRM — Build Your Next Form"/>
@@ -31,7 +39,7 @@
   --muted2:#71717a;
   --purple:#a78bfa;
   --purple2:#8b5cf6;
-  --sky:#7dd3fc;
+  --sky:#aa7afa;
   --green:#a477f5;
   --red:#fb7185;
   --yellow:#facc15;
@@ -47,7 +55,7 @@ body{
   padding-bottom:calc(82px + var(--nxt-safe-bottom, 0px));
   background:
     radial-gradient(circle at 15% -8%,rgba(167,139,250,.14),transparent 32%),
-    radial-gradient(circle at 100% 5%,rgba(125,211,252,.08),transparent 28%),
+    radial-gradient(circle at 100% 5%,rgba(139,92,246,.08),transparent 28%),
     #0b0d12;
 }
 button,input,select,textarea{font:inherit}
@@ -71,7 +79,7 @@ input,select,textarea{outline:0}
 }
 .hero{
   background:
-    linear-gradient(135deg,rgba(167,139,250,.15),rgba(125,211,252,.07) 48%,rgba(18,21,28,.98)),
+    linear-gradient(135deg,rgba(167,139,250,.15),rgba(139,92,246,.07) 48%,rgba(18,21,28,.98)),
     linear-gradient(180deg,rgba(23,27,36,.98),rgba(18,21,28,.98));
 }
 .kicker{
@@ -243,7 +251,7 @@ input,select,textarea{outline:0}
 .coach{
   border-radius:20px;
   padding:13px;
-  background:linear-gradient(135deg,rgba(167,139,250,.10),rgba(125,211,252,.055));
+  background:linear-gradient(135deg,rgba(167,139,250,.10),rgba(139,92,246,.055));
   border:1px solid rgba(167,139,250,.12);
 }
 .micro-grid{
@@ -540,8 +548,8 @@ body{
 .rest-strip{
   margin-top:12px;
   border-radius:20px;
-  border:1px solid rgba(125,211,252,.13);
-  background:rgba(125,211,252,.055);
+  border:1px solid rgba(139,92,246,.13);
+  background:rgba(139,92,246,.055);
   padding:12px;
   display:flex;
   align-items:flex-start;
@@ -638,16 +646,16 @@ body{
   margin-top:10px;
   border-radius:999px;
   padding:8px 10px;
-  background:rgba(125,211,252,.08);
-  border:1px solid rgba(125,211,252,.15);
-  color:#bae6fd;
+  background:rgba(139,92,246,.08);
+  border:1px solid rgba(139,92,246,.15);
+  color:#C4B5FD;
   font-size:11px;
   font-weight:900;
 }
 
 
 /* V32 Notification Settings */
-.notify-card{border:1px solid rgba(125,211,252,.14);background:linear-gradient(135deg,rgba(125,211,252,.07),rgba(167,139,250,.055))}
+.notify-card{border:1px solid rgba(139,92,246,.14);background:linear-gradient(135deg,rgba(139,92,246,.07),rgba(167,139,250,.055))}
 .notify-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-top:1px solid rgba(255,255,255,.055)}
 .notify-row:first-of-type{border-top:0}
 .toggle{width:48px;height:28px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);padding:3px;display:flex;justify-content:flex-start}
@@ -686,8 +694,8 @@ body{
 
 /* V34 Notification polish */
 .notify-card{
-  border:1px solid rgba(125,211,252,.16) !important;
-  background:linear-gradient(135deg,rgba(125,211,252,.075),rgba(167,139,250,.06)) !important;
+  border:1px solid rgba(139,92,246,.16) !important;
+  background:linear-gradient(135deg,rgba(139,92,246,.075),rgba(167,139,250,.06)) !important;
 }
 .notify-time-grid{
   display:grid;
@@ -887,7 +895,7 @@ body{
   width:170px;
   height:170px;
   border-radius:999px;
-  background:rgba(125,211,252,.10);
+  background:rgba(139,92,246,.10);
   filter:blur(40px);
 }
 .coach-pro>*{position:relative;z-index:1}
@@ -909,9 +917,9 @@ body{
   align-items:center;
   gap:6px;
   border-radius:999px;
-  border:1px solid rgba(125,211,252,.14);
-  background:rgba(125,211,252,.08);
-  color:#bae6fd;
+  border:1px solid rgba(139,92,246,.14);
+  background:rgba(139,92,246,.08);
+  color:#C4B5FD;
   padding:6px 10px;
   font-size:10px;
   font-weight:1000;
@@ -1011,7 +1019,7 @@ body{
   width:190px;
   height:190px;
   border-radius:999px;
-  background:rgba(125,211,252,.08);
+  background:rgba(139,92,246,.08);
   filter:blur(50px);
 }
 .focus-premium>*{position:relative;z-index:1}
@@ -1071,8 +1079,8 @@ body{
   align-items:center;
   justify-content:space-between;
   gap:10px;
-  border:1px solid rgba(125,211,252,.13);
-  background:rgba(125,211,252,.055);
+  border:1px solid rgba(139,92,246,.13);
+  background:rgba(139,92,246,.055);
   border-radius:20px;
   padding:11px 12px;
 }
@@ -1132,7 +1140,7 @@ body{
 }
 .gym-toggle-chip:active{transform:scale(.98)}
 .gym-toggle-chip .swap{
-  color:#bae6fd;
+  color:#C4B5FD;
   font-size:10px;
 }
 .error-card{
@@ -1214,7 +1222,7 @@ body{
   width:180px;
   height:180px;
   border-radius:999px;
-  background:rgba(125,211,252,.08);
+  background:rgba(139,92,246,.08);
   filter:blur(48px);
 }
 .home-hero-clean>*{position:relative;z-index:1}
@@ -1379,9 +1387,9 @@ body{
   flex:0 0 auto;
   max-width:118px;
   border-radius:999px;
-  border:1px solid rgba(125,211,252,.16);
-  background:rgba(125,211,252,.08);
-  color:#bae6fd;
+  border:1px solid rgba(139,92,246,.16);
+  background:rgba(139,92,246,.08);
+  color:#C4B5FD;
   padding:7px 10px;
   font-size:10px;
   line-height:1;
@@ -1457,8 +1465,8 @@ body{
   overflow:hidden;
 }
 .home-focus-clean{
-  border-color:rgba(125,211,252,.15);
-  background:rgba(125,211,252,.055);
+  border-color:rgba(139,92,246,.15);
+  background:rgba(139,92,246,.055);
 }
 .home-focus-grid{
   display:grid;
@@ -1504,8 +1512,8 @@ body{
   position:relative;
   overflow:hidden;
   border-radius:24px;
-  border:1px solid rgba(125,211,252,.15);
-  background:linear-gradient(135deg,rgba(125,211,252,.085),rgba(21,25,34,.98));
+  border:1px solid rgba(139,92,246,.15);
+  background:linear-gradient(135deg,rgba(139,92,246,.085),rgba(21,25,34,.98));
   padding:15px;
   margin-bottom:12px;
 }
@@ -1517,7 +1525,7 @@ body{
   width:150px;
   height:150px;
   border-radius:999px;
-  background:rgba(125,211,252,.12);
+  background:rgba(139,92,246,.12);
   filter:blur(38px);
 }
 .zone2-card>*{position:relative;z-index:1}
@@ -1527,8 +1535,8 @@ body{
   display:grid;
   place-items:center;
   border-radius:18px;
-  border:1px solid rgba(125,211,252,.16);
-  background:rgba(125,211,252,.10);
+  border:1px solid rgba(139,92,246,.16);
+  background:rgba(139,92,246,.10);
   font-size:22px;
 }
 .zone2-title{
@@ -1563,9 +1571,9 @@ body{
   width:100%;
   min-height:42px;
   border-radius:17px;
-  border:1px solid rgba(125,211,252,.14);
-  background:rgba(125,211,252,.075);
-  color:#bae6fd;
+  border:1px solid rgba(139,92,246,.14);
+  background:rgba(139,92,246,.075);
+  color:#C4B5FD;
   font-size:11px;
   font-weight:1000;
 }
@@ -1610,7 +1618,7 @@ body{
 .po-pill{flex:0 0 auto;border-radius:999px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.05);padding:6px 9px;font-size:10px;font-weight:1000;color:#d4d4d8;white-space:nowrap}
 .po-pill.ready{border-color:rgba(164,119,245,.18);background:rgba(164,119,245,.10);color:#bea0ff}
 .po-pill.hold{border-color:rgba(251,191,36,.18);background:rgba(251,191,36,.10);color:#fde68a}
-.po-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#a78bfa,#7dd3fc);transition:width .35s ease}
+.po-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#a78bfa,#C4B5FD);transition:width .35s ease}
 .po-fill.ready{background:linear-gradient(90deg,#a477f5,#bea0ff)}
 .po-fill.hold{background:linear-gradient(90deg,#f59e0b,#fde68a)}
 .po-scale{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:7px;font-size:9px;font-weight:1000;color:#71717a;text-transform:uppercase;letter-spacing:.08em}
@@ -1679,7 +1687,7 @@ body{
   max-height:10px!important;
   min-height:10px!important;
   border-radius:999px!important;
-  background:linear-gradient(90deg,#a78bfa,#7dd3fc)!important;
+  background:linear-gradient(90deg,#a78bfa,#C4B5FD)!important;
   transform:none!important;
 }
 .po-progress.ready{background:linear-gradient(90deg,#a477f5,#bea0ff)!important}
@@ -1923,8 +1931,8 @@ body{
 }
 .minimum-card{
   border-radius:24px;
-  border:1px solid rgba(125,211,252,.15);
-  background:rgba(125,211,252,.06);
+  border:1px solid rgba(139,92,246,.15);
+  background:rgba(139,92,246,.06);
   padding:14px;
   margin-bottom:12px;
 }
@@ -2091,8 +2099,8 @@ body{
   opacity:.28;
 }
 .calendar-day.today{
-  border-color:rgba(125,211,252,.22);
-  background:rgba(125,211,252,.07);
+  border-color:rgba(139,92,246,.22);
+  background:rgba(139,92,246,.07);
 }
 .calendar-day.logged{
   border-color:rgba(164,119,245,.16);
@@ -2128,7 +2136,7 @@ body{
   background:#71717a;
 }
 .calendar-dot.lift{background:#a78bfa}
-.calendar-dot.cardio{background:#7dd3fc}
+.calendar-dot.cardio{background:#D37732}
 .calendar-dot.bw{background:#bea0ff}
 .calendar-legend{
   display:flex;
@@ -2158,7 +2166,7 @@ body{
   --purple:#A78BFA;
   --purple2:#8B5CF6;
   --violet:#C084FC;
-  --sky:#7DD3FC;
+  --sky:#aa7afa;
   --green:#bea0ff;
   --amber:#FDE68A;
   --rose:#FDA4AF;
@@ -2167,7 +2175,7 @@ body{
 body{
   background:
     radial-gradient(circle at 18% -4%,rgba(167,139,250,.20),transparent 30%),
-    radial-gradient(circle at 90% 8%,rgba(125,211,252,.08),transparent 28%),
+    radial-gradient(circle at 90% 8%,rgba(139,92,246,.08),transparent 28%),
     linear-gradient(180deg,#080A10,#0B0D12 42%,#090B10)!important;
   color:var(--ink)!important;
 }
@@ -2189,12 +2197,12 @@ body{
 .home-hero-clean,.hero{
   background:
     radial-gradient(circle at 88% 0%,rgba(192,132,252,.22),transparent 36%),
-    radial-gradient(circle at 5% 100%,rgba(125,211,252,.10),transparent 32%),
+    radial-gradient(circle at 5% 100%,rgba(139,92,246,.10),transparent 32%),
     linear-gradient(135deg,#151827,#10131B 58%,#161124)!important;
   border-color:rgba(167,139,250,.14)!important;
 }
 .btn,.home-cta,.tab.active,.minimum-actions button.active,.complete-actions button.primary,.zone2-actions button.primary{
-  background:linear-gradient(135deg,#B794F6 0%,#8B5CF6 42%,#7DD3FC 100%)!important;
+  background:linear-gradient(135deg,#B794F6 0%,#8B5CF6 42%,#C4B5FD 100%)!important;
   box-shadow:0 10px 30px rgba(139,92,246,.25)!important;
 }
 .kicker{
@@ -2243,7 +2251,7 @@ body{
 .v80-chart-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 15px 14px;color:#70697a;font-size:10px;font-weight:1000;letter-spacing:.08em;text-transform:uppercase}.v80-chart-footer .hint{color:#aaa3b4;text-transform:none;letter-spacing:0;font-size:11px;font-weight:800}
 .v80-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:13px 18px 10px}.v80-stat{min-width:0;border-radius:20px;background:rgba(255,255,255,.030);border:1px solid rgba(255,255,255,.058);padding:12px 7px;text-align:center}.v80-stat span{display:block;color:#736c7d;font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:1000}.v80-stat b{display:block;margin-top:8px;font-size:14px;line-height:1;font-weight:1000;white-space:nowrap;color:#f8f7ff}
 .v80-read-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0 18px 14px}.v80-read-card{min-width:0;border-radius:20px;background:rgba(255,255,255,.024);border:1px solid rgba(255,255,255,.052);padding:12px}.v80-read-card span{display:block;color:#736c7d;font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:1000}.v80-read-card b{display:block;margin-top:7px;font-size:16px;line-height:1;font-weight:1000;color:#f8f7ff}.v80-read-card p{margin:7px 0 0;color:#aaa3b4;font-size:11px;line-height:1.3}
-.v80-coach{margin:0 18px 19px;display:grid;grid-template-columns:42px 1fr;gap:12px;align-items:start;border-radius:28px;background:rgba(255,255,255,.034);border:1px solid rgba(255,255,255,.07);padding:15px}.v80-coach-icon{height:42px;width:42px;border-radius:17px;background:linear-gradient(135deg,rgba(167,139,250,.20),rgba(125,211,252,.10));border:1px solid rgba(167,139,250,.16);display:grid;place-items:center;font-size:18px}.v80-coach h3{margin:0;font-size:18px;letter-spacing:-.04em;color:#f8f7ff}.v80-coach p{margin:7px 0 0;color:#aaa3b4;font-size:12.5px;line-height:1.43}
+.v80-coach{margin:0 18px 19px;display:grid;grid-template-columns:42px 1fr;gap:12px;align-items:start;border-radius:28px;background:rgba(255,255,255,.034);border:1px solid rgba(255,255,255,.07);padding:15px}.v80-coach-icon{height:42px;width:42px;border-radius:17px;background:linear-gradient(135deg,rgba(167,139,250,.20),rgba(139,92,246,.10));border:1px solid rgba(167,139,250,.16);display:grid;place-items:center;font-size:18px}.v80-coach h3{margin:0;font-size:18px;letter-spacing:-.04em;color:#f8f7ff}.v80-coach p{margin:7px 0 0;color:#aaa3b4;font-size:12.5px;line-height:1.43}
 @media(max-width:370px){.v80-weight-row b{font-size:47px}.v80-stage{height:280px}.v80-stats{padding-left:14px;padding-right:14px;gap:6px}.v80-read-grid{padding-left:14px;padding-right:14px}.v80-stat b{font-size:13px}.v80-read-card b{font-size:14px}}
 
 
@@ -2514,7 +2522,7 @@ details.card[open] summary::after{content:"–";color:var(--green)}
 .apx96-soft{color:#86838b;font-size:11px;line-height:1.42}
 .apx96-chip{display:inline-flex;align-items:center;justify-content:center;min-height:31px;padding:0 10px;border:1px solid rgba(255,255,255,.07);border-radius:999px;background:rgba(255,255,255,.04);color:#a29fa6;font-size:9px;font-weight:1000;letter-spacing:.04em}
 .apx96-chip.lime{border-color:rgba(177,138,255,.18);background:rgba(177,138,255,.08);color:#b18aff}
-.apx96-chip.sky{border-color:rgba(125,211,252,.16);background:rgba(125,211,252,.07);color:#a6e3fa}
+.apx96-chip.sky{border-color:rgba(139,92,246,.16);background:rgba(139,92,246,.07);color:#C4B5FD}
 .apx96-card{margin-top:10px;border:1px solid rgba(255,255,255,.065);border-radius:27px;background:linear-gradient(150deg,rgba(255,255,255,.048),rgba(255,255,255,.021));padding:16px;box-shadow:0 16px 44px rgba(0,0,0,.12)}
 .apx96-card-title{margin-top:5px;font-size:19px;font-weight:1000;letter-spacing:-.035em}
 .apx96-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
@@ -2530,7 +2538,7 @@ details.card[open] summary::after{content:"–";color:var(--green)}
 .apx96-feed{display:grid;gap:7px;margin-top:12px}.apx96-feed-row{width:100%;display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;padding:11px;border:1px solid rgba(255,255,255,.055);border-radius:18px;background:rgba(255,255,255,.027);text-align:left}.apx96-feed-date{display:grid;place-items:center;width:40px;height:40px;border-radius:14px;background:rgba(255,255,255,.045);text-align:center}.apx96-feed-date b{font-size:13px}.apx96-feed-date span{display:block;color:#726f76;font-size:7px;font-weight:1000;text-transform:uppercase}.apx96-feed-row strong{display:block;font-size:11px}.apx96-feed-row small{display:block;margin-top:4px;color:#79767d;font-size:8px}
 .apx96-more-subhead{display:flex;align-items:center;gap:11px;padding:3px 2px 13px}.apx96-back{display:grid;place-items:center;width:39px;height:39px;border-radius:14px;background:rgba(255,255,255,.05);color:#cac8cc;font-size:19px}.apx96-more-subhead h1{margin:0;font-size:25px;letter-spacing:-.05em}.apx96-more-section>.card,.apx96-more-section>.premium-card,.apx96-more-section>.lean-card,.apx96-more-section>.strength-card{margin:10px 0 0!important;border-radius:24px!important;background:rgba(255,255,255,.03)!important;border-color:rgba(255,255,255,.065)!important;box-shadow:none!important}.apx96-more-section details.card{margin-top:10px}
 .apx96-danger{border-color:rgba(251,113,133,.15);background:rgba(251,113,133,.035)}.apx96-danger .apx96-card-title{color:#fda4af}
-.apx96-floorball{border-color:rgba(125,211,252,.15);background:radial-gradient(circle at 95% 0,rgba(125,211,252,.15),transparent 38%),linear-gradient(150deg,#121a1b,#0c0f10)}
+.apx96-floorball{border-color:rgba(139,92,246,.15);background:radial-gradient(circle at 95% 0,rgba(139,92,246,.15),transparent 38%),linear-gradient(150deg,#121a1b,#0c0f10)}
 @media(max-width:370px){.apx96-day{font-size:32px}.apx96-home-grid{grid-template-columns:1fr}.apx96-more-tile{min-height:125px}.apx96-history-stats{grid-template-columns:1fr 1fr}.apx96-focus-stats{grid-template-columns:1fr 1fr}.apx96-focus-stat:last-child{grid-column:1/-1}}
 
 /* V94: APEX performance design system */
@@ -2611,12 +2619,30 @@ textarea:disabled {
 <link rel="icon" type="image/svg+xml" href="logo-mark.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="theme-color" content="#121216">
+<meta name="theme-color" content="#07060B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="NXTFRM">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="application-name" content="NXTFRM">
+<script>
+/* Launch veil. The launch overlay (the script after <body>) is held back by the pending
+   stylesheets, and a frame can already be in the rendering pipeline when it finally runs, so
+   the bare canvas (the aurora, no content) could reach the screen for a few frames first. This
+   flat #07060B layer is in the DOM before any frame can exist; the launch script swaps it for
+   the overlay, which is the same colour, in the same task. The two timers are failsafes: it can
+   never outlive the page load or a failed launch script. */
+(function(){try{
+  if(sessionStorage.getItem('nxSplash'))return;
+  var v=document.createElement('div');
+  v.id='nxVeil';v.setAttribute('aria-hidden','true');
+  v.style.cssText='position:fixed;inset:0;z-index:99998;background:#07060B;touch-action:none';
+  document.documentElement.appendChild(v);
+  window.__nxVeilOff=function(){if(v.parentNode)v.parentNode.removeChild(v);};
+  document.addEventListener('DOMContentLoaded',window.__nxVeilOff);
+  setTimeout(window.__nxVeilOff,3500);
+}catch(e){}})();
+</script>
 
 <!-- Presentation layers load in <head> so the first paint is already NXTFRM V109.
      These were previously <link>ed at the end of <body>, which let the legacy
@@ -2628,28 +2654,74 @@ textarea:disabled {
 <link rel="stylesheet" href="strata.css?v=161">
 
 </head>
-<body>
+<body style="margin:0;background:#07060B">
 <script>
-/* The launch mark is the app's existing N. The greeting settles after the draw;
-   rendering starts the exit, and the timeout covers a failed or stalled boot. */
-(function(){try{
-  if(sessionStorage.getItem('nxSplash'))return;
+/* Launch sequence (D27, refined in Ascension). One overlay, four stages:
+   A  First frame. The page is already #07060B before any CSS (html style attribute,
+      color-scheme, theme-color, manifest) and rendering is blocked on the stylesheets, so
+      the first painted frame is this overlay. A frame already in the rendering pipeline when
+      this script runs shows the flat #07060B veil from the head instead, never the bare canvas.
+   B  Hold. The overlay is opaque and nothing of the app shows through it. The N draws, its
+      tip flares, the mark settles, the greeting lands (about 1.2 s), then it rests until
+      1.55 s. The app builds and paints underneath.
+   C  Reveal. When the hold is met AND the app has rendered, painted a frame and settled its
+      fonts: one transition. The overlay fades (360 ms) while the shell settles in
+      (html.nx-reveal, strata.css "launch reveal"). A tap skips the hold, never the wait for
+      the app. There is no dimmed or half-revealed state.
+   D  Settled. The overlay, its style element, the html classes and the listeners are removed.
+   Nobody can get stuck: window.__nxSplashReady() (bootApexcut, after the first render) is the
+   readiness signal; an absolute 2.2 s timer clears the overlay if it never comes; a page that
+   was backgrounded and returns after that deadline (visibilitychange / resume / pageshow) is
+   cleaned up at once instead of resuming a stale animation.
+   Replay: the flag is in sessionStorage, which lives as long as the top-level browsing
+   context. A standalone (home-screen) PWA cold launch opens a new context, so storage is empty
+   and the sequence plays once. A reload or in-app navigation in the same session finds the
+   flag and skips it, and resuming a PWA that is still alive is not a launch, so nothing
+   replays. Reduced motion (the OS setting, or Settings > Appearance, read from apm_settings
+   because premium-ui.js has not run yet) is a still frame for 0.5 s with no fade or entrance. */
+(function(){
+  var de=document.documentElement,el,css,phase=0,timers=[],holdMet=false,ready=false,queued=false,skipped=false,painted=false,onVis,onShow;   /* phase: 0 hold, 1 revealing, 2 done */
+  function clear(){while(timers.length)clearTimeout(timers.pop());}
+  function later(fn,ms){timers.push(setTimeout(fn,Math.max(0,ms)));}
+  function done(){   /* stage D: take back everything this script added */
+    if(phase===2)return;phase=2;clear();
+    try{
+      document.removeEventListener('visibilitychange',onVis);document.removeEventListener('resume',onVis);
+      window.removeEventListener('pageshow',onShow);window.removeEventListener('pagehide',done);
+    }catch(e){}
+    de.classList.remove('nx-launching');de.classList.remove('nx-reveal');
+    if(el&&el.parentNode)el.parentNode.removeChild(el);
+    if(css&&css.parentNode)css.parentNode.removeChild(css);
+    el=css=null;
+    if(window.__nxVeilOff)window.__nxVeilOff();
+  }
+  try{
+  if(sessionStorage.getItem('nxSplash')){if(window.__nxVeilOff)window.__nxVeilOff();return;}
   sessionStorage.setItem('nxSplash','1');
   var st={};try{st=JSON.parse(localStorage.getItem('apm_settings')||'{}')||{};}catch(e){}
   var n=st.name===undefined?'Dan':String(st.name||'').trim(),hr=new Date().getHours();
   var part=hr<5?'Late night':hr<12?'Morning':hr<18?'Afternoon':'Evening';
-  var reduce=window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches;
-  var started=performance.now(),ready=false,closing=false,finishTimer;
-  var el=document.createElement('div');
+  var ap=(st.cutSupport&&st.cutSupport.appearance)||{};
+  var reduce=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches)||ap.motion==='reduced';
+  var HOLD=reduce?500:1550,LIMIT=2200,PAINT_WAIT=1500,GONE=440,SETTLE=500;   /* GONE / SETTLE: overlay removed / classes cleared, ms after the reveal starts */
+  var tIns=performance.now(),wIns=Date.now(),t0=tIns,w0=wIns;   /* inserted / first frame painted */
+  function since(t,w){return Math.max(performance.now()-t,Date.now()-w);}
+  el=document.createElement('div');
   el.id='nxSplash';el.setAttribute('aria-hidden','true');
-  el.innerHTML='<i class="nxs-glow"></i><svg class="nxs-mark" viewBox="96 84 320 340" width="112" height="119" aria-hidden="true"><defs><linearGradient id="nxsv" gradientUnits="userSpaceOnUse" x1="140" y1="400" x2="400" y2="110"><stop offset="0" stop-color="#7c4dff"/><stop offset=".6" stop-color="#b18aff"/><stop offset="1" stop-color="#f1e9ff"/></linearGradient></defs><path class="nxs-track" d="M146 378V134L366 378V134"/><path class="nxs-n" pathLength="1" d="M146 378V134L366 378V134"/><circle class="nxs-tip" cx="366" cy="134" r="11"/></svg><p class="nxs-hi"></p><span class="nxs-wordmark">NXTFRM</span>';
+  if(reduce)el.className='nxs-still';
+  el.innerHTML='<i class="nxs-bg"></i><div class="nxs-fg"><i class="nxs-glow"></i><svg class="nxs-mark" viewBox="96 84 320 340" width="112" height="119" aria-hidden="true"><defs><linearGradient id="nxsv" gradientUnits="userSpaceOnUse" x1="140" y1="400" x2="400" y2="110"><stop offset="0" stop-color="#7c4dff"/><stop offset=".6" stop-color="#b18aff"/><stop offset="1" stop-color="#f1e9ff"/></linearGradient></defs><path class="nxs-track" d="M146 378V134L366 378V134"/><path class="nxs-n" pathLength="1" d="M146 378V134L366 378V134"/><circle class="nxs-tip" cx="366" cy="134" r="11"/></svg><p class="nxs-hi"></p><span class="nxs-wordmark">NXTFRM</span></div>';
   el.querySelector('.nxs-hi').textContent=n?part+', '+n:part;
-  var css=document.createElement('style');
-  css.textContent='#nxSplash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;overflow:hidden;background:#0d0c12;color:#f2f2f7;opacity:1;transition:background .35s ease,opacity .32s ease}'
-   +'#nxSplash.is-ready{background:rgba(13,12,18,.44)}'
-   +'#nxSplash.is-out{opacity:0}'
-   +'#nxSplash .nxs-glow{position:absolute;width:min(78vmax,680px);height:min(78vmax,680px);border-radius:50%;background:radial-gradient(circle,rgba(124,77,255,.23) 0%,rgba(124,77,255,.08) 38%,transparent 68%);opacity:0;transform:scale(.7);animation:nxs-bloom .72s cubic-bezier(.16,1,.3,1) forwards}'
-   +'#nxSplash .nxs-mark{position:relative;overflow:visible;filter:drop-shadow(0 10px 18px rgba(124,77,255,.22))}'
+  css=document.createElement('style');
+  css.textContent='#nxSplash{position:fixed;inset:0;z-index:99999;overflow:hidden;color:#f2f2f7;touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none}'
+   +'#nxSplash .nxs-bg{position:absolute;inset:0;background:#07060B;will-change:opacity}'
+   +'#nxSplash .nxs-fg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;will-change:opacity}'
+   /* The same fine grain the app lays over its canvas (strata.css body::after, same image so it is decoded once), so the glow's 8-bit gradient never reads as rings on OLED. */
+   +'#nxSplash .nxs-fg::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.07;background:url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'180\' height=\'180\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'.85\' numOctaves=\'2\' stitchTiles=\'stitch\'/%3E%3CfeColorMatrix values=\'0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")}'
+   /* The reveal: the mark and greeting leave first (140 ms), then the backdrop lifts (360 ms after a 60 ms lead), so the mark never ghosts over the app's own text. */
+   +'#nxSplash.is-out .nxs-fg{opacity:0;transition:opacity .14s cubic-bezier(.3,0,.5,1)}'
+   +'#nxSplash.is-out .nxs-bg{opacity:0;transition:opacity .36s cubic-bezier(.4,0,.2,1) .06s}'
+   +'#nxSplash .nxs-glow{position:absolute;width:min(78vmax,680px);height:min(78vmax,680px);border-radius:50%;background:radial-gradient(circle,rgba(124,77,255,.23) 0%,rgba(124,77,255,.08) 38%,transparent 68%);opacity:0;transform:scale(.8);animation:nxs-bloom .96s cubic-bezier(.4,0,.2,1) forwards}'
+   +'#nxSplash .nxs-mark{position:relative;overflow:visible;filter:drop-shadow(0 10px 18px rgba(124,77,255,.22));transform:scale(1.015);animation:nxs-settle .24s cubic-bezier(.32,.72,0,1) .86s forwards}'
    +'#nxSplash .nxs-track,#nxSplash .nxs-n{fill:none;stroke-width:52;stroke-linecap:round;stroke-linejoin:round}'
    +'#nxSplash .nxs-track{stroke:rgba(177,138,255,.13)}'
    +'#nxSplash .nxs-n{stroke:url(#nxsv);stroke-dasharray:1;stroke-dashoffset:1;animation:nxs-draw .78s cubic-bezier(.32,.72,0,1) forwards}'
@@ -2658,24 +2730,76 @@ textarea:disabled {
    +'#nxSplash .nxs-wordmark{position:relative;font:600 11px/1 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;letter-spacing:.32em;color:#c4b4e5;opacity:0;animation:nxs-light .28s ease .9s forwards}'
    +'@keyframes nxs-draw{to{stroke-dashoffset:0}}'
    +'@keyframes nxs-bloom{to{opacity:1;transform:scale(1)}}'
+   +'@keyframes nxs-settle{to{transform:none}}'
    +'@keyframes nxs-light{to{opacity:1}}'
    +'@keyframes nxs-greet{to{opacity:1;transform:none}}'
-   +'@media (prefers-reduced-motion:reduce){#nxSplash,#nxSplash *{animation:none!important;transition:none!important}#nxSplash .nxs-glow{opacity:.45;transform:none}#nxSplash .nxs-n{stroke-dashoffset:0}#nxSplash .nxs-tip,#nxSplash .nxs-wordmark{opacity:1}#nxSplash .nxs-hi{opacity:1;transform:none}}';
-  document.head.appendChild(css);document.body.appendChild(el);
-  function finish(){
-    if(closing)return;closing=true;clearTimeout(finishTimer);
+   /* Reduced motion is a still frame: the OS setting (media query) or the app's own (.nxs-still, set above). */
+   +'#nxSplash.nxs-still,#nxSplash.nxs-still *{animation:none!important;transition:none!important}#nxSplash.nxs-still .nxs-glow{opacity:.45;transform:none}#nxSplash.nxs-still .nxs-mark{transform:none}#nxSplash.nxs-still .nxs-n{stroke-dashoffset:0}#nxSplash.nxs-still .nxs-tip,#nxSplash.nxs-still .nxs-wordmark{opacity:1}#nxSplash.nxs-still .nxs-hi{opacity:1;transform:none}'
+   +'@media (prefers-reduced-motion:reduce){#nxSplash,#nxSplash *{animation:none!important;transition:none!important}#nxSplash .nxs-glow{opacity:.45;transform:none}#nxSplash .nxs-mark{transform:none}#nxSplash .nxs-n{stroke-dashoffset:0}#nxSplash .nxs-tip,#nxSplash .nxs-wordmark{opacity:1}#nxSplash .nxs-hi{opacity:1;transform:none}}';
+  function tryReveal(){if(!phase&&ready&&(skipped||holdMet))reveal();}
+  function reveal(){   /* stage C: one coordinated transition, once */
+    if(phase)return;phase=1;clear();
     el.style.pointerEvents='none';
+    if(reduce||document.hidden){done();return;}   /* still frame: swap, no fade. Hidden: nobody is watching. */
+    de.classList.remove('nx-launching');de.classList.add('nx-reveal');
     el.classList.add('is-out');
-    setTimeout(function(){el.remove();css.remove();},reduce?0:360);
+    later(function(){if(el&&el.parentNode)el.parentNode.removeChild(el);},GONE);   /* backdrop is invisible at 420 ms */
+    later(done,SETTLE);   /* the shell entrance ends at 480 ms; then the classes and listeners go too */
   }
-  el.addEventListener('click',finish);
-  window.__nxSplashReady=function(){
-    if(ready)return;ready=true;
-    el.classList.add('is-ready');
-    finishTimer=setTimeout(finish,Math.max(0,(reduce?500:1550)-(performance.now()-started)));
+  function arm(){   /* (re)start the hold and the absolute fallback from the clocks, not from remembered timers */
+    clear();
+    var a=since(tIns,wIns);
+    if(a>=LIMIT){done();return;}   /* back after the deadline: never resume a stale overlay */
+    if(!painted)later(function(){painted=true;arm();},PAINT_WAIT-a);   /* no first-paint entry (older engine): anchor the hold to the insertion instead */
+    else{var left=HOLD-since(t0,w0);if(left<=0)holdMet=true;else later(function(){holdMet=true;tryReveal();},left);}
+    later(reveal,LIMIT-a);
+    tryReveal();
+  }
+  onVis=function(){
+    if(phase===2)return;
+    if(document.hidden){if(phase===1)done();else clear();return;}   /* background timers are throttled or frozen: do not trust them */
+    if(phase===1)done();else arm();
   };
-  setTimeout(finish,reduce?500:2200);
-}catch(e){}})();
+  onShow=function(e){if(e&&e.persisted)done();};   /* restored from the back/forward cache mid-launch */
+  function afterPaint(fn){   /* the app's first frame has been produced */
+    if(document.hidden||!window.requestAnimationFrame){fn();return;}
+    requestAnimationFrame(function(){requestAnimationFrame(fn);});
+  }
+  function afterFonts(fn){   /* Geist is font-display:swap: do not reveal into a swap */
+    try{if(document.fonts&&document.fonts.status==='loading'){document.fonts.ready.then(fn,fn);return;}}catch(e){}
+    fn();
+  }
+  window.__nxSplashReady=function(){
+    if(queued||phase===2)return;queued=true;
+    afterPaint(function(){afterFonts(function(){ready=true;tryReveal();});});
+  };
+  el.addEventListener('click',function(){if(!phase){skipped=true;tryReveal();}});
+  document.head.appendChild(css);(document.body||de).appendChild(el);   /* body exists here; de only if this ever runs in the head */
+  if(window.__nxVeilOff)window.__nxVeilOff();   /* the overlay is the same colour: it takes over from the head veil in this task */
+  de.classList.add('nx-launching');
+  document.addEventListener('visibilitychange',onVis);document.addEventListener('resume',onVis);
+  window.addEventListener('pageshow',onShow);window.addEventListener('pagehide',done);
+  /* Anchor the hold to the overlay's first visible frame, not to this script: on a slow cold launch the
+     first frame can trail the insertion by a few hundred ms, and the user should still get the whole draw
+     and the rest. Two markers, the later one wins: the first rAF after the insertion (the first lifecycle
+     update that contains the overlay) and the first-paint entry (the first frame on screen, which can be
+     the head veil, or held back by the browser). An engine that gives neither falls back to the insertion
+     after PAINT_WAIT (see arm). The absolute fallback stays on the insertion clock. */
+  var rafAt=null,fpAt=null,canPaint=false;
+  function anchor(){
+    if(painted||phase||rafAt===null||fpAt===null)return;
+    painted=true;t0=Math.max(tIns,rafAt,fpAt);w0=Date.now()-(performance.now()-t0);arm();
+  }
+  try{canPaint=!!(window.PerformanceObserver&&PerformanceObserver.supportedEntryTypes&&PerformanceObserver.supportedEntryTypes.indexOf('paint')>=0);}catch(e){}
+  if(canPaint)try{new PerformanceObserver(function(list,obs){
+    var e=list.getEntriesByName('first-paint')[0];if(!e)return;obs.disconnect();
+    fpAt=e.startTime;anchor();
+  }).observe({type:'paint',buffered:true});}catch(e){canPaint=false;}
+  if(!canPaint)fpAt=0;
+  if(window.requestAnimationFrame)requestAnimationFrame(function(t){rafAt=t;anchor();});else rafAt=0;
+  anchor();arm();
+  }catch(e){done();}
+})();
 </script>
 <div class="toast" id="toast"></div>
 <div id="modalRoot"></div>
@@ -2708,8 +2832,9 @@ textarea:disabled {
   </nav>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Tesseract (scan OCR) is not loaded here: loadTesseract() fetches it the first time a scan is read. -->
+<!-- supabase-js (cloud sync) is not a tag any more: loadSupabase() fetches it once the page has parsed, without blocking
+     anything, so a slow or blocked CDN can no longer stop the app booting. -->
 <script>
 const SETTINGS_DEFAULTS={startWeight:87.1,targetHigh:80,targetLow:78,tdee:2644,zone2WeeklyTarget:180};
 let settings=load("apm_settings",SETTINGS_DEFAULTS);
@@ -3397,7 +3522,7 @@ function showPRSheet(entry,prs){
       <div style="display:grid;gap:9px;margin-top:14px">
         ${prs.map(p=>`<div class="score-card pr-card"><b>${esc(p.type)}</b><div class="sub" style="margin-top:4px">${esc(p.text)}</div></div>`).join("")}
       </div>
-      <button class="btn" style="margin-top:12px" onclick="closeModal()">NICE</button>
+      <button class="btn" style="margin-top:12px" onclick="closeModal()">Nice</button>
     </div>
   </div>`;
 }
@@ -3891,7 +4016,7 @@ function showSubstituteSheet(){
           </button>`).join("")}
         `).join("")}
       </div>
-      <button class="btn secondary" style="margin-top:12px" onclick="state.pendingReplaceExercise='';closeModal()">CANCEL</button>
+      <button class="btn secondary" style="margin-top:12px" onclick="state.pendingReplaceExercise='';closeModal()">Cancel</button>
     </div>
   </div>`;
 }
@@ -4560,6 +4685,37 @@ function evoThresholdCanvas(source){
 function evoFoundCount(report){
   return EVO_KEYS.filter(k=>report&&report.fields&&report.fields[k]&&report.fields[k].status!=="NOT FOUND").length;
 }
+/* Tesseract is only needed when a scan is read, which is rare, so it is fetched on demand
+   instead of blocking every launch (it was a parser-blocking CDN script). Same URL the page
+   used to load eagerly. Every caller shares one load; a failed or timed-out load is forgotten
+   and its tag removed, so the next tap can try again. */
+const TESSERACT_URL="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+let tesseractLoading=null;
+function loadTesseract(){
+  if(typeof Tesseract!=="undefined")return Promise.resolve(Tesseract);
+  if(tesseractLoading)return tesseractLoading;
+  tesseractLoading=new Promise((resolve,reject)=>{
+    const tag=document.createElement("script");
+    let settled=false,timer=0;
+    const settle=err=>{
+      if(settled)return;
+      settled=true;
+      clearTimeout(timer);
+      tag.onload=tag.onerror=null;
+      if(!err&&typeof Tesseract!=="undefined"){resolve(Tesseract);return;}
+      tesseractLoading=null;
+      if(tag.parentNode)tag.parentNode.removeChild(tag);
+      reject(err||new Error("Tesseract did not load"));
+    };
+    timer=setTimeout(()=>settle(new Error("Tesseract timed out")),20000);
+    tag.async=true;
+    tag.onload=()=>settle();
+    tag.onerror=()=>settle(new Error("Tesseract failed to load"));
+    tag.src=TESSERACT_URL;
+    (document.head||document.documentElement).appendChild(tag);
+  });
+  return tesseractLoading;
+}
 async function evoRecognize(source){
   const result=await Tesseract.recognize(source,"eng",{
     logger(m){if(m&&m.status)setScanStatus("Reading report");}
@@ -4588,6 +4744,11 @@ async function readEvoScanOCR(){
   const fileInput=document.getElementById("scanFile");
   const file=fileInput&&fileInput.files&&fileInput.files[0];
   if(!file&&!state.currentScanImage){toast("Upload scan first");return;}
+  if(typeof Tesseract==="undefined"){
+    setScanStatus("Loading the reader");
+    try{await loadTesseract();}catch(e){}
+    if(job!==evoJobSeq)return;
+  }
   if(typeof Tesseract==="undefined"){
     toast("OCR library not loaded");
     setScanStatus("OCR needs a connection to load. You can still enter the numbers.");
@@ -5316,6 +5477,7 @@ function getCloudPayload(){
     bws:state.bws||[],
     scans:state.scans||[],
     rest:state.rest||[],
+    addOns:state.addOns||{},
     read:state.read||{},
     readiness:state.readiness||[],
     gyms:state.gyms||["Gym A","Gym B"],
@@ -5359,15 +5521,54 @@ function applyCloudPayload(d){
   }
   persist();
 }
+/* supabase-js was a parser-blocking CDN tag, so one stalled request stopped the whole app booting. It is now
+   fetched once the page has parsed, without blocking anything (same pinned URL). Resolves true once
+   window.supabase exists and false if the request failed; a failure is forgotten, so the next call tries again.
+   There is no timeout: a slow library still gets the stored session restored when it arrives. Never rejects. */
+function loadSupabase(){
+  if(window.supabase)return Promise.resolve(true);
+  if(loadSupabase.pending)return loadSupabase.pending;
+  let settled=false,tag=null;
+  const pending=new Promise(resolve=>{
+    const done=ok=>{
+      settled=true;
+      if(tag)tag.onload=tag.onerror=null;
+      if(!ok){
+        loadSupabase.pending=null;
+        try{if(tag&&tag.parentNode)tag.parentNode.removeChild(tag);}catch(e){}
+      }
+      resolve(!!ok);
+    };
+    const start=()=>{
+      try{
+        tag=document.createElement("script");
+        tag.async=true;
+        tag.onload=()=>done(!!window.supabase);
+        tag.onerror=()=>done(false);
+        tag.src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+        (document.head||document.documentElement).appendChild(tag);
+      }catch(e){done(false);}
+    };
+    if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});
+    else start();
+  });
+  if(!settled)loadSupabase.pending=pending;
+  return pending;
+}
 function initSupabaseClient(){
   const url=localStorage.getItem("apm_sb_url")||"";
   const key=localStorage.getItem("apm_sb_key")||"";
-  if(!url||!key||!window.supabase)return null;
+  if(!url||!key)return null;
+  /* The library arrives after the page. Until it has, there is no client: callers get the "Cloud not connected"
+     they always got without one, and asking starts a new attempt when the last one failed. */
+  if(!window.supabase){loadSupabase();return null;}
   if(!sbClient) sbClient=window.supabase.createClient(url,key);
   return sbClient;
 }
 async function initCloudFromStorage(){
   try{
+    /* Only a library that has not landed is waited for: when it is already there this runs without yielding, as it always did. */
+    if(!window.supabase)await loadSupabase();
     const client=initSupabaseClient();
     if(!client)return;
     const {data}=await client.auth.getSession();
@@ -5446,14 +5647,17 @@ async function loadCloudNow(){
 }
 async function cloudLogin(){
   try{
+    if(!window.supabase&&typeof loadSupabase==="function")await loadSupabase(); // tapped before the library landed: wait for it, do not fail
+
     const url=val("sbUrl").trim();
     const key=val("sbKey").trim();
     const email=val("sbEmail").trim();
     const password=val("sbPass");
     if(!url||!key||!email||!password)return toast("Enter URL, key, email, password");
+    /* Keep the client unless the project URL or key changed: a second createClient in the same page is what raises "Multiple GoTrueClient". */
+    if(localStorage.getItem("apm_sb_url")!==url||localStorage.getItem("apm_sb_key")!==key)sbClient=null;
     localStorage.setItem("apm_sb_url",url);
     localStorage.setItem("apm_sb_key",key);
-    sbClient=null;
     const client=initSupabaseClient();
     const {data,error}=await client.auth.signInWithPassword({email,password});
     if(error)throw error;
@@ -5465,14 +5669,17 @@ async function cloudLogin(){
 }
 async function cloudSignup(){
   try{
+    if(!window.supabase&&typeof loadSupabase==="function")await loadSupabase();
+
     const url=val("sbUrl").trim();
     const key=val("sbKey").trim();
     const email=val("sbEmail").trim();
     const password=val("sbPass");
     if(!url||!key||!email||!password)return toast("Enter URL, key, email, password");
+    /* Same rule as sign-in: the client is rebuilt only when the project URL or key changed. */
+    if(localStorage.getItem("apm_sb_url")!==url||localStorage.getItem("apm_sb_key")!==key)sbClient=null;
     localStorage.setItem("apm_sb_url",url);
     localStorage.setItem("apm_sb_key",key);
-    sbClient=null;
     const client=initSupabaseClient();
     const {data,error}=await client.auth.signUp({email,password});
     if(error)throw error;
@@ -5599,9 +5806,9 @@ function openEditSet(id){
       <label class="label" style="margin-top:10px">Notes</label>
       <textarea id="editSetNotes" class="textarea" placeholder="Optional">${esc(l.notes||"")}</textarea>
 
-      <button class="btn" style="margin-top:12px" onclick="saveEditedSet('${id}')">SAVE CHANGES</button>
-      <button class="btn danger" style="margin-top:9px" onclick="deleteLoggedSet('${id}')">DELETE SET</button>
-      <button class="btn secondary" style="margin-top:9px" onclick="closeModal()">CANCEL</button>
+      <button class="btn" style="margin-top:12px" onclick="saveEditedSet('${id}')">Save changes</button>
+      <button class="btn danger" style="margin-top:9px" onclick="deleteLoggedSet('${id}')">Delete set</button>
+      <button class="btn secondary" style="margin-top:9px" onclick="closeModal()">Cancel</button>
     </div>
   </div>`;
 }
@@ -5734,8 +5941,8 @@ function completionSummaryHTML(){
     <div style="margin-top:12px">${exerciseRecapHTML(state.date,type)}</div>
     <div style="margin-top:12px">${professionalCoachInsightHTML(insight,{compact:true,title:"Saved coach insight"})}</div>
     <div class="grid2" style="margin-top:12px">
-      <button class="btn" onclick="showCardioSheet()">LOG ZONE 2</button>
-      <button class="btn secondary" onclick="closeModal();showWeightPrompt()">FINISH</button>
+      <button class="btn" onclick="showCardioSheet()">Log Zone 2</button>
+      <button class="btn secondary" onclick="closeModal();showWeightPrompt()">Finish</button>
     </div>
   </div>`;
 }
@@ -5970,7 +6177,7 @@ function premiumWeightChartHTML(){
       <div class="v80-chart-head"><div class="v80-chart-title"><span>Trend runway</span><b>${v80FmtGoalRange()} lean zone</b></div><div class="v80-rate">${esc(rateText)}</div></div>
       <div class="v80-stage ${hasSelection?'inspecting':''}">
         <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Bodyweight trend chart">
-          <defs><linearGradient id="v80Trend" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#C084FC"/><stop offset="58%" stop-color="#A78BFA"/><stop offset="100%" stop-color="#7DD3FC"/></linearGradient><linearGradient id="v80Area" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#A78BFA" stop-opacity=".15"/><stop offset="100%" stop-color="#7DD3FC" stop-opacity="0"/></linearGradient></defs>
+          <defs><linearGradient id="v80Trend" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#C084FC"/><stop offset="58%" stop-color="#A78BFA"/><stop offset="100%" stop-color="#C4B5FD"/></linearGradient><linearGradient id="v80Area" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#A78BFA" stop-opacity=".15"/><stop offset="100%" stop-color="#C4B5FD" stop-opacity="0"/></linearGradient></defs>
           ${grid.map(v=>`<line class="v80-guide" x1="${pL}" y1="${yOf(v).toFixed(1)}" x2="${W-pR}" y2="${yOf(v).toFixed(1)}"></line><text class="v80-axis" x="6" y="${(yOf(v)+3).toFixed(1)}">${v.toFixed(1)}</text>`).join("")}
           <rect class="v80-zone-fill" x="${pL}" y="${zoneY.toFixed(1)}" width="${plotW}" height="${zoneH.toFixed(1)}" rx="12"></rect>
           <text class="v80-zone-word" x="${(pL+plotW/2).toFixed(1)}" y="${(zoneY+zoneH/2+4).toFixed(1)}" text-anchor="middle">LEAN ZONE</text>
@@ -6020,7 +6227,7 @@ function safeLatestEvoScan(){
 function evoScanSummaryHTML(){
   const latest=safeLatestEvoScan();
   if(!latest)return `<div class="premium-card"><div class="kicker">Evo scan</div><div class="title" style="font-size:19px;margin-top:6px">No scans yet</div><div class="sub" style="margin-top:6px">Add a scan under More to track body composition.</div></div>`;
-  return `<div class="premium-card" style="border-color:rgba(125,211,252,.15);background:rgba(125,211,252,.055)">
+  return `<div class="premium-card" style="border-color:rgba(139,92,246,.15);background:rgba(139,92,246,.055)">
     <div class="kicker">Latest Evo Scan</div>
     <div class="title" style="font-size:19px;margin-top:6px">Body composition</div>
     <div class="grid2" style="margin-top:12px">
@@ -6558,7 +6765,7 @@ function homeFocusCardHTML(){
         <div class="home-card-title">Beat reps, not ego.</div>
         <div class="sub" style="margin-top:6px">Keep execution clean. Zone 2 only after lifting if energy is okay.</div>
       </div>
-      <span class="home-source-pill" style="color:#bae6fd">focus</span>
+      <span class="home-source-pill" style="color:#C4B5FD">focus</span>
     </div>
     <div class="home-focus-grid">
       <div class="home-focus-item"><span>Main lift</span><b>${esc(first)}</b></div>
@@ -7162,7 +7369,7 @@ function renderRest(){
   ${recentSetsHTML()}`;
 }
 function showWeightPrompt(){
-  document.getElementById("modalRoot").innerHTML=`<div class="modal"><div class="sheet"><div class="title">Add bodyweight?</div><div class="sub" style="margin-top:6px">Keep your trend updated after session.</div><div style="margin-top:14px"><label class="label">Weight</label><input id="quickWeight" class="input" type="number" inputmode="decimal" placeholder="kg" step="0.1"></div><button class="btn" style="margin-top:12px" onclick="const w=Number(val('quickWeight'));if(!w)return toast('Enter weight');state.bws.push({id:uid(),date:state.date,weight:w,timeOfDay:'Post-workout',sessionType:state.dayType});closeModal();persist();render();toast('Weight saved')">SAVE</button><button class="btn secondary" style="margin-top:9px" onclick="closeModal()">NOT NOW</button></div></div>`
+  document.getElementById("modalRoot").innerHTML=`<div class="modal"><div class="sheet"><div class="title">Add bodyweight?</div><div class="sub" style="margin-top:6px">Keep your trend updated after session.</div><div style="margin-top:14px"><label class="label">Weight</label><input id="quickWeight" class="input" type="number" inputmode="decimal" placeholder="kg" step="0.1"></div><button class="btn" style="margin-top:12px" onclick="const w=Number(val('quickWeight'));if(!w)return toast('Enter weight');state.bws.push({id:uid(),date:state.date,weight:w,timeOfDay:'Post-workout',sessionType:state.dayType});closeModal();persist();render();toast('Weight saved')">Save</button><button class="btn secondary" style="margin-top:9px" onclick="closeModal()">Not now</button></div></div>`
 }
 function closeModal(){document.getElementById("modalRoot").innerHTML=""}
 
@@ -7491,8 +7698,13 @@ function exportCSV(){const rows=[["date","type","exercise","set","weight","reps"
 function download(name,text){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"text/plain"}));a.download=name;a.click();URL.revokeObjectURL(a.href)}
 
 if(typeof window!=='undefined') window.onerror=function(msg,src,line,col,err){
+  /* An uncaught error leaves Today as it is: one small dismissible notice goes above it,
+     and the message is escaped, never parsed as markup. */
   const root=document.getElementById("homePage");
-  if(root) root.innerHTML=`<div class="card"><div class="title">App error</div><div class="sub" style="margin-top:8px">${String(msg)}</div></div>`;
+  if(!root) return;
+  const old=root.querySelector(".nx-err");
+  if(old) old.remove();
+  root.insertAdjacentHTML("afterbegin",`<div class="nx-err" role="alert"><span class="nx-err-m" aria-hidden="true"></span><p><b>App error</b>${esc(msg)}</p><button type="button" class="nx-err-x" onclick="this.closest('.nx-err').remove()">Dismiss</button></div>`);
 };
 initCloudFromStorage();
 /* Do not paint the legacy renderer here. cut-support + premium-ui replace
@@ -7741,9 +7953,9 @@ function apx95EditWeight(id){
         <div><label class="label">Weight</label><input id="apx95EditValue" class="input" type="number" inputmode="decimal" step="0.1" value="${Number(entry.weight).toFixed(1)}"></div>
       </div>
       <div><label class="label">Timing</label><select id="apx95EditTime" class="select">${options.map(option=>`<option ${String(entry.timeOfDay||"Morning")===option?"selected":""}>${option}</option>`).join("")}</select></div>
-      <button class="btn" onclick="apx95SaveEditedWeight('${jss(entry.id)}')">SAVE CHANGES</button>
-      <button class="btn danger" onclick="apx95DeleteWeight('${jss(entry.id)}')">DELETE ENTRY</button>
-      <button class="btn secondary" onclick="closeModal()">CANCEL</button>
+      <button class="btn" onclick="apx95SaveEditedWeight('${jss(entry.id)}')">Save changes</button>
+      <button class="btn danger" onclick="apx95DeleteWeight('${jss(entry.id)}')">Delete entry</button>
+      <button class="btn secondary" onclick="closeModal()">Cancel</button>
     </div>
   </div></div>`;
 }
@@ -7843,10 +8055,10 @@ function apx96UndoLastSet(){
 function apx96OpenQueueManager(){
   const list=ensureSessionPlan(state.dayType);
   document.getElementById("modalRoot").innerHTML=`<div class="modal" onclick="if(event.target.className==='modal')closeModal()"><div class="sheet">
-    <div class="apx96-card-head"><div><div class="apx96-kicker">Session builder</div><div class="title" style="margin-top:6px">Workout queue</div></div><button class="apx96-chip lime" onclick="v88OpenAddModal()">＋ ADD</button></div>
+    <div class="apx96-card-head"><div><div class="apx96-kicker">Session builder</div><div class="title" style="margin-top:6px">Workout queue</div></div><button class="apx96-chip lime" onclick="v88OpenAddModal()">＋ Add</button></div>
     <div class="apx96-soft" style="margin-top:7px">Changes affect today’s session. Notes remain gym-specific.</div>
-    <div class="apx96-queue" style="margin-top:14px">${list.map((name,index)=>`<div class="apx96-queue-row"><div class="apx96-queue-num">${index+1}</div><div class="apx96-queue-name"><b>${esc(name)}</b><span>${esc(v88NoteFor(name)||"No machine note")}</span></div><div style="display:flex;gap:4px"><button class="apx96-chip" ${index===0?"disabled":""} onclick="moveSessionExercise(${index},-1);closeModal();apx96OpenQueueManager()">↑</button><button class="apx96-chip" ${index===list.length-1?"disabled":""} onclick="moveSessionExercise(${index},1);closeModal();apx96OpenQueueManager()">↓</button></div><div style="grid-column:2/-1;display:flex;gap:5px"><button class="apx96-chip" onclick="closeModal();v88OpenReplaceModal(${index})">REPLACE</button><button class="apx96-chip" onclick="closeModal();v88OpenNoteModal('${jss(name)}')">NOTE</button><button class="apx96-chip" style="color:#fda4af" onclick="v88RemoveExercise(${index});closeModal();apx96OpenQueueManager()">REMOVE</button></div></div>`).join("")}</div>
-    <button class="btn secondary" style="margin-top:12px" onclick="resetSessionOrder();closeModal()">RESET QUEUE</button><button class="btn secondary" style="margin-top:8px" onclick="closeModal()">DONE</button>
+    <div class="apx96-queue" style="margin-top:14px">${list.map((name,index)=>`<div class="apx96-queue-row"><div class="apx96-queue-num">${index+1}</div><div class="apx96-queue-name"><b>${esc(name)}</b><span>${esc(v88NoteFor(name)||"No machine note")}</span></div><div style="display:flex;gap:4px"><button class="apx96-chip" ${index===0?"disabled":""} onclick="moveSessionExercise(${index},-1);closeModal();apx96OpenQueueManager()">↑</button><button class="apx96-chip" ${index===list.length-1?"disabled":""} onclick="moveSessionExercise(${index},1);closeModal();apx96OpenQueueManager()">↓</button></div><div style="grid-column:2/-1;display:flex;gap:5px"><button class="apx96-chip" onclick="closeModal();v88OpenReplaceModal(${index})">Replace</button><button class="apx96-chip" onclick="closeModal();v88OpenNoteModal('${jss(name)}')">Note</button><button class="apx96-chip" style="color:#fda4af" onclick="v88RemoveExercise(${index});closeModal();apx96OpenQueueManager()">Remove</button></div></div>`).join("")}</div>
+    <button class="btn secondary" style="margin-top:12px" onclick="resetSessionOrder();closeModal()">Reset queue</button><button class="btn secondary" style="margin-top:8px" onclick="closeModal()">Done</button>
   </div></div>`;
 }
 const apx96BaseLogSet=logSet;
@@ -7948,19 +8160,9 @@ document.addEventListener("focusout",function(e){
 </script>
 
 <script src="cut-support.js?v=161"></script>
-<script src="wearables.js?v=161"></script>
-<script src="wearables.adapters.js?v=161"></script>
-<script src="wearables.ingest.js?v=161"></script>
-<script src="wearables.canonical.js?v=161"></script>
-<script src="wearables.days.js?v=161"></script>
-<script src="wearables.snapshots.js?v=161"></script>
-<script src="wearables.resolution.js?v=161"></script>
-<script src="wearables.recovery.js?v=161"></script>
-<script src="wearables.recovery-integration.js?v=161"></script>
-<script src="wearables.training-readiness.js?v=161"></script>
-<script src="wearables.store.js?v=161"></script>
-<script src="wearables.provider-garmin.js?v=161"></script>
-<script src="wearables.sync.js?v=161"></script>
+<script src="coach.js?v=161"></script>
+<!-- The thirteen wearable modules (wearables.js and the wearables.*.js set) are not loaded: the feature is switched off (D55)
+     and no provider sync ever shipped. The files and their suites stay in the repo; see tasks/ascension/performance-report.md. -->
 <script src="train-anatomy.js?v=161"></script>
 <script src="premium-ui.js?v=161"></script>
 <script src="strata.js?v=161"></script>
@@ -7970,6 +8172,8 @@ document.addEventListener("focusout",function(e){
 (function loadWearableFixturesDevOnly(){
   var host=String(location.hostname||"");
   if(!(host==="localhost"||host==="127.0.0.1"||host==="[::1]"||host==="::1"||location.protocol==="file:"))return;
+  /* The fixtures only feed NXT.wearables; with the modules off the page there is nothing to feed. */
+  if(!(typeof NXT==="object"&&NXT&&NXT.wearables))return;
   var s=document.createElement("script");
   s.src="wearables.fixtures.js";
   document.body.appendChild(s);
