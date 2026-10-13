@@ -4,9 +4,9 @@
 
 | | |
 |---|---|
-| Preview URL | _filled after deploy_ |
+| Preview URL | https://deploy-preview-34--thecutdanyal.netlify.app (draft PR dxnyal03/nxtfrm#34, unmerged) |
 | Branch | `ascension` (from `origin/main` `029eb51`, release 161) |
-| Commit | _filled after commit_ |
+| Commit | `754a567` on `ascension` (report follow-up commit on top) |
 | Environment | Netlify deploy preview of the `ascension` PR (site `thecutdanyal`); runs on seed data with cloud login, save and load disabled (D23) |
 | Production | untouched: `main` and `thecutdanyal.netlify.app` are unchanged; the PR stays open and unmerged |
 | `RELEASE` / `CACHE_NAME` | still 161 — the owner bumps per production deploy (AGENTS.md); `sw.js` lists `coach.js` and no longer lists the wearable modules |
@@ -94,15 +94,18 @@ One launch colour everywhere (`#07060B`: html style, `color-scheme`, `theme-colo
 
 ## 11. Testing
 
-_Final counts filled after the last run._ Deterministic: 21 suites. Browser (Chrome via Playwright): screenshot sweeps at 320/375/390/430/768/1280 on every tab with zero page errors and zero horizontal overflow; computational QA sweep (targets, text floor, contrast, inputs, reduced-motion animations); flow checks for coaching, charts, launch, legacy sheets, persistence; `verify-train-browser` 6/6, `verify-152` 33/33. **Not tested:** a real iPhone / installed PWA, Safari/WebKit, Supabase against a real account (the vm harness drives the shipped cloud functions with a fake one-row client), two real devices.
+**Deployed preview verified** (Chrome via Playwright against the Netlify URL): the branded splash is the first painted surface (opaque, before any app content, 765 ms after navigation commit on a real network), the splash exits, Home renders on seed data with cloud disabled (D23), every tab is visible, the weight chart draws, the exercise history chart opens from a Performance row, the coach computes insights and renders the catch-up tile and the Train catch-up row, the service worker installs with the release cache, an offline reload renders Home from the cache, and there are no page or console errors (10/10 checks, plus the first run's service-worker, offline and console checks). Browser verification scripts on the final tree: launch 83/83, exercise chart 272/272, legacy sheets 0 failures, coaching UI 58/58 and 22/22 action mappings, `verify-train-browser` 6/6.
+
+
+Deterministic: 21 suites, 592 tests, 0 failures (`for f in wearables*.test.js; do node "$f"; done`). Browser (Chrome via Playwright): screenshot sweeps at 320/375/390/430/768/1280 on every tab with zero page errors and zero horizontal overflow; computational QA sweep (targets, text floor, contrast, inputs, reduced-motion animations); flow checks for coaching, charts, launch, legacy sheets, persistence; `verify-train-browser` 6/6, `verify-152` 33/33. **Not tested:** a real iPhone / installed PWA, Safari/WebKit, Supabase against a real account (the vm harness drives the shipped cloud functions with a fake one-row client), two real devices.
 
 ## 12. Before-and-after screenshots
 
-Baseline: `~/Library/Caches/DanDev/nxtfrm/ascension/shots/base/` and `base-flows/`. After: `shots/final/` (filled after the final sweep), plus `shots/coach/`, `shots/charts/`, `shots/launch/`, `shots/ds-sheets/`.
+Baseline: `~/Library/Caches/DanDev/nxtfrm/ascension/shots/base/` and `base-flows/`. After: `shots/final/` (six widths, zero errors, zero overflow), `shots/preview/` (the deployed preview), plus `shots/coach/`, `shots/charts/`, `shots/launch/`, `shots/ds-sheets/`.
 
 ## 13. Future opportunities (deferred, not done)
 
-- Load `supabase-js` without blocking the parser (_status filled after the performance follow-up_).
+- Done in this release: `supabase-js` loads without blocking the parser (Home visible at ~320 ms with the CDN stalled, versus 10 s before). Still open: an offline boot with an expired access token signs the user out (pre-existing).
 - Plan history, so streaks and the review judge past weeks by the plan of that week.
 - Memoise `dateMs` and the coach context per render; skip `maybeSnapshotTDEE` while adherence is never logged.
 - Move the splash script into `<head>` (blocked by a permission check this session; the head veil covers the gap).
