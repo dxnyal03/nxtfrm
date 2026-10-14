@@ -78,7 +78,7 @@
       lifts:[{name, gym, lastDate, daysSince, best:{weight,reps}|null,
               aim:{weight,reps,kind,why}|null, holdReason, stall,
               readyToIncrement, returning, nextDate, nextType,
-              coach:{kind,headline,note}|null}]
+              coach:{kind,headline,note,effort}|null}]   (effort: {known,sets,state} from cue(); Stage 1)
         Lifts in the routines scheduled over the next 7 days at state.gym,
         plus every lift with working sets in the last 28 days (any gym), max
         40, planned first. aim/coach come from aimFor()/coachFor() run for that
@@ -486,7 +486,7 @@ Object.assign(NXT, (() => {
         const a = N.aimFor(name), c = N.coachFor(name);
         return {
           aim: a ? {weight: numOr(a.weight), reps: numOr(a.reps), kind: a.kind || null, why: a.why || null} : null,
-          coach: c ? {kind: c.kind || null, headline: c.headline || null, note: c.note || null} : null
+          coach: c ? {kind: c.kind || null, headline: c.headline || null, note: c.note || null, effort: c.effort || null} : null
         };
       });
     });
@@ -761,7 +761,10 @@ Object.assign(NXT, (() => {
       id: "strength.ready", domain: "strength", severity: "act",
       title: ready.length === 1 ? `Ready to move up: ${first.name}` : `${ready.length} lifts ready to move up`,
       body: ready.slice(0, 3).map(loadText).join(" · ") + (ready.length > 3 ? ` · +${ready.length - 3} more` : ""),
-      evidence: ready.map(l => ({label: l.name, value: `${kg(l.best.weight)} × ${l.best.reps} → ${kg(l.aim.weight)} × ${l.aim.reps}`, date: l.lastDate})),
+      evidence: ready.map(l => ({label: l.name, value: `${kg(l.best.weight)} × ${l.best.reps} → ${kg(l.aim.weight)} × ${l.aim.reps}`, date: l.lastDate}))
+        /* Stage 1: say when the step rests on reps alone (no reps-in-reserve recorded). */
+        .concat(ready.some(l => l.coach && l.coach.effort && l.coach.effort.state !== "full")
+          ? [{label: "Effort", value: ready.every(l => !l.coach || !l.coach.effort || l.coach.effort.state === "none") ? "not recorded last session" : "partly recorded last session"}] : []),
       why: {
         noticed: `${names}: the last best set cleared the rep range, so the coach's next target is a heavier load.`,
         evidence: ready.map(l => (l.coach && l.coach.note ? `${l.name}: ${l.coach.note}` : loadText(l) + ".")).join(" "),
@@ -948,6 +951,8 @@ Object.assign(NXT, (() => {
      6 ranked by severity, then schedule > strength > cardio > weight > data,
      then id. */
   function cautious(r) {
+    /* Stage 1: the engine owns the predicate (NXT.cautionOf) so Today, Progress and Train read one rule. */
+    if (typeof N.cautionOf === "function") return N.cautionOf(r);
     return !!r && (r.tone === "watch" || /slipping|recovery/i.test(String(r.title || "")) || /recovery/i.test(String(r.action || "")));
   }
   function evaluate(date) {

@@ -575,7 +575,8 @@ test("strength: a lift past the top of its range reads 'ready to move up' with t
   const s = byDomain(C.insights().all, "strength");
   assert.strictEqual(s.length, 1);
   assert.deepStrictEqual([s[0].id, s[0].severity, s[0].title, s[0].body], ["strength.ready", "act", "Ready to move up: Incline Dumbbell Press", "Incline Dumbbell Press 30 × 13 → 32.5 kg"]);
-  assert.deepStrictEqual(plain(s[0].evidence), [{ label: "Incline Dumbbell Press", value: "30 × 13 → 32.5 × 10", date: "2026-10-12" }]);
+  /* Stage 1: the fixture's sets carry no reps-in-reserve, so the insight says the step rests on reps alone. */
+  assert.deepStrictEqual(plain(s[0].evidence), [{ label: "Incline Dumbbell Press", value: "30 × 13 → 32.5 × 10", date: "2026-10-12" }, { label: "Effort", value: "not recorded last session" }]);
 });
 
 test("conflicting signals: a 'watch' weight decision demotes 'move up' to an info 'hold'", () => {
@@ -883,7 +884,8 @@ test("lift aims equal aimFor()/coachFor() called directly for that lift's gym an
       const a = h.N.aimFor(l.name), c = h.N.coachFor(l.name);
       [h.fx.state.gym, h.fx.state.dayType] = saved;
       assert.deepStrictEqual(plain(l.aim), a ? { weight: a.weight, reps: a.reps, kind: a.kind, why: a.why || null } : null, l.name);
-      assert.deepStrictEqual(plain(l.coach), c ? { kind: c.kind, headline: c.headline, note: c.note } : null, l.name);
+      /* Stage 1: the context also carries coachFor()'s effort state, so the trim includes it. */
+      assert.deepStrictEqual(plain(l.coach), plain(c ? { kind: c.kind, headline: c.headline, note: c.note, effort: c.effort || null } : null), l.name);
     }
   }
 });
@@ -958,6 +960,7 @@ test("trainAdvice: holds the load when the weight decision is 'watch' and the co
     note: "The Aim still shows the engine's next step (32.5 kg); repeating 30 kg is the conservative choice until the decision settles.",
     sets: [{ n: 1, weight: 30, reps: 13 }, { n: 2, weight: 30, reps: 12 }, { n: 3, weight: 30, reps: 11 }],
     weight: 30, reps: 13, gap: 7,
+    effort: { known: 0, sets: 3, state: "none" }, // Stage 1: coachFor() now reports the effort data it rested on
     coordinated: { hold: true, reason: "Weight decision reads “Losing quickly”", source: "weight" }
   });
   /* D25 untouched: coachFor() and the Aim still state the engine's step. */
