@@ -761,10 +761,7 @@ Object.assign(NXT, (() => {
       id: "strength.ready", domain: "strength", severity: "act",
       title: ready.length === 1 ? `Ready to move up: ${first.name}` : `${ready.length} lifts ready to move up`,
       body: ready.slice(0, 3).map(loadText).join(" · ") + (ready.length > 3 ? ` · +${ready.length - 3} more` : ""),
-      evidence: ready.map(l => ({label: l.name, value: `${kg(l.best.weight)} × ${l.best.reps} → ${kg(l.aim.weight)} × ${l.aim.reps}`, date: l.lastDate}))
-        /* Stage 1: say when the step rests on reps alone (no reps-in-reserve recorded). */
-        .concat(ready.some(l => l.coach && l.coach.effort && l.coach.effort.state !== "full")
-          ? [{label: "Effort", value: ready.every(l => !l.coach || !l.coach.effort || l.coach.effort.state === "none") ? "not recorded last session" : "partly recorded last session"}] : []),
+      evidence: ready.map(l => ({label: l.name, value: `${kg(l.best.weight)} × ${l.best.reps} → ${kg(l.aim.weight)} × ${l.aim.reps}`, date: l.lastDate})),
       why: {
         noticed: `${names}: the last best set cleared the rep range, so the coach's next target is a heavier load.`,
         evidence: ready.map(l => (l.coach && l.coach.note ? `${l.name}: ${l.coach.note}` : loadText(l) + ".")).join(" "),

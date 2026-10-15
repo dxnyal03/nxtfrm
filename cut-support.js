@@ -692,9 +692,9 @@ const NXT = (() => {
     const imp=(x,y)=>Number(y.weight)>Number(x.weight)||(Number(y.weight)===Number(x.weight)&&Number(y.reps)>Number(x.reps));
     const three=all.slice(-3).map(x=>bestSet(x.sets)),stalled=three.length===3&&three.every(Boolean)&&!imp(three[0],three[1])&&!imp(three[1],three[2])&&all.at(-3).date>=dateAdd(state.date,-28);
     const lighter=!!pb&&imp(best,pb);
-    /* Stage 1: targets that push (a load step or one more rep) say when they rest on reps alone. */
-    const effort=c.effort||null,caveat=kind=>effort&&effort.state!=="full"&&(kind==="load"||kind==="rep")&&c.effortNote?" "+c.effortNote:"";
-    const out=(kind,headline,note)=>({kind,headline,note:note+caveat(kind),sets,weight:a.weight,reps:a.reps,gap,effort});
+    /* Stage 1: the coach carries the effort fact (recorded / unknown) without commenting on it. */
+    const effort=c.effort||null;
+    const out=(kind,headline,note)=>({kind,headline,note,sets,weight:a.weight,reps:a.reps,gap,effort});
     if(a.kind==="load"){
       const steps=Math.round((a.weight-w)/step);
       return out("load",`Add ${num(a.weight-w)} kg`,
@@ -730,20 +730,20 @@ const NXT = (() => {
         /* D24: going past the top of the range is proof on its own; exactly reaching it still needs a second session. */
         const over=s=>{const b=s&&bestSet(s.sets);return !!b&&Number(b.weight)===weight&&Number(b.reps)>t.reps[1];};
         const effortOkay=last.sets.every(r=>r.rir===null||r.rir===undefined||r.rir===""||Number(r.rir)>=2);
-        /* Stage 1: how much of last session carried a reps-in-reserve value. The current Train
-           form does not expose the field, so this is usually none; a logged value from an
-           earlier build is still read by effortOkay above exactly as before. Warm-ups are not
-           in last.sets (workRows), so they never count. */
+        /* Stage 1: how much of last session carried a reps-in-reserve value, kept as a fact on
+           the suggestion (none / partial / full). The owner does not log reserve, so "none" is
+           normal use, not a gap: nothing below asks for it or says it is missing. A value from
+           an earlier build is still read by effortOkay above exactly as before. Warm-ups are
+           not in last.sets (workRows), so they never count. */
         const effortKnown=last.sets.filter(r=>r.rir!==null&&r.rir!==undefined&&r.rir!=="").length;
         const effort={known:effortKnown,sets:last.sets.length,state:effortKnown===0?"none":effortKnown<last.sets.length?"partial":"full"};
-        const effortNote=effort.state==="none"?"Effort (reps in reserve) was not recorded last session, so this rests on reps alone.":effort.state==="partial"?`Effort was recorded for ${effortKnown} of ${effort.sets} sets last session; the rest rests on reps alone.`:"";
         const r=cfg().recovery[state.date],tired=r&&(Number(r.energy)<=2&&r.energy!==""||Number(r.soreness)>=4);
         const earned=top(last)&&(top(prev)||over(last)),step=Number(t.inc)>0;
-        if(!tired&&earned&&effortOkay&&step)out={label:"Ready to consider an increase",effort,effortNote,weight:weight+Number(t.inc)*(Number(bestSet(last.sets).reps)>=t.reps[1]+3?2:1),text:over(last)&&!top(prev)?"You went past the top of the rep range last time. Use the next increment only if today’s warm-up feels controlled.":"You reached the top of the rep range in two sessions. Use the next increment only if today’s warm-up feels controlled."};
+        if(!tired&&earned&&effortOkay&&step)out={label:"Ready to consider an increase",effort,weight:weight+Number(t.inc)*(Number(bestSet(last.sets).reps)>=t.reps[1]+3?2:1),text:over(last)&&!top(prev)?"You went past the top of the rep range last time. Use the next increment only if today’s warm-up feels controlled.":"You reached the top of the rep range in two sessions. Use the next increment only if today’s warm-up feels controlled."};
         else {
           const lb=bestSet(last.sets),lowReps=lb&&Number(lb.reps)<t.reps[0];
           const why=tired?"Tired today · hold":earned&&!effortOkay?"Low reserve · hold":earned&&!step?"No kg step set":top(last)?"Top once · repeat to add":lowReps?`Under ${t.reps[0]} · rebuild`:"";
-          out={label:tired?"Keep today manageable":"Hold load · build clean reps",effort,effortNote,weight,why,text:tired?"Your check-in suggests fatigue. Keep the session manageable; use the shorter option if needed.":"Match your recent load within the rep range. Maintaining performance while cutting counts; an increase is optional."};
+          out={label:tired?"Keep today manageable":"Hold load · build clean reps",effort,weight,why,text:tired?"Your check-in suggests fatigue. Keep the session manageable; use the shorter option if needed.":"Match your recent load within the rep range. Maintaining performance while cutting counts; an increase is optional."};
         }
       }
     }

@@ -1020,6 +1020,7 @@ const NXP = (() => {
     const coachLine=coach?`<details class="st-coachline is-${coach.kind}${coach.coordinated&&coach.coordinated.hold?' is-coordinated':''}${exMove?' is-enter':''}">
           <summary><span class="st-coach-ico" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 2.4l1.8 5.3 5.3 1.8-5.3 1.8L10 16.6l-1.8-5.3L2.9 9.5l5.3-1.8z"/></svg></span><b>${esc(coach.headline)}</b>${pillTxt?`<em class="st-coach-pill">${esc(pillTxt)}</em>`:''}<span class="st-coachline-why">Why<i aria-hidden="true">›</i></span></summary>
           <p class="st-coach-n">${esc(coach.note)}</p>
+          <p class="st-coach-basis">Targets use your recorded weights, reps and sets. They can’t assess technique or how hard the sets felt.</p>
         </details>`:'';
     const restPct=restLeft&&(ui.restTotal||restPlan)?Math.max(0,Math.min(100,restLeft/(ui.restTotal||restPlan)*100)):0;
     /* Set chips: warm-ups, then one chip per planned working set (extras are

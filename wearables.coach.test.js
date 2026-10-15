@@ -575,8 +575,7 @@ test("strength: a lift past the top of its range reads 'ready to move up' with t
   const s = byDomain(C.insights().all, "strength");
   assert.strictEqual(s.length, 1);
   assert.deepStrictEqual([s[0].id, s[0].severity, s[0].title, s[0].body], ["strength.ready", "act", "Ready to move up: Incline Dumbbell Press", "Incline Dumbbell Press 30 × 13 → 32.5 kg"]);
-  /* Stage 1: the fixture's sets carry no reps-in-reserve, so the insight says the step rests on reps alone. */
-  assert.deepStrictEqual(plain(s[0].evidence), [{ label: "Incline Dumbbell Press", value: "30 × 13 → 32.5 × 10", date: "2026-10-12" }, { label: "Effort", value: "not recorded last session" }]);
+  assert.deepStrictEqual(plain(s[0].evidence), [{ label: "Incline Dumbbell Press", value: "30 × 13 → 32.5 × 10", date: "2026-10-12" }]);
 });
 
 test("conflicting signals: a 'watch' weight decision demotes 'move up' to an info 'hold'", () => {

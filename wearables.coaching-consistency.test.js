@@ -11,8 +11,10 @@
       the state Today called "Losing quickly".
    2. The one live cause assertion ("This looks like load, not metabolism")
       reads as an observation plus a hypothesis.
-   3. Exercise advice says when it lacks effort (reps-in-reserve) data, and
-      keeps interpreting historical effort values exactly as before.
+   3. Exercise advice keeps the recorded / unknown effort distinction as a fact
+      on the suggestion without commenting on it (the owner does not log
+      reps in reserve; a missing value is normal use), and keeps interpreting
+      historical effort values exactly as before.
 
    The rate calculation, reference weight, 1 % threshold and the preference
    for the longer-term trend are not touched: every fixture below asks the
@@ -271,20 +273,22 @@ test("recovery_deficit: observation and hypothesis, no assertion about what the 
 });
 
 /* ---- 3. Missing, present and mixed effort ----------------------------------- */
-test("missing effort: the increase is still suggested, and the advice says it rests on reps alone", () => {
+test("missing effort (normal use): the increase is suggested as before, the fact is kept, nothing nags", () => {
   const { N, C } = load(liftWorld(DEFAULT, ["", "", ""]));
   const c = N.cue("Incline Dumbbell Press"), k = N.coachFor("Incline Dumbbell Press"), a = N.aimFor("Incline Dumbbell Press");
   assert.deepStrictEqual(plain(c.effort), { known: 0, sets: 3, state: "none" });
   assert.deepStrictEqual([c.label, c.weight, a.kind, a.weight, k.kind, k.headline, k.weight], ["Ready to consider an increase", 32.5, "load", 32.5, "load", "Add 2.5 kg", 32.5], "D24/D25 unchanged");
-  assert.ok(/not recorded/.test(k.note) && /reps alone/.test(k.note), k.note);
+  assert.strictEqual(k.note, "30 × 13 cleared your 8–12 range. Target 32.5 × 10.", "no effort sentence in the advice");
+  assert.ok(!/effort|reserve|RIR|not recorded/i.test(k.note + c.text), "nothing asks for or mentions reps in reserve");
   assert.deepStrictEqual(plain(k.effort), { known: 0, sets: 3, state: "none" });
   const t = C.trainAdvice("Incline Dumbbell Press");
   assert.deepStrictEqual(plain(t.effort), { known: 0, sets: 3, state: "none" });
   const ready = C.insights().all.find(x => x.id === "strength.ready");
-  assert.ok(ready && ready.evidence.some(e => e.label === "Effort" && /not recorded/.test(e.value)), JSON.stringify(ready && ready.evidence));
+  assert.ok(ready && !ready.evidence.some(e => e.label === "Effort"), "no Effort row on the insight");
+  assert.ok(!/effort|reserve|not recorded/i.test(ready.body + ready.why.evidence + ready.why.canDo), "the insight does not mention effort");
 });
 
-test("present historical effort: a logged reserve of 1 still holds the load (D24), and a logged 3 carries no caveat", () => {
+test("present historical effort: a logged reserve of 1 still holds the load (D24), a logged 3 reads as before", () => {
   const low = load(liftWorld(DEFAULT, [1, 3, 3]));
   assert.strictEqual(low.N.aimFor("Incline Dumbbell Press").why, "Low reserve · hold");
   assert.deepStrictEqual([low.N.coachFor("Incline Dumbbell Press").kind, low.N.coachFor("Incline Dumbbell Press").headline], ["hold", "Keep a rep in hand"]);
@@ -292,18 +296,23 @@ test("present historical effort: a logged reserve of 1 still holds the load (D24
   const full = load(liftWorld(DEFAULT, [3, 3, 2]));
   const k = full.N.coachFor("Incline Dumbbell Press");
   assert.deepStrictEqual([k.kind, k.headline], ["load", "Add 2.5 kg"]);
-  assert.ok(!/not recorded|reps alone/.test(k.note), k.note);
+  assert.strictEqual(k.note, "30 × 13 cleared your 8–12 range. Target 32.5 × 10.");
   assert.deepStrictEqual(plain(k.effort), { known: 3, sets: 3, state: "full" });
   const ready = full.C.insights().all.find(x => x.id === "strength.ready");
-  assert.ok(ready && !ready.evidence.some(e => e.label === "Effort"), "no caveat row when effort is complete");
+  assert.ok(ready && !ready.evidence.some(e => e.label === "Effort"), "no Effort row either way");
 });
 
-test("mixed effort: one recorded set of three is named, the rest rests on reps alone", () => {
+test("mixed effort: the partial fact is kept, the advice reads as before", () => {
   const { N } = load(liftWorld(DEFAULT, [3, "", ""]));
   const c = N.cue("Incline Dumbbell Press"), k = N.coachFor("Incline Dumbbell Press");
   assert.deepStrictEqual(plain(c.effort), { known: 1, sets: 3, state: "partial" });
-  assert.ok(/1 of 3 sets/.test(k.note) && /reps alone/.test(k.note), k.note);
+  assert.strictEqual(k.note, "30 × 13 cleared your 8–12 range. Target 32.5 × 10.");
   assert.strictEqual(k.kind, "load");
+});
+
+test("nothing in the engine's Train copy asks the user to record effort", () => {
+  const src = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8") + fs.readFileSync(path.join(ROOT, "coach.js"), "utf8");
+  assert.ok(!/not recorded last session|rests on reps alone|Log (your )?reps in reserve/i.test(src));
 });
 
 test("effort is reported only for the session being compared; warm-ups never count", () => {
