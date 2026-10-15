@@ -877,14 +877,38 @@ test("the page's own restore (index.html's initCloudFromStorage) waits for the l
 });
 
 /* ---- Runner -------------------------------------------------------------- */
+/* An async test that awaits a promise nothing will ever settle leaves Node with an
+   empty event loop: the process exits 0 before this runner prints its summary and
+   the remaining tests never run (seen on Node v26.8.2: 29 of 34 printed, exit 0).
+   Two guards make that explicit. Each test races a host timer (the sandbox's fake
+   setTimeout never reaches here), so a hung await is a FAIL with the test's name.
+   And if the loop drains before the summary, beforeExit reports the run as
+   INCOMPLETE and exits 1 instead of looking green. Both only change what is
+   reported; no test is skipped and no assertion is weakened. */
+const HOST_SET_TIMEOUT = setTimeout, HOST_CLEAR_TIMEOUT = clearTimeout, TEST_TIMEOUT_MS = 20000;
+let summaryPrinted = false, started = 0, finished = 0;
+process.on("beforeExit", function () {
+  if (summaryPrinted) return;
+  summaryPrinted = true;
+  const current = tests[started - 1] ? tests[started - 1].name : "(none)";
+  console.log("INCOMPLETE  the event loop drained while test " + started + " of " + tests.length + " was still awaiting: " + current);
+  console.log("FAILED  " + finished + " of " + tests.length + " tests finished (summary never reached)");
+  process.exitCode = 1;
+});
+function withTimeout(promise, name) {
+  let timer;
+  const guard = new Promise((_, reject) => { timer = HOST_SET_TIMEOUT(() => reject(new Error("did not complete within " + (TEST_TIMEOUT_MS / 1000) + " s: an await never settled")), TEST_TIMEOUT_MS); });
+  return Promise.race([promise, guard]).finally(() => HOST_CLEAR_TIMEOUT(timer));
+}
 (async function () {
   /* Learn the page's other global names once, with no cloud attached, so no
      test boot has to retry while a fake account is listening. */
   boot({}, { ui: true });
   let passed = 0, failed = 0;
   for (const t of tests) {
+    started += 1;
     try {
-      await t.fn();
+      await withTimeout(Promise.resolve().then(() => t.fn()), t.name);
       passed += 1;
       console.log("PASS  " + t.name);
     } catch (err) {
@@ -894,7 +918,9 @@ test("the page's own restore (index.html's initCloudFromStorage) waits for the l
       const at = String(err && err.stack || "").split("\n").find(l => /^\s+at /.test(l));
       console.log("      " + lines.concat(at ? [at.trim()] : []).join("\n      "));
     }
+    finished += 1;
   }
-  console.log((failed ? "FAILED  " : "OK  ") + passed + " passed, " + failed + " failed");
+  summaryPrinted = true;
+  console.log((failed ? "FAILED  " : "OK  ") + passed + " passed, " + failed + " failed, " + tests.length + " registered");
   process.exitCode = failed ? 1 : 0;
 })();
