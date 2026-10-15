@@ -53,7 +53,7 @@ const PAGE = [
   region("const SETTINGS_DEFAULTS=", "\nconst EXERCISE_ALIASES"),
   region("let state={", "\nfunction today(){"),
   ["today", "uid", "sessionKey", "template", "getFullBackup", "getCloudPayload", "applyCloudPayload",
-    "loadSupabase", "initSupabaseClient", "scheduleCloudSave", "saveCloudNow", "loadCloudNow", "cloudLogin",
+    "loadSupabase", "awaitCloudLibrary", "initSupabaseClient", "scheduleCloudSave", "saveCloudNow", "loadCloudNow", "cloudLogin",
     "cloudSignup", "cloudSignOut"].map(fnSource).join("\n")
 ].join("\n");
 
@@ -105,7 +105,7 @@ function fakeCloud(opts) {
     },
     from() {
       return {
-        async upsert(row) { db.upserts.push(clone(row.data)); db.row = clone(row.data); return { error: null }; },
+        async upsert(row) { if (opts.failUpserts) { db.refused = (db.refused || 0) + 1; return { error: new Error("row-level security violation") }; } db.upserts.push(clone(row.data)); db.row = clone(row.data); return { error: null }; },
         select() {
           return { eq() { return { async maybeSingle() {
             db.selects += 1;
@@ -785,14 +785,125 @@ test("blocked library: the stored session is kept, nothing is written, and the c
   assert.strictEqual(cloud.db.selects, 0, "the account is not read");
   assert.strictEqual(cloud.db.upserts.length, 0, "and nothing is written to it");
   assert.strictEqual(B.errors.length, 0);
-  await B.run("saveCloudNow(true)");
-  assert.ok(B.toasts.indexOf("Cloud not connected") !== -1, "an honest answer, not an error");
-  /* The failed attempt is forgotten, so the first ask starts another, and callers share it. */
-  assert.strictEqual(B.scripts.length, 2, "asking for the client started a new attempt");
+  /* The failed attempt is forgotten. The boot restore's own initSupabaseClient() call already
+     started one background retry, so a tap finds that request in flight and waits for its
+     outcome (the earlier simulation never fired that outcome, which is what left the runner
+     hanging). */
+  assert.strictEqual(B.scripts.length, 2, "the restore started one background retry after the failure");
+  const save = B.run("saveCloudNow(true)");
+  await flush();
+  assert.ok(B.toasts.indexOf("Connecting to the cloud…") !== -1, "the tap says what it is doing");
   B.run("initSupabaseClient()");
   assert.strictEqual(B.scripts.length, 2, "while one is in flight, nobody starts a second");
+  B.fail();
+  await save;
+  assert.ok(B.toasts.indexOf("Cloud library unavailable. Check your connection and try again.") !== -1, "an honest answer, not an error");
+  assert.ok(!B.toasts.some(t => /Saved/.test(t)), "no success is reported");
+  assert.ok(!B.toasts.some(t => /Cannot read properties/.test(t)) && B.errors.length === 0, "no raw null-client error");
+  assert.strictEqual(cloud.db.upserts.length, 0);
+  B.run("initSupabaseClient()");
+  assert.strictEqual(B.scripts.length, 3, "the next ask tries again");
   B.arrive(cloud.client);
   assert.ok(B.run("initSupabaseClient()"), "once it lands there is a client");
+});
+
+/* ---- The cloud-library gate (separate repair): loading, failed, stalled, retry, repeated taps ---- */
+test("gate: a tap while the library is loading waits for the one request, extra taps do not stack, one client", async function () {
+  const cloud = fakeCloud({ row: accountFrom(phone()), session: true });
+  const B = boot(Object.assign({}, STORED_SESSION, CLOUD_KEYS), { cloud, library: "absent" });
+  await flush();
+  assert.strictEqual(B.scripts.length, 1, "the boot restore started the one request");
+  const first = B.run("saveCloudNow(true)"); await flush();
+  assert.ok(B.toasts.indexOf("Connecting to the cloud…") !== -1, "the first tap says it is waiting");
+  const second = B.run("saveCloudNow(true)"); await flush();
+  assert.ok(B.toasts.indexOf("Still connecting to the cloud…") !== -1, "a second tap is told to wait, nothing stacks");
+  assert.strictEqual(B.scripts.length, 1, "still one library request");
+  B.arrive(cloud.client);
+  await first; await second; await flush();
+  assert.strictEqual(clone(B.run("cloudUser")).id, USER.id, "the stored session was restored when the library landed");
+  assert.ok(cloud.db.selects >= 1, "the account was read before anything was written");
+  assert.ok(B.run("initSupabaseClient()===initSupabaseClient()"), "one client, reused");
+  assert.strictEqual(B.errors.length, 0);
+});
+
+test("gate: a stalled request answers within the wait limit, the background load still recovers, then a save succeeds", async function () {
+  const cloud = fakeCloud({ row: accountFrom(phone()), session: true });
+  const B = boot(Object.assign({}, STORED_SESSION, CLOUD_KEYS), { cloud, library: "absent" });
+  await flush();
+  const save = B.run("saveCloudNow(true)"); await flush();
+  assert.ok(B.timers.some(t => t.ms === 8000), "the wait is bounded by an 8 s timer");
+  await B.runTimers(); // nothing arrives: the limit fires
+  await save;
+  assert.ok(B.toasts.indexOf("The cloud library is still loading. Try again shortly.") !== -1);
+  assert.strictEqual(cloud.db.upserts.length, 0, "nothing written, nothing claimed");
+  assert.ok(!B.toasts.some(t => /Saved/.test(t)));
+  assert.strictEqual(B.errors.length, 0);
+  B.arrive(cloud.client); await flush();
+  assert.strictEqual(clone(B.run("cloudUser")).id, USER.id, "the late arrival restored the session in the background");
+  await B.run("saveCloudNow(true)"); await flush();
+  assert.ok(cloud.db.upserts.length >= 1, "the next tap saves");
+  assert.ok(B.toasts.indexOf("Saved to Supabase") !== -1, "and reports it only now");
+});
+
+test("gate: sign-in and sign-up answer an unavailable library honestly, keep no half state, and work on retry", async function () {
+  for (const action of ["cloudLogin", "cloudSignup"]) {
+    const cloud = fakeCloud({ row: accountFrom(phone()) });
+    const B = boot({}, { cloud, library: "absent" });
+    await flush();
+    B.field("sbUrl", CLOUD_KEYS.apm_sb_url); B.field("sbKey", CLOUD_KEYS.apm_sb_key); B.field("sbEmail", USER.email); B.field("sbPass", "pw");
+    const attempt = B.run(action + "()"); await flush();
+    B.fail(); await attempt; await flush();
+    assert.ok(B.toasts.indexOf("Cloud library unavailable. Check your connection and try again.") !== -1, action + ": honest answer");
+    assert.ok(!B.toasts.some(t => /Cannot read properties|null/.test(t)), action + ": no raw null-client error");
+    assert.strictEqual(B.run("cloudUser"), null, action + ": no half-signed-in state");
+    assert.strictEqual(cloud.db.upserts.length, 0, action + ": nothing written");
+    const retry = B.run(action + "()"); await flush();
+    assert.strictEqual(B.scripts.length, 2, action + ": the retry started a new request");
+    B.arrive(cloud.client); await retry; await flush();
+    assert.strictEqual(clone(B.run("cloudUser")).id, USER.id, action + ": works once the library lands");
+    if (action === "cloudLogin") assert.ok(cloud.db.selects >= 1 && B.settings.weeklyPlan && clone(B.run("settings")).weeklyPlan[1] === CUSTOM_PLAN[1], "sign-in read the account before writing");
+    assert.ok(cloud.db.upserts.length >= 1, action + ": then wrote");
+    assert.strictEqual(B.errors.length, 0, action);
+  }
+});
+
+test("gate: Load answers unavailable / still loading without touching the account", async function () {
+  const cloud = fakeCloud({ row: accountFrom(phone()), session: true });
+  const B = boot(Object.assign({}, STORED_SESSION, CLOUD_KEYS), { cloud, library: "absent" });
+  await flush();
+  const load = B.run("loadCloudNow()"); await flush();
+  B.fail(); assert.strictEqual(await load, "offline");
+  assert.ok(B.toasts.indexOf("Cloud library unavailable. Check your connection and try again.") !== -1);
+  assert.strictEqual(cloud.db.selects, 0);
+  assert.strictEqual(cloud.db.upserts.length, 0);
+  assert.ok(B.storage.raw.has("sb-project-auth-token"), "the stored session is kept");
+  assert.strictEqual(B.errors.length, 0);
+});
+
+test("gate: Test connection reports the library state in its panel and never reaches the network without it", async function () {
+  for (const outcome of ["fails", "stalls"]) {
+    const B = boot(Object.assign({}, CLOUD_KEYS), { cloud: fakeCloud({}), library: "absent", ui: true });
+    B.field("nxp-connection-result", "");
+    await flush();
+    const run = B.run("NXP.testConnection()"); await flush();
+    if (outcome === "fails") B.fail(); else await B.runTimers();
+    await run; await flush();
+    const html = B.elements["nxp-connection-result"].innerHTML;
+    assert.ok(/Cloud library unavailable|still loading/.test(html), outcome + ": " + html.slice(0, 160));
+    assert.ok(!/Supabase library loaded/.test(html), outcome + ": no network step ran");
+    assert.strictEqual(B.errors.length, 0, outcome);
+  }
+});
+
+test("a save that the account refuses is reported as a failure, never as saved", async function () {
+  const cloud = fakeCloud({ row: accountFrom(phone()), session: true, failUpserts: true });
+  const B = boot(Object.assign({}, STORED_SESSION, CLOUD_KEYS), { cloud });
+  await flush(); // boot restore: read, merge, write-back (refused)
+  await B.run("saveCloudNow(true)"); await flush();
+  assert.ok(cloud.db.refused >= 1, "the write was attempted");
+  assert.ok(!B.toasts.some(t => /Saved to Supabase/.test(t)), "no success reported");
+  assert.ok(B.toasts.some(t => /row-level security|Cloud save failed/.test(t)), "the refusal is surfaced");
+  assert.strictEqual(B.run("cloudStatusText"), "Sync error");
 });
 
 test("a device with no project URL or key still clears a stale stored session, with the library or without it", async function () {

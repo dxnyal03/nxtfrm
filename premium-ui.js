@@ -2684,7 +2684,15 @@ const NXP = (() => {
   }
   async function testConnection() {
     if(ui.connection.busy)return;
-    if(!window.supabase&&typeof loadSupabase==='function')await loadSupabase();
+    if(typeof awaitCloudLibrary==='function'&&!window.supabase){
+      ui.connection={busy:true,lines:[],summary:'Loading the cloud library',tone:''};paintConnection();
+      const lib=await awaitCloudLibrary({show:false});
+      ui.connection.busy=false;
+      if(lib!==true){
+        ui.connection={busy:false,lines:[],summary:lib===false?'Cloud library unavailable. Check your connection and try again.':'The cloud library is still loading. Try again shortly.',tone:'watch',checkedAt:Date.now()};
+        paintConnection();return;
+      }
+    }
     const savedUrl=(localStorage.getItem('apm_sb_url')||'').trim().replace(/\/$/,''),savedKey=(localStorage.getItem('apm_sb_key')||'').trim();
     const url=(document.getElementById('sbUrl')?.value??savedUrl).trim().replace(/\/$/,''),key=(document.getElementById('sbKey')?.value??savedKey).trim();
     ui.connection={busy:true,lines:[],summary:'Checking',tone:''};paintConnection();

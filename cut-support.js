@@ -2376,7 +2376,9 @@ let cloudSaveQuiet=false;
 /* afterRead: the save a load makes of its own merge; it must not wait on that load. */
 saveCloudNow=async function(show=true,afterRead=false){
   try{
-    if(!window.supabase&&typeof loadSupabase==="function")await loadSupabase(); // library loads lazily (non-blocking boot)
+    /* The library loads lazily. The gate answers loading / unavailable / retry itself; a save never
+       reports success it did not get, so a missing library simply leaves the change local for now. */
+    if(typeof awaitCloudLibrary==="function"&&(await awaitCloudLibrary({show,restore:true}))!==true)return;
 
     const client=initSupabaseClient();
     if(!client||!cloudUser){
@@ -2427,7 +2429,7 @@ loadCloudNow=function(quiet){
 async function readCloudRow(quiet){
   const say=m=>{if(!quiet)toast(m);};
   try{
-    if(!window.supabase&&typeof loadSupabase==="function")await loadSupabase();
+    if(typeof awaitCloudLibrary==="function"&&(await awaitCloudLibrary({show:!quiet,restore:true}))!==true)return 'offline';
 
     const client=initSupabaseClient();
     if(!client||!cloudUser){
