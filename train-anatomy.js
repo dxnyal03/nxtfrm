@@ -488,6 +488,14 @@ const NXTLIB = (() => {
     "Calf Raises":                     { p: ["calves"],                s: [],                                            eq: "Machine" },
     "Adductor Machine":                { p: ["adductors"],             s: [],                                            eq: "Machine" },
     "Squat / Leg Press":               { p: ["quads"],                 s: ["glutes","hamstrings"],                       eq: "Machine" },
+    /* The picker's chest-fly names. The movement is the pec-deck / machine fly
+       already classified above as "Cable Fly" (chest, front delts assisting);
+       these are the same claim under the names the library offers, on the
+       machine. Added 2026-10-18 when a saved Push routine with "Chest Fly" drew
+       no figure. */
+    "Chest Fly":                       { p: ["chest"],                 s: ["front_delts"],                               eq: "Machine" },
+    "Machine Chest Fly":               { p: ["chest"],                 s: ["front_delts"],                               eq: "Machine" },
+    "Pec Deck":                        { p: ["chest"],                 s: ["front_delts"],                               eq: "Machine" },
   };
 
   const names = () => Object.keys(LIBRARY);
