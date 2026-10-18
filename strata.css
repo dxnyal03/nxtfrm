@@ -3508,3 +3508,194 @@ html::after{content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;opa
 @keyframes st-bl-halo{from{opacity:0;transform:scale(.85)}}
 @keyframes st-bl-scan{0%{top:0;opacity:0}12%{opacity:1}88%{opacity:1}100%{top:calc(100% - 22px);opacity:0}}
 :root[data-nxp-motion="reduced"] #homePage .st-bl *{animation:none !important}
+/* ---- D74 · Breathing rest orb and set ignition ---------------------------------------------------------
+   The rest strip becomes an instrument: a ring that sweeps down with the engine's own countdown (--pct,
+   painted every second), a core that breathes on an 8-second cycle (a calm 4-in, 4-out), a pulse in the
+   last ten seconds and a "Go" glow when a rest runs out. Logging a set sends one sweep of light across the
+   new ledger row and charges the exercise's progress segment. Reduced motion: still ring, no breath. */
+#trainPage .st-train-active .nxp-rest.st-orbcard{display:grid !important;grid-template-columns:92px minmax(0,1fr) auto;grid-template-areas:"orb next act";align-items:center;column-gap:14px;
+  padding:12px 14px 12px 12px !important;border-radius:26px !important;
+  background:radial-gradient(130% 150% at 0% 50%,rgba(139,92,246,.2),transparent 62%),linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.015)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09),inset 0 0 0 1px rgba(255,255,255,.06),0 18px 40px -26px rgba(109,40,217,.8) !important}
+#trainPage .st-orbcard .st-orb,#trainPage .st-orbcard .st-rest-l{grid-area:orb}
+#trainPage .st-orbcard .st-orb{position:relative;width:92px;height:92px}
+#trainPage .st-orbcard .st-orb-ring{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
+#trainPage .st-orbcard .st-orb-track{fill:none;stroke:rgba(255,255,255,.08);stroke-width:4.5}
+#trainPage .st-orbcard .st-orb-arc{fill:none;stroke:#bfa8ff;stroke-width:4.5;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:calc(1 - var(--pct,0) / 100);
+  transition:stroke-dashoffset 1s linear,stroke .4s ease;filter:drop-shadow(0 0 5px rgba(167,139,250,.75))}
+#trainPage .st-orbcard .st-orb-core{position:absolute;inset:13px;border-radius:50%;
+  background:radial-gradient(circle at 42% 36%,rgba(236,228,255,.55),rgba(150,110,250,.42) 42%,rgba(98,52,210,.16) 68%,transparent 72%);
+  box-shadow:0 0 30px -6px rgba(139,92,246,.7)}
+#trainPage .st-orbcard .st-rest-l{position:relative;z-index:1;display:flex !important;flex-direction:column;align-items:center;justify-content:center;gap:1px;pointer-events:none;width:92px;height:92px}
+#trainPage .st-orbcard .st-rest-l small{font:600 9.5px/1 var(--st-font-d) !important;letter-spacing:.18em !important;text-transform:uppercase;color:rgba(230,222,255,.72) !important}
+#trainPage .st-orbcard .st-rest-l b{font:500 22px/1.05 var(--st-font-d) !important;letter-spacing:-.02em !important;color:#fff !important;font-variant-numeric:tabular-nums}
+#trainPage .st-orbcard .nxp-rest-rail{display:none !important}
+#trainPage .st-orbcard .st-orb-next{grid-area:next;margin:0;font:560 14px/1.35 var(--st-font);color:var(--st-ink-2)}
+#trainPage .st-orbcard .vn-rest-actions{grid-area:act;display:flex !important;flex-direction:column;gap:8px;margin:0 !important}
+#trainPage .st-orbcard .vn-rest-actions .n99-button{min-height:44px !important;min-width:74px;padding:0 14px !important}
+#trainPage .st-orbcard.is-final .st-orb-arc{stroke:#efe8ff;filter:drop-shadow(0 0 8px rgba(214,196,255,.95))}
+#trainPage .st-orbcard.is-go{background:radial-gradient(130% 150% at 0% 50%,rgba(167,139,250,.42),transparent 64%),linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02)) !important}
+#trainPage .st-orbcard.is-go .st-orb-arc{stroke-dashoffset:0;stroke:#fff}
+#trainPage .st-orbcard.is-go .st-rest-l b{font-size:26px !important;font-weight:640 !important}
+#trainPage .st-orbcard.is-go .st-orb-next{color:var(--st-ink)}
+@media (prefers-reduced-motion:no-preference){
+  #trainPage .st-orbcard.is-active .st-orb-core{animation:st-orb-breathe 8s ease-in-out infinite}
+  #trainPage .st-orbcard.is-final .st-orb-core{animation:st-orb-breathe 1s ease-in-out infinite}
+  #trainPage .st-orbcard.is-final .st-rest-l b{animation:st-orb-tick 1s ease-in-out infinite}
+  #trainPage .st-orbcard.is-go .st-orb-core{animation:st-orb-go 2.6s cubic-bezier(.32,.72,0,1) both}
+  #trainPage .st-train-active .st-lrow.is-fresh::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background:linear-gradient(100deg,transparent 28%,rgba(232,222,255,.32) 50%,transparent 72%);transform:translateX(-110%);animation:st-ignite .95s cubic-bezier(.32,.72,0,1) .12s both}
+  #trainPage .st-train-active.is-just-logged .st-segbar .is-current i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.85),transparent);animation:st-charge 1.1s ease .18s both}
+}
+#trainPage .st-train-active .st-lrow.is-fresh{position:relative;overflow:hidden}
+#trainPage .st-train-active .st-segbar .is-current i{position:relative;overflow:hidden}
+@keyframes st-orb-breathe{0%,100%{transform:scale(.84);opacity:.62}50%{transform:scale(1.05);opacity:1}}
+@keyframes st-orb-tick{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes st-orb-go{0%{transform:scale(.9);opacity:.7}30%{transform:scale(1.22);opacity:1;box-shadow:0 0 60px 4px rgba(196,181,253,.8)}100%{transform:scale(1);opacity:.85}}
+@keyframes st-ignite{to{transform:translateX(110%)}}
+@keyframes st-charge{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+:root[data-nxp-motion="reduced"] #trainPage .st-orbcard *,:root[data-nxp-motion="reduced"] #trainPage .st-lrow.is-fresh::after,:root[data-nxp-motion="reduced"] #trainPage .st-segbar i::after{animation:none !important;transition:none !important}
+@media (prefers-reduced-motion:reduce){#trainPage .st-orbcard .st-orb-arc{transition:none}}
+@media (max-width:359px){#trainPage .st-train-active .nxp-rest.st-orbcard{grid-template-columns:84px minmax(0,1fr) auto;column-gap:10px}#trainPage .st-orbcard .st-orb,#trainPage .st-orbcard .st-rest-l{width:84px;height:84px}}
+#trainPage .st-orbcard .vn-rest-actions .n99-button{background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.04)) !important;color:var(--st-ink) !important;border:0 !important;
+  border-radius:999px !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(255,255,255,.08) !important;font:600 15px/1 var(--st-font-d) !important}
+
+/* ---- D75 · Workout mini-player and the live Train tab ------------------------------------------------------
+   A glass pill above the dock while a session is under way (any tab but Train); the ring is sets done of
+   planned, the dot breathes, and the rest countdown runs live. Tapping it morphs it into the workout header. */
+.st-live{position:fixed;z-index:58;left:50%;bottom:var(--st-live-bottom,calc(96px + var(--nxt-safe-bottom,0px)));transform:translateX(-50%);
+  display:flex;align-items:center;gap:12px;min-height:56px;max-width:min(360px,calc(100vw - 32px));padding:7px 16px 7px 8px;border:0;border-radius:999px;cursor:pointer;
+  background:linear-gradient(180deg,rgba(52,44,82,.72),rgba(24,21,38,.78));color:var(--st-ink);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.07),0 18px 40px -16px rgba(0,0,0,.9),0 0 34px -14px rgba(139,92,246,.75);
+  -webkit-backdrop-filter:blur(24px) saturate(1.7);backdrop-filter:blur(24px) saturate(1.7);-webkit-tap-highlight-color:transparent}
+.st-live[hidden]{display:none !important}
+.st-live-ring{position:relative;width:40px;height:40px;flex:none}
+.st-live-ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.st-live-tr{fill:none;stroke:rgba(255,255,255,.12);stroke-width:3}
+.st-live-arc{fill:none;stroke:#c4b0ff;stroke-width:3;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:calc(1 - var(--live,0));transition:stroke-dashoffset .6s cubic-bezier(.32,.72,0,1);filter:drop-shadow(0 0 4px rgba(167,139,250,.8))}
+.st-live-dot{position:absolute;inset:13px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#b49aff 55%,#7c4dff);box-shadow:0 0 12px rgba(167,139,250,.9)}
+.st-live-t{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}
+.st-live-n{font:640 15px/1.15 var(--st-font-d);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.st-live-t small{font:520 12.5px/1.2 var(--st-font);color:var(--st-ink-3);white-space:nowrap;font-variant-numeric:tabular-nums}
+.st-live.is-resting .st-live-r{color:#d9ccff}
+.st-live-up{width:20px;height:20px;flex:none;margin-left:2px;fill:none;stroke:var(--st-ink-2);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+@media (prefers-reduced-motion:no-preference){
+  .st-live:not([hidden]){animation:st-live-in .5s cubic-bezier(.32,.72,0,1) both}
+  .st-live-dot{animation:st-live-breathe 2.4s ease-in-out infinite}
+}
+@keyframes st-live-in{from{opacity:0;transform:translate(-50%,16px) scale(.94)}}
+@keyframes st-live-breathe{0%,100%{transform:scale(.82);opacity:.75}50%{transform:scale(1);opacity:1}}
+:root[data-nxp-motion="reduced"] .st-live,:root[data-nxp-motion="reduced"] .st-live *{animation:none !important;transition:none !important}
+body.st-live-on main::after{content:"";display:block;height:70px}
+/* The Train tab wears the session's progress as a ring around its icon. */
+.tabs .tab[data-tab="train"].is-live .tab-icon{position:relative}
+.tabs .tab[data-tab="train"].is-live .tab-icon::after{content:"";position:absolute;inset:-5px;border-radius:50%;pointer-events:none;
+  background:conic-gradient(#c4b0ff calc(var(--live,0) * 1%),rgba(255,255,255,.14) 0);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2px));mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2px))}
+/* ---- D77 · Your sky: the stars are your lifting days --------------------------------------------------- */
+#stStars{position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden}
+#stStars i{position:absolute;width:var(--s);height:var(--s);margin:calc(var(--s) / -2) 0 0 calc(var(--s) / -2);border-radius:50%;opacity:var(--o);
+  background:radial-gradient(circle,#fff 0,rgba(226,214,255,.85) 45%,rgba(196,181,253,0) 72%);box-shadow:0 0 calc(var(--s) * 2.4) rgba(214,200,255,.55)}
+#stStars i.is-today{--s:4.2px;opacity:1;box-shadow:0 0 14px 3px rgba(214,200,255,.85),0 0 32px 8px rgba(139,92,246,.45)}
+:root[data-st-sky="day"] #stStars{opacity:.45}
+:root[data-st-sky="night"] #stStars{opacity:1;filter:brightness(1.25)}
+@media (prefers-reduced-motion:no-preference){#stStars i{animation:st-twinkle 6s ease-in-out var(--d) infinite alternate}#stStars i.is-today{animation:st-star-new 3.2s ease-in-out infinite alternate}}
+@keyframes st-twinkle{0%{opacity:calc(var(--o) * .45)}100%{opacity:var(--o)}}
+@keyframes st-star-new{0%{transform:scale(.85)}100%{transform:scale(1.25)}}
+:root[data-nxp-motion="reduced"] #stStars i{animation:none !important}
+
+/* ---- D76 · In-app questions ----------------------------------------------------------------------------- */
+.st-ask{position:fixed;inset:0;z-index:10060;display:flex;align-items:flex-end;justify-content:center;padding:0 10px calc(10px + var(--nxt-safe-bottom,0px))}
+.st-ask-scrim{position:absolute;inset:0;background:rgba(4,3,8,.5);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.st-ask-sheet{position:relative;width:100%;max-width:420px;padding:22px 18px 14px;border-radius:30px;text-align:center;
+  background:linear-gradient(180deg,rgba(44,38,66,.92),rgba(22,20,33,.94));box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(255,255,255,.07),0 30px 70px -20px rgba(0,0,0,.9),0 0 60px -30px rgba(139,92,246,.6);
+  -webkit-backdrop-filter:blur(30px) saturate(1.6);backdrop-filter:blur(30px) saturate(1.6)}
+.st-ask-sheet h2{margin:0;font:640 20px/1.2 var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink)}
+.st-ask-sheet p{margin:8px 4px 0;font:450 14.5px/1.45 var(--st-font);color:var(--st-ink-2)}
+.st-ask-acts{display:grid;gap:8px;margin-top:20px}
+.st-ask-acts button{min-height:52px;border:0;border-radius:999px;font:620 16px/1 var(--st-font-d);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.st-ask-ok{color:#fff;background:linear-gradient(180deg,#9b74ff,#6d33ea);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 12px 26px -12px rgba(124,58,237,.9)}
+.st-ask-ok.is-danger{background:linear-gradient(180deg,#e2708d,#b83c5d);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 12px 26px -12px rgba(220,90,118,.8)}
+.st-ask-no{color:var(--st-ink);background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.st-ask-acts button:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:3px}
+@media (prefers-reduced-motion:no-preference){
+  .st-ask-scrim{animation:st-vt-in .2s ease both}.st-ask-sheet{animation:st-ask-in .42s cubic-bezier(.32,.72,0,1) both}
+  .st-ask.is-out .st-ask-scrim{animation:st-vt-out .18s ease both}.st-ask.is-out .st-ask-sheet{animation:st-ask-out .2s ease both}
+}
+@keyframes st-ask-in{from{opacity:0;transform:translateY(40px) scale(.96)}}
+@keyframes st-ask-out{to{opacity:0;transform:translateY(24px) scale(.97)}}
+
+/* ---- D77 · Finish moment ---------------------------------------------------------------------------------- */
+.st-fin{position:fixed;inset:0;z-index:10040;display:flex;flex-direction:column;color:var(--st-ink)}
+.st-fin-bg{position:absolute;inset:0;background:
+  radial-gradient(70% 40% at 50% 8%,rgba(139,92,246,.42),transparent 70%),radial-gradient(60% 34% at 85% 40%,rgba(236,72,153,.14),transparent 72%),
+  radial-gradient(70% 40% at 10% 70%,rgba(85,82,187,.22),transparent 72%),#07060B}
+.st-fin-scroll{position:relative;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.st-fin-in{max-width:440px;margin:0 auto;padding:calc(var(--nxt-safe-top,0px) + 18px) 20px 140px}
+.st-fin-sky{display:block;width:100%;height:auto;overflow:visible}
+.st-fin-lines line{stroke:rgba(214,200,255,.38);stroke-width:1;stroke-linecap:round}
+.st-fin-stars circle{fill:#fff;filter:drop-shadow(0 0 4px rgba(214,200,255,.95)) drop-shadow(0 0 10px rgba(139,92,246,.7))}
+.st-fin-cap{margin:2px 0 0;text-align:center;font:520 12px/1.3 var(--st-font-d);letter-spacing:.14em;text-transform:uppercase;color:rgba(214,200,255,.7)}
+.st-fin-head{display:flex;align-items:center;gap:14px;margin-top:22px}
+.st-fin-ring{width:56px;height:56px;flex:none;overflow:visible}
+.st-fin-ring circle{fill:rgba(139,92,246,.16);stroke:#c4b0ff;stroke-width:2.5;stroke-dasharray:1;filter:drop-shadow(0 0 8px rgba(167,139,250,.8))}
+.st-fin-ring path{fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1}
+.st-fin-eb{margin:0;font:560 13px/1.2 var(--st-font-d);letter-spacing:.02em;color:#c4b0ff}
+.st-fin-head h2{margin:3px 0 0;font:640 38px/1 var(--st-font-d);letter-spacing:-.045em;background:linear-gradient(180deg,#fff 35%,#d4c4ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.st-fin-sub{margin:6px 0 0;font:480 14px/1.3 var(--st-font);color:var(--st-ink-3)}
+.st-fin-stats{display:grid;grid-template-columns:repeat(3,1fr);margin-top:24px;padding:18px 4px;border-radius:24px;
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.06)}
+.st-fin-stats>div{display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 6px}
+.st-fin-stats>div+div{border-left:1px solid rgba(255,255,255,.08)}
+.st-fin-stats b{font:280 34px/1 var(--st-font-d);letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:#fff}
+.st-fin-stats small{font:500 11px/1 var(--st-font-d);color:var(--st-ink-3);margin-top:-2px}
+.st-fin-stats span{font:520 12.5px/1.2 var(--st-font);color:var(--st-ink-3)}
+.st-fin-moments{list-style:none;margin:18px 0 0;padding:0;display:grid;gap:8px}
+.st-fin-moments li{position:relative;overflow:hidden;display:flex;align-items:center;gap:10px;min-height:48px;padding:10px 14px;border-radius:18px;font:560 14.5px/1.35 var(--st-font);color:var(--st-ink);
+  background:linear-gradient(90deg,rgba(139,92,246,.22),rgba(139,92,246,.06));box-shadow:inset 0 0 0 1px rgba(196,181,253,.18)}
+.st-fin-moments li i{width:9px;height:9px;flex:none;border-radius:50%;background:#e4d9ff;box-shadow:0 0 10px rgba(214,200,255,.9)}
+.st-fin-receipt{margin-top:22px;padding:18px 16px 14px;border-radius:22px;background:rgba(255,255,255,.035);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.st-fin-receipt h3{margin:0 0 10px;font:560 12px/1 var(--st-font-d);letter-spacing:.16em;text-transform:uppercase;color:var(--st-ink-3)}
+.st-fin-receipt ol{list-style:none;margin:0;padding:0}
+.st-fin-receipt li{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding:11px 0;border-top:1px solid rgba(255,255,255,.07)}
+.st-fin-receipt li>span{font:560 14.5px/1.3 var(--st-font);color:var(--st-ink)}
+.st-fin-receipt li>b{display:flex;flex-wrap:wrap;gap:6px 12px;font-weight:400}
+.st-fin-receipt em{font:520 14px/1 var(--st-font-d);font-style:normal;font-variant-numeric:tabular-nums;color:var(--st-ink-2)}
+.st-fin-receipt em i{font-style:normal;color:var(--st-ink-4);margin:0 2px}
+.st-fin-receipt>p{display:flex;justify-content:space-between;margin:8px 0 0;padding-top:12px;border-top:1px dashed rgba(255,255,255,.14);font:560 13px/1 var(--st-font-d);color:var(--st-ink-2)}
+.st-fin-note{margin:18px 4px 0;font:450 13.5px/1.5 var(--st-font);color:var(--st-ink-3);text-align:center}
+.st-fin-acts{position:absolute;left:0;right:0;bottom:0;display:grid;gap:8px;padding:18px 20px calc(14px + var(--nxt-safe-bottom,0px));
+  background:linear-gradient(180deg,rgba(7,6,11,0),rgba(7,6,11,.88) 30%,#07060B)}
+.st-fin-acts button{width:100%;max-width:440px;margin:0 auto;min-height:54px;border:0;border-radius:999px;font:620 16.5px/1 var(--st-font-d);cursor:pointer}
+.st-fin-done{color:#fff;background:linear-gradient(180deg,#9b74ff,#6d33ea);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 14px 30px -12px rgba(124,58,237,.9)}
+.st-fin-cardio{color:var(--st-ink);background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.st-fin-acts button:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:3px}
+@media (prefers-reduced-motion:no-preference){
+  .st-fin{animation:st-vt-in .3s ease both}.st-fin.is-out{animation:st-vt-out .26s ease both}
+  .st-fin-stars circle{transform-box:fill-box;transform-origin:center;animation:st-fin-star .6s cubic-bezier(.34,1.56,.64,1) calc(.2s + var(--i,0) * 55ms) both}
+  .st-fin-lines line{stroke-dasharray:60;stroke-dashoffset:60;animation:st-fin-line .7s ease calc(.3s + var(--i,0) * 55ms) forwards}
+  .st-fin-ring circle{stroke-dashoffset:1;animation:st-fin-draw .9s cubic-bezier(.32,.72,0,1) .35s forwards}
+  .st-fin-ring path{stroke-dashoffset:1;animation:st-fin-draw .5s cubic-bezier(.32,.72,0,1) 1.05s forwards}
+  .st-fin-head>div,.st-fin-stats,.st-fin-receipt,.st-fin-note{animation:st-fin-rise .7s cubic-bezier(.32,.72,0,1) .45s both}
+  .st-fin-moments li{animation:st-fin-rise .7s cubic-bezier(.32,.72,0,1) calc(1.2s + var(--i,0) * 120ms) both}
+  .st-fin-moments li::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.22) 50%,transparent 70%);transform:translateX(-110%);animation:st-ignite 1.4s ease calc(1.6s + var(--i,0) * 160ms) both}
+}
+@keyframes st-fin-star{from{opacity:0;transform:scale(0)}}
+@keyframes st-fin-line{to{stroke-dashoffset:0}}
+@keyframes st-fin-draw{to{stroke-dashoffset:0}}
+@keyframes st-fin-rise{from{opacity:0;transform:translateY(14px)}}
+:root[data-nxp-motion="reduced"] .st-fin,:root[data-nxp-motion="reduced"] .st-fin *,:root[data-nxp-motion="reduced"] .st-ask *{animation:none !important}
+@media (prefers-reduced-motion:reduce){.st-fin-ring circle,.st-fin-ring path,.st-fin-lines line{stroke-dashoffset:0}}
+:root[data-nxp-motion="reduced"] .st-fin-ring circle,:root[data-nxp-motion="reduced"] .st-fin-ring path,:root[data-nxp-motion="reduced"] .st-fin-lines line{stroke-dashoffset:0 !important}
+/* fixes from the Train audit: an idle orb card stays hidden; the up-next line names the load */
+#trainPage .st-train-active .nxp-rest.st-orbcard[hidden]{display:none !important}
+#trainPage .st-orbcard .st-orb-next{display:flex;flex-direction:column;gap:3px}
+#trainPage .st-orbcard .st-orb-next small{font:560 11px/1 var(--st-font-d);letter-spacing:.12em;text-transform:uppercase;color:var(--st-ink-4)}
+#trainPage .st-orbcard .st-orb-next b{font:560 19px/1.1 var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink);font-variant-numeric:tabular-nums}
+.st-fin-neb{transform-box:fill-box;transform-origin:center}
+@media (prefers-reduced-motion:no-preference){.st-fin-neb{animation:st-fin-neb 2.4s ease both}}
+@keyframes st-fin-neb{from{opacity:0;transform:scale(.6)}}
+/* Body of Light: a quiet week is a compact tile, not 300px of dark figures */
+#homePage .st-bl.is-empty .st-bl-grid{grid-template-columns:120px minmax(0,1fr);align-items:center}
+#homePage .st-bl.is-empty .st-bl-stage{max-width:120px;margin:0}
+#homePage .st-bl.is-empty .st-bl-fig small{display:none}

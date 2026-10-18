@@ -1521,7 +1521,14 @@ Object.assign(NXT, (()=>{
     if(!r||!Number.isFinite(N.dateMs(date))||date>state.date||weight===null||weight<20||weight>400)return toast('Check the date and weight.');
     r.date=date;r.weight=weight;r.ts=Date.now();N.commit('Weigh-in corrected');
   }
-  function deleteWeight() {const r=findEditWeight();if(!r||!confirm('Delete this weigh-in?'))return;state.bws=state.bws.filter(x=>x!==r);N.commit('Weigh-in deleted');}
+  async function deleteWeight() {
+    const r=findEditWeight();if(!r)return;
+    const ask=typeof NXP==='object'&&NXP&&typeof NXP.ask==='function'
+      ?NXP.ask({title:'Delete this weigh-in?',body:`${Number(r.weight).toFixed(1)} kg · ${N.shortDate(r.date)}. This cannot be undone.`,ok:'Delete',danger:true})
+      :Promise.resolve(confirm('Delete this weigh-in?'));
+    if(!(await ask))return;
+    state.bws=state.bws.filter(x=>x!==r);N.commit('Weigh-in deleted');
+  }
   return {signed,smoothPath,trendReadText,chartModel,chartHTML,journeyHTML,selectPoint,scrub,chartKey,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
 })());
 
@@ -1569,11 +1576,14 @@ Object.assign(NXT, (()=>{
     N.commit(setType==='warmup'?'Warm-up saved':'Working set saved');
     apx96StartRest(setType==='warmup'?60:suggestedRestSeconds(ex));
   }
-  function finish() {
+  async function finish() {
     const logs=sessionLogs();if(!logs.length)return toast('Log at least one set before finishing.');
-    if(!confirm('Finish this session? All logged sets stay saved, including a shorter workout.'))return;
+    const ask=typeof NXP==='object'&&NXP&&typeof NXP.ask==='function'
+      ?NXP.ask({title:'Finish workout?',body:'All logged sets stay saved, including a shorter workout.',ok:'Finish workout'})
+      :Promise.resolve(confirm('Finish this session? All logged sets stay saved, including a shorter workout.'));
+    if(!(await ask))return;
     N.cfg().sessions[sessionKey()]={date:state.date,gym:state.gym,type:state.dayType,finished:true,finishedAt:Date.now(),sets:logs.filter(x=>x.setType!=='warmup').length};
-    apx96SkipRest();N.commit('Workout saved');openFinishSummary();
+    apx96SkipRest();N.commit('Workout saved');N.openFinishSummary();
   }
   function openFinishSummary() {
     const logs=sessionLogs(),working=logs.filter(x=>x.setType!=='warmup');
@@ -1585,9 +1595,12 @@ Object.assign(NXT, (()=>{
     const list=ensureSessionPlan().slice(0,3);state.sessionPlans[sessionKey()]=list;state.exercise=list[0]||'';state.minimumWorkout=true;N.commit('Shorter session selected');
   }
   function fullSession() {state.sessionPlans[sessionKey()]=N.templateFor().map(e=>e.name);N.cfg().sessionTargets[sessionKey()]=N.copy(N.templateFor());state.minimumWorkout=false;N.commit('Full session restored');}
-  function undo() {
+  async function undo() {
     const last=sessionLogs().slice().reverse().sort((a,b)=>Number(b.ts||0)-Number(a.ts||0))[0];if(!last)return toast('No set in this session to undo.');
-    if(!confirm(`Undo ${last.exercise} · ${last.weight} kg × ${last.reps}?`))return;
+    const ask=typeof NXP==='object'&&NXP&&typeof NXP.ask==='function'
+      ?NXP.ask({title:'Undo last set?',body:`${last.exercise} · ${last.weight} kg × ${last.reps}`,ok:'Undo set',danger:true})
+      :Promise.resolve(confirm(`Undo ${last.exercise} · ${last.weight} kg × ${last.reps}?`));
+    if(!(await ask))return;
     state.logs=state.logs.filter(x=>x!==last);delete N.cfg().sessions[sessionKey()];state.exercise=last.exercise;N.commit('Last set undone');
   }
   function sessionPicker() {N.modal('Choose today’s session',`<p>Your existing records and saved workout queues stay intact.</p><div class="n99-picker">${N.pickTypes(state.dayType).map(t=>N.button(N.label(t),`NXT.chooseSession('${t}')`,state.dayType!==t)).join('')}</div>`);}

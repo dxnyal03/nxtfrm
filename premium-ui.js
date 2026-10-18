@@ -951,6 +951,96 @@ const NXP = (() => {
     }
     return out;
   }
+  /* ---- D76 · In-app questions -------------------------------------------------------------------------
+     A native confirm() shows the site's address over a grey system alert. Everyday questions (finish a
+     workout, undo a set, delete a weigh-in) ask in a glass sheet instead: same answer, same wording.
+     Escape, a tap outside or Cancel is "no"; a destructive answer starts on Cancel. */
+  function ask(opts) {
+    const o=opts||{};
+    return new Promise(resolve=>{
+      const old=document.getElementById('stAsk');if(old)old.remove();
+      const el=document.createElement('div');el.id='stAsk';el.className='st-ask';
+      el.innerHTML=`<div class="st-ask-scrim"></div><section class="st-ask-sheet" role="alertdialog" aria-modal="true" aria-labelledby="st-ask-t"${o.body?' aria-describedby="st-ask-b"':''}><h2 id="st-ask-t">${esc(o.title||'Are you sure?')}</h2>${o.body?`<p id="st-ask-b">${esc(o.body)}</p>`:''}<div class="st-ask-acts"><button type="button" class="st-ask-ok${o.danger?' is-danger':''}">${esc(o.ok||'OK')}</button><button type="button" class="st-ask-no">${esc(o.cancel||'Cancel')}</button></div></section>`;
+      const back=document.activeElement;let settled=false;
+      const done=v=>{
+        if(settled)return;settled=true;
+        document.removeEventListener('keydown',key,true);
+        el.classList.add('is-out');setTimeout(()=>el.remove(),200);
+        try{if(back&&back.focus&&document.contains(back))back.focus();}catch(e){}
+        resolve(v);
+      };
+      const key=e=>{
+        if(e.key==='Escape'){e.preventDefault();e.stopPropagation();done(false);}
+        else if(e.key==='Tab'){e.preventDefault();e.stopPropagation();const b=[...el.querySelectorAll('button')],i=b.indexOf(document.activeElement);b[(i+(e.shiftKey?-1:1)+b.length)%b.length].focus();}
+      };
+      el.querySelector('.st-ask-scrim').addEventListener('click',()=>done(false));
+      el.querySelector('.st-ask-no').addEventListener('click',()=>done(false));
+      el.querySelector('.st-ask-ok').addEventListener('click',()=>done(true));
+      document.addEventListener('keydown',key,true);
+      document.body.appendChild(el);
+      (o.danger?el.querySelector('.st-ask-no'):el.querySelector('.st-ask-ok')).focus();
+    });
+  }
+  /* ---- D77 · Finish moment -----------------------------------------------------------------------------
+     Finishing opens a full-screen scene in place of the small "Session saved" sheet: the session's working
+     sets form a constellation (one star per set, joined within each exercise, in the order they were
+     logged), a ring closes around a check, the session's own numbers count up — working sets, exercises
+     and volume (load × reps of working sets, the tonnage Progress › Training already shows) — the D27
+     highlights shimmer in, and a typeset receipt lists every set. Same facts as the sheet; nothing stored. */
+  function finishScene() {
+    const working=N.sessionLogs().filter(x=>x.setType!=='warmup').slice().sort((a,b)=>Number(a.ts||0)-Number(b.ts||0));
+    const order=[],by=new Map();
+    working.forEach(r=>{const k=r.exercise||r.name||'Exercise';if(!by.has(k)){by.set(k,[]);order.push(k);}by.get(k).push(r);});
+    const volume=Math.round(working.reduce((a,r)=>a+(Number(r.weight)||0)*(Number(r.reps)||0),0));
+    const moments=sessionMoments();
+    let seed=7;for(const ch of String(state.date)+String(state.dayType))seed=(Math.imul(seed,31)+ch.charCodeAt(0))>>>0;
+    const rnd=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+    const Wd=340,Ht=200,stars=[],lines=[],n=order.length,span=Math.min(.7,.18+n*.11);
+    order.forEach((name,gi)=>{
+      const f=n===1?.5:.5-span/2+span*gi/(n-1);
+      const sets=by.get(name),cx=Wd*f,cy=Ht*(.56-Math.sin(Math.PI*f)*.22)+(rnd()-.5)*18;
+      let px=null,py=null;
+      sets.forEach((r,si)=>{
+        const a=rnd()*Math.PI*2,rad=si?18+rnd()*20:0;
+        const x=Math.max(10,Math.min(Wd-10,(px??cx)+Math.cos(a)*rad)),y=Math.max(12,Math.min(Ht-12,(py??cy)+Math.sin(a)*rad*.85));
+        if(px!==null)lines.push(`<line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" style="--i:${stars.length}"/>`);
+        stars.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${si?2.6:3.8}" style="--i:${stars.length}"/>`);
+        px=x;py=y;
+      });
+    });
+    const receipt=order.map(name=>`<li><span>${esc(name)}</span><b>${by.get(name).map(r=>`<em>${esc(trimNum(r.weight))}<i>×</i>${esc(String(r.reps))}</em>`).join('')}</b></li>`).join('');
+    const stat=(v,l,u='')=>`<div><b class="vn-num" data-to="${v}">${v.toLocaleString('en-SG')}</b>${u?`<small>${u}</small>`:''}<span>${l}</span></div>`;
+    const old=document.getElementById('stFinish');if(old)old.remove();
+    const el=document.createElement('div');el.id='stFinish';el.className='st-fin';
+    el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-labelledby','st-fin-t');
+    el.innerHTML=`<div class="st-fin-bg" aria-hidden="true"></div><div class="st-fin-scroll"><div class="st-fin-in">
+      <svg class="st-fin-sky" viewBox="0 0 ${Wd} ${Ht}" aria-hidden="true"><defs><radialGradient id="st-fin-neb"><stop offset="0" stop-color="rgba(167,139,250,.38)"/><stop offset=".55" stop-color="rgba(124,77,255,.12)"/><stop offset="1" stop-color="rgba(124,77,255,0)"/></radialGradient></defs><ellipse class="st-fin-neb" cx="${Wd/2}" cy="${Ht*.5}" rx="${Wd*.48}" ry="${Ht*.46}" fill="url(#st-fin-neb)"/><g class="st-fin-lines">${lines.join('')}</g><g class="st-fin-stars">${stars.join('')}</g></svg>
+      <p class="st-fin-cap">${working.length} ${N.plural(working.length,'set')} · added to your sky</p>
+      <div class="st-fin-head"><svg class="st-fin-ring" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="25" pathLength="1"/><path d="M18 28.5l6.5 6.5L38 21.5" pathLength="1"/></svg>
+        <div><p class="st-fin-eb">Workout complete</p><h2 id="st-fin-t">${esc(N.label(state.dayType))}</h2><p class="st-fin-sub">${esc(state.gym||'Gym A')} · ${esc(N.shortDate(state.date))}</p></div></div>
+      <div class="st-fin-stats">${stat(working.length,'Working sets')}${stat(order.length,order.length===1?'Exercise':'Exercises')}${stat(volume,'Volume','kg')}</div>
+      ${moments.length?`<ul class="st-fin-moments" aria-label="Highlights">${moments.map((m,i)=>`<li class="is-${m.k}" style="--i:${i}"><i aria-hidden="true"></i><span>${esc(m.t)}</span></li>`).join('')}</ul>`:''}
+      <section class="st-fin-receipt" aria-label="Session receipt"><h3>Session receipt</h3><ol>${receipt}</ol><p><span>Working sets ${working.length}</span><span>Volume ${volume.toLocaleString('en-SG')} kg</span></p></section>
+      <p class="st-fin-note">Your logged work is saved. No need to add cardio just because this workout is finished.</p>
+    </div></div>
+    <div class="st-fin-acts"><button type="button" class="st-fin-done">Done</button><button type="button" class="st-fin-cardio">Log planned cardio</button></div>`;
+    const back=document.activeElement;
+    const close=then=>{document.removeEventListener('keydown',key,true);el.classList.add('is-out');setTimeout(()=>{el.remove();if(typeof then==='function')then();else{try{if(back&&back.focus&&document.contains(back))back.focus();}catch(e){}}},260);};
+    const key=e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();}};
+    el.querySelector('.st-fin-done').addEventListener('click',()=>close());
+    el.querySelector('.st-fin-cardio').addEventListener('click',()=>close(()=>{if(typeof showCardioSheet==='function')showCardioSheet();}));
+    document.addEventListener('keydown',key,true);
+    document.body.appendChild(el);
+    el.querySelector('.st-fin-done').focus({preventScroll:true});
+    /* Count the numbers up once; reduced motion shows them as they are. */
+    const still=document.documentElement.getAttribute('data-nxp-motion')==='reduced'||(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if(!still)el.querySelectorAll('.st-fin-stats b[data-to]').forEach((b,i)=>{
+      const to=Number(b.dataset.to)||0,t0=performance.now()+500+i*120,dur=1100;
+      b.textContent='0';
+      const step=now=>{const k=Math.max(0,Math.min(1,(now-t0)/dur)),e2=1-Math.pow(1-k,3);b.textContent=Math.round(to*e2).toLocaleString('en-SG');if(k<1)requestAnimationFrame(step);};
+      requestAnimationFrame(step);
+    });
+  }
   function momentsHTML(){
     const m=sessionMoments();
     return m.length?`<ul class="st-moments" aria-label="Highlights">${m.map(x=>`<li class="is-${x.k}"><i aria-hidden="true"></i><span>${esc(x.t)}</span></li>`).join('')}</ul>`:'';
@@ -1172,8 +1262,10 @@ const NXP = (() => {
 
       ${!addOnActive()&&sessionDiffers()?`<button type="button" class="st-diff" onclick="NXP.saveTodayToRoutine()"><span><b>Changed for today only</b><small>Save this order and these exercises to your ${esc(N.label(state.dayType))} routine</small></span><em>Save</em></button>`:''}
 
-      <aside class="nxp-rest st-rest${restLeft?' is-active':''}" aria-label="Rest timer"${restLeft?' role="timer"':''} ${restLeft?'':'hidden'} style="--pct:${restPct.toFixed(1)}">
+      <aside class="nxp-rest st-rest st-orbcard${restLeft?' is-active':''}${restLeft&&restLeft<=10?' is-final':''}" aria-label="Rest timer"${restLeft?' role="timer"':''} ${restLeft?'':'hidden'} style="--pct:${restPct.toFixed(1)}">
+        <div class="st-orb" aria-hidden="true"><i class="st-orb-core"></i><svg class="st-orb-ring" viewBox="0 0 120 120"><circle class="st-orb-track" cx="60" cy="60" r="54" pathLength="1"/><circle class="st-orb-arc" cx="60" cy="60" r="54" pathLength="1"/></svg></div>
         <span class="st-rest-l"><small>Rest</small><b id="apx96TimerValue" class="vn-num">${restLeft?apx96FormatTimer(restLeft):'Ready'}</b></span>
+        <p class="st-orb-next"><small>Up next</small>${aim&&setType!=='warmup'&&done<Number(t.sets)?`<b class="vn-num">${esc(trimNum(aim.weight))} × ${esc(String(aim.reps))}</b>`:`<b>${esc(setNo)}</b>`}</p>
         ${restRail(restLeft,ui.restTotal||restPlan)}
         <div class="vn-rest-actions">${button('+30s','apx96AdjustRest(30)',true)}${button('Skip','apx96SkipRest()',true)}</div>
       </aside>
@@ -3330,6 +3422,19 @@ const NXP = (() => {
     const rest=document.querySelector('.nxp-rest');
     if(!rest)return;
     const left=apx96RestRemaining();
+    /* Rest orb (D74): the last ten seconds pulse; a rest that runs out (not one that is skipped) glows
+       "Go" for a moment before the strip folds away. Presentation of the engine's own countdown. */
+    rest.classList.toggle('is-final',left>0&&left<=10);
+    const ranOut=!left&&ui.restLast>0&&ui.restLast<=2;
+    ui.restLast=left;
+    if(ranOut&&rest.classList.contains('st-orbcard')){
+      rest.removeAttribute('hidden');rest.classList.remove('is-active');rest.classList.add('is-go');
+      const value=document.getElementById('apx96TimerValue');if(value)value.textContent='Go';
+      clearTimeout(ui.restGo);ui.restGo=setTimeout(()=>{const r=document.querySelector('.nxp-rest');if(r){r.classList.remove('is-go');if(!apx96RestRemaining())r.setAttribute('hidden','');const v=document.getElementById('apx96TimerValue');if(v&&!apx96RestRemaining())v.textContent='Ready';}},2600);
+      return;
+    }
+    if(rest.classList.contains('is-go')&&!left)return;
+    if(left)rest.classList.remove('is-go');
     rest.classList.toggle('is-active',left>0);
     if(rest.hasAttribute('hidden')){
       if(left>0)rest.removeAttribute('hidden');
@@ -3349,7 +3454,7 @@ const NXP = (() => {
   }
   bindSteppers();
   bindKeyboardDock();
-  return {bodyFocus,actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen};
+  return {ask,finishScene,bodyFocus,actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;
@@ -3370,6 +3475,8 @@ const NXP = (() => {
   };
 })();
 renderHome=NXP.home;renderTrain=NXP.training;renderWeight=NXP.progress;renderMore=NXP.more;renderHistory=NXP.history;
+/* D77: finishing a workout opens the full-screen finish moment (the sheet's facts, staged). */
+NXT.openFinishSummary=NXP.finishScene;
 showHistoryDay=NXP.historyDay;exportJSON=NXP.exportBackup;
 NXP.applyAppearance();
 document.title='NXTFRM — Training & Progress';

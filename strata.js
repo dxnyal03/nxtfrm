@@ -688,7 +688,8 @@ const STRATA = (() => {
   const MAST = { home: "#homePage .st-head .st-h1", train: "#trainPage .nxp-train-chrome h1", weight: "#weightPage .nxp-progress-chrome h1", history: "#historyPage .vn-hist-chrome h1", more: "#morePage .vn-set-title" };
   const MORPH = [
     { name: "st-m-session", sel: { home: "#homePage .st-t-train .st-h2", train: "#trainPage .nxp-train-chrome h1, #trainPage .st-tbar-t" } },
-    { name: "st-m-trend", sel: { home: "#homePage .st-mini [data-st-odo]", weight: "#n99-chart-average" } }
+    { name: "st-m-trend", sel: { home: "#homePage .st-mini [data-st-odo]", weight: "#n99-chart-average" } },
+    { name: "st-m-live", sel: { home: "#stLive", weight: "#stLive", history: "#stLive", more: "#stLive", train: "#trainPage .st-tbar" } }
   ];
   const scrollMemo = {};
   function onScreen(el) {
@@ -769,6 +770,106 @@ const STRATA = (() => {
   function queueTop() { if (!topRaf) topRaf = requestAnimationFrame(updateTop); }
   function bindTop() { window.addEventListener("scroll", queueTop, { passive: true }); window.addEventListener("resize", queueTop); queueTop(); }
 
+  /* ---- D75 · Workout mini-player, live Train tab, screen stays awake ----------------------------------
+     A lift session that has started and is not finished (N.sessionLogs() has rows, N.planDone() is
+     false) follows you: on any other tab a glass pill above the dock shows the session, sets done of
+     planned and the live rest countdown — tap it to return (it morphs into the workout header). The
+     Train tab carries the same progress as a ring. While the workout itself is on screen the screen
+     stays awake (Screen Wake Lock), so the rest timer never hides behind the lock screen. Everything
+     here reads the engine's own values; nothing is stored. */
+  let liveEl = null, liveTick = 0, wake = null, wakeBusy = false;
+  function liveSession() {
+    try {
+      if (typeof NXT !== "object" || typeof template !== "function" || typeof state !== "object" || !state) return null;
+      if (["Rest", "Zone2", "Floorball"].includes(state.dayType)) return null;
+      if (!NXT.sessionLogs().length || NXT.planDone()) return null;
+      const list = template() || [];
+      const total = list.reduce((a, e) => a + (Number(e.sets) || 0), 0);
+      const count = list.reduce((a, e) => a + Math.min(NXT.done(e.name), Number(e.sets) || 0), 0);
+      const rest = typeof apx96RestRemaining === "function" ? apx96RestRemaining() : 0;
+      return { name: NXT.label(state.dayType), count, total, rest };
+    } catch (e) { return null; }
+  }
+  function fmt(s) { return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+  function ensureLive() {
+    if (liveEl && liveEl.isConnected) return liveEl;
+    liveEl = document.createElement("button");
+    liveEl.type = "button"; liveEl.id = "stLive"; liveEl.className = "st-live"; liveEl.hidden = true;
+    liveEl.innerHTML = '<span class="st-live-ring" aria-hidden="true"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" pathLength="1" class="st-live-tr"/><circle cx="18" cy="18" r="15.5" pathLength="1" class="st-live-arc"/></svg><i class="st-live-dot"></i></span>'
+      + '<span class="st-live-t"><b class="st-live-n"></b><small><span class="st-live-c"></span><span class="st-live-r"></span></small></span>'
+      + '<svg class="st-live-up" viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 12.5 10 8l4.5 4.5"/></svg>';
+    liveEl.addEventListener("click", () => { if (typeof NXP === "object" && NXP.enterTrain) NXP.enterTrain(); });
+    document.body.appendChild(liveEl);
+    return liveEl;
+  }
+  function updateLive() {
+    if (!document.body) return;
+    const s = liveSession(), tab = currentTab();
+    const inTrain = tab === "train";
+    const el = ensureLive();
+    const show = !!s && !inTrain;
+    if (el.hidden === show) el.hidden = !show;
+    document.body.classList.toggle("st-live-on", show);
+    const trainTab = document.querySelector('.tabs .tab[data-tab="train"]');
+    if (trainTab) {
+      trainTab.classList.toggle("is-live", !!s);
+      if (s) trainTab.style.setProperty("--live", String(s.total ? Math.round(s.count / s.total * 100) : 0));
+    }
+    if (s) {
+      el.style.setProperty("--live", String(s.total ? s.count / s.total : 0));
+      el.querySelector(".st-live-n").textContent = s.name;
+      el.querySelector(".st-live-c").textContent = s.count + "/" + s.total + " sets";
+      el.querySelector(".st-live-r").textContent = s.rest ? " · Rest " + fmt(s.rest) : "";
+      el.classList.toggle("is-resting", s.rest > 0);
+      el.setAttribute("aria-label", "Return to workout: " + s.name + ", " + s.count + " of " + s.total + " sets" + (s.rest ? ", resting " + fmt(s.rest) : ""));
+      const dock = document.querySelector(".tabs");
+      if (dock) { const r = dock.getBoundingClientRect(); if (r.height) el.style.setProperty("--st-live-bottom", Math.max(12, Math.round((window.innerHeight || 0) - r.top + 10)) + "px"); }
+    }
+    clearTimeout(liveTick);
+    if (s && (show || s.rest)) liveTick = setTimeout(updateLive, 1000);
+    syncWake(inTrain && !!document.querySelector("#trainPage .st-train-active") && document.visibilityState === "visible");
+  }
+  async function syncWake(on) {
+    if (wakeBusy || !("wakeLock" in navigator)) return;
+    wakeBusy = true;
+    try {
+      if (on && !wake) { wake = await navigator.wakeLock.request("screen"); wake.addEventListener("release", () => { wake = null; }); }
+      else if (!on && wake) { const w = wake; wake = null; await w.release(); }
+    } catch (e) { wake = null; } finally { wakeBusy = false; }
+  }
+  function bindLive() {
+    document.addEventListener("visibilitychange", updateLive);
+    window.addEventListener("resize", updateLive);
+    updateLive();
+  }
+
+  /* ---- D77 · Your sky --------------------------------------------------------------------------------
+     The background stars are your workouts: one star for every lifting day (by date and gym) in the last
+     16 weeks, a little brighter and larger the more working sets it held; today's finished session glows.
+     Positions are a stable hash of the day, so the sky only grows. Decorative and aria-hidden; nothing
+     here is a score, and nothing is stored. */
+  let starKey = "";
+  function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function paintStars() {
+    try {
+      if (typeof NXT !== "object" || typeof NXT.workRows !== "function" || typeof state !== "object" || !state) return;
+      const since = NXT.dateAdd(state.date, -112), days = new Map();
+      for (const r of NXT.workRows()) { if (r.date < since) continue; const k = r.date + "|" + (r.gym || "Gym A"); days.set(k, (days.get(k) || 0) + 1); }
+      const doneToday = typeof NXT.planDone === "function" && NXT.planDone();
+      const key = [...days].map(([k, n]) => k + ":" + n).join(",") + (doneToday ? "|done" : "");
+      if (key === starKey) return;
+      starKey = key;
+      let host = document.getElementById("stStars");
+      if (!host) { host = document.createElement("div"); host.id = "stStars"; host.setAttribute("aria-hidden", "true"); document.body.prepend(host); }
+      host.innerHTML = [...days].map(([k, n]) => {
+        const h = hashStr(k), x = 3 + (h % 9400) / 100, y = 2 + ((h >>> 11) % 7000) / 100;
+        const s = Math.min(3.4, 1.3 + n / 10), o = Math.min(1, .5 + n / 36);
+        const today = k.startsWith(state.date + "|") && doneToday;
+        return `<i${today ? ' class="is-today"' : ""} style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%;--s:${s.toFixed(2)}px;--o:${o.toFixed(2)};--d:${((h >>> 5) % 60) / 10}s"></i>`;
+      }).join("");
+    } catch (e) { /* decorative */ }
+  }
+
   /* D69 · Living sky. The canvas follows the device clock (the clock the greeting already reads):
      dawn 05–09, day 09–17, dusk 17–21, night 21–05. Presentation only; refreshed every five minutes
      and whenever the app comes back to the foreground. sky(name) pins a state (verification only). */
@@ -825,6 +926,8 @@ const STRATA = (() => {
     bindView(page, entering);
     syncDock();
     queueTop();
+    updateLive();
+    paintStars();
   }
   function install() {
     /* The global render slots are `let`/function bindings in index.html, so
@@ -850,6 +953,7 @@ const STRATA = (() => {
     bindParallax();
     bindSky();
     bindTop();
+    bindLive();
     if (typeof switchTab === "function" && !switchTab.__strata) {
       const f = switchTab;
       switchTab = function () { return navigate(f, arguments); };
