@@ -1,0 +1,27 @@
+# Elevate — proposed decisions (awaiting owner approval)
+
+All presentation and interaction. None changes a calculation, a storage key, a record shape or what a number means;
+every motion has a reduced-motion path (OS setting and Settings › Appearance). Numbering continues from the Ascension
+proposals (D60–D68).
+
+| # | Decision |
+|---|---|
+| D69 | **Living sky.** The canvas follows the device clock: dawn 05–09 (apricot), day 09–17 (orchid), dusk 17–21 (violet), night 21–05 (indigo, stars forward). Titles pick up the hour's light. Static under reduced motion. |
+| D69a | **Dark launch images.** `apple-touch-startup-image` for 13 iPhone sizes, each the launch overlay's own first frame (D65), rendered by `tasks/elevate/splash.mjs`. |
+| D70 | **One page frame.** One gutter (16 pt, 12 pt under 360) and one masthead (context line over a 34 pt Geist title) on every tab. Active Train keeps its own frame (D6, D18). |
+| D71 | **Native tab navigation.** Per-tab scroll memory, re-tap to top, View Transitions (title travels with direction; session name and trend figure morph; Start workout opens as a portal). Plain swap without support or under reduced motion. |
+| D72 | **Scroll-aware top chrome.** A frosted strip under the status bar once scrolled; a glass title capsule once the title has gone (tap to top). Hidden in a workout. |
+| D73 | **Body of Light.** Today draws this week's working sets on the body: each muscle's light is its share of the busiest muscle's sets (primary muscles from `NXTLIB`, counts beside it), assisted-only muscles dimmer, unmapped exercises named, never inferred. Read-only. |
+| D74 | **Rest orb and set ignition.** The rest strip is a ring driven by the engine's countdown with an 8 s breath, a last-10 s pulse and "Go" when a rest runs out; "Up next" shows the coach's target for the next set. A logged row gets one sweep of light. |
+| D75 | **Workout mini-player.** While a lift session is under way (logged sets, not finished) other tabs show a live pill (sets done, rest); the Train tab wears a progress ring; Screen Wake Lock while the workout is on screen. |
+| D76 | **In-app questions.** Finish workout, Undo last set, Delete weigh-in and a gym switch with logged sets ask in a glass sheet instead of `confirm()`; same answers. |
+| D77 | **Finish moment and your sky.** Finishing opens a full-screen scene (constellation of the session's sets, closing ring, counted numbers, D27 highlights, typeset receipt; volume = load × reps of working sets). Background stars are lifting days of the last 16 weeks. |
+| D78 | **Haptics.** A system tick on saves and while scrubbing (iOS 18+ switch haptic; Android vibrate); follows the phone's System Haptics setting. |
+| D79 | **Dynamic Island alerts.** Toasts grow out of the island, are announced (role=status) and restart their timer per alert; a workout's "set saved" alert is announced but not drawn. |
+| D80 | **Keyboard-safe sheets.** Sheets meet the screen edge, ride on the keyboard with the confirm button pinned; weigh-in keeps one decimal, fits long values and states what it expects. |
+| D81 | **Today and chrome polish.** A warning verdict leads Today; Liquid Glass dock; stretchy titles; a morning weigh-in chip (04–12, until logged); the chart's latest trend value glows and the tooltip names the day as lived (session, sets, cardio). |
+| D82 | **Glance mode.** After 8 s untouched during a rest: a near-black view with countdown, next load, set and session clock. Any touch or key returns; 20 s grace after a manual return. |
+| D83 | **New best, per set.** The set that first passes every earlier session (D27's rule) carries a lit star; light burst and double tick when fresh. Nothing stored. |
+| D84 | **History numbers.** The calendar shows the filter's own number (morning kg, working sets, cardio minutes); the day card leads with the morning reading (D7) and lists later readings under it. |
+| D85 | **Share your cut.** A 1080×1350 card from the Cut journey's facts with the morning trend line and lifting days; "Show weights" off keeps only the changes; Web Share or PNG. Nothing stored or sent by the app. |
+| D86 | **Back where you left off.** A rest interrupted by iOS closing the app resumes on reopening (last set's time + the engine's rest length; nothing stored; a +30 s is not remembered); the first workout screen after launch moves off a finished exercise. |
