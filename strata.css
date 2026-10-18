@@ -3772,3 +3772,6 @@ body .toast.st-island.is-quiet{position:fixed !important;width:1px !important;he
 }
 @keyframes st-portal{from{clip-path:circle(0 at var(--st-px,50%) var(--st-py,70%));filter:brightness(1.6)}60%{filter:brightness(1.08)}to{clip-path:circle(150% at var(--st-px,50%) var(--st-py,70%));filter:none}}
 @keyframes st-portal-old{to{opacity:.35;transform:scale(.96)}}
+/* The canvas's own dust of stars (D39) dims with the workout sky; a class from strata.js, since :has()
+   on <html> would be re-evaluated on every change in the page. */
+:root.st-in-workout::before{opacity:.25 !important;animation:none !important}

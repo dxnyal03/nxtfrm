@@ -836,7 +836,9 @@ const STRATA = (() => {
     }
     clearTimeout(liveTick);
     if (s && (show || s.rest)) liveTick = setTimeout(updateLive, 1000);
-    syncWake(inTrain && !!document.querySelector("#trainPage .st-train-active") && document.visibilityState === "visible");
+    const workoutOn = inTrain && !!document.querySelector("#trainPage .st-train-active");
+    document.documentElement.classList.toggle("st-in-workout", workoutOn);
+    syncWake(workoutOn && document.visibilityState === "visible");
   }
   async function syncWake(on) {
     if (wakeBusy || !("wakeLock" in navigator)) return;
