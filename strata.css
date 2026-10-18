@@ -3699,3 +3699,60 @@ body.st-live-on main::after{content:"";display:block;height:70px}
 #homePage .st-bl.is-empty .st-bl-grid{grid-template-columns:120px minmax(0,1fr);align-items:center}
 #homePage .st-bl.is-empty .st-bl-stage{max-width:120px;margin:0}
 #homePage .st-bl.is-empty .st-bl-fig small{display:none}
+/* ---- D79 · Dynamic Island alerts ------------------------------------------------------------------------
+   The toast is a black capsule that grows out of the island (top 11pt on island iPhones: the safe-area top
+   minus 51pt; 8px elsewhere), widens to its words, and shrinks back into the island when it goes. */
+.toast.st-island{position:fixed !important;left:50% !important;right:auto !important;bottom:auto !important;top:max(8px,calc(var(--nxt-safe-top,0px) - 51px)) !important;
+  transform:translateX(-50%) !important;translate:none !important;scale:none !important;z-index:10070 !important;width:max-content;max-width:min(360px,calc(100vw - 24px));
+  min-height:44px;margin:0 !important;padding:13px 22px 13px 18px !important;border:0 !important;border-radius:999px !important;
+  background:#000 !important;color:#fff !important;font:560 14px/1.25 var(--st-font) !important;text-align:left;
+  box-shadow:0 16px 36px -14px rgba(0,0,0,.95),0 0 0 1px rgba(255,255,255,.07),0 0 30px -12px rgba(139,92,246,.6) !important;
+  -webkit-backdrop-filter:none !important;backdrop-filter:none !important;animation:none !important}
+.toast.st-island::before{background:#C4B5FD !important;box-shadow:0 0 10px rgba(196,181,253,.9) !important}
+@media (prefers-reduced-motion:no-preference){
+  .toast.st-island{animation:st-island-in .6s cubic-bezier(.32,.72,0,1) both !important}
+  .toast.st-island.is-out{animation:st-island-out .28s cubic-bezier(.4,0,1,1) both !important}
+}
+@keyframes st-island-in{0%{clip-path:inset(3px calc(50% - 63px) 3px calc(50% - 63px) round 999px);color:transparent}45%{color:transparent}100%{clip-path:inset(0 0 0 0 round 999px);color:#fff}}
+@keyframes st-island-out{0%{clip-path:inset(0 0 0 0 round 999px)}100%{clip-path:inset(3px calc(50% - 63px) 3px calc(50% - 63px) round 999px);color:transparent;opacity:0}}
+:root[data-nxp-motion="reduced"] .toast.st-island{animation:none !important}
+
+/* ---- Weight chart lift: the latest trend value glows, the scrub beam is a column of light ---------------- */
+#weightPage .st-comet-halo{fill:rgba(167,139,250,.22);transform-box:fill-box;transform-origin:center}
+#weightPage .st-comet-ring{fill:none;stroke:rgba(214,200,255,.65);stroke-width:1.2}
+#weightPage .st-comet-core{fill:#fff;filter:drop-shadow(0 0 6px rgba(214,200,255,.95)) drop-shadow(0 0 14px rgba(139,92,246,.85))}
+@media (prefers-reduced-motion:no-preference){#weightPage .st-comet-halo{animation:st-comet 2.8s ease-in-out infinite}}
+@keyframes st-comet{0%,100%{transform:scale(.7);opacity:.9}50%{transform:scale(1.35);opacity:.25}}
+:root[data-nxp-motion="reduced"] #weightPage .st-comet-halo{animation:none !important}
+#weightPage #st-scan{filter:drop-shadow(0 0 10px rgba(167,139,250,.55))}
+#weightPage #n99-chart-active{filter:drop-shadow(0 0 7px rgba(214,200,255,.95))}
+
+/* ---- Liquid Glass dock ------------------------------------------------------------------------------------
+   Thicker glass with a specular rim, a glint of light on the edge above the active tab, and a pill that
+   stretches as it travels and settles with a spring. */
+.tabs{background:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.02) 46%,rgba(255,255,255,.035)),rgba(18,16,28,.6) !important;
+  -webkit-backdrop-filter:blur(30px) saturate(1.9) !important;backdrop-filter:blur(30px) saturate(1.9) !important;border-color:rgba(255,255,255,.1) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(255,255,255,.05),inset 0 0 22px -12px rgba(196,181,253,.35),0 24px 48px -18px rgba(0,0,0,.92),0 0 0 .5px rgba(0,0,0,.4) !important}
+.tabs .tabs-inner.st-dock::after{content:"";position:absolute;z-index:2;pointer-events:none;top:-7px;height:12px;left:0;width:calc(100% / var(--tab-n,5));
+  transform:translateX(calc(var(--tab-i,0) * 100%));transition:transform .55s cubic-bezier(.34,1.3,.64,1);
+  background:radial-gradient(42% 50% at 50% 50%,rgba(255,255,255,.55),rgba(214,200,255,.18) 45%,transparent 72%);filter:blur(.5px)}
+@media (prefers-reduced-motion:no-preference){.tabs .tabs-inner.st-dock.is-moving::before{animation:st-dock-stretch .52s cubic-bezier(.32,.72,0,1)}}
+@keyframes st-dock-stretch{0%{scale:1 1}38%{scale:1.3 .9}72%{scale:.97 1.03}100%{scale:1 1}}
+:root[data-nxp-motion="reduced"] .tabs .tabs-inner.st-dock::after{transition:none !important}
+@media (min-width:1024px){.tabs .tabs-inner.st-dock::after{display:none}}
+
+/* Sheets: the page behind recedes around the middle of what is on screen, not the middle of the document. */
+html.st-sheet-open main{transform-origin:50% calc(var(--st-sy,0) * 1px + 50vh)}
+.toast.st-island{width:max-content !important;max-width:min(360px,calc(100vw - 24px)) !important;min-width:0 !important;white-space:normal}
+/* ---- D80 · Keyboard-safe sheets ---------------------------------------------------------------------------
+   Sheets meet the screen edge (the V33 rule padded the overlay by the safe area again, leaving a 46pt band
+   under every sheet on an iPhone); with the keyboard up the sheet rides on it, fits what is visible, and its
+   confirm button stays pinned at the bottom of the sheet. */
+@media (max-width:767px){#modalRoot .modal{padding-bottom:0 !important}}
+html.st-kb-open #modalRoot .modal{align-items:flex-end !important;padding-bottom:0 !important}
+html.st-kb-open #modalRoot .modal .sheet{margin-bottom:var(--st-kb,0px) !important;max-height:calc(var(--st-vvh,100dvh) - 10px) !important;padding-bottom:12px !important;transition:margin-bottom .25s cubic-bezier(.32,.72,0,1)}
+html.st-kb-open #modalRoot .modal .sheet form>button[type="submit"]:last-child,html.st-kb-open #modalRoot .modal .sheet>.n99-button:last-child{position:sticky;bottom:0;z-index:3;
+  box-shadow:0 -14px 24px -8px rgba(21,20,29,.95),inset 0 1px 0 rgba(255,255,255,.3) !important}
+/* Long weigh-in values step down so they never run under "kg" (same idea as Train's fitNum). */
+.n99-modal .sheet .st-qw-field input[data-len="5"]{font-size:58px !important}
+.n99-modal .sheet .st-qw-field input[data-len="6"]{font-size:48px !important}

@@ -176,6 +176,15 @@ const NXP = (() => {
     /* Ascension — the Coach stack and the Week in review sit between the training tile and the
        minis. Each is a direct child of .st-bento, so it reveals on scroll like its neighbours. */
     const coStack=coachStackHTML(),coReview=reviewTileHTML();
+    /* A warning verdict leads Today (it used to sit ~2,000px down, under every coach note); a calm one
+       keeps its place after the minis. Same card, same words — only its position changes. */
+    const decUp=r.tone==='watch';
+    const decTile=`<section class="st-tile st-t-dec${toneClass}" data-st-view aria-labelledby="vn-dec-h" style="--c:var(--st-accent)">
+            <div class="st-tile-head"><span class="st-cat">Decision</span><button type="button" class="st-link st-why" onclick="NXT.openReview()">Why<span aria-hidden="true">›</span></button></div>
+            <h2 class="st-h3" id="vn-dec-h">${esc(r.title)}</h2>
+            ${support?`<p class="st-body st-mt2">${esc(support)}</p>`:''}
+            ${decEvidenceHTML(trendEv,confEv,plateau)}
+          </section>`;
     document.getElementById('homePage').innerHTML=`<div class="vn-today st-today">
       <div class="vn-pad">
         <header class="st-head">
@@ -186,7 +195,7 @@ const NXP = (() => {
           ${lift?`<button type="button" class="st-chip" onclick="cycleGym()">${esc(state.gym||'Gym')}<span aria-hidden="true">⇄</span></button>`:''}
         </header>
         <div class="st-bento">
-          ${trainTile}${coStack}${coReview}
+          ${trainTile}${decUp?decTile:''}${coStack}${coReview}
           ${bodyLightHTML()}
           <div class="st-minis">
             ${weightTileHTML()}
@@ -216,12 +225,7 @@ const NXP = (() => {
             </button>`;
             })()}
           </div>
-          <section class="st-tile st-t-dec${toneClass}" data-st-view aria-labelledby="vn-dec-h" style="--c:var(--st-accent)">
-            <div class="st-tile-head"><span class="st-cat">Decision</span><button type="button" class="st-link st-why" onclick="NXT.openReview()">Why<span aria-hidden="true">›</span></button></div>
-            <h2 class="st-h3" id="vn-dec-h">${esc(r.title)}</h2>
-            ${support?`<p class="st-body st-mt2">${esc(support)}</p>`:''}
-            ${decEvidenceHTML(trendEv,confEv,plateau)}
-          </section>
+          ${decUp?'':decTile}
           ${bodyTileHTML()}
         </div>
       </div>

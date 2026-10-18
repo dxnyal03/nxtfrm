@@ -371,9 +371,12 @@ const STRATA = (() => {
   }
 
   /* ---- Dock indicator and spotlight --------------------------------------- */
+  let dockI = -1, dockT = 0;
   function syncDock() {
     const inner = document.querySelector(".tabs .tabs-inner"); if (!inner) return;
     const tabs = [...inner.querySelectorAll(".tab")], i = tabs.findIndex(t => t.classList.contains("active"));
+    if (dockI !== -1 && i !== dockI && !reduced()) { inner.classList.remove("is-moving"); void inner.offsetWidth; inner.classList.add("is-moving"); clearTimeout(dockT); dockT = setTimeout(() => inner.classList.remove("is-moving"), 560); }
+    dockI = i;
     inner.style.setProperty("--tab-i", String(Math.max(0, i)));
     inner.style.setProperty("--tab-n", String(tabs.length || 5));
     inner.classList.add("st-dock");
@@ -870,6 +873,159 @@ const STRATA = (() => {
     } catch (e) { /* decorative */ }
   }
 
+  /* ---- D78 · Haptics ----------------------------------------------------------------------------------
+     A light system tick when something is saved (Log set, Save weigh-in, Log cardio, Finish) and while a
+     finger scrubs across readings. Android: the Vibration API. iPhone (iOS 18+): toggling a switch control
+     plays the system selection haptic, so a hidden one is toggled. Follows the phone's own System Haptics
+     setting; under reduced motion only the save tick remains. Nothing is stored. */
+  let hapticLabel = null;
+  function haptic(kind) {
+    try {
+      if (kind === "tick" && reduced()) return;
+      if (typeof navigator.vibrate === "function" && !/iP(hone|ad|od)/.test(navigator.userAgent || "")) { navigator.vibrate(kind === "success" ? [10, 40, 16] : 6); return; }
+      if (!hapticLabel || !hapticLabel.isConnected) {
+        hapticLabel = document.createElement("label");
+        hapticLabel.setAttribute("aria-hidden", "true");
+        hapticLabel.style.display = "none";
+        const sw = document.createElement("input");
+        sw.type = "checkbox"; sw.setAttribute("switch", ""); sw.tabIndex = -1;
+        hapticLabel.appendChild(sw);
+        document.head.appendChild(hapticLabel);
+      }
+      hapticLabel.click();
+      if (kind === "success") setTimeout(() => { try { hapticLabel.click(); } catch (e) {} }, 85);
+    } catch (e) { /* no haptics on this device */ }
+  }
+  function bindHaptics() {
+    const wrap = (name, test) => {
+      try {
+        const f = window[name];
+        if (typeof f !== "function" || f.__strataH) return;
+        const g = function () {
+          const before = test();
+          const out = f.apply(this, arguments);
+          const check = () => { if (test() > before) haptic("success"); };
+          if (out && typeof out.then === "function") out.then(check, () => {}); else check();
+          return out;
+        };
+        g.__strataH = true;
+        window[name] = g;
+      } catch (e) {}
+    };
+    wrap("apx95SaveQuickWeight", () => (state && Array.isArray(state.bws) ? state.bws.length : 0));
+    const n = (obj, k, test) => { if (!obj) return; const f = obj[k]; if (typeof f !== "function" || f.__strataH) return; obj[k] = function () { const b = test(); const o = f.apply(this, arguments); const c = () => { if (test() > b) haptic("success"); }; if (o && typeof o.then === "function") o.then(c, () => {}); else c(); return o; }; obj[k].__strataH = true; };
+    /* The Train form calls NXP.logSet(); the cardio form and Finish call NXT directly. */
+    if (typeof NXP === "object") n(NXP, "logSet", () => (state && Array.isArray(state.logs) ? state.logs.length : 0));
+    if (typeof NXT === "object") {
+      n(NXT, "saveCardio", () => (state && Array.isArray(state.cardio) ? state.cardio.length : 0));
+      n(NXT, "finish", () => (typeof NXT.planDone === "function" && NXT.planDone() ? 1 : 0));
+    }
+  }
+
+  /* ---- D79 · Dynamic Island alerts -------------------------------------------------------------------
+     Confirmations grow out of the Dynamic Island as a black capsule (on phones without one, from the top
+     edge) instead of a glass toast. The alert is now announced to VoiceOver (role=status), and a second
+     alert restarts the timer instead of vanishing on the first one's. Same words as before. */
+  let toastTimer = 0, toastOut = 0;
+  function bindIsland() {
+    if (typeof toast !== "function" || toast.__strataIsland) return;
+    const orig = toast;
+    toast = function (m) {
+      const t = document.getElementById("toast");
+      if (!t) return orig.apply(this, arguments);
+      t.setAttribute("role", "status"); t.setAttribute("aria-live", "polite");
+      clearTimeout(toastTimer); clearTimeout(toastOut);
+      t.classList.remove("st-island", "is-out"); void t.offsetWidth;
+      t.textContent = String(m == null ? "" : m);
+      t.classList.add("st-island");
+      t.style.display = "block";
+      toastTimer = setTimeout(() => {
+        t.classList.add("is-out");
+        toastOut = setTimeout(() => { t.style.display = "none"; t.classList.remove("st-island", "is-out"); }, reduced() ? 0 : 280);
+      }, 2300);
+    };
+    toast.__strataIsland = true;
+  }
+
+  /* ---- Weight chart: a glowing head on the latest trend value, a tick under the finger --------------- */
+  let lastScrub = -1;
+  function dressChartHead() {
+    const svg = document.getElementById("n99-chart-svg"), m = typeof NXT === "object" && NXT.ui && NXT.ui.chart;
+    if (!svg || !m || !Array.isArray(m.points) || svg.querySelector(".st-comet")) return;
+    const last = [...m.points].reverse().find(p => p && p.ty !== null && p.ty !== undefined && Number.isFinite(Number(p.ty)));
+    if (!last) return;
+    const g = document.createElementNS(NS, "g");
+    g.setAttribute("class", "st-comet"); g.setAttribute("aria-hidden", "true"); g.setAttribute("pointer-events", "none");
+    g.innerHTML = `<circle class="st-comet-halo" cx="${last.x}" cy="${last.ty}" r="11"/><circle class="st-comet-ring" cx="${last.x}" cy="${last.ty}" r="6.5"/><circle class="st-comet-core" cx="${last.x}" cy="${last.ty}" r="3.4"/>`;
+    svg.appendChild(g);
+  }
+
+  /* ---- Stretchy large titles: pulling down past the top swells the page title, iOS-style ----------- */
+  let stretchRaf = 0;
+  function stretchTitle() {
+    stretchRaf = 0;
+    const y = window.scrollY || 0, el = document.querySelector(MAST[currentTab()]);
+    if (!el) return;
+    const s = y < 0 && !reduced() ? Math.min(1.12, 1 - y / 900) : 1;
+    el.style.transform = s === 1 ? "" : `scale(${s.toFixed(3)})`;
+    el.style.transformOrigin = "0 100%";
+  }
+  function bindStretch() { window.addEventListener("scroll", () => { if (!stretchRaf) stretchRaf = requestAnimationFrame(stretchTitle); }, { passive: true }); }
+
+  /* ---- D80 · Keyboard-safe sheets, calmer weigh-in entry, a guarded gym switch --------------------------
+     With the keyboard up, a sheet sits on top of it (its bottom follows the visual viewport, its height is
+     capped to what is visible) and its primary button stays pinned in view; the focused field is brought
+     into view inside the sheet. The weigh-in field keeps one decimal (the field's own step) and says what
+     it wants instead of Safari's "Enter a valid value". Switching gym once today's session has sets asks
+     first, because every aim and comparison then reads the other gym's history. */
+  function bindSheetKeyboard() {
+    const vv = window.visualViewport, de = document.documentElement;
+    const sync = () => {
+      const sheet = document.querySelector("#modalRoot .modal .sheet");
+      const kb = vv ? Math.max(0, Math.round((window.innerHeight || 0) - vv.height - (vv.offsetTop || 0))) : 0;
+      const open = !!sheet && kb > 60;
+      de.classList.toggle("st-kb-open", open);
+      if (open) {
+        de.style.setProperty("--st-kb", kb + "px");
+        de.style.setProperty("--st-vvh", Math.round(vv.height) + "px");
+        const a = document.activeElement;
+        if (a && sheet.contains(a) && typeof a.scrollIntoView === "function") a.scrollIntoView({ block: "nearest" });
+      }
+    };
+    if (vv) { vv.addEventListener("resize", sync); vv.addEventListener("scroll", sync); }
+    document.addEventListener("focusin", () => setTimeout(sync, 80));
+    document.addEventListener("focusout", () => setTimeout(sync, 160));
+    document.addEventListener("input", e => {
+      const el = e.target;
+      if (!el || el.id !== "apx95WeightValue") return;
+      el.setCustomValidity("");
+      const v = String(el.value || ""), m = /^(\d+)\.(\d{2,})$/.exec(v);
+      if (m) el.value = m[1] + "." + m[2].charAt(0);
+      el.setAttribute("data-len", String(Math.min(6, Math.max(1, String(el.value || "").length))));
+    }, true);
+    document.addEventListener("invalid", e => {
+      const el = e.target;
+      if (el && el.id === "apx95WeightValue") el.setCustomValidity(el.validity.valueMissing ? "Enter your weight, like 82.4" : "Use kilograms with one decimal, between 20 and 400 — like 82.4");
+    }, true);
+  }
+  function bindGymGuard() {
+    if (typeof cycleGym !== "function" || cycleGym.__strata) return;
+    const f = cycleGym;
+    cycleGym = async function () {
+      try {
+        const n = typeof NXT === "object" && NXT.sessionLogs ? NXT.sessionLogs().filter(r => r.setType !== "warmup").length : 0;
+        if (n && !(NXT.planDone && NXT.planDone()) && typeof NXP === "object" && NXP.ask) {
+          const gyms = state.gyms && state.gyms.length > 1 ? state.gyms : ["AF Redhill", "SUTD"];
+          const next = gyms[(Math.max(0, gyms.indexOf(state.gym)) + 1) % gyms.length];
+          const ok = await NXP.ask({ title: "Switch to " + next + "?", body: "Today's " + n + " logged " + (n === 1 ? "set stays" : "sets stay") + " with " + state.gym + ". Aims and comparisons will use " + next + "'s history.", ok: "Switch to " + next });
+          if (!ok) return;
+        }
+      } catch (e) { /* fall through to the switch */ }
+      return f.apply(this, arguments);
+    };
+    cycleGym.__strata = true;
+  }
+
   /* D69 · Living sky. The canvas follows the device clock (the clock the greeting already reads):
      dawn 05–09, day 09–17, dusk 17–21, night 21–05. Presentation only; refreshed every five minutes
      and whenever the app comes back to the foreground. sky(name) pins a state (verification only). */
@@ -923,6 +1079,7 @@ const STRATA = (() => {
     foldBody(page);
     if (page.id === "trainPage") bindTrain(page);
     bindProgressReplay(page);
+    if (page.id === "weightPage") dressChartHead();
     bindView(page, entering);
     syncDock();
     queueTop();
@@ -944,7 +1101,7 @@ const STRATA = (() => {
     bindSheets();
     if (typeof NXT === "object" && typeof NXT.selectPoint === "function" && !NXT.selectPoint.__strata) {
       const sp = NXT.selectPoint;
-      NXT.selectPoint = function (index, opts) { const o = sp.apply(this, arguments); try { progressTip(index, opts); weeksSync(index); } catch (e) {} return o; };
+      NXT.selectPoint = function (index, opts) { const o = sp.apply(this, arguments); try { progressTip(index, opts); weeksSync(index); if (index !== lastScrub && !(opts && opts.clear)) { if (lastScrub !== -1) haptic("tick"); lastScrub = index; } } catch (e) {} return o; };
       NXT.selectPoint.__strata = true;
     }
     bindCalSwipe();
@@ -954,6 +1111,11 @@ const STRATA = (() => {
     bindSky();
     bindTop();
     bindLive();
+    bindHaptics();
+    bindIsland();
+    bindStretch();
+    bindSheetKeyboard();
+    bindGymGuard();
     if (typeof switchTab === "function" && !switchTab.__strata) {
       const f = switchTab;
       switchTab = function () { return navigate(f, arguments); };
@@ -975,7 +1137,7 @@ const STRATA = (() => {
     });
     document.documentElement.classList.add("st-on");
   }
-  return { hydrate, install, odoSet, stopReplay, sky };
+  return { hydrate, install, odoSet, stopReplay, sky, haptic };
 })();
 STRATA.install();
 if (typeof NXT === "object" && NXT && typeof NXT.repaint === "function" && document.readyState !== "loading") {
