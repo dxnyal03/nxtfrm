@@ -3756,3 +3756,19 @@ html.st-kb-open #modalRoot .modal .sheet form>button[type="submit"]:last-child,h
 /* Long weigh-in values step down so they never run under "kg" (same idea as Train's fitNum). */
 .n99-modal .sheet .st-qw-field input[data-len="5"]{font-size:58px !important}
 .n99-modal .sheet .st-qw-field input[data-len="6"]{font-size:48px !important}
+html.st-kb-open #modalRoot .modal .sheet{padding-bottom:0 !important}
+html.st-kb-open #modalRoot .modal .sheet form>button[type="submit"]:last-child,html.st-kb-open #modalRoot .modal .sheet>.n99-button:last-child{margin-bottom:10px !important;
+  box-shadow:0 -16px 22px -6px var(--st-surface,#15141D),0 10px 0 0 var(--st-surface,#15141D),inset 0 1px 0 rgba(255,255,255,.3) !important}
+/* In a workout the sky steps back (D6 focus): the stars dim so nothing reads as dust on the instrument. */
+body:has(#trainPage .st-train-active) #stStars{opacity:.22 !important}
+/* The canvas drift and star twinkle (D39) only checked the OS setting; Settings › Appearance › Reduced stops them too. */
+:root[data-nxp-motion="reduced"]::before,:root[data-nxp-motion="reduced"]::after{animation:none !important;transition:none !important}
+body .toast.st-island,body:has(.tabs.vn-recede) .toast.st-island{top:max(8px,calc(var(--nxt-safe-top,0px) - 51px)) !important}
+body .toast.st-island.is-quiet{position:fixed !important;width:1px !important;height:1px !important;min-height:0 !important;padding:0 !important;overflow:hidden !important;clip-path:inset(50%) !important;white-space:nowrap !important;animation:none !important;box-shadow:none !important}
+/* Portal launch: the workout opens as a circle of light from the button you pressed. */
+@media (prefers-reduced-motion:no-preference){
+  :root[data-st-nav="portal"]::view-transition-old(root){animation:st-portal-old .5s ease both}
+  :root[data-st-nav="portal"]::view-transition-new(root){animation:st-portal .72s cubic-bezier(.45,.05,.25,1) both}
+}
+@keyframes st-portal{from{clip-path:circle(0 at var(--st-px,50%) var(--st-py,70%));filter:brightness(1.6)}60%{filter:brightness(1.08)}to{clip-path:circle(150% at var(--st-px,50%) var(--st-py,70%));filter:none}}
+@keyframes st-portal-old{to{opacity:.35;transform:scale(.96)}}

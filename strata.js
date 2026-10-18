@@ -695,6 +695,9 @@ const STRATA = (() => {
     { name: "st-m-live", sel: { home: "#stLive", weight: "#stLive", history: "#stLive", more: "#stLive", train: "#trainPage .st-tbar" } }
   ];
   const scrollMemo = {};
+  /* Portal launch: Start / Resume workout opens the workout as a circle of light from the button. */
+  let lastPress = null;
+  document.addEventListener("pointerdown", e => { const b = e.target && e.target.closest && e.target.closest(".st-cta,.st-live"); lastPress = b ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; }, true);
   function onScreen(el) {
     if (!el || !el.getBoundingClientRect) return false;
     const r = el.getBoundingClientRect(), vh = window.innerHeight || 800;
@@ -720,11 +723,14 @@ const STRATA = (() => {
     };
     const de = document.documentElement;
     if (typeof document.startViewTransition !== "function" || reduced() || document.hidden || de.classList.contains("st-sheet-open")) return swap();
-    de.setAttribute("data-st-nav", TABS.indexOf(to) > TABS.indexOf(from) ? "fwd" : "back");
+    const portal = to === "train" && lastPress && performance.now() - lastPress.t < 1500;
+    if (portal) { de.style.setProperty("--st-px", Math.round(lastPress.x) + "px"); de.style.setProperty("--st-py", Math.round(lastPress.y) + "px"); lastPress = null; }
+    de.setAttribute("data-st-nav", portal ? "portal" : TABS.indexOf(to) > TABS.indexOf(from) ? "fwd" : "back");
     const named = [];
     const tag = (el, n) => { if (el) { el.style.viewTransitionName = n; named.push(el); } };
-    const pairs = MORPH.filter(m => m.sel[from] && m.sel[to]).map(m => ({ m, el: pick(m.sel[from]) })).filter(p => p.el);
-    tag(pick(MAST[from]), "st-mast");
+    /* A portal is the only motion of its transition: no title travel, no flying name. */
+    const pairs = portal ? [] : MORPH.filter(m => m.sel[from] && m.sel[to]).map(m => ({ m, el: pick(m.sel[from]) })).filter(p => p.el);
+    if (!portal) tag(pick(MAST[from]), "st-mast");
     pairs.forEach(p => tag(p.el, p.m.name));
     const untag = () => { named.splice(0).forEach(el => { el.style.viewTransitionName = ""; }); };
     let out;
@@ -732,7 +738,7 @@ const STRATA = (() => {
       const t = document.startViewTransition(() => {
         untag();
         out = swap();
-        tag(pick(MAST[to]), "st-mast");
+        if (!portal) tag(pick(MAST[to]), "st-mast");
         pairs.forEach(p => tag(pick(p.m.sel[to]), p.m.name));
       });
       const done = () => { untag(); de.removeAttribute("data-st-nav"); };
@@ -938,10 +944,13 @@ const STRATA = (() => {
       t.classList.remove("st-island", "is-out"); void t.offsetWidth;
       t.textContent = String(m == null ? "" : m);
       t.classList.add("st-island");
+      /* In a workout the Log button already confirms the set in place; the alert is still announced to
+         VoiceOver but not drawn over the instrument. */
+      t.classList.toggle("is-quiet", /^(working|warm-up|extra) set saved/i.test(t.textContent) && !!document.querySelector("#trainPage .st-train-active"));
       t.style.display = "block";
       toastTimer = setTimeout(() => {
         t.classList.add("is-out");
-        toastOut = setTimeout(() => { t.style.display = "none"; t.classList.remove("st-island", "is-out"); }, reduced() ? 0 : 280);
+        toastOut = setTimeout(() => { t.style.display = "none"; t.classList.remove("st-island", "is-out", "is-quiet"); }, reduced() ? 0 : 280);
       }, 2300);
     };
     toast.__strataIsland = true;
