@@ -677,6 +677,112 @@ const STRATA = (() => {
     });
   }
 
+  /* ---- D71 · Native tab navigation -----------------------------------------------------------------
+     One wrapper around switchTab (installed below): every tab keeps its own scroll position, tapping the
+     tab you are already on returns it to the top, and a change of tab is a View Transition — the page
+     crossfades while its title slides in the direction of travel, and the session name (Today → Train)
+     and the trend figure (Today → Progress) fly across when both ends are on screen. Reduced motion, a
+     hidden page, an open sheet or a browser without View Transitions gets the plain swap, as before. */
+  const TABS = ["home", "train", "weight", "history", "more"];
+  const TITLES = { home: "Today", train: "Train", weight: "Progress", history: "History", more: "Settings" };
+  const MAST = { home: "#homePage .st-head .st-h1", train: "#trainPage .nxp-train-chrome h1", weight: "#weightPage .nxp-progress-chrome h1", history: "#historyPage .vn-hist-chrome h1", more: "#morePage .vn-set-title" };
+  const MORPH = [
+    { name: "st-m-session", sel: { home: "#homePage .st-t-train .st-h2", train: "#trainPage .nxp-train-chrome h1, #trainPage .st-tbar-t" } },
+    { name: "st-m-trend", sel: { home: "#homePage .st-mini [data-st-odo]", weight: "#n99-chart-average" } }
+  ];
+  const scrollMemo = {};
+  function onScreen(el) {
+    if (!el || !el.getBoundingClientRect) return false;
+    const r = el.getBoundingClientRect(), vh = window.innerHeight || 800;
+    return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < vh;
+  }
+  function pick(sel) { if (!sel) return null; for (const el of document.querySelectorAll(sel)) if (onScreen(el)) return el; return null; }
+  function currentTab() { return (typeof state === "object" && state && TABS.includes(state.tab)) ? state.tab : "home"; }
+  function navigate(orig, args) {
+    const from = currentTab(), to = TABS.includes(args[0]) ? args[0] : "home";
+    if (to === from) {
+      const out = orig.apply(null, args);
+      if ((window.scrollY || 0) > 2) window.scrollTo({ top: 0, behavior: reduced() ? "auto" : "smooth" });
+      return out;
+    }
+    scrollMemo[from] = window.scrollY || 0;
+    const back = scrollMemo[to] || 0;
+    const swap = () => {
+      window.scrollTo(0, 0);
+      const o = orig.apply(null, args);
+      if (back) window.scrollTo(0, back);
+      queueTop();
+      return o;
+    };
+    const de = document.documentElement;
+    if (typeof document.startViewTransition !== "function" || reduced() || document.hidden || de.classList.contains("st-sheet-open")) return swap();
+    de.setAttribute("data-st-nav", TABS.indexOf(to) > TABS.indexOf(from) ? "fwd" : "back");
+    const named = [];
+    const tag = (el, n) => { if (el) { el.style.viewTransitionName = n; named.push(el); } };
+    const pairs = MORPH.filter(m => m.sel[from] && m.sel[to]).map(m => ({ m, el: pick(m.sel[from]) })).filter(p => p.el);
+    tag(pick(MAST[from]), "st-mast");
+    pairs.forEach(p => tag(p.el, p.m.name));
+    const untag = () => { named.splice(0).forEach(el => { el.style.viewTransitionName = ""; }); };
+    let out;
+    try {
+      const t = document.startViewTransition(() => {
+        untag();
+        out = swap();
+        tag(pick(MAST[to]), "st-mast");
+        pairs.forEach(p => tag(pick(p.m.sel[to]), p.m.name));
+      });
+      const done = () => { untag(); de.removeAttribute("data-st-nav"); };
+      t.finished.then(done, done);
+    } catch (e) { untag(); de.removeAttribute("data-st-nav"); return swap(); }
+    return out;
+  }
+
+  /* ---- D72 · Scroll-aware top chrome ----------------------------------------------------------------
+     Once the page scrolls, a frosted strip sits behind the clock and status icons so text never runs
+     under them; when the page title has scrolled away, a small glass capsule with the tab's name settles
+     under the status bar (tap it to go back to the top). Hidden in an active workout, which has its own
+     header (D6). Decorative duplicate of the visible title, so it is hidden from assistive tech. */
+  let topEl = null, topRaf = 0;
+  function ensureTop() {
+    if (topEl && topEl.isConnected) return topEl;
+    topEl = document.createElement("div");
+    topEl.id = "stTop";
+    topEl.setAttribute("aria-hidden", "true");
+    topEl.innerHTML = '<i class="st-top-scrim"></i><button type="button" class="st-top-bar" tabindex="-1"><span class="st-top-t"></span></button>';
+    topEl.querySelector(".st-top-bar").addEventListener("click", () => window.scrollTo({ top: 0, behavior: reduced() ? "auto" : "smooth" }));
+    document.body.appendChild(topEl);
+    return topEl;
+  }
+  function updateTop() {
+    topRaf = 0;
+    if (!document.body) return;
+    const el = ensureTop(), tab = currentTab(), y = window.scrollY || 0;
+    const workout = tab === "train" && !!document.querySelector("#trainPage .st-train-active");
+    const bar = el.querySelector(".st-top-bar"), mast = document.querySelector(MAST[tab]);
+    const line = bar.getBoundingClientRect().bottom || 60;
+    const past = mast && mast.offsetParent !== null ? mast.getBoundingClientRect().bottom < line : y > 140;
+    el.classList.toggle("is-scrolled", y > 4 && !workout);
+    el.classList.toggle("is-compact", !!past && y > 4 && !workout);
+    const t = el.querySelector(".st-top-t");
+    if (t.textContent !== TITLES[tab]) t.textContent = TITLES[tab] || "";
+  }
+  function queueTop() { if (!topRaf) topRaf = requestAnimationFrame(updateTop); }
+  function bindTop() { window.addEventListener("scroll", queueTop, { passive: true }); window.addEventListener("resize", queueTop); queueTop(); }
+
+  /* D69 · Living sky. The canvas follows the device clock (the clock the greeting already reads):
+     dawn 05–09, day 09–17, dusk 17–21, night 21–05. Presentation only; refreshed every five minutes
+     and whenever the app comes back to the foreground. sky(name) pins a state (verification only). */
+  let skyPinned = null;
+  function skyFor(h) { return h >= 5 && h < 9 ? "dawn" : h >= 9 && h < 17 ? "day" : h >= 17 && h < 21 ? "dusk" : "night"; }
+  function setSky() { document.documentElement.setAttribute("data-st-sky", skyPinned || skyFor(new Date().getHours())); }
+  function sky(name) { skyPinned = /^(dawn|day|dusk|night)$/.test(String(name)) ? String(name) : null; setSky(); return document.documentElement.getAttribute("data-st-sky"); }
+  function bindSky() {
+    setSky();
+    setInterval(setSky, 5 * 60 * 1000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) setSky(); });
+    window.addEventListener("pageshow", setSky);
+  }
+
   /* Scroll position feeds the canvas parallax (a CSS variable, so no per-frame layout). */
   function bindParallax() {
     let raf = 0;
@@ -718,6 +824,7 @@ const STRATA = (() => {
     bindProgressReplay(page);
     bindView(page, entering);
     syncDock();
+    queueTop();
   }
   function install() {
     /* The global render slots are `let`/function bindings in index.html, so
@@ -741,6 +848,13 @@ const STRATA = (() => {
     bindIcons();
     bindRipple();
     bindParallax();
+    bindSky();
+    bindTop();
+    if (typeof switchTab === "function" && !switchTab.__strata) {
+      const f = switchTab;
+      switchTab = function () { return navigate(f, arguments); };
+      switchTab.__strata = true;
+    }
     bindPress();
     queueSegs();
     document.addEventListener("pointerup", e => {
@@ -757,7 +871,7 @@ const STRATA = (() => {
     });
     document.documentElement.classList.add("st-on");
   }
-  return { hydrate, install, odoSet, stopReplay };
+  return { hydrate, install, odoSet, stopReplay, sky };
 })();
 STRATA.install();
 if (typeof NXT === "object" && NXT && typeof NXT.repaint === "function" && document.readyState !== "loading") {

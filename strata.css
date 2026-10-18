@@ -3346,3 +3346,165 @@ html.nx-reveal .tabs{animation:nx-dock-in .42s cubic-bezier(.32,.72,0,1) .06s ba
    Done. Flush with the edge, nothing shows beneath it and the last strip scrolls clear of it. */
 .n99-modal .sheet:has(.co-rvs){padding-bottom:0 !important}
 .n99-modal .co-rvs .n99-stack{padding-bottom:calc(22px + var(--nxt-safe-bottom,0px))}
+/* =====================================================================================================
+   ELEVATE (proposed D69–D77) · native-grade iPhone experience. Presentation and interaction only:
+   nothing below computes, stores or reinterprets a number. Every motion has a reduced-motion path.
+   ===================================================================================================== */
+
+/* ---- D69 · Living sky ------------------------------------------------------------------------------
+   The canvas follows the time of day, in the same hues the app already uses (Dusk palette, D54): a warm
+   apricot dawn, a high orchid daylight, the violet dusk the app always had, and an indigo night where the
+   stars come forward. strata.js sets html[data-st-sky] from the device clock (the same clock as the
+   greeting) and refreshes it when the app returns. Tabs keep their own light in --st-a1/--st-a3; the
+   sky only moves the two accent fields and adds one light source of its own. */
+html::after{content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;opacity:0;transition:opacity 1.6s ease,background 1.6s ease}
+:root[data-st-sky]::after{opacity:1}
+:root[data-st-sky="dawn"]{--st-a1:rgba(234,138,74,.34);--st-a2:rgba(244,114,152,.3);--st-a4:rgba(234,138,74,.3);--st-mast:rgba(240,142,88,.5);--st-sky-ink:#FFE2CC}
+:root[data-st-sky="dawn"]::after{background:
+  radial-gradient(85% 38% at 10% -4%,rgba(246,150,92,.42),transparent 72%),
+  radial-gradient(70% 30% at 96% 6%,rgba(244,114,152,.26),transparent 72%),
+  radial-gradient(95% 42% at 22% 106%,rgba(240,142,88,.26),transparent 70%),
+  linear-gradient(180deg,rgba(64,30,40,.55),transparent 34%)}
+:root[data-st-sky="day"]{--st-a1:rgba(167,139,250,.48);--st-a2:rgba(191,117,197,.34);--st-a4:rgba(196,181,253,.16);--st-mast:rgba(196,170,255,.5);--st-sky-ink:#F1EAFF}
+:root[data-st-sky="day"]::after{background:
+  radial-gradient(120% 46% at 50% -14%,rgba(214,196,255,.34),transparent 72%),
+  radial-gradient(60% 30% at 92% 8%,rgba(191,117,197,.24),transparent 72%),
+  linear-gradient(180deg,rgba(58,44,92,.5),transparent 36%)}
+:root[data-st-sky="day"]::before{filter:opacity(.4)}
+:root[data-st-sky="dusk"]{--st-sky-ink:#E4D6FF}
+:root[data-st-sky="dusk"]::after{background:
+  radial-gradient(80% 34% at 8% -6%,rgba(139,92,246,.3),transparent 72%),
+  radial-gradient(60% 30% at 96% 4%,rgba(236,72,153,.2),transparent 72%),
+  radial-gradient(90% 34% at 72% 106%,rgba(236,72,153,.11),transparent 70%)}
+:root[data-st-sky="night"]{--st-a1:rgba(85,82,187,.4);--st-a2:rgba(55,48,163,.3);--st-a3:rgba(76,29,149,.2);--st-a4:rgba(30,27,75,.18);--st-mast:rgba(79,70,229,.42);--st-sky-ink:#D6DAFF}
+:root[data-st-sky="night"]::after{background:
+  radial-gradient(130% 60% at 50% -10%,rgba(30,27,90,.62),transparent 72%),
+  radial-gradient(40% 18% at 84% 7%,rgba(199,210,254,.12),transparent 70%),
+  radial-gradient(90% 50% at 50% 120%,rgba(0,0,0,.45),transparent 70%)}
+:root[data-st-sky="night"]::before{filter:brightness(1.6) saturate(.8)}
+:root[data-st-sky="night"] body::before{opacity:.82 !important}
+/* The greeting and page titles pick up the hour's light at their lower edge. */
+:root[data-st-sky] .st-h1,:root[data-st-sky] #weightPage h1,:root[data-st-sky] #historyPage h1,:root[data-st-sky] #morePage h1{
+  background:linear-gradient(180deg,#FFFFFF 35%,var(--st-sky-ink,#D9CCFF) 100%) !important;-webkit-background-clip:text !important;background-clip:text !important}
+/* ---- D70 · One page frame ---------------------------------------------------------------------------
+   Every tab shares one side margin and one masthead: a context line above a 34px Geist title, at the
+   same height. Before: margins 20/12/12/32/32 and titles 34/28/36/36/38 at four different heights, so
+   the page jumped sideways on every tab change. The active workout keeps its own instrument frame (D6,
+   D18's layout budget is measured inside it). */
+:root{--st-gutter:16px}
+@media (max-width:359px){:root{--st-gutter:12px}}
+#trainPage,#weightPage,#historyPage,#morePage{padding-left:0 !important;padding-right:0 !important}
+#homePage .vn-pad,#trainPage>.n99,#weightPage>.n99,#historyPage>.n99,#morePage>.n99{padding-left:var(--st-gutter) !important;padding-right:var(--st-gutter) !important}
+#trainPage:has(.st-train-active){padding-left:12px !important;padding-right:12px !important}
+#trainPage:has(.st-train-active)>.n99{padding-left:0 !important;padding-right:0 !important}
+#homePage .st-head,#trainPage .nxp-train-chrome.st-head,#weightPage .nxp-progress-chrome,#historyPage .vn-hist-chrome{margin-top:6px !important;padding-top:0 !important}
+#weightPage .nxp-progress-chrome>div,#historyPage .vn-hist-chrome>div{display:flex;flex-direction:column-reverse}
+#weightPage .nxp-progress-chrome>div>p,#historyPage .vn-hist-chrome>div>p{margin:0 !important;font:520 13px/1.3 var(--st-font-d) !important;letter-spacing:.01em !important;text-transform:none !important;
+  color:color-mix(in srgb,var(--st-accent-lift) 70%,var(--st-ink-3)) !important}
+#homePage .st-head .st-h1,#trainPage .nxp-train-chrome h1,#weightPage .nxp-progress-chrome h1,#historyPage .vn-hist-chrome h1,#morePage .vn-set-title{
+  font-size:34px !important;line-height:1.05 !important;margin-top:4px !important;letter-spacing:-.04em !important}
+#morePage .vn-set-title{margin:calc(6px + 16.9px + 4px) 0 18px !important}
+@media (max-width:359px){#homePage .st-head .st-h1,#trainPage .nxp-train-chrome h1,#weightPage .nxp-progress-chrome h1,#historyPage .vn-hist-chrome h1,#morePage .vn-set-title{font-size:30px !important}}
+
+/* ---- D71 · Tab transitions ---------------------------------------------------------------------------
+   The page crossfades (the canvas and the dock live in it, so nothing slides out of the world); the
+   title travels in the direction of the tab you chose; the session name and the trend figure fly to
+   their place on the next screen. Group geometry uses the house spatial curve (I8: 280ms+, --st-out). */
+@media (prefers-reduced-motion:no-preference){
+  ::view-transition-group(*){animation-duration:.44s;animation-timing-function:cubic-bezier(.32,.72,0,1)}
+  ::view-transition-old(root){animation:st-vt-out .2s cubic-bezier(.4,0,1,1) both}
+  ::view-transition-new(root){animation:st-vt-in .34s cubic-bezier(.32,.72,0,1) .03s both}
+  ::view-transition-old(st-mast),::view-transition-new(st-mast){height:100%;object-fit:none;object-position:left center}
+  ::view-transition-old(st-mast){animation:st-vt-mast-out-l .24s cubic-bezier(.4,0,1,1) both}
+  ::view-transition-new(st-mast){animation:st-vt-mast-in-r .46s cubic-bezier(.32,.72,0,1) .04s both}
+  :root[data-st-nav="back"]::view-transition-old(st-mast){animation-name:st-vt-mast-out-r}
+  :root[data-st-nav="back"]::view-transition-new(st-mast){animation-name:st-vt-mast-in-l}
+  ::view-transition-group(st-m-session),::view-transition-group(st-m-trend){animation-duration:.56s;animation-timing-function:cubic-bezier(.2,.9,.1,1)}
+  ::view-transition-old(st-m-session),::view-transition-old(st-m-trend){animation:st-vt-out .26s ease both}
+  ::view-transition-new(st-m-session),::view-transition-new(st-m-trend){animation:st-vt-in .4s ease .08s both}
+}
+@keyframes st-vt-out{to{opacity:0}}
+@keyframes st-vt-in{from{opacity:0}}
+@keyframes st-vt-mast-out-l{to{opacity:0;transform:translateX(-30px)}}
+@keyframes st-vt-mast-out-r{to{opacity:0;transform:translateX(30px)}}
+@keyframes st-vt-mast-in-r{from{opacity:0;transform:translateX(36px)}}
+@keyframes st-vt-mast-in-l{from{opacity:0;transform:translateX(-36px)}}
+:root[data-nxp-motion="reduced"]::view-transition-group(*),:root[data-nxp-motion="reduced"]::view-transition-old(*),:root[data-nxp-motion="reduced"]::view-transition-new(*){animation:none !important}
+
+/* ---- D72 · Scroll-aware top chrome --------------------------------------------------------------------
+   A frosted strip behind the status bar once the page moves; a glass capsule with the tab's name when the
+   title has gone. Same material as the dock. --nxt-safe-top is the one place the inset is read. */
+#stTop{position:fixed;left:0;right:0;top:0;z-index:62;pointer-events:none}
+#stTop .st-top-scrim{position:absolute;left:0;right:0;top:0;height:calc(var(--nxt-safe-top,0px) + 54px);
+  background:linear-gradient(180deg,rgba(7,6,11,.86) 0%,rgba(7,6,11,.62) 52%,rgba(7,6,11,0) 100%);
+  -webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);
+  -webkit-mask-image:linear-gradient(180deg,#000 58%,transparent);mask-image:linear-gradient(180deg,#000 58%,transparent);
+  opacity:0;transition:opacity .3s cubic-bezier(.32,.72,0,1)}
+#stTop.is-scrolled .st-top-scrim{opacity:1}
+#stTop .st-top-bar{position:absolute;left:50%;top:calc(var(--nxt-safe-top,0px) + 8px);height:34px;padding:0 18px;border-radius:999px;border:0;margin:0;
+  background:linear-gradient(180deg,rgba(46,40,70,.62),rgba(24,21,36,.62));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(255,255,255,.06),0 10px 26px -12px rgba(0,0,0,.85),0 0 22px -10px rgba(139,92,246,.55);
+  -webkit-backdrop-filter:blur(22px) saturate(1.7);backdrop-filter:blur(22px) saturate(1.7);
+  font:620 15px/34px var(--st-font-d);letter-spacing:-.01em;color:var(--st-ink);white-space:nowrap;
+  opacity:0;transform:translate(-50%,-8px) scale(.94);transition:opacity .22s ease,transform .38s cubic-bezier(.32,.72,0,1);pointer-events:none}
+#stTop.is-compact .st-top-bar{opacity:1;transform:translate(-50%,0) scale(1);pointer-events:auto}
+@media (prefers-reduced-motion:reduce){#stTop .st-top-scrim,#stTop .st-top-bar{transition:none}}
+:root[data-nxp-motion="reduced"] #stTop .st-top-scrim,:root[data-nxp-motion="reduced"] #stTop .st-top-bar{transition:none}
+/* ---- D73 · Body of Light --------------------------------------------------------------------------------
+   The week's working sets drawn on a dark glass body: each muscle's light is its share of the busiest
+   muscle's sets (counts in the list beside it; assisted-only muscles dimmer, no count). It ignites on
+   entering Today — a scan line passes and the muscles light in rank order — and rests still after. */
+#homePage .st-bl{--nxa-body-hi:#26223a;--nxa-body-lo:#0f0d18;--nxa-prim-hi:#f7f3ff;--nxa-prim-mid:#bfa8ff;--nxa-prim-lo:#7246f0;--nxa-sec-hi:#5d5191;--nxa-sec-lo:#2c2650;overflow:hidden}
+#homePage .st-bl-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin-top:10px}
+#homePage .st-bl-stage{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%;max-width:310px;margin:0 auto;padding:4px 0 0;isolation:isolate}
+#homePage .st-bl-halo{position:absolute;inset:-14% -12% -6%;z-index:-1;pointer-events:none;
+  background:radial-gradient(48% 44% at 50% 42%,rgba(139,92,246,.34),rgba(139,92,246,.09) 56%,transparent 76%)}
+#homePage .st-bl-fig{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
+#homePage .st-bl-fig .nxa{display:block;width:100%;height:auto;overflow:visible;filter:drop-shadow(0 0 9px rgba(139,92,246,.38))}
+#homePage .st-bl-fig small{font:540 10.5px/1 var(--st-font-d);letter-spacing:.16em;text-transform:uppercase;color:var(--st-ink-4)}
+#homePage .st-bl .nxa-m{stroke:rgba(7,5,13,.9);stroke-width:1.5}
+#homePage .st-bl .nxa-body{stroke:rgba(205,190,255,.2);stroke-width:3}
+#homePage .st-bl .nxa-hi{transition:opacity .35s cubic-bezier(.32,.72,0,1)}
+#homePage .st-bl .nxa-hi.is-primary{opacity:var(--lv,1)}
+#homePage .st-bl .nxa-hi.is-secondary{opacity:.6}
+#homePage .st-bl.is-focus .nxa-hi:not(.is-focus){opacity:.1}
+#homePage .st-bl.is-focus .nxa-hi.is-focus{opacity:1}
+#homePage .st-bl-scan{position:absolute;left:-6%;right:-6%;top:0;height:2px;pointer-events:none;opacity:0;border-radius:2px;
+  background:linear-gradient(90deg,transparent,rgba(226,214,255,.95) 50%,transparent);box-shadow:0 0 16px 3px rgba(167,139,250,.6)}
+#homePage .st-bl-side{min-width:0}
+#homePage .st-bl-sum{margin:0 0 4px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:12px;align-items:end;font:520 13px/1.3 var(--st-font);color:var(--st-ink-3)}
+#homePage .st-bl-sum b{grid-row:1/3}
+#homePage .st-bl-sum b{font:280 44px/.95 var(--st-font-d);letter-spacing:-.045em;background:linear-gradient(180deg,#fff 30%,#c8b6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+#homePage .st-bl-sum span{color:var(--st-ink-4);font-size:12.5px}
+#homePage .st-bl-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;column-gap:22px}
+@media (max-width:359px){#homePage .st-bl-list{grid-template-columns:1fr}}
+#homePage .st-bl-row{all:unset;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;column-gap:8px;row-gap:6px;width:100%;min-height:44px;padding:7px 0 6px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#homePage .st-bl-row:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:2px;border-radius:8px}
+#homePage .st-bl-n{font:560 14px/1.15 var(--st-font);color:var(--st-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#homePage .st-bl-row b{font:620 15px/1 var(--st-font-d);color:var(--st-ink);font-variant-numeric:tabular-nums}
+#homePage .st-bl-row i{grid-column:1/-1;position:relative;height:3px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
+#homePage .st-bl-row i::after{content:"";position:absolute;inset:0;width:var(--p);border-radius:inherit;transform-origin:0 50%;
+  background:linear-gradient(90deg,#6d3df0,#c9b8ff);box-shadow:0 0 10px rgba(139,92,246,.7)}
+#homePage .st-bl-list li.is-on .st-bl-n{color:var(--st-ink)}
+#homePage .st-bl-list li.is-on .st-bl-row i::after{background:linear-gradient(90deg,#8b5cf6,#fff)}
+#homePage .st-bl-note{margin:12px 0 0;font:450 12.5px/1.45 var(--st-font);color:var(--st-ink-3)}
+#homePage .st-bl-more{margin:8px 0 0;display:flex;flex-wrap:wrap;gap:6px}
+#homePage .st-bl-chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;font:540 12px/1 var(--st-font);color:var(--st-ink-2);
+  background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+#homePage .st-bl-chip b{font:620 12px/1 var(--st-font-d);color:var(--st-ink)}
+#homePage .st-bl-k{display:inline-block;width:8px;height:8px;border-radius:50%;background:#5d5191;margin-right:7px;vertical-align:0}
+#homePage .st-bl-empty{margin:0;font:450 14px/1.5 var(--st-font);color:var(--st-ink-3)}
+#homePage .st-bl.is-empty .st-bl-fig .nxa{filter:none;opacity:.8}
+
+@media (prefers-reduced-motion:no-preference){
+  #homePage .st-bl.st-play .nxa-hi.is-primary{animation:st-bl-ignite 1s cubic-bezier(.32,.72,0,1) calc(.5s + var(--i,0) * 90ms) both}
+  #homePage .st-bl.st-play .nxa-hi.is-secondary{animation:st-bl-ignite 1s ease .9s both}
+  #homePage .st-bl.st-play .st-bl-scan{animation:st-bl-scan 1.5s cubic-bezier(.45,0,.25,1) .1s both}
+  #homePage .st-bl.st-play .st-bl-row i::after{animation:st-bl-bar .9s cubic-bezier(.32,.72,0,1) calc(.55s + var(--i,0) * 80ms) both}
+  #homePage .st-bl.st-play .st-bl-halo{animation:st-bl-halo 1.6s ease .2s both}
+}
+@keyframes st-bl-ignite{from{opacity:0}}
+@keyframes st-bl-bar{from{transform:scaleX(0)}}
+@keyframes st-bl-halo{from{opacity:0;transform:scale(.85)}}
+@keyframes st-bl-scan{0%{top:0;opacity:0}12%{opacity:1}88%{opacity:1}100%{top:calc(100% - 22px);opacity:0}}
+:root[data-nxp-motion="reduced"] #homePage .st-bl *{animation:none !important}
