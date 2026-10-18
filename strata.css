@@ -3868,3 +3868,101 @@ body .toast.st-island.is-quiet{position:fixed !important;width:1px !important;he
 :root[data-st-tab="train"][data-st-session="full"]{--st-a1:rgba(124,58,237,.52);--st-mast:rgba(124,58,237,.48)}
 .n99-modal .sheet .st-shr-t{display:flex !important;flex-direction:row !important;align-items:center !important;justify-content:space-between !important;text-align:left !important}
 .n99-modal .sheet .st-shr-t input{flex:none;width:51px !important;height:31px !important;min-height:0 !important;margin:0 !important;padding:0 !important}
+/* =====================================================================================================
+   ELEVATE · wave 5 (proposed D87–D92). Presentation and interaction only.
+   ===================================================================================================== */
+
+/* ---- D87 · Touch light: the light is held under the finger, follows it, then opens out and fades --------- */
+.st-ripple i{animation:none !important;transform:scale(.2);opacity:0;mix-blend-mode:screen;
+  background:radial-gradient(circle,rgba(255,255,255,.2),rgba(205,187,255,.11) 38%,rgba(139,92,246,.05) 56%,transparent 70%) !important;
+  transition:transform .4s cubic-bezier(.32,.72,0,1),opacity .22s ease}
+.st-ripple.is-held i{transform:scale(.62);opacity:1}
+.st-ripple.is-out i{transform:scale(1.12);opacity:0;transition:transform .55s cubic-bezier(.32,.72,0,1),opacity .55s ease}
+
+/* ---- D88 · Tilt light ------------------------------------------------------------------------------------------ */
+:root.st-tilt .st-tile::after{opacity:1 !important;mix-blend-mode:screen;
+  background:
+    linear-gradient(112deg,transparent 33%,rgba(255,255,255,.08) 43%,rgba(240,234,255,.22) 50%,rgba(255,255,255,.08) 57%,transparent 67%) calc(50% + var(--st-tx,0) * 62%) calc(50% + var(--st-ty,0) * 30%)/260% 260% no-repeat,
+    radial-gradient(520px circle at calc(50% + var(--st-tx,0) * 50%) calc(20% + var(--st-ty,0) * 50%),rgba(205,187,255,.15),transparent 50%) !important}
+:root.st-tilt .tabs .tabs-inner.st-dock::after{translate:calc(var(--st-tx,0) * 20px) 0}
+:root.st-tilt body::before{translate:calc(var(--st-tx,0) * -14px) calc(var(--st-sy,0) * -.012px + var(--st-ty,0) * -10px)}
+:root.st-tilt html::before,:root.st-tilt::before{translate:calc(var(--st-tx,0) * 9px) calc(var(--st-sy,0) * -.035px + var(--st-ty,0) * 6px)}
+#morePage .st-tilt-row{display:flex;align-items:center;gap:14px;padding:6px 2px 2px}
+#morePage .st-tilt-row p{flex:1;margin:0;font:450 14px/1.45 var(--st-font);color:var(--st-ink-2)}
+#morePage .st-tilt-row .vn-set-act{flex:none;margin:0 !important;width:auto !important;padding:0 18px !important}
+#morePage .st-tilt-on{flex:none;font:600 14px/1 var(--st-font-d);color:#d9ccff}
+
+/* ---- D75b · The live session is part of the dock ---------------------------------------------------------------- */
+.tabs>.st-live.is-docked{position:relative !important;left:auto !important;bottom:auto !important;transform:none !important;width:100% !important;max-width:none !important;
+  min-height:0;height:58px;margin:0 0 6px;padding:6px 16px 6px 8px;border-radius:24px;box-sizing:border-box;
+  background:radial-gradient(120% 140% at 0% 50%,rgba(139,92,246,.3),transparent 62%),linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(205,187,255,.12) !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;overflow:hidden}
+.tabs>.st-live.is-docked .st-live-t{flex:1}
+@media (prefers-reduced-motion:no-preference){.tabs>.st-live.is-docked:not([hidden]){animation:st-live-grow .55s cubic-bezier(.32,.72,0,1) both !important}}
+@keyframes st-live-grow{from{height:0;margin-bottom:0;padding-top:0;padding-bottom:0;opacity:0}}
+:root[data-nxp-motion="reduced"] .tabs>.st-live.is-docked{animation:none !important}
+body.st-live-on main::after{height:76px}
+
+/* ---- D89 · Dock shortcuts ---------------------------------------------------------------------------------------- */
+.tabs,.tabs .tab{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.st-dk{position:fixed;inset:0;z-index:10050}
+.st-dk-scrim{position:absolute;inset:0;background:rgba(4,3,8,.42);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
+.st-dk-menu{position:absolute;display:flex;flex-direction:column;padding:6px;border-radius:22px;transform-origin:var(--ox,50%) 100%;
+  background:linear-gradient(180deg,rgba(48,42,72,.9),rgba(24,21,36,.92));box-shadow:inset 0 1px 0 rgba(255,255,255,.15),inset 0 0 0 1px rgba(255,255,255,.07),0 24px 54px -18px rgba(0,0,0,.92),0 0 40px -18px rgba(139,92,246,.7);
+  -webkit-backdrop-filter:blur(28px) saturate(1.7);backdrop-filter:blur(28px) saturate(1.7)}
+.st-dk-menu button{position:relative;min-height:48px;padding:0 16px;border:0;border-radius:16px;background:transparent;color:var(--st-ink);text-align:left;cursor:pointer;
+  font:560 16px/1.2 var(--st-font);-webkit-tap-highlight-color:transparent}
+.st-dk-menu button+button{box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.st-dk-menu button:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:-2px}
+.st-dk-menu button:active{background:rgba(255,255,255,.07)}
+@media (prefers-reduced-motion:no-preference){
+  .st-dk-scrim{animation:st-vt-in .2s ease both}.st-dk-menu{animation:st-dk-in .38s cubic-bezier(.34,1.3,.64,1) both}
+  .st-dk.is-out .st-dk-scrim{animation:st-vt-out .18s ease both}.st-dk.is-out .st-dk-menu{animation:st-dk-out .18s ease both}
+}
+@keyframes st-dk-in{from{opacity:0;transform:translateY(14px) scale(.86)}}
+@keyframes st-dk-out{to{opacity:0;transform:translateY(8px) scale(.94)}}
+:root[data-nxp-motion="reduced"] .st-dk *{animation:none !important}
+
+/* ---- D90 · Pull to weigh in -------------------------------------------------------------------------------------- */
+.st-pull{position:fixed;left:50%;top:calc(var(--nxt-safe-top,0px) + 10px);z-index:61;display:flex;align-items:center;gap:9px;height:36px;padding:0 16px 0 12px;border-radius:999px;pointer-events:none;
+  transform:translate(-50%,calc(-8px + var(--p,0) * 8px)) scale(calc(.9 + var(--p,0) * .1));opacity:0;
+  background:linear-gradient(180deg,rgba(46,40,70,.7),rgba(24,21,36,.7));box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 10px 24px -12px rgba(0,0,0,.85);
+  -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);font:600 14px/1 var(--st-font-d);color:var(--st-ink);white-space:nowrap}
+.st-pull.is-on{opacity:calc(.4 + var(--p,0) * .6)}
+.st-pull-dot{width:12px;height:12px;border-radius:50%;background:conic-gradient(#f6b48a calc(var(--p,0) * 360deg),rgba(255,255,255,.18) 0)}
+.st-pull.is-armed .st-pull-dot{background:radial-gradient(circle at 40% 35%,#fff7ed,#f6b48a 55%,#d37732);box-shadow:0 0 12px rgba(246,180,138,.9)}
+
+/* ---- D91 · Session prints ---------------------------------------------------------------------------------------- */
+.st-print{margin:0}
+.st-print svg{display:block;width:100%;height:auto;border-radius:18px;background:radial-gradient(90% 120% at 50% 40%,rgba(76,29,149,.32),rgba(12,10,20,.9) 75%),#0b0912;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.st-print .sp-r{opacity:.5;mix-blend-mode:screen;filter:drop-shadow(0 0 5px rgba(167,139,250,.35))}
+.st-print .sp-c{stroke:#fff;opacity:.38}
+.st-print .sp-b{fill:#fff;opacity:.88;filter:drop-shadow(0 0 3px rgba(226,214,255,.95))}
+.st-print figcaption{margin:8px 2px 0;font:450 12px/1.4 var(--st-font);color:var(--st-ink-4)}
+#historyPage .st-print.is-day{margin:14px 0 4px}
+.st-fin-printwrap{margin-top:22px}
+.st-fin-printwrap h3{margin:0 0 10px;font:560 12px/1 var(--st-font-d);letter-spacing:.16em;text-transform:uppercase;color:var(--st-ink-3)}
+@media (prefers-reduced-motion:no-preference){
+  .st-print .sp-r,.st-print .sp-c{stroke-dasharray:1;stroke-dashoffset:1;animation:sp-draw 1.6s cubic-bezier(.45,.05,.25,1) calc(.15s + var(--i,0) * .14s) forwards}
+  .st-print .sp-b{transform-box:fill-box;transform-origin:center;animation:sp-bead .55s cubic-bezier(.34,1.56,.64,1) calc(.9s + var(--i,0) * .14s + var(--j,0) * .06s) both}
+  .st-fin .st-print .sp-r,.st-fin .st-print .sp-c{animation-delay:calc(1.4s + var(--i,0) * .14s)}
+  .st-fin .st-print .sp-b{animation-delay:calc(2.2s + var(--i,0) * .14s + var(--j,0) * .06s)}
+}
+@keyframes sp-draw{to{stroke-dashoffset:0}}
+@keyframes sp-bead{from{transform:scale(0);opacity:0}}
+:root[data-nxp-motion="reduced"] .st-print *{animation:none !important;stroke-dashoffset:0 !important}
+
+/* ---- Workout header names the gym; an empty field nudges Aim ------------------------------------------------------- */
+#trainPage .st-tbar-s{display:flex;align-items:baseline;min-width:0;white-space:nowrap}
+#trainPage .st-tbar-c{flex:none}
+#trainPage .st-tbar-g{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:.88em;color:var(--st-ink-3)}
+#trainPage .st-tbar-g::before{content:"·";margin:0 .4em}
+@media (max-width:359px){#trainPage .st-tbar-g{display:none}}
+@media (prefers-reduced-motion:no-preference){#trainPage .st-ref.is-aim.st-nudge{animation:st-nudge-aim 1.2s cubic-bezier(.32,.72,0,1)}}
+@keyframes st-nudge-aim{0%,100%{box-shadow:none}30%{box-shadow:0 0 0 2px rgba(196,181,253,.75),0 0 26px rgba(139,92,246,.6)}}
+
+/* ---- History: cardio is a filled diamond, so it never reads as the hollow "Not logged" ring (I6) ----------------- */
+#historyPage .nxp-cal-marks i.cond,#historyPage .nxp-cal-day[data-k] .nxp-cal-marks i.cond,#historyPage .nxp-cal-legend i.cond{
+  border:0 !important;border-radius:1.5px !important;background:var(--st-cardio) !important;transform:rotate(45deg) scale(.86);box-shadow:0 0 6px rgba(211,119,50,.6) !important}
+#historyPage .nxp-cal-day[data-k].is-selected .nxp-cal-marks i.cond{background:#fff !important}

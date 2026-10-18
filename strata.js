@@ -801,15 +801,26 @@ const STRATA = (() => {
     } catch (e) { return null; }
   }
   function fmt(s) { return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+  /* D75b · On phones the live session is part of the dock itself: the glass grows a row above the tabs.
+     Wide layouts (the side rail, >=1024px) keep the floating pill. */
+  function liveHost() {
+    const tabs = document.querySelector(".tabs");
+    return tabs && !(window.matchMedia && matchMedia("(min-width:1024px)").matches) ? tabs : document.body;
+  }
+  function placeLive(el) {
+    const host = liveHost();
+    if (el.parentElement !== host) { if (host === document.body) host.appendChild(el); else host.insertBefore(el, host.firstChild); }
+    el.classList.toggle("is-docked", host !== document.body);
+  }
   function ensureLive() {
-    if (liveEl && liveEl.isConnected) return liveEl;
+    if (liveEl && liveEl.isConnected) { placeLive(liveEl); return liveEl; }
     liveEl = document.createElement("button");
     liveEl.type = "button"; liveEl.id = "stLive"; liveEl.className = "st-live"; liveEl.hidden = true;
     liveEl.innerHTML = '<span class="st-live-ring" aria-hidden="true"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" pathLength="1" class="st-live-tr"/><circle cx="18" cy="18" r="15.5" pathLength="1" class="st-live-arc"/></svg><i class="st-live-dot"></i></span>'
       + '<span class="st-live-t"><b class="st-live-n"></b><small><span class="st-live-c"></span><span class="st-live-r"></span></small></span>'
       + '<svg class="st-live-up" viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 12.5 10 8l4.5 4.5"/></svg>';
     liveEl.addEventListener("click", () => { if (typeof NXP === "object" && NXP.enterTrain) NXP.enterTrain(); });
-    document.body.appendChild(liveEl);
+    placeLive(liveEl);
     return liveEl;
   }
   function updateLive() {
@@ -833,7 +844,7 @@ const STRATA = (() => {
       el.classList.toggle("is-resting", s.rest > 0);
       el.setAttribute("aria-label", "Return to workout: " + s.name + ", " + s.count + " of " + s.total + " sets" + (s.rest ? ", resting " + fmt(s.rest) : ""));
       const dock = document.querySelector(".tabs");
-      if (dock) { const r = dock.getBoundingClientRect(); if (r.height) el.style.setProperty("--st-live-bottom", Math.max(12, Math.round((window.innerHeight || 0) - r.top + 10)) + "px"); }
+      if (dock && !el.classList.contains("is-docked")) { const r = dock.getBoundingClientRect(); if (r.height) el.style.setProperty("--st-live-bottom", Math.max(12, Math.round((window.innerHeight || 0) - r.top + 10)) + "px"); }
     }
     clearTimeout(liveTick);
     if ((s && (show || s.rest)) || glShown) liveTick = setTimeout(updateLive, 1000);
@@ -1033,6 +1044,15 @@ const STRATA = (() => {
     }, true);
     document.addEventListener("invalid", e => {
       const el = e.target;
+      if (el && (el.id === "repsInput" || el.id === "weightInput")) {
+        e.preventDefault();
+        if (Date.now() - (bindSheetKeyboard.last || 0) < 400) return;
+        bindSheetKeyboard.last = Date.now();
+        const aim = document.querySelector("#trainPage .st-ref.is-aim");
+        if (typeof toast === "function") toast(aim ? "Add the " + (el.id === "repsInput" ? "reps" : "weight") + ", or tap Aim to fill both" : "Add the " + (el.id === "repsInput" ? "reps" : "weight") + " for this set");
+        if (aim && !reduced()) { aim.classList.remove("st-nudge"); void aim.offsetWidth; aim.classList.add("st-nudge"); setTimeout(() => aim.classList.remove("st-nudge"), 1300); }
+        return;
+      }
       if (el && el.id === "apx95WeightValue") el.setCustomValidity(el.validity.valueMissing ? "Enter your weight, like 82.4" : "Use kilograms with one decimal, between 20 and 400 — like 82.4");
     }, true);
   }
@@ -1211,21 +1231,223 @@ const STRATA = (() => {
     const set = () => { raf = 0; document.documentElement.style.setProperty("--st-sy", String(Math.round(window.scrollY || 0))); };
     window.addEventListener("scroll", () => { if (!raf && !reduced()) raf = requestAnimationFrame(set); }, { passive: true });
   }
+  /* ---- D87 · Touch light ---------------------------------------------------------------------------
+     The tap ripple (D38), made continuous: glass catches light under the finger, the light follows it
+     while pressed, and on release it opens out and fades. Off under reduced motion. */
+  const LIT = ".st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row,.st-dec-chip,.vn-row,.vn-set-row,.st-lrow>button,.co-tile,.st-bl-row,.st-wchip,.st-share-b,.vn-set-act,.st-fin-done,.st-fin-cardio,.st-ask-acts button,.nxp-cal-day,.st-live,.st-dk-menu button";
+  let lit = null;
   function bindRipple() {
-    const SEL = ".st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row,.st-dec-chip";
+    const end = () => {
+      if (!lit) return;
+      const c = lit; lit = null;
+      c.sp.classList.remove("is-held"); c.sp.classList.add("is-out");
+      setTimeout(() => c.sp.remove(), 560);
+    };
     document.addEventListener("pointerdown", e => {
       if (reduced() || (e.pointerType === "mouse" && e.button !== 0)) return;
-      const host = e.target && e.target.closest && e.target.closest(SEL);
+      const host = e.target && e.target.closest && e.target.closest(LIT);
       if (!host || host.disabled) return;
+      end();
+      if (getComputedStyle(host).position === "static") host.style.position = "relative";
       const r = host.getBoundingClientRect(), sp = document.createElement("span");
       sp.className = "st-ripple"; sp.setAttribute("aria-hidden", "true");
       const i = document.createElement("i");
-      const d = Math.max(r.width, r.height) * 1.6;
-      i.style.cssText = "width:" + d + "px;height:" + d + "px;left:" + (e.clientX - r.left - d / 2) + "px;top:" + (e.clientY - r.top - d / 2) + "px";
+      const d = Math.round(Math.min(440, Math.max(160, Math.max(r.width, r.height) * 1.4)));
+      i.style.width = i.style.height = d + "px";
+      i.style.left = (e.clientX - r.left - d / 2) + "px"; i.style.top = (e.clientY - r.top - d / 2) + "px";
       sp.appendChild(i); host.appendChild(sp);
-      setTimeout(() => sp.remove(), 650);
+      lit = { sp, i, host, id: e.pointerId, d };
+      requestAnimationFrame(() => { if (lit && lit.sp === sp) sp.classList.add("is-held"); });
+    }, true);
+    document.addEventListener("pointermove", e => {
+      if (!lit || e.pointerId !== lit.id) return;
+      const r = lit.host.getBoundingClientRect();
+      lit.i.style.left = (e.clientX - r.left - lit.d / 2) + "px"; lit.i.style.top = (e.clientY - r.top - lit.d / 2) + "px";
+    }, { capture: true, passive: true });
+    ["pointerup", "pointercancel"].forEach(t => document.addEventListener(t, e => { if (lit && e.pointerId === lit.id) end(); }, true));
+  }
+
+  /* ---- D88 · Tilt light ------------------------------------------------------------------------------
+     Where the phone reports its orientation, the light on the glass moves as you tilt it: tile sheens,
+     the dock's glint and the canvas drift a little with the phone, against a resting angle that follows
+     how you hold it. iPhone asks once (Settings › Appearance › Tilt light); nothing is stored by the app.
+     Off under reduced motion. */
+  const tilt = { x: 0, y: 0, tx: 0, ty: 0, b0: null, raf: 0, live: false, seen: false, bound: false };
+  function tiltFrame() {
+    tilt.raf = 0;
+    tilt.x += (tilt.tx - tilt.x) * .16; tilt.y += (tilt.ty - tilt.y) * .16;
+    const de = document.documentElement;
+    de.style.setProperty("--st-tx", tilt.x.toFixed(3)); de.style.setProperty("--st-ty", tilt.y.toFixed(3));
+    if (Math.abs(tilt.tx - tilt.x) > .002 || Math.abs(tilt.ty - tilt.y) > .002) tilt.raf = requestAnimationFrame(tiltFrame);
+  }
+  function onOrient(e) {
+    if (e.beta == null || e.gamma == null) return;
+    tilt.seen = true;
+    if (reduced()) { if (tilt.live) { tilt.live = false; document.documentElement.classList.remove("st-tilt"); } return; }
+    if (tilt.b0 === null) tilt.b0 = e.beta;
+    tilt.b0 += (e.beta - tilt.b0) * .015;
+    tilt.tx = Math.max(-1, Math.min(1, e.gamma / 28));
+    tilt.ty = Math.max(-1, Math.min(1, (e.beta - tilt.b0) / 22));
+    if (!tilt.live) { tilt.live = true; document.documentElement.classList.add("st-tilt"); }
+    if (!tilt.raf) tilt.raf = requestAnimationFrame(tiltFrame);
+  }
+  function bindTilt() { if (tilt.bound) return; tilt.bound = true; window.addEventListener("deviceorientation", onOrient, { passive: true }); }
+  function tiltState() {
+    if (tilt.live) return "on";
+    if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") return "ask";
+    return "none";
+  }
+  async function allowTilt() {
+    try {
+      const s = await DeviceOrientationEvent.requestPermission();
+      if (s === "granted") { bindTilt(); toast("Tilt light is on"); } else toast("Tilt light needs motion access");
+    } catch (e) { toast("Tilt light is not available here"); }
+    return tiltState();
+  }
+
+  /* ---- D89 · Dock shortcuts --------------------------------------------------------------------------
+     Long-press a dock tab (or right-click it) for that tab's shortcuts, like an iPhone app icon. Each item
+     calls a function the app already has; a normal tap still just switches tab. */
+  function shortcuts(tab) {
+    const go = (t, f) => () => { if (currentTab() !== t) switchTab(t); f && f(); };
+    const view = v => () => { if (typeof NXT === "object") NXT.ui.view = v; if (currentTab() !== "weight") switchTab("weight"); else if (typeof render === "function") render(); };
+    const hist = f => () => { if (typeof state === "object") state.historyFilter = f; if (currentTab() !== "history") switchTab("history"); else if (typeof render === "function") render(); };
+    const s = liveSession(), lift = typeof state === "object" && state && !["Rest", "Zone2", "Floorball"].includes(state.dayType);
+    const sessionName = typeof NXT === "object" && state ? NXT.label(state.dayType) : "";
+    const L = {
+      home: [["Log weight", () => apx95OpenQuickWeight()], ["Log cardio", () => showCardioSheet()]],
+      train: [lift ? [s ? "Resume " + sessionName : "Start " + sessionName, () => NXP.enterTrain()] : null, ["Change today's session", () => showSessionSheet()], ["Log cardio", () => showCardioSheet()]],
+      weight: [["Weight", view("overview")], ["Training", view("training")], ["Lifts", view("strength")], ["Body", view("body")], ["Log weight", () => apx95OpenQuickWeight()], ["Share your cut", () => NXP.shareProgress && NXP.shareProgress()]],
+      history: [["Today", go("history", () => NXP.historySelect && NXP.historySelect(localToday()))], ["Lifting days", hist("strength")], ["Weigh-ins", hist("body")], ["Cardio", hist("conditioning")]],
+      more: [["Training plan", () => NXT.more("training")], ["Data & sync", () => NXT.more("data")], ["Appearance", () => NXT.more("appearance")]]
+    };
+    return (L[tab] || []).filter(Boolean);
+  }
+  let dk = null, dkSwallow = 0;
+  function closeDock() {
+    if (!dk) return;
+    const m = dk; dk = null;
+    document.removeEventListener("keydown", m.key, true);
+    m.el.classList.add("is-out");
+    setTimeout(() => m.el.remove(), reduced() ? 0 : 200);
+    try { if (m.back && m.back.focus) m.back.focus(); } catch (e) {}
+  }
+  function openDock(btn) {
+    closeDock();
+    const tab = btn && btn.dataset && btn.dataset.tab, items = tab ? shortcuts(tab) : [];
+    if (!items.length) return;
+    const el = document.createElement("div");
+    el.className = "st-dk";
+    el.innerHTML = '<div class="st-dk-scrim"></div><div class="st-dk-menu" role="menu" aria-label="' + esc((TITLES[tab] || "Tab") + " shortcuts") + '">' + items.map(([t], i) => '<button type="button" role="menuitem" data-i="' + i + '">' + esc(t) + '</button>').join("") + "</div>";
+    document.body.appendChild(el);
+    const menu = el.querySelector(".st-dk-menu"), r = btn.getBoundingClientRect(), mw = Math.min(260, window.innerWidth - 24);
+    menu.style.width = mw + "px";
+    menu.style.left = Math.max(12, Math.min(window.innerWidth - mw - 12, r.left + r.width / 2 - mw / 2)) + "px";
+    menu.style.bottom = Math.round(window.innerHeight - r.top + 14) + "px";
+    menu.style.setProperty("--ox", Math.round(r.left + r.width / 2 - parseFloat(menu.style.left)) + "px");
+    const key = e => {
+      const b = [...menu.querySelectorAll("button")], i = b.indexOf(document.activeElement);
+      if (e.key === "Escape") { e.preventDefault(); closeDock(); }
+      else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); b[(i + (e.key === "ArrowDown" ? 1 : -1) + b.length) % b.length].focus(); }
+      else if (e.key === "Tab") { e.preventDefault(); b[(i + (e.shiftKey ? -1 : 1) + b.length) % b.length].focus(); }
+    };
+    dk = { el, key, back: btn };
+    document.addEventListener("keydown", key, true);
+    el.querySelector(".st-dk-scrim").addEventListener("click", closeDock);
+    menu.addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b) return;
+      const f = items[Number(b.dataset.i)] && items[Number(b.dataset.i)][1];
+      dk.back = null; closeDock();
+      try { f && f(); } catch (err) { console.error(err); }
+    });
+    haptic("tick");
+    menu.querySelector("button").focus({ preventScroll: true });
+  }
+  function bindDockShortcuts() {
+    let t = 0, sx = 0, sy = 0, btn = null;
+    const cancel = () => { clearTimeout(t); t = 0; btn = null; };
+    document.addEventListener("pointerdown", e => {
+      const b = e.target && e.target.closest && e.target.closest(".tabs .tab");
+      if (!b || (e.pointerType === "mouse" && e.button !== 0)) return;
+      btn = b; sx = e.clientX; sy = e.clientY;
+      clearTimeout(t); t = setTimeout(() => { if (btn) { dkSwallow = Date.now() + 700; openDock(btn); btn = null; } }, 440);
+    }, true);
+    document.addEventListener("pointermove", e => { if (btn && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) cancel(); }, { capture: true, passive: true });
+    ["pointerup", "pointercancel"].forEach(n => document.addEventListener(n, cancel, true));
+    document.addEventListener("click", e => {
+      if (Date.now() < dkSwallow && e.target && e.target.closest && e.target.closest(".tabs .tab")) { e.preventDefault(); e.stopImmediatePropagation(); dkSwallow = 0; }
+    }, true);
+    document.addEventListener("contextmenu", e => {
+      const b = e.target && e.target.closest && e.target.closest(".tabs .tab");
+      if (!b) return;
+      e.preventDefault(); cancel(); openDock(b);
     }, true);
   }
+
+  /* ---- D90 · Pull at the top -------------------------------------------------------------------------
+     The page sets overscroll-behavior:none, so iOS never rubber-bands and a pull at the top did nothing.
+     A pull now stretches the page and its title with a rubber band; on Today, pulling past the line and
+     letting go opens the weigh-in. Not inside sheets, fields, the chart, the week rail, the calendar or
+     an active workout. Reduced motion: no stretch, the pull still works. */
+  let pullEl = null;
+  function ensurePullHint() {
+    if (pullEl && pullEl.isConnected) return pullEl;
+    pullEl = document.createElement("div");
+    pullEl.id = "stPull"; pullEl.className = "st-pull"; pullEl.setAttribute("aria-hidden", "true");
+    pullEl.innerHTML = '<i class="st-pull-dot"></i><span>Pull to weigh in</span>';
+    document.body.appendChild(pullEl);
+    return pullEl;
+  }
+  function applyPull(px, settle, armed) {
+    const main = document.querySelector("main"), still = reduced();
+    if (main) {
+      main.style.transition = settle ? "transform .5s cubic-bezier(.32,.72,0,1)" : "none";
+      main.style.transform = px && !still ? "translateY(" + px.toFixed(1) + "px)" : "";
+      if (settle) setTimeout(() => { if (main.style.transform === "") main.style.transition = ""; }, 520);
+    }
+    const t = document.querySelector(MAST[currentTab()]);
+    if (t) { t.style.transformOrigin = "0 100%"; t.style.transition = settle ? "transform .5s cubic-bezier(.32,.72,0,1)" : "none"; t.style.transform = px && !still ? "scale(" + (1 + Math.min(px, 120) / 900).toFixed(3) + ")" : ""; }
+    if (currentTab() === "home") {
+      const h = ensurePullHint();
+      h.style.setProperty("--p", String(Math.min(1, px / 70)));
+      h.classList.toggle("is-on", px > 6);
+      h.classList.toggle("is-armed", !!armed);
+      h.querySelector("span").textContent = armed ? "Release to weigh in" : "Pull to weigh in";
+    } else if (pullEl) pullEl.classList.remove("is-on", "is-armed");
+  }
+  function bindPull() {
+    let y0 = null, x0 = 0, pulling = false, px = 0, armed = false;
+    const blocked = t => !t || !t.closest || !!t.closest("#modalRoot,input,textarea,select,#vn-chart-wrap,.st-gl,.st-fin,.st-ask,.st-dk,.vn-week,[data-rail],.nxp-cal-grid,.tabs,#stTop,.st-shr");
+    document.addEventListener("touchstart", e => {
+      y0 = null;
+      if (e.touches.length !== 1 || (window.scrollY || 0) > 0 || blocked(e.target)) return;
+      if (document.documentElement.classList.contains("st-sheet-open") || document.querySelector("#trainPage .st-train-active")) return;
+      y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; pulling = false; px = 0; armed = false;
+    }, { passive: true });
+    document.addEventListener("touchmove", e => {
+      if (y0 === null) return;
+      const dy = e.touches[0].clientY - y0, dx = e.touches[0].clientX - x0;
+      if (!pulling) {
+        if (dy > 8 && dy > Math.abs(dx) * 1.4 && (window.scrollY || 0) <= 0) pulling = true;
+        else { if (dy < -4 || Math.abs(dx) > 14) y0 = null; return; }
+      }
+      px = 118 * (1 - Math.exp(-Math.max(0, dy) / 170));
+      const was = armed;
+      armed = currentTab() === "home" && px > 70;
+      if (armed && !was) haptic("tick");
+      applyPull(px, false, armed);
+    }, { passive: true });
+    const release = () => {
+      if (y0 === null && !pulling) return;
+      const go = pulling && armed;
+      y0 = null; pulling = false; armed = false;
+      applyPull(0, true, false);
+      if (go && typeof apx95OpenQuickWeight === "function") setTimeout(() => apx95OpenQuickWeight(), 120);
+    };
+    document.addEventListener("touchend", release, { passive: true });
+    document.addEventListener("touchcancel", release, { passive: true });
+  }
+
   function hydrate(page) {
     if (!page) return;
     const tab = (typeof state === "object" && state && state.tab) || "home";
@@ -1295,6 +1517,9 @@ const STRATA = (() => {
     bindSheetKeyboard();
     bindGymGuard();
     bindGlance();
+    bindTilt();
+    bindDockShortcuts();
+    bindPull();
     if (typeof switchTab === "function" && !switchTab.__strata) {
       const f = switchTab;
       switchTab = function () { return navigate(f, arguments); };
@@ -1316,7 +1541,7 @@ const STRATA = (() => {
     });
     document.documentElement.classList.add("st-on");
   }
-  return { hydrate, install, odoSet, stopReplay, sky, haptic, glance: () => { glTouch = 0; showGlance(); } };
+  return { hydrate, install, odoSet, stopReplay, sky, haptic, glance: () => { glTouch = 0; showGlance(); }, tiltState, allowTilt, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
 })();
 STRATA.install();
 if (typeof NXT === "object" && NXT && typeof NXT.repaint === "function" && document.readyState !== "loading") {

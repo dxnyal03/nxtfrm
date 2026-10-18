@@ -352,7 +352,8 @@ const NXP = (() => {
     const rows=[['Noticed',w.noticed],['Evidence',w.evidence],['Why it matters',w.matters],['What you can do',w.canDo]].filter(r=>r[1]);
     const why=rows.length?`<details class="co-why"><summary><span>Why</span><i aria-hidden="true">›</i></summary><dl>${rows.map(r=>`<div><dt>${r[0]}</dt><dd>${esc(r[1])}</dd></div>`).join('')}</dl></details>`:'';
     /* One primary capsule per tile at most, and only on an act: a watch or info action takes the quieter glass capsule (D56 tiers), so a stack of tiles never reads as three competing primaries. */
-    const act=it.action&&it.action.label?`<button type="button" class="${sev==='act'?'st-cta':'is-q'} co-act" onclick="NXP.coachAct(${i})">${esc(it.action.label)}<span aria-hidden="true">›</span></button>`:'';
+    const opensTrain=it.action&&it.action.kind==='open'&&it.action.payload&&it.action.payload.tab==='train';
+    const act=it.action&&it.action.label?`<button type="button" class="${sev==='act'&&!opensTrain?'st-cta':'is-q'} co-act" onclick="NXP.coachAct(${i})">${esc(it.action.label)}<span aria-hidden="true">›</span></button>`:'';
     const sevHTML=sev==='info'?'':`<span class="co-sev"><i class="co-sh" aria-hidden="true"></i>${sev==='act'?'Action':'Watch'}</span>`;
     return `<article class="st-tile co-tile is-${sev} is-d-${dom}" aria-labelledby="co-h${i}">
           <div class="st-tile-head co-eb"><span class="co-tags"><span class="st-cat co-dom">${coIcon(dom)}<span>${esc(CO_DOM[dom])}</span></span>${sevHTML}</span><button type="button" class="vn-text co-dismiss" onclick="NXP.coachDismiss(${i})" aria-label="${esc('Dismiss: '+it.title)}">Dismiss</button></div>
@@ -471,7 +472,7 @@ const NXP = (() => {
       <p class="co-lead co-lead-h">${esc(rv.headline||'')}</p>
       <ol class="co-days" aria-label="The seven days">${days}</ol>
       ${lines?`<h3 class="co-sec">The week</h3><ul class="co-lines">${lines}</ul>`:''}
-      ${next?`<h3 class="co-sec">Next week</h3><ol class="co-nw" aria-label="Next week's plan">${next}</ol>`:''}
+      ${next?`<h3 class="co-sec">This week</h3><ol class="co-nw" aria-label="This week's plan">${next}</ol>`:''}
       <div class="n99-stack">${button('Done','NXP.reviewSeen()')}</div>
     </div>`);
   }
@@ -956,6 +957,38 @@ const NXP = (() => {
     }
     return out;
   }
+  /* ---- D91 · Session prints ------------------------------------------------------------------------
+     Every lifting session draws its own artwork from its real sets: each exercise is a ribbon (thicker with
+     more kg lifted, load × reps of working sets; it swings wider for heavier loads), each working set a bead
+     on it (larger with more reps), in the order they were logged. The shape is seeded by the date, so a
+     session always draws the same print. Art from stored rows: nothing is stored or scored. */
+  const PRINT_HUES=['#A78BFA','#BF75C5','#7C83F5','#E06C9F','#E39A5C','#C4B5FD','#8B5CF6','#9F7AEA'];
+  let printSeq=0;
+  function sessionPrintSVG(rows,key,opts){
+    const o=opts||{};
+    const work=(rows||[]).filter(r=>r&&r.setType!=='warmup'&&Number(r.weight)>0&&Number(r.reps)>0).slice().sort((a,b)=>(Number(a.ts||0)-Number(b.ts||0))||(Number(a.setNum||0)-Number(b.setNum||0)));
+    if(!work.length)return '';
+    const order=[],by=new Map();
+    work.forEach(r=>{const k=r.exercise||r.name||'Exercise';if(!by.has(k)){by.set(k,[]);order.push(k);}by.get(k).push(r);});
+    const vol=k=>by.get(k).reduce((a,r)=>a+Number(r.weight)*Number(r.reps),0),top=k=>Math.max(...by.get(k).map(r=>Number(r.weight)));
+    const maxVol=Math.max(...order.map(vol))||1,maxTop=Math.max(...order.map(top))||1,maxReps=Math.max(...work.map(r=>Number(r.reps)))||1;
+    let seed=2166136261;for(const ch of String(key||'')){seed^=ch.charCodeAt(0);seed=Math.imul(seed,16777619)>>>0;}
+    const rnd=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+    const W=340,H=o.h||118,n=order.length;
+    const ribbons=[],beads=[];
+    order.forEach((name,i)=>{
+      const sets=by.get(name),hue=PRINT_HUES[i%PRINT_HUES.length];
+      const cy=H*(n===1?.5:.2+.6*i/(n-1)),amp=H*(.1+.17*(top(name)/maxTop)),th=2.4+10*(vol(name)/maxVol);
+      const turns=.7+sets.length*.32,ph=rnd()*Math.PI*2,tilt=(rnd()-.5)*H*.18;
+      const y=x=>cy+tilt*(x/W-.5)+amp*Math.sin(turns*2*Math.PI*x/W+ph)*(.5+.5*Math.sin(Math.PI*x/W));
+      const pts=[];for(let s=0;s<=40;s++){const x=-8+(W+16)*s/40;pts.push({x,y:y(x)});}
+      const d=typeof N.smoothPath==='function'?N.smoothPath(pts):pts.map((p,s)=>(s?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join('');
+      ribbons.push(`<path class="sp-r" d="${d}" pathLength="1" stroke="${hue}" stroke-width="${th.toFixed(1)}" style="--i:${i}"/><path class="sp-c" d="${d}" pathLength="1" stroke-width=".9" style="--i:${i}"/>`);
+      sets.forEach((r,j)=>{const x=W*(j+1)/(sets.length+1),rr=1.5+2.3*(Number(r.reps)/maxReps);beads.push(`<circle class="sp-b" cx="${x.toFixed(1)}" cy="${y(x).toFixed(1)}" r="${rr.toFixed(1)}" style="--i:${i};--j:${j}"/>`);});
+    });
+    const label=`Session print: ${n} ${N.plural(n,'exercise')} drawn as ribbons and ${work.length} working ${N.plural(work.length,'set')} as beads`;
+    return `<figure class="st-print${o.cls?' '+o.cls:''}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}" preserveAspectRatio="xMidYMid slice"><g class="sp-rs" fill="none" stroke-linecap="round" stroke-linejoin="round">${ribbons.join('')}</g><g class="sp-bs">${beads.join('')}</g></svg>${o.caption===false?'':'<figcaption>Each ribbon is an exercise, thicker with more kg lifted. Each bead is a set.</figcaption>'}</figure>`;
+  }
   /* ---- D76 · In-app questions -------------------------------------------------------------------------
      A native confirm() shows the site's address over a grey system alert. Everyday questions (finish a
      workout, undo a set, delete a weigh-in) ask in a glass sheet instead: same answer, same wording.
@@ -1025,6 +1058,7 @@ const NXP = (() => {
         <div><p class="st-fin-eb">Workout complete</p><h2 id="st-fin-t">${esc(N.label(state.dayType))}</h2><p class="st-fin-sub">${esc(state.gym||'Gym A')} · ${esc(N.shortDate(state.date))}</p></div></div>
       <div class="st-fin-stats">${stat(working.length,'Working sets')}${stat(order.length,order.length===1?'Exercise':'Exercises')}${stat(volume,'Volume','kg')}</div>
       ${moments.length?`<ul class="st-fin-moments" aria-label="Highlights">${moments.map((m,i)=>`<li class="is-${m.k}" style="--i:${i}"><i aria-hidden="true"></i><span>${esc(m.t)}</span></li>`).join('')}</ul>`:''}
+      <section class="st-fin-printwrap"><h3>Session print</h3>${sessionPrintSVG(working,state.date+'|'+state.gym,{h:132,cls:'is-fin'})}</section>
       <section class="st-fin-receipt" aria-label="Session receipt"><h3>Session receipt</h3><ol>${receipt}</ol><p><span>Working sets ${working.length}</span><span>Volume ${volume.toLocaleString('en-SG')} kg</span></p></section>
       <p class="st-fin-note">Your logged work is saved. No need to add cardio just because this workout is finished.</p>
     </div></div>
@@ -1338,7 +1372,7 @@ const NXP = (() => {
         <button type="button" class="st-icon" onclick="NXP.leaveTrain()" aria-label="Leave workout"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/></svg></button>
         <div class="st-tbar-mid">
           <p class="st-tbar-t">${esc(N.label(state.dayType))}</p>
-          <p class="st-tbar-s"><b class="vn-num">${count}</b> of ${total} ${N.plural(total,"set")}</p>
+          <p class="st-tbar-s"><span class="st-tbar-c"><b class="vn-num">${count}</b> of ${total} ${N.plural(total,"set")}</span><span class="st-tbar-g">${esc(state.gym||'Gym A')}</span></p>
         </div>
         <button type="button" class="st-icon" onclick="NXP.trainMenu()" aria-label="Workout options"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4.5" cy="10" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="15.5" cy="10" r="1.5"/></svg></button>
         <button type="button" class="st-tfinish${allDone?' is-ready':''}" onclick="NXT.finish()">Finish</button>
@@ -2861,7 +2895,9 @@ const NXP = (() => {
         ${setField('nxp-text','Text size','Applies to every screen, not just this one.',[['normal','Standard'],['large','Larger']],p.text==='large'?'large':'normal')}
         ${setField('nxp-motion','Motion','Reduce motion removes page and set-logging animation. Your device setting is followed by default.',[['system','Follow device'],['reduced','Reduce motion']],p.motion==='reduced'?'reduced':'system')}
         <button type="submit" class="vn-set-act">Save appearance</button>
-      </form>`,'vn-settings');
+      </form>
+      ${(()=>{const t=typeof STRATA==='object'&&STRATA.tiltState?STRATA.tiltState():'none';if(t==='none')return '';
+        return `<section class="vn-set-group st-tilt-g"><h2 class="vn-set-grp">Tilt light</h2><div class="st-tilt-row"><p>Light moves across the glass as you tilt your phone. ${t==='on'?'On for this device.':'Your iPhone asks once for motion access.'}</p>${t==='on'?'<span class="st-tilt-on">On</span>':`<button type="button" class="vn-set-act" onclick="STRATA.allowTilt().then(()=>NXT.more('appearance'))">Allow tilt light</button>`}</div></section>`;})()}`,'vn-settings');
   }
   function saveAppearance() {N.cfg().appearance={text:val('nxp-text')==='large'?'large':'normal',motion:val('nxp-motion')==='reduced'?'reduced':'system'};applyAppearance();N.commit('Appearance saved');}
   /* Associates the persistent labels the legacy cloud/backup forms already
@@ -3179,7 +3215,7 @@ const NXP = (() => {
        summary line would just repeat "82 kg". */
     if(parts.length===1&&scope.body&&r.bw&&!(scope.lift&&r.logs.length)&&!(scope.cond&&(r.cardio.length||r.floorball.length)))parts.length=0;
     const emptyCopy=filter==='strength'?'No lifting logged on this date.':filter==='conditioning'?'No cardio logged on this date.':filter==='body'?'No weigh-in recorded on this date.':'No training or measurements logged.';
-    return `<section class="nxp-history-selected vn-hist-day"><header class="nxp-history-selected-head"><h2 class="st-dayhead" aria-label="${esc(when.toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))}"><span class="st-dayhead-n" aria-hidden="true">${when.getDate()}</span><span class="st-dayhead-t" aria-hidden="true"><b>${esc(when.toLocaleDateString('en-SG',{weekday:'long'}))}</b><em>${esc(when.toLocaleDateString('en-SG',{month:'long'}))} ${esc(String(when.getFullYear()))}</em></span></h2>${coachDayLine(date,scope)}${parts.length?`<p class="nxp-history-selected-summary">${esc(parts.join(' · '))}</p>`:''}${(()=>{const k=[scope.lift&&r.logs.length?'<span class="lift"><i></i>Lifting</span>':'',scope.cond&&r.cardio.length?'<span class="cond"><i></i>Cardio</span>':'',scope.cond&&r.floorball.length?'<span class="floor"><i></i>Floorball</span>':'',scope.body&&r.bw?'<span class="body"><i></i>Weigh-in</span>':''].join('');return k?`<p class="st-day-k" aria-hidden="true">${k}</p>`:'';})()}</header>${blocks.length?blocks.join(''):`<p class="nxp-history-empty">${esc(emptyCopy)}</p>`}${historyAuditLanes()}</section>`;
+    return `<section class="nxp-history-selected vn-hist-day"><header class="nxp-history-selected-head"><h2 class="st-dayhead" aria-label="${esc(when.toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))}"><span class="st-dayhead-n" aria-hidden="true">${when.getDate()}</span><span class="st-dayhead-t" aria-hidden="true"><b>${esc(when.toLocaleDateString('en-SG',{weekday:'long'}))}</b><em>${esc(when.toLocaleDateString('en-SG',{month:'long'}))} ${esc(String(when.getFullYear()))}</em></span></h2>${coachDayLine(date,scope)}${parts.length?`<p class="nxp-history-selected-summary">${esc(parts.join(' · '))}</p>`:''}${(()=>{const k=[scope.lift&&r.logs.length?'<span class="lift"><i></i>Lifting</span>':'',scope.cond&&r.cardio.length?'<span class="cond"><i></i>Cardio</span>':'',scope.cond&&r.floorball.length?'<span class="floor"><i></i>Floorball</span>':'',scope.body&&r.bw?'<span class="body"><i></i>Weigh-in</span>':''].join('');return k?`<p class="st-day-k" aria-hidden="true">${k}</p>`:'';})()}</header>${scope.lift&&r.logs.length?sessionPrintSVG(r.logs,date+'|'+(r.logs[0].gym||'Gym A'),{cls:'is-day'}):''}${blocks.length?blocks.join(''):`<p class="nxp-history-empty">${esc(emptyCopy)}</p>`}${historyAuditLanes()}</section>`;
   }
   function historyPaintDay(date) {
     const host=document.getElementById('vn-hist-dayhost');
