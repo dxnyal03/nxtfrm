@@ -3450,64 +3450,6 @@ html::after{content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;opa
 #stTop.is-compact .st-top-bar{opacity:1;transform:translate(-50%,0) scale(1);pointer-events:auto}
 @media (prefers-reduced-motion:reduce){#stTop .st-top-scrim,#stTop .st-top-bar{transition:none}}
 :root[data-nxp-motion="reduced"] #stTop .st-top-scrim,:root[data-nxp-motion="reduced"] #stTop .st-top-bar{transition:none}
-/* ---- D73 · Body of Light --------------------------------------------------------------------------------
-   The week's working sets drawn on a dark glass body: each muscle's light is its share of the busiest
-   muscle's sets (counts in the list beside it; assisted-only muscles dimmer, no count). It ignites on
-   entering Today — a scan line passes and the muscles light in rank order — and rests still after. */
-#homePage .st-bl{--nxa-body-hi:#26223a;--nxa-body-lo:#0f0d18;--nxa-prim-hi:#f7f3ff;--nxa-prim-mid:#bfa8ff;--nxa-prim-lo:#7246f0;--nxa-sec-hi:#5d5191;--nxa-sec-lo:#2c2650;overflow:hidden}
-#homePage .st-bl-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin-top:10px}
-#homePage .st-bl-stage{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%;max-width:310px;margin:0 auto;padding:4px 0 0;isolation:isolate}
-#homePage .st-bl-halo{position:absolute;inset:-14% -12% -6%;z-index:-1;pointer-events:none;
-  background:radial-gradient(48% 44% at 50% 42%,rgba(139,92,246,.34),rgba(139,92,246,.09) 56%,transparent 76%)}
-#homePage .st-bl-fig{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
-#homePage .st-bl-fig .nxa{display:block;width:100%;height:auto;overflow:visible;filter:drop-shadow(0 0 9px rgba(139,92,246,.38))}
-#homePage .st-bl-fig small{font:540 10.5px/1 var(--st-font-d);letter-spacing:.16em;text-transform:uppercase;color:var(--st-ink-4)}
-#homePage .st-bl .nxa-m{stroke:rgba(7,5,13,.9);stroke-width:1.5}
-#homePage .st-bl .nxa-body{stroke:rgba(205,190,255,.2);stroke-width:3}
-#homePage .st-bl .nxa-hi{transition:opacity .35s cubic-bezier(.32,.72,0,1)}
-#homePage .st-bl .nxa-hi.is-primary{opacity:var(--lv,1)}
-#homePage .st-bl .nxa-hi.is-secondary{opacity:.6}
-#homePage .st-bl.is-focus .nxa-hi:not(.is-focus){opacity:.1}
-#homePage .st-bl.is-focus .nxa-hi.is-focus{opacity:1}
-#homePage .st-bl-scan{position:absolute;left:-6%;right:-6%;top:0;height:2px;pointer-events:none;opacity:0;border-radius:2px;
-  background:linear-gradient(90deg,transparent,rgba(226,214,255,.95) 50%,transparent);box-shadow:0 0 16px 3px rgba(167,139,250,.6)}
-#homePage .st-bl-side{min-width:0}
-#homePage .st-bl-sum{margin:0 0 4px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:12px;align-items:end;font:520 13px/1.3 var(--st-font);color:var(--st-ink-3)}
-#homePage .st-bl-sum b{grid-row:1/3}
-#homePage .st-bl-sum b{font:280 44px/.95 var(--st-font-d);letter-spacing:-.045em;background:linear-gradient(180deg,#fff 30%,#c8b6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
-#homePage .st-bl-sum span{color:var(--st-ink-4);font-size:12.5px}
-#homePage .st-bl-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;column-gap:22px}
-@media (max-width:359px){#homePage .st-bl-list{grid-template-columns:1fr}}
-#homePage .st-bl-row{all:unset;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;column-gap:8px;row-gap:6px;width:100%;min-height:44px;padding:7px 0 6px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-#homePage .st-bl-row:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:2px;border-radius:8px}
-#homePage .st-bl-n{font:560 14px/1.15 var(--st-font);color:var(--st-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#homePage .st-bl-row b{font:620 15px/1 var(--st-font-d);color:var(--st-ink);font-variant-numeric:tabular-nums}
-#homePage .st-bl-row i{grid-column:1/-1;position:relative;height:3px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
-#homePage .st-bl-row i::after{content:"";position:absolute;inset:0;width:var(--p);border-radius:inherit;transform-origin:0 50%;
-  background:linear-gradient(90deg,#6d3df0,#c9b8ff);box-shadow:0 0 10px rgba(139,92,246,.7)}
-#homePage .st-bl-list li.is-on .st-bl-n{color:var(--st-ink)}
-#homePage .st-bl-list li.is-on .st-bl-row i::after{background:linear-gradient(90deg,#8b5cf6,#fff)}
-#homePage .st-bl-note{margin:12px 0 0;font:450 12.5px/1.45 var(--st-font);color:var(--st-ink-3)}
-#homePage .st-bl-more{margin:8px 0 0;display:flex;flex-wrap:wrap;gap:6px}
-#homePage .st-bl-chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;font:540 12px/1 var(--st-font);color:var(--st-ink-2);
-  background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
-#homePage .st-bl-chip b{font:620 12px/1 var(--st-font-d);color:var(--st-ink)}
-#homePage .st-bl-k{display:inline-block;width:8px;height:8px;border-radius:50%;background:#5d5191;margin-right:7px;vertical-align:0}
-#homePage .st-bl-empty{margin:0;font:450 14px/1.5 var(--st-font);color:var(--st-ink-3)}
-#homePage .st-bl.is-empty .st-bl-fig .nxa{filter:none;opacity:.8}
-
-@media (prefers-reduced-motion:no-preference){
-  #homePage .st-bl.st-play .nxa-hi.is-primary{animation:st-bl-ignite 1s cubic-bezier(.32,.72,0,1) calc(.5s + var(--i,0) * 90ms) both}
-  #homePage .st-bl.st-play .nxa-hi.is-secondary{animation:st-bl-ignite 1s ease .9s both}
-  #homePage .st-bl.st-play .st-bl-scan{animation:st-bl-scan 1.5s cubic-bezier(.45,0,.25,1) .1s both}
-  #homePage .st-bl.st-play .st-bl-row i::after{animation:st-bl-bar .9s cubic-bezier(.32,.72,0,1) calc(.55s + var(--i,0) * 80ms) both}
-  #homePage .st-bl.st-play .st-bl-halo{animation:st-bl-halo 1.6s ease .2s both}
-}
-@keyframes st-bl-ignite{from{opacity:0}}
-@keyframes st-bl-bar{from{transform:scaleX(0)}}
-@keyframes st-bl-halo{from{opacity:0;transform:scale(.85)}}
-@keyframes st-bl-scan{0%{top:0;opacity:0}12%{opacity:1}88%{opacity:1}100%{top:calc(100% - 22px);opacity:0}}
-:root[data-nxp-motion="reduced"] #homePage .st-bl *{animation:none !important}
 /* ---- D74 · Breathing rest orb and set ignition ---------------------------------------------------------
    The rest strip becomes an instrument: a ring that sweeps down with the engine's own countdown (--pct,
    painted every second), a core that breathes on an 8-second cycle (a calm 4-in, 4-out), a pulse in the
@@ -3695,10 +3637,6 @@ body.st-live-on main::after{content:"";display:block;height:70px}
 .st-fin-neb{transform-box:fill-box;transform-origin:center}
 @media (prefers-reduced-motion:no-preference){.st-fin-neb{animation:st-fin-neb 2.4s ease both}}
 @keyframes st-fin-neb{from{opacity:0;transform:scale(.6)}}
-/* Body of Light: a quiet week is a compact tile, not 300px of dark figures */
-#homePage .st-bl.is-empty .st-bl-grid{grid-template-columns:120px minmax(0,1fr);align-items:center}
-#homePage .st-bl.is-empty .st-bl-stage{max-width:120px;margin:0}
-#homePage .st-bl.is-empty .st-bl-fig small{display:none}
 /* ---- D79 · Dynamic Island alerts ------------------------------------------------------------------------
    The toast is a black capsule that grows out of the island (top 11pt on island iPhones: the safe-area top
    minus 51pt; 8px elsewhere), widens to its words, and shrinks back into the island when it goes. */
@@ -4007,13 +3945,6 @@ body.st-live-on main::after{height:76px}
 :root[data-nxp-motion="reduced"] .st-wm,:root[data-nxp-motion="reduced"] .st-wm *{animation:none !important;stroke-dashoffset:0 !important}
 @media (prefers-reduced-motion:reduce){.st-wm-tr{stroke-dashoffset:0}}
 
-/* ---- Body of Light: step through weeks ----------------------------------------------------------------------- */
-#homePage .st-bl-nav{display:inline-flex;align-items:center;gap:4px;margin-right:-8px}
-#homePage .st-bl-step{display:inline-grid;place-items:center;width:36px;height:36px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--st-ink-2);cursor:pointer;position:relative}
-#homePage .st-bl-step::after{content:"";position:absolute;inset:-4px}
-#homePage .st-bl-step svg{width:16px;height:16px}
-#homePage .st-bl-step:disabled{opacity:.3;cursor:default}
-#homePage .st-bl-step:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:1px}
 
 /* ---- D94 · Depth while scrolling: cards recede as they pass under the frosted top bar ---------------------------- */
 @supports (animation-timeline: view()){

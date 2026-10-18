@@ -28,7 +28,7 @@ no calculation, storage key, record shape or stored value changed. Proposed deci
   Log cardio, Finish and chart scrubbing (iOS 18+ switch haptic).
 
 **Today**
-- **Body of Light** — this week's working sets lit on the body, ranked, assisted muscles dimmer, unmapped exercises named.
+- **Muscles this week** — a lit body map of the week's working sets was built, then removed from Today at the owner's request (D73 withdrawn).
 - **A warning verdict leads the page** (it sat about 2,000 px down under coach notes).
 - **Log morning weight chip** under the greeting between 04:00 and 12:00 until the reading is in.
 
@@ -76,7 +76,6 @@ no calculation, storage key, record shape or stored value changed. Proposed deci
 - **Session prints:** every lifting session becomes its own artwork in History and in the finish scene.
 - **The Observatory:** "Your sky" in History opens every session as a star in a constellation per routine; pinch, pan,
   tap a star, open the day.
-- **Body of Light history:** step back through earlier weeks.
 - **Depth while scrolling:** cards recede as they slide under the top bar.
 - **Fixes:** the workout header names the gym; an empty kg or reps field explains itself; the weekly review called this
   week "Next week"; the Why sheet linked to itself; a coach note no longer adds a second Start-style button; calendar
