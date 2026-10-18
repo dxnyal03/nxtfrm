@@ -60,6 +60,8 @@ const NXT = (() => {
   function dateAdd(d,n) { return new Date(dateMs(d)+n*DAY).toISOString().slice(0,10); }
   function weekStart(d=state.date) { return dateAdd(d,-((new Date(dateMs(d)).getUTCDay()+6)%7)); }
   function shortDate(d) { return new Date(dateMs(d)).toLocaleDateString("en-SG",{day:"numeric",month:"short",timeZone:"UTC"}); }
+  /* "1 reading", "3 readings". Wording only: the count it is given is printed unchanged beside it. */
+  function plural(n,one,many) { return Number(n)===1?one:(many||one+"s"); }
   function label(t) { return names[t]||t||"Workout"; }
   function cleanRows(input,key="weight") {
     const byDate=new Map();
@@ -275,7 +277,7 @@ const NXT = (() => {
   }
   function review() {
     const rows=weights(),s=trendStats(rows),lifts=strengthItems(),waist=cleanRows(cfg().waist,"cm"),check=cfg().recovery[state.date];
-    const base={tone:"neutral",title:"Building your baseline",message:"Log morning weights across two weeks. Each weekly average needs at least three readings.",action:"Keep logging",reason:`${s.current.n} readings this week · ${s.previous.n} last week`,change:s.change};
+    const base={tone:"neutral",title:"Building your baseline",message:"Log morning weights across two weeks. Each weekly average needs at least three readings.",action:"Keep logging",reason:`${s.current.n} ${plural(s.current.n,"reading")} this week · ${s.previous.n} last week`,change:s.change};
     if(detectPlateau().plateau===true) {
       const d=NXT.diagnose();
       if(d.ok&&d.verdict!=="insufficient_context") {
@@ -417,7 +419,7 @@ const NXT = (() => {
     const tdeeThen=hist[0]?hist[0].tdee:null;
     const tdeeDrop=tdeeThen!==null&&tdeeNow!==null?tdeeThen-tdeeNow:null;
     const pct=v=>Math.round(v*100),kcal=n=>Number(n).toLocaleString("en-SG");
-    const rate=p.weeklyRate===null?"—":`${p.weeklyRate>0?"+":p.weeklyRate<0?"-":""}${Math.abs(p.weeklyRate).toFixed(2)} kg / week · ${p.spanDays||days} days`;
+    const rate=p.weeklyRate===null?"—":`${p.weeklyRate>0?"+":p.weeklyRate<0?"-":""}${Math.abs(p.weeklyRate).toFixed(2)} kg / week · ${p.spanDays||days} ${plural(p.spanDays||days,"day")}`;
     const rateTone=!p.ok||p.status==="undetermined"?"neutral":p.status==="losing"?"good":"watch";
     const adhValue=`Logged: ${adhLogged} of ${adhDays} days · ${pct(adhMean)}% weighted`;
     const adhTone=adhLogged===0?"neutral":adhMean>=.85?"good":"watch";
@@ -450,7 +452,7 @@ const NXT = (() => {
          extra rows are the decision itself and how many mornings it rests on. */
       const care=caution();
       if(care.cautious) {
-        const cover={label:"Readings",value:`${p.n||0} over ${p.spanDays||0} days`,tone:"neutral"};
+        const cover={label:"Readings",value:`${p.n||0} over ${p.spanDays||0} ${plural(p.spanDays||0,"day")}`,tone:"neutral"};
         return pack("caution",`${care.title} — ${care.message}`,[{label:"Decision",value:care.title,tone:"watch"},cover],
           [{text:`${care.action}.`,kind:"hold"}],p.ok&&p.confidence==="high"?"high":p.ok?"medium":"low",care.reason);
       }
@@ -832,10 +834,11 @@ const NXT = (() => {
   const heading = (eyebrow,title,action="") => `<header class="n99-heading"><div><p class="n99-eyebrow">${eyebrow}</p><h1>${title}</h1></div>${action}</header>`;
   function card(title,body,extra="") { return `<section class="n99-card ${extra}"><h2>${title}</h2>${body}</section>`; }
   function metric(label,value,detail="") { return `<div class="n99-metric"><span>${label}</span><strong>${value}</strong>${detail?`<small>${detail}</small>`:""}</div>`; }
-  function reviewCard() {
+  function reviewCard(inSheet) {
     const r=review();
     logSuggestion({kind:"review",subject:null,payload:{title:r.title,action:r.action,tone:r.tone,reason:r.reason}});
-    return `<section class="n99-card n99-review ${r.tone}"><div class="n99-eyebrow">Weekly cut review</div><h2>${r.title}</h2><p>${r.message}</p><div class="n99-review-foot"><span>${r.reason}</span><button class="n99-text" onclick="NXT.openReview()">Why this advice? ›</button></div></section>`;
+    /* Inside the review sheet itself the "Why this advice?" link would only reopen the same sheet. */
+    return `<section class="n99-card n99-review ${r.tone}"><div class="n99-eyebrow">Weekly cut review</div><h2>${r.title}</h2><p>${r.message}</p><div class="n99-review-foot"><span>${r.reason}</span>${inSheet===true?'':'<button class="n99-text" onclick="NXT.openReview()">Why this advice? ›</button>'}</div></section>`;
   }
   function diagnosisCard() {
     const d=diagnose();
@@ -916,7 +919,7 @@ const NXT = (() => {
     const next=list.find(x=>done(x.name)<x.sets);
     document.getElementById("homePage").innerHTML=`<div class="n99">
       ${heading(shortDate(state.date)+" · YOUR DAILY PLAN","Make today count.",'<span class="n99-version">V99 PURPLE</span>')}
-      <section class="n99-mission"><div class="n99-row"><span class="n99-eyebrow">${finished?'SESSION SAVED':'TODAY’S SESSION'}</span><button class="n99-chip" onclick="showSessionSheet()">Change</button></div><h2>${label(state.dayType)}</h2><p>${finished?'Your work is saved. Take recovery seriously.':isLift?`${list.length} exercises · ${list.reduce((s,e)=>s+e.sets,0)} working sets · ${esc(state.gym)}`:state.dayType==='Zone2'?'Easy, conversational effort. Build consistency at a manageable pace.':state.dayType==='Floorball'?'Log your session and account for it in your recovery.':'A planned rest day. Your programme continues after recovery.'}</p>
+      <section class="n99-mission"><div class="n99-row"><span class="n99-eyebrow">${finished?'SESSION SAVED':'TODAY’S SESSION'}</span><button class="n99-chip" onclick="showSessionSheet()">Change</button></div><h2>${label(state.dayType)}</h2><p>${finished?'Your work is saved. Take recovery seriously.':isLift?`${list.length} ${plural(list.length,'exercise')} · ${list.reduce((s,e)=>s+e.sets,0)} working ${plural(list.reduce((s,e)=>s+e.sets,0),'set')} · ${esc(state.gym)}`:state.dayType==='Zone2'?'Easy, conversational effort. Build consistency at a manageable pace.':state.dayType==='Floorball'?'Log your session and account for it in your recovery.':'A planned rest day. Your programme continues after recovery.'}</p>
       ${isLift&&!finished?`<div class="n99-next"><span>Next up</span><b>${esc(next?.name||'All planned sets logged')}</b></div>`:''}
       ${button(finished?'Review session':isLift?'Start / resume workout':state.dayType==='Zone2'?'Log cardio':'Open today',finished?"switchTab('train')":"startWorkoutNow()")}</section>
       ${calorieCard()}
@@ -954,9 +957,9 @@ const NXT = (() => {
     maybeSnapshotTDEE(true);
     commit('Daily calorie target saved');
   }
-  function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any change to your plan stays your choice.</p><div class="n99-stack">${CALORIES_ENABLED?button('Review calorie guide','NXT.openCalories()',true):''}${FEATURES.checkin?button('Update recovery check-in','apx96OpenReadiness()',true):''}${button('Done','closeModal()')}</div>`); }
+  function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard(true)}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' '+plural(s.current.n,'weigh-in'))}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' '+plural(s.previous.n,'weigh-in'))}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any change to your plan stays your choice.</p><div class="n99-stack">${CALORIES_ENABLED?button('Review calorie guide','NXT.openCalories()',true):''}${FEATURES.checkin?button('Update recovery check-in','apx96OpenReadiness()',true):''}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,features:FEATURES,pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,features:FEATURES,pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,plural,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
@@ -1120,7 +1123,7 @@ Object.assign(NXT, (()=>{
      rather than claiming every point is a morning one. */
   /* One plain line under the trend figure: how far this reading sits from its own trend value. */
   function gapLine(p) {
-    if(!p||p.avg===null||p.avg===undefined||!Number.isFinite(p.weight))return (p&&p.coverage!==undefined?p.coverage+' readings':'');
+    if(!p||p.avg===null||p.avg===undefined||!Number.isFinite(p.weight))return (p&&p.coverage!==undefined?p.coverage+' '+N.plural(p.coverage,'reading'):'');
     const d=p.weight-p.avg;
     if(Math.abs(d)<0.05)return 'On trend';
     return Math.abs(d).toFixed(1)+' kg '+(d<0?'below':'above')+' trend';
@@ -1180,7 +1183,7 @@ Object.assign(NXT, (()=>{
         <span class="vn-tiny vn-journey-now-l">Now ${cur.toFixed(1)}</span>
         <span class="vn-tiny">Goal ${lo}–${hi}</span>
       </div>
-      <p class="vn-tiny vn-mt3">Elapsed ${elapsed} days. A weight range alone does not measure leanness.</p>
+      <p class="vn-tiny vn-mt3">Elapsed ${elapsed} ${N.plural(elapsed,"day")}. A weight range alone does not measure leanness.</p>
     </section>`;
   }
   function evidenceHTML(plateau,forecastRead) {
@@ -1296,12 +1299,12 @@ Object.assign(NXT, (()=>{
     const lowPt=points.reduce((m,q)=>q.weight<m.weight?q:m,points[0]);
     const tChange=trPts.length>=2?trPts.at(-1).avg-trPts[0].avg:null;
     const rangeRead=`<div class="st-rread" role="group" aria-label="This range">
-      <div><small>Trend change</small><b class="vn-num">${tChange===null?'—':(tChange>0?'+':tChange<0?'−':'')+Math.abs(tChange).toFixed(1)}<em>kg</em></b><span>${trPts.length>=2?'over '+(Math.round((N.dateMs(trPts.at(-1).date)-N.dateMs(trPts[0].date))/864e5))+' days':'building'}</span></div>
+      <div><small>Trend change</small><b class="vn-num">${tChange===null?'—':(tChange>0?'+':tChange<0?'−':'')+Math.abs(tChange).toFixed(1)}<em>kg</em></b><span>${trPts.length>=2?'over '+(d=>d+' '+N.plural(d,'day'))(Math.round((N.dateMs(trPts.at(-1).date)-N.dateMs(trPts[0].date))/864e5)):'building'}</span></div>
       <div><small>Lowest</small><b class="vn-num">${lowPt.weight.toFixed(1)}<em>kg</em></b><span>${esc(N.shortDate(lowPt.date))}</span></div>
       <div><small>Weighed</small><b class="vn-num">${points.length}<em>/${spanDays}</em></b><span>${Math.round(points.length/spanDays*100)}% of days</span></div>
     </div>`;
     const dense=points.length>90;
-    const summary=`${points.length} readings, ${N.shortDate(points[0].date)} to ${N.shortDate(points.at(-1).date)}. Dashed steps mark each week’s morning average. The strip shows each reading against the trend: while you are cutting most land below it, because the trend averages the days before; several days above it in a row mean the drop is slowing.`
+    const summary=`${points.length} ${N.plural(points.length,"reading")}, ${N.shortDate(points[0].date)} to ${N.shortDate(points.at(-1).date)}. Dashed steps mark each week’s morning average. The strip shows each reading against the trend: while you are cutting most land below it, because the trend averages the days before; several days above it in a row mean the drop is slowing.`
       +(forecast?' Projection is a model estimate, shown dashed — not a measurement.':'');
     return `<section class="vn-weight n99-chart" id="vn-weight">
       <div class="vn-read">
@@ -1334,7 +1337,7 @@ Object.assign(NXT, (()=>{
         onkeydown="NXT.chartKey(event)">
         <svg id="n99-chart-svg" class="n99-chart-svg vn-chart-svg${animClass}${points.length>45?' is-busy':''}" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="n99-chart-title n99-chart-desc">
           <title id="n99-chart-title">Morning weight and smoothed trend${forecast?' with model projection':''}</title>
-          <desc id="n99-chart-desc">${points.length} weigh-ins. Circles are morning readings. The solid line is the smoothed trend. Diamonds are post-workout when enabled. ${forecast?'A dashed faded line is a model projection, not a measurement. ':''}Y-axis covers recent readings only — the long-term goal is on Cut journey below.</desc>
+          <desc id="n99-chart-desc">${points.length} ${N.plural(points.length,"weigh-in")}. Circles are morning readings. The solid line is the smoothed trend. Diamonds are post-workout when enabled. ${forecast?'A dashed faded line is a model projection, not a measurement. ':''}Y-axis covers recent readings only — the long-term goal is on Cut journey below.</desc>
           <defs>
             <clipPath id="vn-chart-clip"><rect id="vn-chart-clip-r" x="${left}" y="${top}" width="${W-left-right}" height="${H-top-bottom}"/></clipPath>
             <linearGradient id="n99-chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".34"/><stop offset=".7" stop-color="${CHART.ink}" stop-opacity=".06"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity="0"/></linearGradient><filter id="st-glow" x="-10%" y="-40%" width="120%" height="180%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
@@ -1422,7 +1425,7 @@ Object.assign(NXT, (()=>{
     return N.card('Keep your performance',`<p>Compare the same exercise, at the same gym. Four recent sessions establish a repeatable comparison; warm-ups and sets over 15 reps are excluded from the estimate.</p><div class="n99-stats">${N.metric('Holding / improving',items.filter(x=>x.tone==='good').length)}${N.metric('Worth reviewing',items.filter(x=>x.status==='Review').length)}</div>`)+N.card('Exercise trends',items.length?items.map(item=>{
       const values=item.history.slice(-8).map(x=>x.value),min=Math.min(...values)-1,max=Math.max(...values)+1;
       const points=values.map((v,i)=>({x:4+i/Math.max(1,values.length-1)*102,y:35-(v-min)/(max-min)*28}));
-      return `<div class="n99-strength-row"><div><h3>${esc(item.name)}</h3><p>${esc(item.gym)} · ${item.sessions} sessions</p><span class="n99-status ${item.tone}">${item.status}${item.delta===null?'':' · '+signed(item.delta,1)+'%'}</span></div><svg viewBox="0 0 110 40" class="n99-spark" role="img" aria-label="Estimated strength across ${item.history.length} sessions"><path d="${smoothPath(points)}" fill="none" stroke="${item.tone==='watch'?'#e8b271':CHART.ink}" stroke-width="2"/><circle cx="${points.at(-1)?.x||4}" cy="${points.at(-1)?.y||20}" r="3" fill="${CHART.ink}"/></svg></div>`;
+      return `<div class="n99-strength-row"><div><h3>${esc(item.name)}</h3><p>${esc(item.gym)} · ${item.sessions} ${N.plural(item.sessions,"session")}</p><span class="n99-status ${item.tone}">${item.status}${item.delta===null?'':' · '+signed(item.delta,1)+'%'}</span></div><svg viewBox="0 0 110 40" class="n99-spark" role="img" aria-label="Estimated strength across ${item.history.length} ${N.plural(item.history.length,"session")}"><path d="${smoothPath(points)}" fill="none" stroke="${item.tone==='watch'?'#e8b271':CHART.ink}" stroke-width="2"/><circle cx="${points.at(-1)?.x||4}" cy="${points.at(-1)?.y||20}" r="3" fill="${CHART.ink}"/></svg></div>`;
     }).join(''):'<p>Your first logged workouts will appear here. Equipment loads are not mixed across gyms.</p>')+`<p class="n99-small">Estimated 1RM is a comparison aid, not a tested maximum or proof of muscle retention. Technique, effort and equipment setup affect it.</p>`;
   }
   function bodyHTML() {
@@ -1446,13 +1449,13 @@ Object.assign(NXT, (()=>{
   }
   function deleteWaist(date) {if(!confirm('Delete this measurement?'))return;N.cfg().waist=N.cfg().waist.filter(r=>r.date!==date);N.commit('Measurement deleted');}
   function openWeightHistory() {
-    const rows=N.weights().slice().reverse(),all=(state.bws||[]).length;N.modal('Weigh-in history',(all?`<button type="button" class="n99-button secondary st-copy-wi" onclick="NXT.copyWeighIns()">Copy all ${all} weigh-ins</button><p class="n99-small">Copies date, weight and timing as a table you can paste into Notes, Sheets or a chat.</p>`:'')+(rows.length?rows.map((r,i)=>`<button class="n99-list-row" onclick="NXT.editWeight('${r.date}')"><span>${N.shortDate(r.date)}</span><b>${r.weight.toFixed(1)} kg</b><span>Edit ›</span></button>`).join(''):'<p>No weights recorded yet.</p>'));
+    const rows=N.weights().slice().reverse(),all=(state.bws||[]).length;N.modal('Weigh-in history',(all?`<button type="button" class="n99-button secondary st-copy-wi" onclick="NXT.copyWeighIns()">${all===1?"Copy 1 weigh-in":`Copy all ${all} weigh-ins`}</button><p class="n99-small">Copies date, weight and timing as a table you can paste into Notes, Sheets or a chat.</p>`:'')+(rows.length?rows.map((r,i)=>`<button class="n99-list-row" onclick="NXT.editWeight('${r.date}')"><span>${N.shortDate(r.date)}</span><b>${r.weight.toFixed(1)} kg</b><span>Edit ›</span></button>`).join(''):'<p>No weights recorded yet.</p>'));
   }
   /* Every stored weigh-in (all timings), oldest first, tab-separated so it pastes as a table. Read-only. */
   function copyWeighIns() {
     const rows=(state.bws||[]).filter(r=>r&&r.date&&Number.isFinite(Number(r.weight))).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))||Number(a.ts||0)-Number(b.ts||0));
     const text=['Date\tWeight (kg)\tTiming'].concat(rows.map(r=>`${r.date}\t${Number(r.weight).toFixed(1)}\t${r.timeOfDay||'Not recorded'}`)).join('\n');
-    const done=()=>toast(`Copied ${rows.length} weigh-ins`);
+    const done=()=>toast(`Copied ${rows.length} ${N.plural(rows.length,"weigh-in")}`);
     const fallback=()=>{const t=document.createElement('textarea');t.value=text;t.setAttribute('readonly','');t.style.cssText='position:fixed;opacity:0;top:0';document.body.appendChild(t);t.select();t.setSelectionRange(0,text.length);let ok=false;try{ok=document.execCommand('copy');}catch(e){}t.remove();ok?done():toast('Copy was blocked. Try again.');};
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(done,fallback);else fallback();
   }
@@ -1519,7 +1522,14 @@ Object.assign(NXT, (()=>{
     if(!r||!Number.isFinite(N.dateMs(date))||date>state.date||weight===null||weight<20||weight>400)return toast('Check the date and weight.');
     r.date=date;r.weight=weight;r.ts=Date.now();N.commit('Weigh-in corrected');
   }
-  function deleteWeight() {const r=findEditWeight();if(!r||!confirm('Delete this weigh-in?'))return;state.bws=state.bws.filter(x=>x!==r);N.commit('Weigh-in deleted');}
+  async function deleteWeight() {
+    const r=findEditWeight();if(!r)return;
+    const ask=typeof NXP==='object'&&NXP&&typeof NXP.ask==='function'
+      ?NXP.ask({title:'Delete this weigh-in?',body:`${Number(r.weight).toFixed(1)} kg · ${N.shortDate(r.date)}. This cannot be undone.`,ok:'Delete',danger:true})
+      :Promise.resolve(confirm('Delete this weigh-in?'));
+    if(!(await ask))return;
+    state.bws=state.bws.filter(x=>x!==r);N.commit('Weigh-in deleted');
+  }
   return {signed,smoothPath,trendReadText,chartModel,chartHTML,journeyHTML,selectPoint,scrub,chartKey,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
 })());
 
@@ -1541,7 +1551,7 @@ Object.assign(NXT, (()=>{
       <div class="n99-form-grid"><label>Set type<select id="n99-set-type"><option value="working">Working set</option><option value="warmup">Warm-up</option></select></label><label>Reps left · optional<select id="n99-rir"><option value="">Not recorded</option>${[0,1,2,3,4].map(n=>`<option value="${n}">${n===4?'4+':n} reps left</option>`).join('')}</select></label></div><button type="submit" class="n99-button">Log set</button></form>
       <div class="n99-quick">${N.button('Swap exercise','showSubstituteSheet()',true)}${N.button('Next exercise','NXT.nextExercise()',true)}</div></section>`}
       ${apx96RestTimerHTML()}
-      <section class="n99-card"><div class="n99-row"><h2>Workout queue</h2><button class="n99-text" onclick="apx96OpenQueueManager()">Manage ›</button></div>${list.map((e,i)=>`<button class="n99-list-row ${e.name===ex?'selected':''}" onclick="NXT.selectExercise(${i})"><span class="n99-order">${N.done(e.name)>=e.sets?'✓':i+1}</span><span><b>${esc(e.name)}</b><small>${e.sets} sets · ${e.reps[0]}–${e.reps[1]} reps</small></span><span>${N.done(e.name)}/${e.sets}</span></button>`).join('')}</section>
+      <section class="n99-card"><div class="n99-row"><h2>Workout queue</h2><button class="n99-text" onclick="apx96OpenQueueManager()">Manage ›</button></div>${list.map((e,i)=>`<button class="n99-list-row ${e.name===ex?'selected':''}" onclick="NXT.selectExercise(${i})"><span class="n99-order">${N.done(e.name)>=e.sets?'✓':i+1}</span><span><b>${esc(e.name)}</b><small>${e.sets} ${N.plural(e.sets,"set")} · ${e.reps[0]}–${e.reps[1]} reps</small></span><span>${N.done(e.name)}/${e.sets}</span></button>`).join('')}</section>
       <div class="n99-quick">${N.button('Undo last set','apx96UndoLastSet()',true)}${N.button(finished?'Session complete':'Finish workout',finished?'NXT.openFinishSummary()':'NXT.finish()',finished)}</div>
       <details class="n99-card"><summary>Session options & notes</summary><p>${esc(v88NoteFor(ex)||'No equipment note for this exercise.')}</p><div class="n99-stack">${N.button('Edit equipment note',`v88OpenNoteModal('${jss(ex)}')`,true)}${N.button('Use shorter session','NXT.shorter()',true)}${N.button('Restore full session','NXT.fullSession()',true)}${N.button('Recovery check-in','apx96OpenReadiness()',true)}</div></details>
       ${recentSetsHTML(10)}
@@ -1567,11 +1577,14 @@ Object.assign(NXT, (()=>{
     N.commit(setType==='warmup'?'Warm-up saved':'Working set saved');
     apx96StartRest(setType==='warmup'?60:suggestedRestSeconds(ex));
   }
-  function finish() {
+  async function finish() {
     const logs=sessionLogs();if(!logs.length)return toast('Log at least one set before finishing.');
-    if(!confirm('Finish this session? All logged sets stay saved, including a shorter workout.'))return;
+    const ask=typeof NXP==='object'&&NXP&&typeof NXP.ask==='function'
+      ?NXP.ask({title:'Finish workout?',body:'All logged sets stay saved, including a shorter workout.',ok:'Finish workout'})
+      :Promise.resolve(confirm('Finish this session? All logged sets stay saved, including a shorter workout.'));
+    if(!(await ask))return;
     N.cfg().sessions[sessionKey()]={date:state.date,gym:state.gym,type:state.dayType,finished:true,finishedAt:Date.now(),sets:logs.filter(x=>x.setType!=='warmup').length};
-    apx96SkipRest();N.commit('Workout saved');openFinishSummary();
+    apx96SkipRest();N.commit('Workout saved');N.openFinishSummary();
   }
   function openFinishSummary() {
     const logs=sessionLogs(),working=logs.filter(x=>x.setType!=='warmup');
@@ -1583,9 +1596,12 @@ Object.assign(NXT, (()=>{
     const list=ensureSessionPlan().slice(0,3);state.sessionPlans[sessionKey()]=list;state.exercise=list[0]||'';state.minimumWorkout=true;N.commit('Shorter session selected');
   }
   function fullSession() {state.sessionPlans[sessionKey()]=N.templateFor().map(e=>e.name);N.cfg().sessionTargets[sessionKey()]=N.copy(N.templateFor());state.minimumWorkout=false;N.commit('Full session restored');}
-  function undo() {
+  async function undo() {
     const last=sessionLogs().slice().reverse().sort((a,b)=>Number(b.ts||0)-Number(a.ts||0))[0];if(!last)return toast('No set in this session to undo.');
-    if(!confirm(`Undo ${last.exercise} · ${last.weight} kg × ${last.reps}?`))return;
+    const ask=typeof NXP==='object'&&NXP&&typeof NXP.ask==='function'
+      ?NXP.ask({title:'Undo last set?',body:`${last.exercise} · ${last.weight} kg × ${last.reps}`,ok:'Undo set',danger:true})
+      :Promise.resolve(confirm(`Undo ${last.exercise} · ${last.weight} kg × ${last.reps}?`));
+    if(!(await ask))return;
     state.logs=state.logs.filter(x=>x!==last);delete N.cfg().sessions[sessionKey()];state.exercise=last.exercise;N.commit('Last set undone');
   }
   function sessionPicker() {N.modal('Choose today’s session',`<p>Your existing records and saved workout queues stay intact.</p><div class="n99-picker">${N.pickTypes(state.dayType).map(t=>N.button(N.label(t),`NXT.chooseSession('${t}')`,state.dayType!==t)).join('')}</div>`);}
@@ -1694,7 +1710,7 @@ Object.assign(NXT, (()=>{
     TARGET_LOW=lo;TARGET_HIGH=hi;settings.targetLow=lo;settings.targetHigh=hi;settings.goalLow=lo;settings.goalHigh=hi;N.cfg().targetConfirmed=true;N.commit('Goal range saved');
   }
   function programmeHTML() {
-    return N.card('Your weekly plan',`<p>Three full-body sessions, easy cardio between them, and a rest day. All routines remain editable.</p><form onsubmit="event.preventDefault();NXT.saveWeek()"><div class="n99-week-editor">${[1,2,3,4,5,6,0].map(d=>`<label>${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d]}<select id="n99-day-${d}">${N.pickTypes(settings.weeklyPlan[d]).map(t=>`<option value="${t}" ${settings.weeklyPlan[d]===t?'selected':''}>${N.label(t)}</option>`).join('')}</select></label>`).join('')}</div><button type="submit" class="n99-button">Save weekly plan</button></form><p class="n99-small">Tap any day on Home to change what it is.</p>`)+N.card('Saved workouts',`<p>Edits apply to future sessions at the selected gym. Logged history and current workout queues are preserved.</p><button class="n99-chip" onclick="cycleGym()">${esc(state.gym)} · switch gym</button><div class="n99-stack">${['FullA','FullB','FullC'].map(t=>N.button(`${N.label(t)} · ${N.templateFor(t).length} exercises`,`NXT.editTemplate('${t}')`,true)).join('')}</div><details><summary>Other saved routines</summary><div class="n99-stack">${['Push','Pull','Pump','Legs'].map(t=>N.button(N.label(t),`NXT.editTemplate('${t}')`,true)).join('')}</div></details>`)+`<details class="n99-card"><summary>Gym names & equipment</summary>${gymSettingsHTML()}</details>`+N.card('Programme defaults',`<p>Restore the A/B/C weekly rhythm or return to the weekly plan saved before this upgrade.</p><div class="n99-stack">${N.button('Use A/B/C weekly rhythm','NXT.restoreWeek(false)',true)}${N.button('Use my previous weekly plan','NXT.restoreWeek(true)',true)}</div>`);
+    return N.card('Your weekly plan',`<p>Three full-body sessions, easy cardio between them, and a rest day. All routines remain editable.</p><form onsubmit="event.preventDefault();NXT.saveWeek()"><div class="n99-week-editor">${[1,2,3,4,5,6,0].map(d=>`<label>${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d]}<select id="n99-day-${d}">${N.pickTypes(settings.weeklyPlan[d]).map(t=>`<option value="${t}" ${settings.weeklyPlan[d]===t?'selected':''}>${N.label(t)}</option>`).join('')}</select></label>`).join('')}</div><button type="submit" class="n99-button">Save weekly plan</button></form><p class="n99-small">Tap any day on Home to change what it is.</p>`)+N.card('Saved workouts',`<p>Edits apply to future sessions at the selected gym. Logged history and current workout queues are preserved.</p><button class="n99-chip" onclick="cycleGym()">${esc(state.gym)} · switch gym</button><div class="n99-stack">${['FullA','FullB','FullC'].map(t=>N.button(`${N.label(t)} · ${(n=>n+" "+N.plural(n,"exercise"))(N.templateFor(t).length)}`,`NXT.editTemplate('${t}')`,true)).join('')}</div><details><summary>Other saved routines</summary><div class="n99-stack">${['Push','Pull','Pump','Legs'].map(t=>N.button(N.label(t),`NXT.editTemplate('${t}')`,true)).join('')}</div></details>`)+`<details class="n99-card"><summary>Gym names & equipment</summary>${gymSettingsHTML()}</details>`+N.card('Programme defaults',`<p>Restore the A/B/C weekly rhythm or return to the weekly plan saved before this upgrade.</p><div class="n99-stack">${N.button('Use A/B/C weekly rhythm','NXT.restoreWeek(false)',true)}${N.button('Use my previous weekly plan','NXT.restoreWeek(true)',true)}</div>`);
   }
   function saveWeek() {
     const plan={};for(let i=0;i<7;i++){const t=val('n99-day-'+i);if(!N.typeNames().includes(t))return toast('Choose a session for every day.');plan[i]=t;}

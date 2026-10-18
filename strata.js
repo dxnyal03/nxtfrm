@@ -301,7 +301,8 @@ const STRATA = (() => {
       if (gap !== null && p.ty !== null && p.ty !== undefined && Math.abs(p.y - p.ty) > 3) { stem.setAttribute("x1", p.x); stem.setAttribute("x2", p.x); stem.setAttribute("y1", p.y); stem.setAttribute("y2", p.ty); stem.setAttribute("visibility", "visible"); }
       else stem.setAttribute("visibility", "hidden");
     }
-    tip.innerHTML = `<b>${esc(shortDate(p.date))}</b><span>Reading <em>${Number(p.weight).toFixed(1)}</em></span>${p.avg !== null ? `<span>Trend <em>${Number(p.avg).toFixed(2)}</em></span>` : ""}${gap !== null && Math.abs(gap) >= 0.05 ? `<span class="st-tip-gap">${Math.abs(gap).toFixed(1)} kg ${gap < 0 ? "below" : "above"} trend</span>` : ""}`;
+    const did = dayDid(p.date);
+    tip.innerHTML = `${did ? `<span class="st-tip-ctx">${esc(did)}</span>` : ""}<b>${esc(shortDate(p.date))}</b><span>Reading <em>${Number(p.weight).toFixed(1)}</em></span>${p.avg !== null ? `<span>Trend <em>${Number(p.avg).toFixed(2)}</em></span>` : ""}${gap !== null && Math.abs(gap) >= 0.05 ? `<span class="st-tip-gap">${Math.abs(gap).toFixed(1)} kg ${gap < 0 ? "below" : "above"} trend</span>` : ""}`;
     tip.style.left = Math.min(Math.max(r.left - wr.left + p.x * k, 58), wr.width - 58) + "px";
     tip.hidden = false;
     const hi = (p.ty !== null && p.ty !== undefined ? Math.min(p.y, p.ty) : p.y), lo = (p.ty !== null && p.ty !== undefined ? Math.max(p.y, p.ty) : p.y), h = tip.offsetHeight;
@@ -371,9 +372,12 @@ const STRATA = (() => {
   }
 
   /* ---- Dock indicator and spotlight --------------------------------------- */
+  let dockI = -1, dockT = 0;
   function syncDock() {
     const inner = document.querySelector(".tabs .tabs-inner"); if (!inner) return;
     const tabs = [...inner.querySelectorAll(".tab")], i = tabs.findIndex(t => t.classList.contains("active"));
+    if (dockI !== -1 && i !== dockI && !reduced()) { inner.classList.remove("is-moving"); void inner.offsetWidth; inner.classList.add("is-moving"); clearTimeout(dockT); dockT = setTimeout(() => inner.classList.remove("is-moving"), 560); }
+    dockI = i;
     inner.style.setProperty("--tab-i", String(Math.max(0, i)));
     inner.style.setProperty("--tab-n", String(tabs.length || 5));
     inner.classList.add("st-dock");
@@ -677,33 +681,1013 @@ const STRATA = (() => {
     });
   }
 
+  /* ---- D71 · Native tab navigation -----------------------------------------------------------------
+     One wrapper around switchTab (installed below): every tab keeps its own scroll position, tapping the
+     tab you are already on returns it to the top, and a change of tab is a View Transition — the page
+     crossfades while its title slides in the direction of travel, and the session name (Today → Train)
+     and the trend figure (Today → Progress) fly across when both ends are on screen. Reduced motion, a
+     hidden page, an open sheet or a browser without View Transitions gets the plain swap, as before. */
+  const TABS = ["home", "train", "weight", "history", "more"];
+  const TITLES = { home: "Today", train: "Train", weight: "Progress", history: "History", more: "Settings" };
+  const MAST = { home: "#homePage .st-head .st-h1", train: "#trainPage .nxp-train-chrome h1", weight: "#weightPage .nxp-progress-chrome h1", history: "#historyPage .vn-hist-chrome h1", more: "#morePage .vn-set-title" };
+  const MORPH = [
+    { name: "st-m-session", sel: { home: "#homePage .st-t-train .st-h2", train: "#trainPage .nxp-train-chrome h1, #trainPage .st-tbar-t" } },
+    { name: "st-m-trend", sel: { home: "#homePage .st-mini [data-st-odo]", weight: "#n99-chart-average" } },
+    { name: "st-m-live", sel: { home: "#stLive", weight: "#stLive", history: "#stLive", more: "#stLive", train: "#trainPage .st-tbar" } }
+  ];
+  const scrollMemo = {};
+  /* Portal launch: Start / Resume workout opens the workout as a circle of light from the button. */
+  let lastPress = null;
+  document.addEventListener("pointerdown", e => { const b = e.target && e.target.closest && e.target.closest(".st-cta,.st-live"); lastPress = b ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; }, true);
+  function onScreen(el) {
+    if (!el || !el.getBoundingClientRect) return false;
+    const r = el.getBoundingClientRect(), vh = window.innerHeight || 800;
+    return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < vh;
+  }
+  function pick(sel) { if (!sel) return null; for (const el of document.querySelectorAll(sel)) if (onScreen(el)) return el; return null; }
+  function currentTab() { return (typeof state === "object" && state && TABS.includes(state.tab)) ? state.tab : "home"; }
+  function navigate(orig, args) {
+    const from = currentTab(), to = TABS.includes(args[0]) ? args[0] : "home";
+    if (to === from) {
+      const out = orig.apply(null, args);
+      if ((window.scrollY || 0) > 2) window.scrollTo({ top: 0, behavior: reduced() ? "auto" : "smooth" });
+      return out;
+    }
+    scrollMemo[from] = window.scrollY || 0;
+    const back = scrollMemo[to] || 0;
+    const swap = () => {
+      window.scrollTo(0, 0);
+      const o = orig.apply(null, args);
+      if (back) window.scrollTo(0, back);
+      queueTop();
+      return o;
+    };
+    const de = document.documentElement;
+    if (typeof document.startViewTransition !== "function" || reduced() || document.hidden || de.classList.contains("st-sheet-open")) return swap();
+    const portal = to === "train" && lastPress && performance.now() - lastPress.t < 1500;
+    if (portal) { de.style.setProperty("--st-px", Math.round(lastPress.x) + "px"); de.style.setProperty("--st-py", Math.round(lastPress.y) + "px"); lastPress = null; }
+    de.setAttribute("data-st-nav", portal ? "portal" : TABS.indexOf(to) > TABS.indexOf(from) ? "fwd" : "back");
+    const named = [];
+    const tag = (el, n) => { if (el) { el.style.viewTransitionName = n; named.push(el); } };
+    /* A portal is the only motion of its transition: no title travel, no flying name. */
+    const pairs = portal ? [] : MORPH.filter(m => m.sel[from] && m.sel[to]).map(m => ({ m, el: pick(m.sel[from]) })).filter(p => p.el);
+    if (!portal) tag(pick(MAST[from]), "st-mast");
+    pairs.forEach(p => tag(p.el, p.m.name));
+    const untag = () => { named.splice(0).forEach(el => { el.style.viewTransitionName = ""; }); };
+    let out;
+    try {
+      const t = document.startViewTransition(() => {
+        untag();
+        out = swap();
+        if (!portal) tag(pick(MAST[to]), "st-mast");
+        pairs.forEach(p => tag(pick(p.m.sel[to]), p.m.name));
+      });
+      const done = () => { untag(); de.removeAttribute("data-st-nav"); };
+      t.finished.then(done, done);
+    } catch (e) { untag(); de.removeAttribute("data-st-nav"); return swap(); }
+    return out;
+  }
+
+  /* ---- D72 · Scroll-aware top chrome ----------------------------------------------------------------
+     Once the page scrolls, a frosted strip sits behind the clock and status icons so text never runs
+     under them; when the page title has scrolled away, a small glass capsule with the tab's name settles
+     under the status bar (tap it to go back to the top). Hidden in an active workout, which has its own
+     header (D6). Decorative duplicate of the visible title, so it is hidden from assistive tech. */
+  let topEl = null, topRaf = 0;
+  function ensureTop() {
+    if (topEl && topEl.isConnected) return topEl;
+    topEl = document.createElement("div");
+    topEl.id = "stTop";
+    topEl.setAttribute("aria-hidden", "true");
+    topEl.innerHTML = '<i class="st-top-scrim"></i><button type="button" class="st-top-bar" tabindex="-1"><span class="st-top-t"></span></button>';
+    topEl.querySelector(".st-top-bar").addEventListener("click", () => window.scrollTo({ top: 0, behavior: reduced() ? "auto" : "smooth" }));
+    document.body.appendChild(topEl);
+    return topEl;
+  }
+  function updateTop() {
+    topRaf = 0;
+    if (!document.body) return;
+    const el = ensureTop(), tab = currentTab(), y = window.scrollY || 0;
+    const workout = tab === "train" && !!document.querySelector("#trainPage .st-train-active");
+    const bar = el.querySelector(".st-top-bar"), mast = document.querySelector(MAST[tab]);
+    const line = bar.getBoundingClientRect().bottom || 60;
+    const past = mast && mast.offsetParent !== null ? mast.getBoundingClientRect().bottom < line : y > 140;
+    el.classList.toggle("is-scrolled", y > 4 && !workout);
+    el.classList.toggle("is-compact", !!past && y > 4 && !workout);
+    const t = el.querySelector(".st-top-t");
+    if (t.textContent !== TITLES[tab]) t.textContent = TITLES[tab] || "";
+  }
+  function queueTop() { if (!topRaf) topRaf = requestAnimationFrame(updateTop); }
+  function bindTop() { window.addEventListener("scroll", queueTop, { passive: true }); window.addEventListener("resize", queueTop); queueTop(); }
+
+  /* ---- D75 · Workout mini-player, live Train tab, screen stays awake ----------------------------------
+     A lift session that has started and is not finished (N.sessionLogs() has rows, N.planDone() is
+     false) follows you: on any other tab a glass pill above the dock shows the session, sets done of
+     planned and the live rest countdown — tap it to return (it morphs into the workout header). The
+     Train tab carries the same progress as a ring. While the workout itself is on screen the screen
+     stays awake (Screen Wake Lock), so the rest timer never hides behind the lock screen. Everything
+     here reads the engine's own values; nothing is stored. */
+  let liveEl = null, liveTick = 0, wake = null, wakeBusy = false;
+  function liveSession() {
+    try {
+      if (typeof NXT !== "object" || typeof template !== "function" || typeof state !== "object" || !state) return null;
+      if (["Rest", "Zone2", "Floorball"].includes(state.dayType)) return null;
+      if (!NXT.sessionLogs().length || NXT.planDone()) return null;
+      const list = template() || [];
+      const total = list.reduce((a, e) => a + (Number(e.sets) || 0), 0);
+      const count = list.reduce((a, e) => a + Math.min(NXT.done(e.name), Number(e.sets) || 0), 0);
+      const rest = typeof apx96RestRemaining === "function" ? apx96RestRemaining() : 0;
+      return { name: NXT.label(state.dayType), count, total, rest };
+    } catch (e) { return null; }
+  }
+  function fmt(s) { return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+  /* D75b · On phones the live session is part of the dock itself: the glass grows a row above the tabs.
+     Wide layouts (the side rail, >=1024px) keep the floating pill. */
+  function liveHost() {
+    const tabs = document.querySelector(".tabs");
+    return tabs && !(window.matchMedia && matchMedia("(min-width:1024px)").matches) ? tabs : document.body;
+  }
+  function placeLive(el) {
+    const host = liveHost();
+    if (el.parentElement !== host) { if (host === document.body) host.appendChild(el); else host.insertBefore(el, host.firstChild); }
+    el.classList.toggle("is-docked", host !== document.body);
+  }
+  function ensureLive() {
+    if (liveEl && liveEl.isConnected) { placeLive(liveEl); return liveEl; }
+    liveEl = document.createElement("button");
+    liveEl.type = "button"; liveEl.id = "stLive"; liveEl.className = "st-live"; liveEl.hidden = true;
+    liveEl.innerHTML = '<span class="st-live-ring" aria-hidden="true"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" pathLength="1" class="st-live-tr"/><circle cx="18" cy="18" r="15.5" pathLength="1" class="st-live-arc"/></svg><i class="st-live-dot"></i></span>'
+      + '<span class="st-live-t"><b class="st-live-n"></b><small><span class="st-live-c"></span><span class="st-live-r"></span></small></span>'
+      + '<svg class="st-live-up" viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 12.5 10 8l4.5 4.5"/></svg>';
+    liveEl.addEventListener("click", () => { if (typeof NXP === "object" && NXP.enterTrain) NXP.enterTrain(); });
+    placeLive(liveEl);
+    return liveEl;
+  }
+  function updateLive() {
+    if (!document.body) return;
+    const s = liveSession(), tab = currentTab();
+    const inTrain = tab === "train";
+    const el = ensureLive();
+    const show = !!s && !inTrain;
+    if (el.hidden === show) el.hidden = !show;
+    document.body.classList.toggle("st-live-on", show);
+    const trainTab = document.querySelector('.tabs .tab[data-tab="train"]');
+    if (trainTab) {
+      trainTab.classList.toggle("is-live", !!s);
+      if (s) trainTab.style.setProperty("--live", String(s.total ? Math.round(s.count / s.total * 100) : 0));
+    }
+    if (s) {
+      el.style.setProperty("--live", String(s.total ? s.count / s.total : 0));
+      el.querySelector(".st-live-n").textContent = s.name;
+      el.querySelector(".st-live-c").textContent = s.count + "/" + s.total + " sets";
+      el.querySelector(".st-live-r").textContent = s.rest ? " · Rest " + fmt(s.rest) : "";
+      el.classList.toggle("is-resting", s.rest > 0);
+      el.setAttribute("aria-label", "Return to workout: " + s.name + ", " + s.count + " of " + s.total + " sets" + (s.rest ? ", resting " + fmt(s.rest) : ""));
+      const dock = document.querySelector(".tabs");
+      if (dock && !el.classList.contains("is-docked")) { const r = dock.getBoundingClientRect(); if (r.height) el.style.setProperty("--st-live-bottom", Math.max(12, Math.round((window.innerHeight || 0) - r.top + 10)) + "px"); }
+    }
+    clearTimeout(liveTick);
+    if ((s && (show || s.rest)) || glShown) liveTick = setTimeout(updateLive, 1000);
+    const workoutOn = inTrain && !!document.querySelector("#trainPage .st-train-active");
+    document.documentElement.classList.toggle("st-in-workout", workoutOn);
+    glanceTick(workoutOn, s ? s.rest : 0);
+    syncWake(workoutOn && document.visibilityState === "visible");
+  }
+  async function syncWake(on) {
+    if (wakeBusy || !("wakeLock" in navigator)) return;
+    wakeBusy = true;
+    try {
+      if (on && !wake) { wake = await navigator.wakeLock.request("screen"); wake.addEventListener("release", () => { wake = null; }); }
+      else if (!on && wake) { const w = wake; wake = null; await w.release(); }
+    } catch (e) { wake = null; } finally { wakeBusy = false; }
+  }
+  function bindLive() {
+    document.addEventListener("visibilitychange", updateLive);
+    window.addEventListener("resize", updateLive);
+    /* The engine starts a rest just after the screen repaints for the logged set, so the pill, the Train
+       ring and Glance listen to the rest starting, not only to repaints. */
+    try {
+      if (typeof apx96StartRest === "function" && !apx96StartRest.__strataLive) {
+        const f = apx96StartRest;
+        apx96StartRest = function () { const o = f.apply(this, arguments); setTimeout(updateLive, 0); return o; };
+        apx96StartRest.__strataLive = true;
+      }
+    } catch (e) {}
+    updateLive();
+  }
+
+  /* ---- D77 · Your sky --------------------------------------------------------------------------------
+     The background stars are your workouts: one star for every lifting day (by date and gym) in the last
+     16 weeks, a little brighter and larger the more working sets it held; today's finished session glows.
+     Positions are a stable hash of the day, so the sky only grows. Decorative and aria-hidden; nothing
+     here is a score, and nothing is stored. */
+  let starKey = "";
+  function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function paintStars() {
+    try {
+      if (typeof NXT !== "object" || typeof NXT.workRows !== "function" || typeof state !== "object" || !state) return;
+      const since = NXT.dateAdd(state.date, -112), days = new Map();
+      for (const r of NXT.workRows()) { if (r.date < since) continue; const k = r.date + "|" + (r.gym || "Gym A"); days.set(k, (days.get(k) || 0) + 1); }
+      const doneToday = typeof NXT.planDone === "function" && NXT.planDone();
+      const key = [...days].map(([k, n]) => k + ":" + n).join(",") + (doneToday ? "|done" : "");
+      if (key === starKey) return;
+      starKey = key;
+      let host = document.getElementById("stStars");
+      if (!host) { host = document.createElement("div"); host.id = "stStars"; host.setAttribute("aria-hidden", "true"); document.body.prepend(host); }
+      host.innerHTML = [...days].map(([k, n]) => {
+        const h = hashStr(k), x = 3 + (h % 9400) / 100, y = 2 + ((h >>> 11) % 7000) / 100;
+        const s = Math.min(3.4, 1.3 + n / 10), o = Math.min(1, .5 + n / 36);
+        const today = k.startsWith(state.date + "|") && doneToday;
+        return `<i${today ? ' class="is-today"' : ""} style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%;--s:${s.toFixed(2)}px;--o:${o.toFixed(2)};--d:${((h >>> 5) % 60) / 10}s"></i>`;
+      }).join("");
+    } catch (e) { /* decorative */ }
+  }
+
+  /* ---- D78 · Haptics ----------------------------------------------------------------------------------
+     A light system tick when something is saved (Log set, Save weigh-in, Log cardio, Finish) and while a
+     finger scrubs across readings. Android: the Vibration API. iPhone (iOS 18+): toggling a switch control
+     plays the system selection haptic, so a hidden one is toggled. Follows the phone's own System Haptics
+     setting; under reduced motion only the save tick remains. Nothing is stored. */
+  let hapticLabel = null;
+  function haptic(kind) {
+    try {
+      if (kind === "tick" && reduced()) return;
+      if (typeof navigator.vibrate === "function" && !/iP(hone|ad|od)/.test(navigator.userAgent || "")) { navigator.vibrate(kind === "success" ? [10, 40, 16] : 6); return; }
+      if (!hapticLabel || !hapticLabel.isConnected) {
+        hapticLabel = document.createElement("label");
+        hapticLabel.setAttribute("aria-hidden", "true");
+        hapticLabel.style.display = "none";
+        const sw = document.createElement("input");
+        sw.type = "checkbox"; sw.setAttribute("switch", ""); sw.tabIndex = -1;
+        hapticLabel.appendChild(sw);
+        document.head.appendChild(hapticLabel);
+      }
+      hapticLabel.click();
+      if (kind === "success") setTimeout(() => { try { hapticLabel.click(); } catch (e) {} }, 85);
+    } catch (e) { /* no haptics on this device */ }
+  }
+  function bindHaptics() {
+    const wrap = (name, test) => {
+      try {
+        const f = window[name];
+        if (typeof f !== "function" || f.__strataH) return;
+        const g = function () {
+          const before = test();
+          const out = f.apply(this, arguments);
+          const check = () => { if (test() > before) haptic("success"); };
+          if (out && typeof out.then === "function") out.then(check, () => {}); else check();
+          return out;
+        };
+        g.__strataH = true;
+        window[name] = g;
+      } catch (e) {}
+    };
+    wrap("apx95SaveQuickWeight", () => (state && Array.isArray(state.bws) ? state.bws.length : 0));
+    const n = (obj, k, test) => { if (!obj) return; const f = obj[k]; if (typeof f !== "function" || f.__strataH) return; obj[k] = function () { const b = test(); const o = f.apply(this, arguments); const c = () => { if (test() > b) haptic("success"); }; if (o && typeof o.then === "function") o.then(c, () => {}); else c(); return o; }; obj[k].__strataH = true; };
+    /* The Train form calls NXP.logSet(); the cardio form and Finish call NXT directly. */
+    if (typeof NXP === "object") n(NXP, "logSet", () => (state && Array.isArray(state.logs) ? state.logs.length : 0));
+    /* A set that sets a new best gets a second, stronger tick once its row has painted. */
+    if (typeof NXP === "object" && typeof NXP.logSet === "function" && !NXP.logSet.__strataPR) {
+      const f = NXP.logSet;
+      NXP.logSet = function () { const o = f.apply(this, arguments); setTimeout(() => { if (document.querySelector("#trainPage .st-lrow.is-fresh.is-pr")) { haptic("success"); setTimeout(() => haptic("success"), 160); } }, 200); return o; };
+      NXP.logSet.__strataPR = true; NXP.logSet.__strataH = true;
+    }
+    if (typeof NXT === "object") {
+      n(NXT, "saveCardio", () => (state && Array.isArray(state.cardio) ? state.cardio.length : 0));
+      n(NXT, "finish", () => (typeof NXT.planDone === "function" && NXT.planDone() ? 1 : 0));
+    }
+  }
+
+  /* ---- D79 · Dynamic Island alerts -------------------------------------------------------------------
+     Confirmations grow out of the Dynamic Island as a black capsule (on phones without one, from the top
+     edge) instead of a glass toast. The alert is now announced to VoiceOver (role=status), and a second
+     alert restarts the timer instead of vanishing on the first one's. Same words as before. */
+  let toastTimer = 0, toastOut = 0;
+  function bindIsland() {
+    if (typeof toast !== "function" || toast.__strataIsland) return;
+    const orig = toast;
+    toast = function (m) {
+      const t = document.getElementById("toast");
+      if (!t) return orig.apply(this, arguments);
+      t.setAttribute("role", "status"); t.setAttribute("aria-live", "polite");
+      clearTimeout(toastTimer); clearTimeout(toastOut);
+      t.classList.remove("st-island", "is-out"); void t.offsetWidth;
+      t.textContent = String(m == null ? "" : m);
+      t.classList.add("st-island");
+      /* In a workout the Log button already confirms the set in place; the alert is still announced to
+         VoiceOver but not drawn over the instrument. */
+      t.classList.toggle("is-quiet", quietToast || (/^(working|warm-up|extra) set saved/i.test(t.textContent) && !!document.querySelector("#trainPage .st-train-active")));
+      t.style.display = "block";
+      toastTimer = setTimeout(() => {
+        t.classList.add("is-out");
+        toastOut = setTimeout(() => { t.style.display = "none"; t.classList.remove("st-island", "is-out", "is-quiet"); }, reduced() ? 0 : 280);
+      }, 2300);
+    };
+    toast.__strataIsland = true;
+  }
+
+  /* ---- Weight chart: a glowing head on the latest trend value, a tick under the finger --------------- */
+  let lastScrub = -1;
+  function dressChartHead() {
+    const svg = document.getElementById("n99-chart-svg"), m = typeof NXT === "object" && NXT.ui && NXT.ui.chart;
+    if (!svg || !m || !Array.isArray(m.points) || svg.querySelector(".st-comet")) return;
+    const last = [...m.points].reverse().find(p => p && p.ty !== null && p.ty !== undefined && Number.isFinite(Number(p.ty)));
+    if (!last) return;
+    const g = document.createElementNS(NS, "g");
+    g.setAttribute("class", "st-comet"); g.setAttribute("aria-hidden", "true"); g.setAttribute("pointer-events", "none");
+    g.innerHTML = `<circle class="st-comet-halo" cx="${last.x}" cy="${last.ty}" r="11"/><circle class="st-comet-ring" cx="${last.x}" cy="${last.ty}" r="6.5"/><circle class="st-comet-core" cx="${last.x}" cy="${last.ty}" r="3.4"/>`;
+    svg.appendChild(g);
+  }
+
+  /* ---- Stretchy large titles: pulling down past the top swells the page title, iOS-style ----------- */
+  let stretchRaf = 0;
+  function stretchTitle() {
+    stretchRaf = 0;
+    const y = window.scrollY || 0, el = document.querySelector(MAST[currentTab()]);
+    if (!el) return;
+    const s = y < 0 && !reduced() ? Math.min(1.12, 1 - y / 900) : 1;
+    el.style.transform = s === 1 ? "" : `scale(${s.toFixed(3)})`;
+    el.style.transformOrigin = "0 100%";
+  }
+  function bindStretch() { window.addEventListener("scroll", () => { if (!stretchRaf) stretchRaf = requestAnimationFrame(stretchTitle); }, { passive: true }); }
+
+  /* ---- D80 · Keyboard-safe sheets, calmer weigh-in entry, a guarded gym switch --------------------------
+     With the keyboard up, a sheet sits on top of it (its bottom follows the visual viewport, its height is
+     capped to what is visible) and its primary button stays pinned in view; the focused field is brought
+     into view inside the sheet. The weigh-in field keeps one decimal (the field's own step) and says what
+     it wants instead of Safari's "Enter a valid value". Switching gym once today's session has sets asks
+     first, because every aim and comparison then reads the other gym's history. */
+  function bindSheetKeyboard() {
+    const vv = window.visualViewport, de = document.documentElement;
+    const sync = () => {
+      const sheet = document.querySelector("#modalRoot .modal .sheet");
+      const kb = vv ? Math.max(0, Math.round((window.innerHeight || 0) - vv.height - (vv.offsetTop || 0))) : 0;
+      const open = !!sheet && kb > 60;
+      de.classList.toggle("st-kb-open", open);
+      if (open) {
+        de.style.setProperty("--st-kb", kb + "px");
+        de.style.setProperty("--st-vvh", Math.round(vv.height) + "px");
+        const a = document.activeElement;
+        if (a && sheet.contains(a) && typeof a.scrollIntoView === "function") a.scrollIntoView({ block: "nearest" });
+      }
+    };
+    if (vv) { vv.addEventListener("resize", sync); vv.addEventListener("scroll", sync); }
+    document.addEventListener("focusin", () => setTimeout(sync, 80));
+    document.addEventListener("focusout", () => setTimeout(sync, 160));
+    document.addEventListener("input", e => {
+      const el = e.target;
+      if (!el || el.id !== "apx95WeightValue") return;
+      el.setCustomValidity("");
+      const v = String(el.value || ""), m = /^(\d+)\.(\d{2,})$/.exec(v);
+      if (m) el.value = m[1] + "." + m[2].charAt(0);
+      el.setAttribute("data-len", String(Math.min(6, Math.max(1, String(el.value || "").length))));
+    }, true);
+    document.addEventListener("invalid", e => {
+      const el = e.target;
+      if (el && (el.id === "repsInput" || el.id === "weightInput")) {
+        e.preventDefault();
+        if (Date.now() - (bindSheetKeyboard.last || 0) < 400) return;
+        bindSheetKeyboard.last = Date.now();
+        const aim = document.querySelector("#trainPage .st-ref.is-aim");
+        if (typeof toast === "function") toast(aim ? "Add the " + (el.id === "repsInput" ? "reps" : "weight") + ", or tap Aim to fill both" : "Add the " + (el.id === "repsInput" ? "reps" : "weight") + " for this set");
+        if (aim && !reduced()) { aim.classList.remove("st-nudge"); void aim.offsetWidth; aim.classList.add("st-nudge"); setTimeout(() => aim.classList.remove("st-nudge"), 1300); }
+        return;
+      }
+      if (el && el.id === "apx95WeightValue") el.setCustomValidity(el.validity.valueMissing ? "Enter your weight, like 82.4" : "Use kilograms with one decimal, between 20 and 400 — like 82.4");
+    }, true);
+  }
+  function bindGymGuard() {
+    if (typeof cycleGym !== "function" || cycleGym.__strata) return;
+    const f = cycleGym;
+    cycleGym = async function () {
+      try {
+        const n = typeof NXT === "object" && NXT.sessionLogs ? NXT.sessionLogs().filter(r => r.setType !== "warmup").length : 0;
+        if (n && !(NXT.planDone && NXT.planDone()) && typeof NXP === "object" && NXP.ask) {
+          const gyms = state.gyms && state.gyms.length > 1 ? state.gyms : ["AF Redhill", "SUTD"];
+          const next = gyms[(Math.max(0, gyms.indexOf(state.gym)) + 1) % gyms.length];
+          const ok = await NXP.ask({ title: "Switch to " + next + "?", body: "Today's " + n + " logged " + (n === 1 ? "set stays" : "sets stay") + " with " + state.gym + ". Aims and comparisons will use " + next + "'s history.", ok: "Switch to " + next });
+          if (!ok) return;
+        }
+      } catch (e) { /* fall through to the switch */ }
+      return f.apply(this, arguments);
+    };
+    cycleGym.__strata = true;
+  }
+
+  /* ---- D82 · Glance mode ------------------------------------------------------------------------------
+     Between sets the phone is usually at arm's length. After eight seconds without a touch during a rest,
+     the workout gives way to a near-black glance view: the rest ring and countdown large enough to read
+     across the gym, the next load, the exercise and the session's running time. Any touch returns to the
+     workout; when the rest runs out it says "Go" and returns by itself, so Log is always one step away.
+     Reads the engine's own countdown; nothing is stored. Static under reduced motion. */
+  let glEl = null, glShown = false, glTouch = Date.now(), glGo = 0, glQuiet = 0;
+  function restLeftNow() { try { return typeof apx96RestRemaining === "function" ? apx96RestRemaining() : 0; } catch (e) { return 0; } }
+  function glanceBlocked() {
+    const a = document.activeElement;
+    return document.hidden || document.documentElement.classList.contains("st-sheet-open") || !!document.getElementById("stAsk") || !!document.getElementById("stFinish") || !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+  }
+  function ensureGlance() {
+    if (glEl && glEl.isConnected) return glEl;
+    glEl = document.createElement("div");
+    glEl.id = "stGlance"; glEl.className = "st-gl"; glEl.hidden = true;
+    glEl.setAttribute("role", "button"); glEl.setAttribute("tabindex", "-1");
+    glEl.innerHTML = '<div class="st-gl-in"><p class="st-gl-ex"></p><div class="st-gl-orb"><i class="st-gl-core"></i><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="st-gl-tr" cx="60" cy="60" r="55" pathLength="1"/><circle class="st-gl-arc" cx="60" cy="60" r="55" pathLength="1"/></svg><div class="st-gl-t"><small>Rest</small><b></b></div></div><p class="st-gl-next"><small>Up next</small><b></b></p><p class="st-gl-meta"></p><p class="st-gl-hint">Tap to return</p></div>';
+    /* Returning by hand means "I am looking": Glance waits 20 s before it offers itself again. */
+    glEl.addEventListener("click", () => { glQuiet = Date.now() + 20000; hideGlance(); });
+    document.body.appendChild(glEl);
+    return glEl;
+  }
+  function sessionClock() {
+    try {
+      const ts = NXT.sessionLogs().map(r => Number(r.ts) || 0).filter(Boolean);
+      if (!ts.length) return "";
+      const s = Math.max(0, Math.floor((Date.now() - Math.min(...ts)) / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+      return h ? h + ":" + String(m).padStart(2, "0") + ":" + String(sec).padStart(2, "0") : m + ":" + String(sec).padStart(2, "0");
+    } catch (e) { return ""; }
+  }
+  function glanceMeta() {
+    let setLine = "";
+    try { const t = NXT.targetFor(state.exercise), d = NXT.done(state.exercise); setLine = d < Number(t.sets) ? "Set " + (d + 1) + " of " + t.sets : "Extra set"; } catch (e) {}
+    const clock = sessionClock();
+    return [setLine, clock ? "Session " + clock : ""].filter(Boolean).join("  ·  ");
+  }
+  function paintGlance() {
+    if (!glEl || !glShown) return;
+    const meta = glEl.querySelector(".st-gl-meta"), mt = glanceMeta();
+    if (meta.textContent !== mt) meta.textContent = mt;
+    const left = restLeftNow(), total = (typeof NXP === "object" && NXP.ui && NXP.ui.restTotal) || 90;
+    const b = glEl.querySelector(".st-gl-t b");
+    if (left > 0) {
+      glEl.classList.remove("is-go");
+      glEl.classList.toggle("is-final", left <= 10);
+      b.textContent = Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0");
+      glEl.style.setProperty("--pct", String(Math.max(0, Math.min(100, left / total * 100))));
+    } else if (!glEl.classList.contains("is-go")) {
+      glEl.classList.add("is-go"); glEl.classList.remove("is-final"); b.textContent = "Go";
+      glEl.style.setProperty("--pct", "0");
+      clearTimeout(glGo); glGo = setTimeout(hideGlance, 1700);
+    }
+  }
+  function showGlance() {
+    if (glShown || glanceBlocked()) return;
+    const el = ensureGlance();
+    const ex = document.querySelector("#trainPage .st-ex-title"), next = document.querySelector("#trainPage .st-orb-next b");
+    el.querySelector(".st-gl-ex").textContent = ex ? ex.textContent.trim() : "";
+    el.querySelector(".st-gl-next b").textContent = next ? next.textContent.trim() : "";
+    el.querySelector(".st-gl-meta").textContent = glanceMeta();
+    el.setAttribute("aria-label", "Rest view. Tap to return to the workout.");
+    glShown = true; el.hidden = false; el.classList.remove("is-go", "is-out");
+    paintGlance();
+  }
+  function hideGlance() {
+    clearTimeout(glGo);
+    glTouch = Date.now();
+    if (!glShown || !glEl) return;
+    glShown = false;
+    if (reduced()) { glEl.hidden = true; return; }
+    glEl.classList.add("is-out");
+    setTimeout(() => { if (!glShown && glEl) { glEl.hidden = true; glEl.classList.remove("is-out"); } }, 260);
+  }
+  function glanceTick(inWorkout, rest) {
+    if (glShown) { if (!inWorkout) hideGlance(); else paintGlance(); return; }
+    if (inWorkout && rest > 3 && Date.now() - glTouch > 8000 && Date.now() > glQuiet) showGlance();
+  }
+  function bindGlance() {
+    const touch = () => { glTouch = Date.now(); };
+    document.addEventListener("keydown", () => { if (glShown) hideGlance(); }, true);
+    ["pointerdown", "keydown", "wheel", "touchstart"].forEach(t => document.addEventListener(t, touch, { capture: true, passive: true }));
+    window.addEventListener("scroll", touch, { passive: true });
+    document.addEventListener("visibilitychange", () => { if (document.hidden) hideGlance(); });
+  }
+
+  /* ---- Session light: on Train the canvas takes the session's own hue (D54's Dusk palette) ---------- */
+  function sessionHue() {
+    const t = (typeof state === "object" && state && state.dayType) || "";
+    return /^Full/.test(t) ? "full" : t === "Push" ? "push" : t === "Pull" ? "pull" : (t === "Pump" || t === "Legs") ? "legs" : t === "Zone2" ? "walk" : "rest";
+  }
+
+  /* ---- Scrub context: the reading's day, as lived — the session lifted and any cardio --------------- */
+  function dayDid(date) {
+    try {
+      const sets = (state.logs || []).filter(r => r && r.date === date && r.setType !== "warmup");
+      const bits = [];
+      if (sets.length) { const t = sets[0].dayType; bits.push((NXT.label && t ? NXT.label(t) : "Lifted") + " · " + sets.length + (sets.length === 1 ? " set" : " sets")); }
+      const mins = (state.cardio || []).filter(r => r && r.date === date).reduce((a, r) => a + (Number(r.duration || r.minutes) || 0), 0);
+      if (mins > 0) bits.push(Math.round(mins) + " min cardio");
+      return bits.join(" · ");
+    } catch (e) { return ""; }
+  }
+
+  /* ---- Back where you left off ----------------------------------------------------------------------
+     If iOS closed the app mid-rest, the countdown comes back on reopening: the rest the engine started is
+     the last set's time plus the engine's own rest length for it (suggestedRestSeconds), so nothing new is
+     stored. A +30s added before the app closed is not remembered. On the first workout screen after a
+     launch, a finished exercise hands over to the first one with sets left. */
+  let resumedRest = false, resumedEx = false;
+  function resumeRest() {
+    if (resumedRest) return; resumedRest = true;
+    try {
+      if (typeof NXT !== "object" || typeof state !== "object" || !state || restLeftNow() > 0) return;
+      if (NXT.planDone && NXT.planDone()) return;
+      const logs = NXT.sessionLogs ? NXT.sessionLogs() : [];
+      const last = logs.slice().sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0))[0];
+      if (!last || !Number(last.ts)) return;
+      const planned = last.setType === "warmup" ? 60 : (typeof suggestedRestSeconds === "function" ? Number(suggestedRestSeconds(last.exercise)) || 90 : 90);
+      const left = Math.floor((Number(last.ts) + planned * 1000 - Date.now()) / 1000);
+      if (left >= 10 && left <= planned && typeof apx96StartRest === "function") {
+        apx96StartRest(left);
+        if (typeof NXP === "object" && NXP.noteRestTotal) NXP.noteRestTotal(planned);
+      }
+    } catch (e) { /* the workout is unaffected */ }
+  }
+  function resumeExercise(page) {
+    if (resumedEx || page.id !== "trainPage" || !page.querySelector(".st-train-active")) return;
+    resumedEx = true;
+    try {
+      const list = typeof template === "function" ? template() || [] : [], t = NXT.targetFor(state.exercise);
+      if (NXT.done(state.exercise) < Number(t.sets)) return;
+      const i = list.findIndex(e => NXT.done(e.name) < Number(e.sets));
+      if (i >= 0 && NXT.selectExercise) setTimeout(() => NXT.selectExercise(i), 0);
+    } catch (e) {}
+  }
+
+  /* ---- D92 · The weigh-in moment ------------------------------------------------------------------
+     Saving this morning's reading lands it: a glass card shows the last three weeks of mornings and the
+     trend line, the new reading drops onto its place, and the card says how it sits against the trend
+     ("0.3 kg below trend", the History wording) and the previous morning — plus "Lowest reading yet"
+     when the save itself says so. Same numbers the chart shows; nothing stored. The toast is still
+     announced to VoiceOver; the card is what you see. Tap or wait to close. */
+  let quietToast = false, wmEl = null, wmT = 0;
+  function weighMoment(entry, newLow) {
+    try {
+      if (!entry || typeof NXT !== "object") return false;
+      const rows = NXT.weights(), tr = NXT.trend(rows), pt = tr.find(p => p.date === entry.date);
+      const since = NXT.dateAdd(entry.date, -20);
+      const morn = NXT.timingRows("Morning").filter(r => r.date >= since && r.date <= entry.date);
+      const line = tr.filter(p => p.date >= since && p.date <= entry.date && p.avg !== null);
+      if (morn.length < 2 || line.length < 2) return false;
+      const W = 300, H = 120, d0 = NXT.dateMs(since), d1 = NXT.dateMs(entry.date);
+      const vs = morn.map(r => Number(r.weight)).concat(line.map(p => Number(p.avg)));
+      const lo = Math.min(...vs) - .25, hi = Math.max(...vs) + .25;
+      const X = d => 10 + (NXT.dateMs(d) - d0) / Math.max(1, d1 - d0) * (W - 20), Y = v => 12 + (hi - v) / (hi - lo) * (H - 24);
+      const path = line.map((p, i) => (i ? "L" : "M") + X(p.date).toFixed(1) + " " + Y(Number(p.avg)).toFixed(1)).join("");
+      const dots = morn.filter(r => r !== entry && !(r.date === entry.date && Number(r.weight) === Number(entry.weight))).map(r => `<circle cx="${X(r.date).toFixed(1)}" cy="${Y(Number(r.weight)).toFixed(1)}" r="2.6"/>`).join("");
+      const w = Number(entry.weight), gap = pt && pt.avg !== null ? w - Number(pt.avg) : null;
+      const prev = morn.filter(r => r.date < entry.date).at(-1);
+      const chips = [];
+      if (gap !== null) chips.push(Math.abs(gap) < .05 ? "On trend" : Math.abs(gap).toFixed(1) + " kg " + (gap < 0 ? "below" : "above") + " trend");
+      if (prev) { const dd = w - Number(prev.weight); chips.push((Math.abs(dd) < .05 ? "Same as" : (dd < 0 ? "↓ " : "↑ ") + Math.abs(dd).toFixed(1) + " kg vs") + " " + (NXT.dateAdd(prev.date, 1) === entry.date ? "yesterday" : NXT.shortDate(prev.date))); }
+      if (newLow) chips.unshift("Lowest reading yet");
+      clearTimeout(wmT);
+      if (wmEl) wmEl.remove();
+      wmEl = document.createElement("div");
+      wmEl.className = "st-wm"; wmEl.setAttribute("aria-hidden", "true");
+      const ex = X(entry.date), ey = Y(w);
+      wmEl.innerHTML = `<div class="st-wm-card${newLow ? " is-low" : ""}"><p class="st-wm-eb">Morning · ${esc(NXT.shortDate(entry.date))}</p><p class="st-wm-v"><b>${w.toFixed(1)}</b><small>kg</small></p>
+        <svg class="st-wm-g" viewBox="0 0 ${W} ${H}"><path class="st-wm-tr" d="${path}" pathLength="1"/><g class="st-wm-d">${dots}</g><line class="st-wm-drop" x1="${ex.toFixed(1)}" x2="${ex.toFixed(1)}" y1="0" y2="${ey.toFixed(1)}"/><circle class="st-wm-halo" cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="11"/><circle class="st-wm-new" cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="5" style="--dy:${(-ey).toFixed(1)}px"/></svg>
+        <p class="st-wm-chips">${chips.map(c => `<span>${esc(c)}</span>`).join("")}</p></div>`;
+      wmEl.addEventListener("click", () => closeWm());
+      const el = wmEl;
+      setTimeout(() => { if (wmEl === el) { document.body.appendChild(el); wmT = setTimeout(closeWm, reduced() ? 2600 : 3600); } }, 260);
+      return true;
+    } catch (e) { return false; /* the save itself already happened */ }
+  }
+  function closeWm() {
+    clearTimeout(wmT);
+    if (!wmEl) return;
+    const el = wmEl; wmEl = null;
+    el.classList.add("is-out"); setTimeout(() => el.remove(), reduced() ? 0 : 320);
+  }
+  function bindWeighMoment() {
+    if (typeof apx95SaveQuickWeight !== "function" || apx95SaveQuickWeight.__strataWM) return;
+    const f = apx95SaveQuickWeight;
+    apx95SaveQuickWeight = function () {
+      const before = state && Array.isArray(state.bws) ? state.bws.length : 0;
+      const prior = typeof NXT === "object" ? NXT.weights().map(r => Number(r.weight)) : [];
+      quietToast = true;
+      let out;
+      try { out = f.apply(this, arguments); } finally { quietToast = false; }
+      const after = state && Array.isArray(state.bws) ? state.bws.length : 0;
+      let shown = false;
+      if (after > before) {
+        const e = state.bws[state.bws.length - 1];
+        const morning = String(e && e.timeOfDay || "Morning") === "Morning";
+        const newLow = morning && prior.length >= 5 && Number(e.weight) < Math.min(...prior);
+        if (morning) shown = weighMoment(e, newLow);
+      }
+      /* Anything the moment does not replace — a validation message, a non-morning save — is shown as usual. */
+      if (!shown) { const t = document.getElementById("toast"); if (t) t.classList.remove("is-quiet"); }
+      return out;
+    };
+    apx95SaveQuickWeight.__strataWM = true;
+    apx95SaveQuickWeight.__strataH = true;
+  }
+
+  /* ---- D93 · The Observatory ------------------------------------------------------------------------
+     Your sky, explorable. Every lifting session is a star, gathered into one constellation per routine and
+     laid out on a sunflower spiral in the order you trained (the first session at the centre); walks have
+     their own cluster. A star is brighter and larger with more working sets; a four-point flare marks a
+     session that set a new best (D27's rule: heaviest load, then most reps, against every earlier session
+     of that exercise). Drag to pan, pinch or scroll to zoom, tap a star for its session and open it in
+     History. Read-only; nothing stored or scored. */
+  const GOLD = Math.PI * (3 - Math.sqrt(5));
+  const OBS_HUE = { FullA: "#A78BFA", FullB: "#C4B5FD", FullC: "#8B5CF6", Push: "#BF75C5", Pull: "#7C83F5", Pump: "#E06C9F", Legs: "#E06C9F", Zone2: "#E39A5C", Floorball: "#E2B04A" };
+  let obs = null;
+  function obsData() {
+    const rows = NXT.workRows().filter(r => Number(r.weight) > 0).slice().sort((a, b) => a.date.localeCompare(b.date) || (Number(a.ts || 0) - Number(b.ts || 0)));
+    const sessions = new Map();
+    for (const r of rows) {
+      const k = r.date + "|" + (r.gym || "Gym A") + "|" + (r.dayType || "Lift");
+      let s = sessions.get(k);
+      if (!s) { s = { key: k, date: r.date, gym: r.gym || "Gym A", type: r.dayType || "Lift", sets: 0, rows: [], pr: false, kind: "lift" }; sessions.set(k, s); }
+      s.sets++; s.rows.push(r);
+    }
+    const best = new Map(), beats = (a, b) => Number(a.weight) > Number(b.weight) || (Number(a.weight) === Number(b.weight) && Number(a.reps) > Number(b.reps));
+    const lifts = [...sessions.values()].sort((a, b) => a.date.localeCompare(b.date));
+    for (const s of lifts) {
+      const byEx = {};
+      s.rows.forEach(r => { const e = r.exercise || r.name; (byEx[e] = byEx[e] || []).push(r); });
+      s.exercises = Object.keys(byEx).length; s.bests = [];
+      for (const [ex, sets] of Object.entries(byEx)) {
+        const a = NXT.bestSet(sets); if (!a) continue;
+        const b = best.get(ex);
+        if (b && beats(a, b)) { s.pr = true; s.bests.push(ex + " " + a.weight + " kg × " + a.reps); }
+        if (!b || beats(a, b)) best.set(ex, a);
+      }
+    }
+    const walks = new Map();
+    (state.cardio || []).forEach(c => { const m = Number(c && (c.duration || c.minutes)); if (!c || !(m > 0) || typeof c.date !== "string" || c.date > state.date) return; const w = walks.get(c.date) || { key: "walk|" + c.date, date: c.date, type: "Zone2", kind: "walk", minutes: 0 }; w.minutes += m; walks.set(c.date, w); });
+    const order = NXT.typeNames ? NXT.typeNames() : [];
+    const groups = [];
+    /* Grouped by the name the app shows: older "Legs" records and today's "Legs" (stored as Pump, D33)
+       are one constellation, while the stored records stay exactly as they are. */
+    const byName = new Map();
+    lifts.forEach(s => { const n = NXT.label(s.type); if (!byName.has(n)) byName.set(n, { type: s.type, items: [] }); byName.get(n).items.push(s); });
+    const rank = t => { const i = order.indexOf(t); return i < 0 ? 99 : i; };
+    [...byName.entries()].sort((a, b) => rank(a[1].type) - rank(b[1].type)).forEach(([n, G]) => groups.push({ type: G.type, name: n, items: G.items.sort((a, b) => a.date.localeCompare(b.date)) }));
+    const wl = [...walks.values()].sort((a, b) => a.date.localeCompare(b.date));
+    if (wl.length) groups.push({ type: "Zone2", name: "Walks", items: wl });
+    /* Constellations sit on a ring sized by the largest one, so a few sessions stay close and readable. */
+    const g = groups.length, maxR = Math.max(0, ...groups.map(G => 12 * Math.sqrt(G.items.length + .6) + 8));
+    const R = g === 1 ? 0 : Math.max(70, maxR * 2.1 + 28 + 6 * g);
+    let gi = 0;
+    groups.forEach((G, i) => {
+      const a = -Math.PI / 2 + i / Math.max(1, g) * Math.PI * 2;
+      G.cx = R * Math.cos(a); G.cy = R * Math.sin(a) * .82;
+      G.items.forEach((s, j) => {
+        const r = 12 * Math.sqrt(j + .6), th = j * GOLD;
+        s.x = G.cx + r * Math.cos(th); s.y = G.cy + r * Math.sin(th);
+        s.r = s.kind === "walk" ? 1.3 + Math.min(2.6, s.minutes / 25) : 1.5 + Math.min(3.1, s.sets / 5);
+        s.hue = OBS_HUE[G.type] || "#B49AFF"; s.gi = gi++;
+      });
+      G.r = 12 * Math.sqrt(G.items.length + .6) + 8;
+    });
+    const all = groups.flatMap(G => G.items);
+    return { groups, all, lifts: lifts.length, walks: wl.length, first: all.length ? all.map(s => s.date).sort()[0] : null };
+  }
+  function observatory() {
+    if (typeof NXT !== "object") return;
+    closeObservatory(true);
+    const D = obsData();
+    const el = document.createElement("div");
+    el.id = "stObs"; el.className = "st-obs";
+    el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "st-obs-t");
+    let dust = "";
+    let sd = 9;
+    const rnd = () => { sd = (Math.imul(sd, 1664525) + 1013904223) >>> 0; return sd / 4294967296; };
+    for (let i = 0; i < 140; i++) dust += `<circle cx="${(rnd() * 140 - 20).toFixed(1)}%" cy="${(rnd() * 140 - 20).toFixed(1)}%" r="${(.4 + rnd() * .9).toFixed(2)}" style="--d:${(rnd() * 6).toFixed(2)}s;opacity:${(.15 + rnd() * .45).toFixed(2)}"/>`;
+    const groupsSvg = D.groups.map(G => {
+      const ln = G.items.length > 1 ? `<path class="st-obs-ln" d="${G.items.map((s, j) => (j ? "L" : "M") + s.x.toFixed(1) + " " + s.y.toFixed(1)).join("")}" stroke="${G.items[0].hue}" pathLength="1"/>` : "";
+      const glow = `<circle class="st-obs-neb" cx="${G.cx.toFixed(1)}" cy="${G.cy.toFixed(1)}" r="${(G.r * 1.6).toFixed(1)}" fill="${G.items[0].hue}"/>`;
+      const stars = G.items.map(s => `<g class="st-obs-s${s.pr ? " is-pr" : ""}" data-k="${esc(s.key)}" style="--i:${s.gi};--h:${s.hue}" transform="translate(${s.x.toFixed(1)} ${s.y.toFixed(1)})"><g class="st-obs-si">${s.pr ? `<path class="st-obs-flare" d="M0 -${(s.r * 3.4).toFixed(1)}L${(s.r * .45).toFixed(1)} 0L0 ${(s.r * 3.4).toFixed(1)}L-${(s.r * .45).toFixed(1)} 0ZM-${(s.r * 3.4).toFixed(1)} 0L0 ${(s.r * .45).toFixed(1)}L${(s.r * 3.4).toFixed(1)} 0L0 -${(s.r * .45).toFixed(1)}Z"/>` : ""}<circle class="st-obs-halo" r="${(s.r * 2.6).toFixed(1)}"/><circle class="st-obs-core" r="${s.r.toFixed(2)}"/></g></g>`).join("");
+      const lab = `<text class="st-obs-lab" x="${G.cx.toFixed(1)}" y="${(G.cy + G.r + 16).toFixed(1)}" text-anchor="middle">${esc(G.name)}<tspan x="${G.cx.toFixed(1)}" dy="15">${G.items.length} ${G.type === "Zone2" ? (G.items.length === 1 ? "walk" : "walks") : (G.items.length === 1 ? "session" : "sessions")}</tspan></text>`;
+      return `<g class="st-obs-g">${glow}${ln}${stars}${lab}</g>`;
+    }).join("");
+    const count = D.lifts + " lifting " + (D.lifts === 1 ? "session" : "sessions") + (D.walks ? " · " + D.walks + " " + (D.walks === 1 ? "walk" : "walks") : "");
+    const list = D.all.slice().sort((a, b) => a.date.localeCompare(b.date)).map(s => `<li><button type="button" data-k="${esc(s.key)}">${esc(NXT.shortDate(s.date))} · ${esc(s.kind === "walk" ? "Walk · " + Math.round(s.minutes) + " min" : NXT.label(s.type) + " · " + s.sets + " sets")}${s.pr ? " · new best" : ""}</button></li>`).join("");
+    el.innerHTML = `<div class="st-obs-bg" aria-hidden="true"></div>
+      <svg class="st-obs-svg" aria-hidden="true"><g class="st-obs-dust">${dust}</g><g class="st-obs-world">${groupsSvg}</g></svg>
+      <header class="st-obs-head"><div><p class="st-obs-eb">The Observatory</p><h2 id="st-obs-t">Your sky</h2><p class="st-obs-sub">${D.all.length ? esc(count) + (D.first ? " · since " + esc(NXT.shortDate(D.first)) : "") : "Log a session and its star appears here."}</p></div><button type="button" class="st-obs-x" aria-label="Close">×</button></header>
+      <p class="st-obs-legend" aria-hidden="true"><span><i></i>A session, brighter with more sets</span><span><i class="is-pr"></i>A new best</span></p>
+      <section class="st-obs-card" hidden aria-live="polite"></section>
+      <ul class="st-sr st-obs-list" aria-label="Sessions">${list}</ul>`;
+    document.body.appendChild(el);
+    if (typeof iconify === "function") iconify(el.querySelector(".st-obs-head"));
+    const svg = el.querySelector(".st-obs-svg"), world = el.querySelector(".st-obs-world"), dustG = el.querySelector(".st-obs-dust");
+    const view = { x: 0, y: 0, k: 1 };
+    const size = () => svg.getBoundingClientRect();
+    const apply = () => {
+      const r = size();
+      world.setAttribute("transform", `translate(${(r.width / 2).toFixed(1)} ${(r.height / 2 + 10).toFixed(1)}) scale(${view.k.toFixed(3)}) translate(${(-view.x).toFixed(1)} ${(-view.y).toFixed(1)})`);
+      dustG.setAttribute("transform", `translate(${(-view.x * .12 * view.k).toFixed(1)} ${(-view.y * .12 * view.k).toFixed(1)})`);
+    };
+    const fit = () => {
+      const r = size(); if (!D.all.length) return;
+      const xs = D.all.map(s => s.x), ys = D.all.map(s => s.y);
+      const x0 = Math.min(...xs) - 40, x1 = Math.max(...xs) + 40, y0 = Math.min(...ys) - 40, y1 = Math.max(...ys) + 70;
+      view.x = (x0 + x1) / 2; view.y = (y0 + y1) / 2;
+      view.k = Math.max(.5, Math.min(3, Math.min(r.width / (x1 - x0), (r.height - 220) / (y1 - y0))));
+      apply();
+    };
+    const card = el.querySelector(".st-obs-card");
+    const select = key => {
+      el.querySelectorAll(".st-obs-s.is-sel").forEach(g => g.classList.remove("is-sel"));
+      const s = D.all.find(x => x.key === key); if (!s) { card.hidden = true; return; }
+      const g = el.querySelector(`.st-obs-s[data-k="${CSS.escape(key)}"]`); if (g) g.classList.add("is-sel");
+      const day = new Date(NXT.dateMs(s.date)).toLocaleDateString("en-SG", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+      card.innerHTML = `<p class="st-obs-c-eb" style="--h:${s.hue}"><i></i>${esc(s.kind === "walk" ? "Walk" : NXT.label(s.type))}${s.kind === "walk" ? "" : " · " + esc(s.gym)}</p><h3>${esc(day)}</h3>
+        <p class="st-obs-c-v">${s.kind === "walk" ? `<b>${Math.round(s.minutes)}</b> min` : `<b>${s.sets}</b> working ${s.sets === 1 ? "set" : "sets"} · <b>${s.exercises}</b> ${s.exercises === 1 ? "exercise" : "exercises"}`}</p>
+        ${s.pr && s.bests.length ? `<p class="st-obs-c-pr">New best · ${esc(s.bests.slice(0, 2).join(" · "))}</p>` : ""}
+        <button type="button" class="st-obs-open">Open in History</button>`;
+      card.hidden = false;
+      card.querySelector(".st-obs-open").addEventListener("click", () => { closeObservatory(); if (currentTab() !== "history") switchTab("history"); setTimeout(() => { if (typeof NXP === "object" && NXP.historySelect) NXP.historySelect(s.date); }, 80); });
+    };
+    el.querySelector(".st-obs-list").addEventListener("click", e => { const b = e.target.closest("button[data-k]"); if (b) select(b.dataset.k); });
+    el.querySelector(".st-obs-x").addEventListener("click", () => closeObservatory());
+    /* pan · pinch · wheel · tap */
+    const pts = new Map(); let start = null, pinch = null;
+    svg.addEventListener("pointerdown", e => { svg.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pts.size === 1) start = { x: e.clientX, y: e.clientY, t: performance.now(), moved: 0 }; if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), k: view.k }; } });
+    svg.addEventListener("pointermove", e => {
+      const p = pts.get(e.pointerId); if (!p) return;
+      const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+      if (pts.size === 1) { view.x -= dx / view.k; view.y -= dy / view.k; if (start) start.moved += Math.abs(dx) + Math.abs(dy); apply(); }
+      else if (pts.size === 2 && pinch) { const [a, b] = [...pts.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); view.k = Math.max(.4, Math.min(5, pinch.k * d / Math.max(1, pinch.d))); if (start) start.moved = 99; apply(); }
+    });
+    const up = e => {
+      const r = size();
+      if (pts.size === 1 && start && start.moved < 8 && performance.now() - start.t < 400) {
+        const wx = view.x + (e.clientX - r.left - r.width / 2) / view.k, wy = view.y + (e.clientY - r.top - r.height / 2 - 10) / view.k;
+        let hit = null, bd = 26 / view.k;
+        D.all.forEach(s => { const d = Math.hypot(s.x - wx, s.y - wy); if (d < bd) { bd = d; hit = s; } });
+        if (hit) { select(hit.key); haptic("tick"); } else { card.hidden = true; el.querySelectorAll(".st-obs-s.is-sel").forEach(g => g.classList.remove("is-sel")); }
+      }
+      pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) start = null;
+    };
+    svg.addEventListener("pointerup", up); svg.addEventListener("pointercancel", e => { pts.delete(e.pointerId); pinch = null; start = null; });
+    svg.addEventListener("wheel", e => { e.preventDefault(); view.k = Math.max(.4, Math.min(5, view.k * Math.exp(-e.deltaY * .0015))); apply(); }, { passive: false });
+    const key = e => { if (e.key === "Escape") { e.preventDefault(); closeObservatory(); } };
+    document.addEventListener("keydown", key, true);
+    const onResize = () => apply();
+    window.addEventListener("resize", onResize);
+    obs = { el, key, onResize, back: document.activeElement };
+    document.documentElement.classList.add("st-obs-open");
+    fit();
+    el.querySelector(".st-obs-x").focus({ preventScroll: true });
+  }
+  function closeObservatory(now) {
+    if (!obs) return;
+    const o = obs; obs = null;
+    document.removeEventListener("keydown", o.key, true);
+    window.removeEventListener("resize", o.onResize);
+    document.documentElement.classList.remove("st-obs-open");
+    if (now || reduced()) o.el.remove(); else { o.el.classList.add("is-out"); setTimeout(() => o.el.remove(), 320); }
+    try { if (o.back && o.back.focus && document.contains(o.back)) o.back.focus(); } catch (e) {}
+  }
+
+  /* D69 · Living sky. The canvas follows the device clock (the clock the greeting already reads):
+     dawn 05–09, day 09–17, dusk 17–21, night 21–05. Presentation only; refreshed every five minutes
+     and whenever the app comes back to the foreground. sky(name) pins a state (verification only). */
+  let skyPinned = null;
+  function skyFor(h) { return h >= 5 && h < 9 ? "dawn" : h >= 9 && h < 17 ? "day" : h >= 17 && h < 21 ? "dusk" : "night"; }
+  function setSky() { document.documentElement.setAttribute("data-st-sky", skyPinned || skyFor(new Date().getHours())); }
+  function sky(name) { skyPinned = /^(dawn|day|dusk|night)$/.test(String(name)) ? String(name) : null; setSky(); return document.documentElement.getAttribute("data-st-sky"); }
+  function bindSky() {
+    setSky();
+    setInterval(setSky, 5 * 60 * 1000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) setSky(); });
+    window.addEventListener("pageshow", setSky);
+  }
+
   /* Scroll position feeds the canvas parallax (a CSS variable, so no per-frame layout). */
   function bindParallax() {
     let raf = 0;
     const set = () => { raf = 0; document.documentElement.style.setProperty("--st-sy", String(Math.round(window.scrollY || 0))); };
     window.addEventListener("scroll", () => { if (!raf && !reduced()) raf = requestAnimationFrame(set); }, { passive: true });
   }
+  /* ---- D87 · Touch light ---------------------------------------------------------------------------
+     The tap ripple (D38), made continuous: glass catches light under the finger, the light follows it
+     while pressed, and on release it opens out and fades. Off under reduced motion. */
+  const LIT = ".st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row,.st-dec-chip,.vn-row,.vn-set-row,.st-lrow>button,.co-tile,.st-wchip,.st-share-b,.vn-set-act,.st-fin-done,.st-fin-cardio,.st-ask-acts button,.nxp-cal-day,.st-live,.st-dk-menu button";
+  let lit = null;
   function bindRipple() {
-    const SEL = ".st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row,.st-dec-chip";
+    const end = () => {
+      if (!lit) return;
+      const c = lit; lit = null;
+      c.sp.classList.remove("is-held"); c.sp.classList.add("is-out");
+      setTimeout(() => c.sp.remove(), 560);
+    };
     document.addEventListener("pointerdown", e => {
       if (reduced() || (e.pointerType === "mouse" && e.button !== 0)) return;
-      const host = e.target && e.target.closest && e.target.closest(SEL);
+      const host = e.target && e.target.closest && e.target.closest(LIT);
       if (!host || host.disabled) return;
+      end();
+      if (getComputedStyle(host).position === "static") host.style.position = "relative";
       const r = host.getBoundingClientRect(), sp = document.createElement("span");
       sp.className = "st-ripple"; sp.setAttribute("aria-hidden", "true");
       const i = document.createElement("i");
-      const d = Math.max(r.width, r.height) * 1.6;
-      i.style.cssText = "width:" + d + "px;height:" + d + "px;left:" + (e.clientX - r.left - d / 2) + "px;top:" + (e.clientY - r.top - d / 2) + "px";
+      const d = Math.round(Math.min(440, Math.max(160, Math.max(r.width, r.height) * 1.4)));
+      i.style.width = i.style.height = d + "px";
+      i.style.left = (e.clientX - r.left - d / 2) + "px"; i.style.top = (e.clientY - r.top - d / 2) + "px";
       sp.appendChild(i); host.appendChild(sp);
-      setTimeout(() => sp.remove(), 650);
+      lit = { sp, i, host, id: e.pointerId, d };
+      requestAnimationFrame(() => { if (lit && lit.sp === sp) sp.classList.add("is-held"); });
+    }, true);
+    document.addEventListener("pointermove", e => {
+      if (!lit || e.pointerId !== lit.id) return;
+      const r = lit.host.getBoundingClientRect();
+      lit.i.style.left = (e.clientX - r.left - lit.d / 2) + "px"; lit.i.style.top = (e.clientY - r.top - lit.d / 2) + "px";
+    }, { capture: true, passive: true });
+    ["pointerup", "pointercancel"].forEach(t => document.addEventListener(t, e => { if (lit && e.pointerId === lit.id) end(); }, true));
+  }
+
+  /* ---- D88 · Tilt light ------------------------------------------------------------------------------
+     Where the phone reports its orientation, the light on the glass moves as you tilt it: tile sheens,
+     the dock's glint and the canvas drift a little with the phone, against a resting angle that follows
+     how you hold it. iPhone asks once (Settings › Appearance › Tilt light); nothing is stored by the app.
+     Off under reduced motion. */
+  const tilt = { x: 0, y: 0, tx: 0, ty: 0, b0: null, raf: 0, live: false, seen: false, bound: false };
+  function tiltFrame() {
+    tilt.raf = 0;
+    tilt.x += (tilt.tx - tilt.x) * .16; tilt.y += (tilt.ty - tilt.y) * .16;
+    const de = document.documentElement;
+    de.style.setProperty("--st-tx", tilt.x.toFixed(3)); de.style.setProperty("--st-ty", tilt.y.toFixed(3));
+    if (Math.abs(tilt.tx - tilt.x) > .002 || Math.abs(tilt.ty - tilt.y) > .002) tilt.raf = requestAnimationFrame(tiltFrame);
+  }
+  function onOrient(e) {
+    if (e.beta == null || e.gamma == null) return;
+    tilt.seen = true;
+    if (reduced()) { if (tilt.live) { tilt.live = false; document.documentElement.classList.remove("st-tilt"); } return; }
+    if (tilt.b0 === null) tilt.b0 = e.beta;
+    tilt.b0 += (e.beta - tilt.b0) * .015;
+    tilt.tx = Math.max(-1, Math.min(1, e.gamma / 28));
+    tilt.ty = Math.max(-1, Math.min(1, (e.beta - tilt.b0) / 22));
+    if (!tilt.live) { tilt.live = true; document.documentElement.classList.add("st-tilt"); }
+    if (!tilt.raf) tilt.raf = requestAnimationFrame(tiltFrame);
+  }
+  function bindTilt() { if (tilt.bound) return; tilt.bound = true; window.addEventListener("deviceorientation", onOrient, { passive: true }); }
+  function tiltState() {
+    if (tilt.live) return "on";
+    if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") return "ask";
+    return "none";
+  }
+  async function allowTilt() {
+    try {
+      const s = await DeviceOrientationEvent.requestPermission();
+      if (s === "granted") { bindTilt(); toast("Tilt light is on"); } else toast("Tilt light needs motion access");
+    } catch (e) { toast("Tilt light is not available here"); }
+    return tiltState();
+  }
+
+  /* ---- D89 · Dock shortcuts --------------------------------------------------------------------------
+     Long-press a dock tab (or right-click it) for that tab's shortcuts, like an iPhone app icon. Each item
+     calls a function the app already has; a normal tap still just switches tab. */
+  function shortcuts(tab) {
+    const go = (t, f) => () => { if (currentTab() !== t) switchTab(t); f && f(); };
+    const view = v => () => { if (typeof NXT === "object") NXT.ui.view = v; if (currentTab() !== "weight") switchTab("weight"); else if (typeof render === "function") render(); };
+    const hist = f => () => { if (typeof state === "object") state.historyFilter = f; if (currentTab() !== "history") switchTab("history"); else if (typeof render === "function") render(); };
+    const s = liveSession(), lift = typeof state === "object" && state && !["Rest", "Zone2", "Floorball"].includes(state.dayType);
+    const sessionName = typeof NXT === "object" && state ? NXT.label(state.dayType) : "";
+    const L = {
+      home: [["Log weight", () => apx95OpenQuickWeight()], ["Log cardio", () => showCardioSheet()]],
+      train: [lift ? [s ? "Resume " + sessionName : "Start " + sessionName, () => NXP.enterTrain()] : null, ["Change today's session", () => showSessionSheet()], ["Log cardio", () => showCardioSheet()]],
+      weight: [["Weight", view("overview")], ["Training", view("training")], ["Lifts", view("strength")], ["Body", view("body")], ["Log weight", () => apx95OpenQuickWeight()], ["Share your cut", () => NXP.shareProgress && NXP.shareProgress()]],
+      history: [["Your sky", () => observatory()], ["Today", go("history", () => NXP.historySelect && NXP.historySelect(localToday()))], ["Lifting days", hist("strength")], ["Weigh-ins", hist("body")], ["Cardio", hist("conditioning")]],
+      more: [["Training plan", () => NXT.more("training")], ["Data & sync", () => NXT.more("data")], ["Appearance", () => NXT.more("appearance")]]
+    };
+    return (L[tab] || []).filter(Boolean);
+  }
+  let dk = null, dkSwallow = 0;
+  function closeDock() {
+    if (!dk) return;
+    const m = dk; dk = null;
+    document.removeEventListener("keydown", m.key, true);
+    m.el.classList.add("is-out");
+    setTimeout(() => m.el.remove(), reduced() ? 0 : 200);
+    try { if (m.back && m.back.focus) m.back.focus(); } catch (e) {}
+  }
+  function openDock(btn) {
+    closeDock();
+    const tab = btn && btn.dataset && btn.dataset.tab, items = tab ? shortcuts(tab) : [];
+    if (!items.length) return;
+    const el = document.createElement("div");
+    el.className = "st-dk";
+    el.innerHTML = '<div class="st-dk-scrim"></div><div class="st-dk-menu" role="menu" aria-label="' + esc((TITLES[tab] || "Tab") + " shortcuts") + '">' + items.map(([t], i) => '<button type="button" role="menuitem" data-i="' + i + '">' + esc(t) + '</button>').join("") + "</div>";
+    document.body.appendChild(el);
+    const menu = el.querySelector(".st-dk-menu"), r = btn.getBoundingClientRect(), mw = Math.min(260, window.innerWidth - 24);
+    menu.style.width = mw + "px";
+    menu.style.left = Math.max(12, Math.min(window.innerWidth - mw - 12, r.left + r.width / 2 - mw / 2)) + "px";
+    menu.style.bottom = Math.round(window.innerHeight - r.top + 14) + "px";
+    menu.style.setProperty("--ox", Math.round(r.left + r.width / 2 - parseFloat(menu.style.left)) + "px");
+    const key = e => {
+      const b = [...menu.querySelectorAll("button")], i = b.indexOf(document.activeElement);
+      if (e.key === "Escape") { e.preventDefault(); closeDock(); }
+      else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); b[(i + (e.key === "ArrowDown" ? 1 : -1) + b.length) % b.length].focus(); }
+      else if (e.key === "Tab") { e.preventDefault(); b[(i + (e.shiftKey ? -1 : 1) + b.length) % b.length].focus(); }
+    };
+    dk = { el, key, back: btn };
+    document.addEventListener("keydown", key, true);
+    el.querySelector(".st-dk-scrim").addEventListener("click", closeDock);
+    menu.addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b) return;
+      const f = items[Number(b.dataset.i)] && items[Number(b.dataset.i)][1];
+      dk.back = null; closeDock();
+      try { f && f(); } catch (err) { console.error(err); }
+    });
+    haptic("tick");
+    menu.querySelector("button").focus({ preventScroll: true });
+  }
+  function bindDockShortcuts() {
+    let t = 0, sx = 0, sy = 0, btn = null;
+    const cancel = () => { clearTimeout(t); t = 0; btn = null; };
+    document.addEventListener("pointerdown", e => {
+      const b = e.target && e.target.closest && e.target.closest(".tabs .tab");
+      if (!b || (e.pointerType === "mouse" && e.button !== 0)) return;
+      btn = b; sx = e.clientX; sy = e.clientY;
+      clearTimeout(t); t = setTimeout(() => { if (btn) { dkSwallow = Date.now() + 700; openDock(btn); btn = null; } }, 440);
+    }, true);
+    document.addEventListener("pointermove", e => { if (btn && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) cancel(); }, { capture: true, passive: true });
+    ["pointerup", "pointercancel"].forEach(n => document.addEventListener(n, cancel, true));
+    document.addEventListener("click", e => {
+      if (Date.now() < dkSwallow && e.target && e.target.closest && e.target.closest(".tabs .tab")) { e.preventDefault(); e.stopImmediatePropagation(); dkSwallow = 0; }
+    }, true);
+    document.addEventListener("contextmenu", e => {
+      const b = e.target && e.target.closest && e.target.closest(".tabs .tab");
+      if (!b) return;
+      e.preventDefault(); cancel(); openDock(b);
     }, true);
   }
+
+  /* ---- D90 · Pull at the top -------------------------------------------------------------------------
+     The page sets overscroll-behavior:none, so iOS never rubber-bands and a pull at the top did nothing.
+     A pull now stretches the page and its title with a rubber band; on Today, pulling past the line and
+     letting go opens the weigh-in. Not inside sheets, fields, the chart, the week rail, the calendar or
+     an active workout. Reduced motion: no stretch, the pull still works. */
+  let pullEl = null;
+  function ensurePullHint() {
+    if (pullEl && pullEl.isConnected) return pullEl;
+    pullEl = document.createElement("div");
+    pullEl.id = "stPull"; pullEl.className = "st-pull"; pullEl.setAttribute("aria-hidden", "true");
+    pullEl.innerHTML = '<i class="st-pull-dot"></i><span>Pull to weigh in</span>';
+    document.body.appendChild(pullEl);
+    return pullEl;
+  }
+  function applyPull(px, settle, armed) {
+    const main = document.querySelector("main"), still = reduced();
+    if (main) {
+      main.style.transition = settle ? "transform .5s cubic-bezier(.32,.72,0,1)" : "none";
+      main.style.transform = px && !still ? "translateY(" + px.toFixed(1) + "px)" : "";
+      if (settle) setTimeout(() => { if (main.style.transform === "") main.style.transition = ""; }, 520);
+    }
+    const t = document.querySelector(MAST[currentTab()]);
+    if (t) { t.style.transformOrigin = "0 100%"; t.style.transition = settle ? "transform .5s cubic-bezier(.32,.72,0,1)" : "none"; t.style.transform = px && !still ? "scale(" + (1 + Math.min(px, 120) / 900).toFixed(3) + ")" : ""; }
+    if (currentTab() === "home") {
+      const h = ensurePullHint();
+      h.style.setProperty("--p", String(Math.min(1, px / 70)));
+      h.classList.toggle("is-on", px > 6);
+      h.classList.toggle("is-armed", !!armed);
+      h.querySelector("span").textContent = armed ? "Release to weigh in" : "Pull to weigh in";
+    } else if (pullEl) pullEl.classList.remove("is-on", "is-armed");
+  }
+  function bindPull() {
+    let y0 = null, x0 = 0, pulling = false, px = 0, armed = false;
+    const blocked = t => !t || !t.closest || !!t.closest("#modalRoot,input,textarea,select,#vn-chart-wrap,.st-gl,.st-fin,.st-ask,.st-dk,.vn-week,[data-rail],.nxp-cal-grid,.tabs,#stTop,.st-shr");
+    document.addEventListener("touchstart", e => {
+      y0 = null;
+      if (e.touches.length !== 1 || (window.scrollY || 0) > 0 || blocked(e.target)) return;
+      if (document.documentElement.classList.contains("st-sheet-open") || document.querySelector("#trainPage .st-train-active")) return;
+      y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; pulling = false; px = 0; armed = false;
+    }, { passive: true });
+    document.addEventListener("touchmove", e => {
+      if (y0 === null) return;
+      const dy = e.touches[0].clientY - y0, dx = e.touches[0].clientX - x0;
+      if (!pulling) {
+        if (dy > 8 && dy > Math.abs(dx) * 1.4 && (window.scrollY || 0) <= 0) pulling = true;
+        else { if (dy < -4 || Math.abs(dx) > 14) y0 = null; return; }
+      }
+      px = 118 * (1 - Math.exp(-Math.max(0, dy) / 170));
+      const was = armed;
+      armed = currentTab() === "home" && px > 70;
+      if (armed && !was) haptic("tick");
+      applyPull(px, false, armed);
+    }, { passive: true });
+    const release = () => {
+      if (y0 === null && !pulling) return;
+      const go = pulling && armed;
+      y0 = null; pulling = false; armed = false;
+      applyPull(0, true, false);
+      if (go && typeof apx95OpenQuickWeight === "function") setTimeout(() => apx95OpenQuickWeight(), 120);
+    };
+    document.addEventListener("touchend", release, { passive: true });
+    document.addEventListener("touchcancel", release, { passive: true });
+  }
+
   function hydrate(page) {
     if (!page) return;
     const tab = (typeof state === "object" && state && state.tab) || "home";
     const entering = state0.lastTab !== tab;
     state0.lastTab = tab;
     document.documentElement.setAttribute("data-st-tab", tab);
+    document.documentElement.setAttribute("data-st-session", sessionHue());
     stopReplay();
     page.classList.toggle("st-enter", entering && !reduced());
     if (entering && !reduced()) setTimeout(() => page.classList.remove("st-enter"), 1400);
@@ -716,8 +1700,24 @@ const STRATA = (() => {
     foldBody(page);
     if (page.id === "trainPage") bindTrain(page);
     bindProgressReplay(page);
+    if (page.id === "weightPage") {
+      dressChartHead();
+      const jh = page.querySelector(".vn-journey .vn-sect-head");
+      if (jh && !jh.querySelector(".st-share-b") && typeof NXP === "object" && NXP.shareProgress) {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "st-share-b";
+        b.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5.5 9.5H5a1.5 1.5 0 0 0-1.5 1.5v4.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V11A1.5 1.5 0 0 0 15 9.5h-.5"/></svg>Share';
+        b.addEventListener("click", () => NXP.shareProgress());
+        jh.appendChild(b);
+      }
+    }
+    resumeRest();
+    resumeExercise(page);
     bindView(page, entering);
     syncDock();
+    queueTop();
+    updateLive();
+    paintStars();
   }
   function install() {
     /* The global render slots are `let`/function bindings in index.html, so
@@ -734,13 +1734,31 @@ const STRATA = (() => {
     bindSheets();
     if (typeof NXT === "object" && typeof NXT.selectPoint === "function" && !NXT.selectPoint.__strata) {
       const sp = NXT.selectPoint;
-      NXT.selectPoint = function (index, opts) { const o = sp.apply(this, arguments); try { progressTip(index, opts); weeksSync(index); } catch (e) {} return o; };
+      NXT.selectPoint = function (index, opts) { const o = sp.apply(this, arguments); try { progressTip(index, opts); weeksSync(index); if (index !== lastScrub && !(opts && opts.clear)) { if (lastScrub !== -1) haptic("tick"); lastScrub = index; } } catch (e) {} return o; };
       NXT.selectPoint.__strata = true;
     }
     bindCalSwipe();
     bindIcons();
     bindRipple();
     bindParallax();
+    bindSky();
+    bindTop();
+    bindLive();
+    bindHaptics();
+    bindIsland();
+    bindStretch();
+    bindSheetKeyboard();
+    bindGymGuard();
+    bindGlance();
+    bindTilt();
+    bindDockShortcuts();
+    bindPull();
+    bindWeighMoment();
+    if (typeof switchTab === "function" && !switchTab.__strata) {
+      const f = switchTab;
+      switchTab = function () { return navigate(f, arguments); };
+      switchTab.__strata = true;
+    }
     bindPress();
     queueSegs();
     document.addEventListener("pointerup", e => {
@@ -757,7 +1775,7 @@ const STRATA = (() => {
     });
     document.documentElement.classList.add("st-on");
   }
-  return { hydrate, install, odoSet, stopReplay };
+  return { observatory, closeObservatory, hydrate, install, odoSet, stopReplay, sky, haptic, glance: () => { glTouch = 0; showGlance(); }, tiltState, allowTilt, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
 })();
 STRATA.install();
 if (typeof NXT === "object" && NXT && typeof NXT.repaint === "function" && document.readyState !== "loading") {
