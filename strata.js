@@ -301,7 +301,8 @@ const STRATA = (() => {
       if (gap !== null && p.ty !== null && p.ty !== undefined && Math.abs(p.y - p.ty) > 3) { stem.setAttribute("x1", p.x); stem.setAttribute("x2", p.x); stem.setAttribute("y1", p.y); stem.setAttribute("y2", p.ty); stem.setAttribute("visibility", "visible"); }
       else stem.setAttribute("visibility", "hidden");
     }
-    tip.innerHTML = `<b>${esc(shortDate(p.date))}</b><span>Reading <em>${Number(p.weight).toFixed(1)}</em></span>${p.avg !== null ? `<span>Trend <em>${Number(p.avg).toFixed(2)}</em></span>` : ""}${gap !== null && Math.abs(gap) >= 0.05 ? `<span class="st-tip-gap">${Math.abs(gap).toFixed(1)} kg ${gap < 0 ? "below" : "above"} trend</span>` : ""}`;
+    const did = dayDid(p.date);
+    tip.innerHTML = `${did ? `<span class="st-tip-ctx">${esc(did)}</span>` : ""}<b>${esc(shortDate(p.date))}</b><span>Reading <em>${Number(p.weight).toFixed(1)}</em></span>${p.avg !== null ? `<span>Trend <em>${Number(p.avg).toFixed(2)}</em></span>` : ""}${gap !== null && Math.abs(gap) >= 0.05 ? `<span class="st-tip-gap">${Math.abs(gap).toFixed(1)} kg ${gap < 0 ? "below" : "above"} trend</span>` : ""}`;
     tip.style.left = Math.min(Math.max(r.left - wr.left + p.x * k, 58), wr.width - 58) + "px";
     tip.hidden = false;
     const hi = (p.ty !== null && p.ty !== undefined ? Math.min(p.y, p.ty) : p.y), lo = (p.ty !== null && p.ty !== undefined ? Math.max(p.y, p.ty) : p.y), h = tip.offsetHeight;
@@ -835,9 +836,10 @@ const STRATA = (() => {
       if (dock) { const r = dock.getBoundingClientRect(); if (r.height) el.style.setProperty("--st-live-bottom", Math.max(12, Math.round((window.innerHeight || 0) - r.top + 10)) + "px"); }
     }
     clearTimeout(liveTick);
-    if (s && (show || s.rest)) liveTick = setTimeout(updateLive, 1000);
+    if ((s && (show || s.rest)) || glShown) liveTick = setTimeout(updateLive, 1000);
     const workoutOn = inTrain && !!document.querySelector("#trainPage .st-train-active");
     document.documentElement.classList.toggle("st-in-workout", workoutOn);
+    glanceTick(workoutOn, s ? s.rest : 0);
     syncWake(workoutOn && document.visibilityState === "visible");
   }
   async function syncWake(on) {
@@ -851,6 +853,15 @@ const STRATA = (() => {
   function bindLive() {
     document.addEventListener("visibilitychange", updateLive);
     window.addEventListener("resize", updateLive);
+    /* The engine starts a rest just after the screen repaints for the logged set, so the pill, the Train
+       ring and Glance listen to the rest starting, not only to repaints. */
+    try {
+      if (typeof apx96StartRest === "function" && !apx96StartRest.__strataLive) {
+        const f = apx96StartRest;
+        apx96StartRest = function () { const o = f.apply(this, arguments); setTimeout(updateLive, 0); return o; };
+        apx96StartRest.__strataLive = true;
+      }
+    } catch (e) {}
     updateLive();
   }
 
@@ -924,6 +935,12 @@ const STRATA = (() => {
     const n = (obj, k, test) => { if (!obj) return; const f = obj[k]; if (typeof f !== "function" || f.__strataH) return; obj[k] = function () { const b = test(); const o = f.apply(this, arguments); const c = () => { if (test() > b) haptic("success"); }; if (o && typeof o.then === "function") o.then(c, () => {}); else c(); return o; }; obj[k].__strataH = true; };
     /* The Train form calls NXP.logSet(); the cardio form and Finish call NXT directly. */
     if (typeof NXP === "object") n(NXP, "logSet", () => (state && Array.isArray(state.logs) ? state.logs.length : 0));
+    /* A set that sets a new best gets a second, stronger tick once its row has painted. */
+    if (typeof NXP === "object" && typeof NXP.logSet === "function" && !NXP.logSet.__strataPR) {
+      const f = NXP.logSet;
+      NXP.logSet = function () { const o = f.apply(this, arguments); setTimeout(() => { if (document.querySelector("#trainPage .st-lrow.is-fresh.is-pr")) { haptic("success"); setTimeout(() => haptic("success"), 160); } }, 200); return o; };
+      NXP.logSet.__strataPR = true; NXP.logSet.__strataH = true;
+    }
     if (typeof NXT === "object") {
       n(NXT, "saveCardio", () => (state && Array.isArray(state.cardio) ? state.cardio.length : 0));
       n(NXT, "finish", () => (typeof NXT.planDone === "function" && NXT.planDone() ? 1 : 0));
@@ -1037,6 +1054,136 @@ const STRATA = (() => {
     cycleGym.__strata = true;
   }
 
+  /* ---- D82 · Glance mode ------------------------------------------------------------------------------
+     Between sets the phone is usually at arm's length. After eight seconds without a touch during a rest,
+     the workout gives way to a near-black glance view: the rest ring and countdown large enough to read
+     across the gym, the next load, the exercise and the session's running time. Any touch returns to the
+     workout; when the rest runs out it says "Go" and returns by itself, so Log is always one step away.
+     Reads the engine's own countdown; nothing is stored. Static under reduced motion. */
+  let glEl = null, glShown = false, glTouch = Date.now(), glGo = 0;
+  function restLeftNow() { try { return typeof apx96RestRemaining === "function" ? apx96RestRemaining() : 0; } catch (e) { return 0; } }
+  function glanceBlocked() {
+    const a = document.activeElement;
+    return document.hidden || document.documentElement.classList.contains("st-sheet-open") || !!document.getElementById("stAsk") || !!document.getElementById("stFinish") || !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+  }
+  function ensureGlance() {
+    if (glEl && glEl.isConnected) return glEl;
+    glEl = document.createElement("div");
+    glEl.id = "stGlance"; glEl.className = "st-gl"; glEl.hidden = true;
+    glEl.setAttribute("role", "button"); glEl.setAttribute("tabindex", "-1");
+    glEl.innerHTML = '<div class="st-gl-in"><p class="st-gl-ex"></p><div class="st-gl-orb"><i class="st-gl-core"></i><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="st-gl-tr" cx="60" cy="60" r="55" pathLength="1"/><circle class="st-gl-arc" cx="60" cy="60" r="55" pathLength="1"/></svg><div class="st-gl-t"><small>Rest</small><b></b></div></div><p class="st-gl-next"><small>Up next</small><b></b></p><p class="st-gl-meta"></p><p class="st-gl-hint">Tap to return</p></div>';
+    glEl.addEventListener("click", () => hideGlance());
+    document.body.appendChild(glEl);
+    return glEl;
+  }
+  function sessionClock() {
+    try {
+      const ts = NXT.sessionLogs().map(r => Number(r.ts) || 0).filter(Boolean);
+      if (!ts.length) return "";
+      const s = Math.max(0, Math.floor((Date.now() - Math.min(...ts)) / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+      return h ? h + ":" + String(m).padStart(2, "0") + ":" + String(sec).padStart(2, "0") : m + ":" + String(sec).padStart(2, "0");
+    } catch (e) { return ""; }
+  }
+  function paintGlance() {
+    if (!glEl || !glShown) return;
+    const left = restLeftNow(), total = (typeof NXP === "object" && NXP.ui && NXP.ui.restTotal) || 90;
+    const b = glEl.querySelector(".st-gl-t b");
+    if (left > 0) {
+      glEl.classList.remove("is-go");
+      glEl.classList.toggle("is-final", left <= 10);
+      b.textContent = Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0");
+      glEl.style.setProperty("--pct", String(Math.max(0, Math.min(100, left / total * 100))));
+    } else if (!glEl.classList.contains("is-go")) {
+      glEl.classList.add("is-go"); glEl.classList.remove("is-final"); b.textContent = "Go";
+      glEl.style.setProperty("--pct", "0");
+      clearTimeout(glGo); glGo = setTimeout(hideGlance, 1700);
+    }
+  }
+  function showGlance() {
+    if (glShown || glanceBlocked()) return;
+    const el = ensureGlance();
+    const ex = document.querySelector("#trainPage .st-ex-title"), next = document.querySelector("#trainPage .st-orb-next b");
+    el.querySelector(".st-gl-ex").textContent = ex ? ex.textContent.trim() : "";
+    el.querySelector(".st-gl-next b").textContent = next ? next.textContent.trim() : "";
+    let setLine = "";
+    try { const t = NXT.targetFor(state.exercise), d = NXT.done(state.exercise); setLine = d < Number(t.sets) ? "Set " + (d + 1) + " of " + t.sets : "Extra set"; } catch (e) {}
+    const clock = sessionClock();
+    el.querySelector(".st-gl-meta").textContent = [setLine, clock ? "Session " + clock : ""].filter(Boolean).join("  ·  ");
+    el.setAttribute("aria-label", "Rest view. Tap to return to the workout.");
+    glShown = true; el.hidden = false; el.classList.remove("is-go", "is-out");
+    paintGlance();
+  }
+  function hideGlance() {
+    clearTimeout(glGo);
+    glTouch = Date.now();
+    if (!glShown || !glEl) return;
+    glShown = false;
+    if (reduced()) { glEl.hidden = true; return; }
+    glEl.classList.add("is-out");
+    setTimeout(() => { if (!glShown && glEl) { glEl.hidden = true; glEl.classList.remove("is-out"); } }, 260);
+  }
+  function glanceTick(inWorkout, rest) {
+    if (glShown) { if (!inWorkout) hideGlance(); else paintGlance(); return; }
+    if (inWorkout && rest > 3 && Date.now() - glTouch > 8000) showGlance();
+  }
+  function bindGlance() {
+    const touch = () => { glTouch = Date.now(); };
+    ["pointerdown", "keydown", "wheel", "touchstart"].forEach(t => document.addEventListener(t, touch, { capture: true, passive: true }));
+    window.addEventListener("scroll", touch, { passive: true });
+    document.addEventListener("visibilitychange", () => { if (document.hidden) hideGlance(); });
+  }
+
+  /* ---- Session light: on Train the canvas takes the session's own hue (D54's Dusk palette) ---------- */
+  function sessionHue() {
+    const t = (typeof state === "object" && state && state.dayType) || "";
+    return /^Full/.test(t) ? "full" : t === "Push" ? "push" : t === "Pull" ? "pull" : (t === "Pump" || t === "Legs") ? "legs" : t === "Zone2" ? "walk" : "rest";
+  }
+
+  /* ---- Scrub context: the reading's day, as lived — the session lifted and any cardio --------------- */
+  function dayDid(date) {
+    try {
+      const sets = (state.logs || []).filter(r => r && r.date === date && r.setType !== "warmup");
+      const bits = [];
+      if (sets.length) { const t = sets[0].dayType; bits.push((NXT.label && t ? NXT.label(t) : "Lifted") + " · " + sets.length + (sets.length === 1 ? " set" : " sets")); }
+      const mins = (state.cardio || []).filter(r => r && r.date === date).reduce((a, r) => a + (Number(r.duration || r.minutes) || 0), 0);
+      if (mins > 0) bits.push(Math.round(mins) + " min cardio");
+      return bits.join(" · ");
+    } catch (e) { return ""; }
+  }
+
+  /* ---- Back where you left off ----------------------------------------------------------------------
+     If iOS closed the app mid-rest, the countdown comes back on reopening: the rest the engine started is
+     the last set's time plus the engine's own rest length for it (suggestedRestSeconds), so nothing new is
+     stored. A +30s added before the app closed is not remembered. On the first workout screen after a
+     launch, a finished exercise hands over to the first one with sets left. */
+  let resumedRest = false, resumedEx = false;
+  function resumeRest() {
+    if (resumedRest) return; resumedRest = true;
+    try {
+      if (typeof NXT !== "object" || typeof state !== "object" || !state || restLeftNow() > 0) return;
+      if (NXT.planDone && NXT.planDone()) return;
+      const logs = NXT.sessionLogs ? NXT.sessionLogs() : [];
+      const last = logs.slice().sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0))[0];
+      if (!last || !Number(last.ts)) return;
+      const planned = last.setType === "warmup" ? 60 : (typeof suggestedRestSeconds === "function" ? Number(suggestedRestSeconds(last.exercise)) || 90 : 90);
+      const left = Math.floor((Number(last.ts) + planned * 1000 - Date.now()) / 1000);
+      if (left >= 10 && left <= planned && typeof apx96StartRest === "function") {
+        apx96StartRest(left);
+        if (typeof NXP === "object" && NXP.noteRestTotal) NXP.noteRestTotal(planned);
+      }
+    } catch (e) { /* the workout is unaffected */ }
+  }
+  function resumeExercise(page) {
+    if (resumedEx || page.id !== "trainPage" || !page.querySelector(".st-train-active")) return;
+    resumedEx = true;
+    try {
+      const list = typeof template === "function" ? template() || [] : [], t = NXT.targetFor(state.exercise);
+      if (NXT.done(state.exercise) < Number(t.sets)) return;
+      const i = list.findIndex(e => NXT.done(e.name) < Number(e.sets));
+      if (i >= 0 && NXT.selectExercise) setTimeout(() => NXT.selectExercise(i), 0);
+    } catch (e) {}
+  }
+
   /* D69 · Living sky. The canvas follows the device clock (the clock the greeting already reads):
      dawn 05–09, day 09–17, dusk 17–21, night 21–05. Presentation only; refreshed every five minutes
      and whenever the app comes back to the foreground. sky(name) pins a state (verification only). */
@@ -1078,6 +1225,7 @@ const STRATA = (() => {
     const entering = state0.lastTab !== tab;
     state0.lastTab = tab;
     document.documentElement.setAttribute("data-st-tab", tab);
+    document.documentElement.setAttribute("data-st-session", sessionHue());
     stopReplay();
     page.classList.toggle("st-enter", entering && !reduced());
     if (entering && !reduced()) setTimeout(() => page.classList.remove("st-enter"), 1400);
@@ -1090,7 +1238,19 @@ const STRATA = (() => {
     foldBody(page);
     if (page.id === "trainPage") bindTrain(page);
     bindProgressReplay(page);
-    if (page.id === "weightPage") dressChartHead();
+    if (page.id === "weightPage") {
+      dressChartHead();
+      const jh = page.querySelector(".vn-journey .vn-sect-head");
+      if (jh && !jh.querySelector(".st-share-b") && typeof NXP === "object" && NXP.shareProgress) {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "st-share-b";
+        b.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5.5 9.5H5a1.5 1.5 0 0 0-1.5 1.5v4.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V11A1.5 1.5 0 0 0 15 9.5h-.5"/></svg>Share';
+        b.addEventListener("click", () => NXP.shareProgress());
+        jh.appendChild(b);
+      }
+    }
+    resumeRest();
+    resumeExercise(page);
     bindView(page, entering);
     syncDock();
     queueTop();
@@ -1127,6 +1287,7 @@ const STRATA = (() => {
     bindStretch();
     bindSheetKeyboard();
     bindGymGuard();
+    bindGlance();
     if (typeof switchTab === "function" && !switchTab.__strata) {
       const f = switchTab;
       switchTab = function () { return navigate(f, arguments); };
@@ -1148,7 +1309,7 @@ const STRATA = (() => {
     });
     document.documentElement.classList.add("st-on");
   }
-  return { hydrate, install, odoSet, stopReplay, sky, haptic };
+  return { hydrate, install, odoSet, stopReplay, sky, haptic, glance: () => { glTouch = 0; showGlance(); } };
 })();
 STRATA.install();
 if (typeof NXT === "object" && NXT && typeof NXT.repaint === "function" && document.readyState !== "loading") {

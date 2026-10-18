@@ -3775,3 +3775,96 @@ body .toast.st-island.is-quiet{position:fixed !important;width:1px !important;he
 /* The canvas's own dust of stars (D39) dims with the workout sky; a class from strata.js, since :has()
    on <html> would be re-evaluated on every change in the page. */
 :root.st-in-workout::before{opacity:.25 !important;animation:none !important}
+/* ---- D83 · New best, in the ledger --------------------------------------------------------------------------
+   The set that passes every earlier session gets a lit star in place of its number and a lit edge; when it is
+   the set just logged, light bursts from the star. The D20 word beside it is unchanged. */
+.st-lrow.is-pr>button{background:linear-gradient(90deg,rgba(167,139,250,.24),rgba(167,139,250,.06) 70%) !important;box-shadow:inset 0 0 0 1px rgba(214,200,255,.32),0 0 22px -8px rgba(167,139,250,.7)}
+.st-lrow.is-pr .st-ln{background:radial-gradient(circle at 40% 35%,#fff,#d9ccff 45%,#8b5cf6) !important;box-shadow:0 0 14px rgba(196,181,253,.85);position:relative}
+.st-pr-star{width:16px;height:16px;fill:#2a1660}
+@media (prefers-reduced-motion:no-preference){
+  .st-lrow.is-pr.is-fresh .st-ln::before,.st-lrow.is-pr.is-fresh .st-ln::after{content:"";position:absolute;inset:-4px;border-radius:50%;pointer-events:none;border:2px solid rgba(226,214,255,.9)}
+  .st-lrow.is-pr.is-fresh .st-ln::before{animation:st-pr-ring .9s cubic-bezier(.2,.7,.2,1) .15s both}
+  .st-lrow.is-pr.is-fresh .st-ln::after{animation:st-pr-ring 1.1s cubic-bezier(.2,.7,.2,1) .35s both}
+  .st-lrow.is-pr.is-fresh .st-ln{animation:st-pr-pop .7s cubic-bezier(.34,1.56,.64,1) .1s both}
+}
+@keyframes st-pr-ring{0%{transform:scale(.6);opacity:1}100%{transform:scale(2.6);opacity:0}}
+@keyframes st-pr-pop{0%{transform:scale(.4) rotate(-40deg)}100%{transform:none}}
+:root[data-nxp-motion="reduced"] .st-lrow.is-pr .st-ln,:root[data-nxp-motion="reduced"] .st-lrow.is-pr .st-ln::before,:root[data-nxp-motion="reduced"] .st-lrow.is-pr .st-ln::after{animation:none !important}
+
+/* ---- D84 · History numbers --------------------------------------------------------------------------------- */
+#historyPage .nxp-cal-day.has-v .nxp-cal-marks{display:none}
+#historyPage .nxp-cal-v{display:block;margin-top:2px;font:560 10.5px/1 var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+#historyPage .nxp-cal-day.is-selected .nxp-cal-v{color:#fff}
+@media (max-width:359px){#historyPage .nxp-cal-v{font-size:9.5px;letter-spacing:-.04em}}
+#historyPage .st-hw-o{display:flex;align-items:baseline;gap:8px;margin:8px 0 0;font:450 13px/1.3 var(--st-font);color:var(--st-ink-3)}
+#historyPage .st-hw-o b{font:520 15px/1 var(--st-font-d);color:var(--st-ink-2)}
+
+/* ---- Today: the morning weigh-in chip ------------------------------------------------------------------------ */
+#homePage .st-wchip{display:inline-flex;align-items:center;gap:9px;min-height:40px;margin-top:12px;padding:0 16px 0 12px;border:0;border-radius:999px;cursor:pointer;
+  font:600 14.5px/1 var(--st-font-d);color:var(--st-ink);background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.04));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.08),0 10px 24px -14px rgba(139,92,246,.8)}
+#homePage .st-wchip i{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff7ed,#f6b48a 55%,#d37732);box-shadow:0 0 12px rgba(246,180,138,.8)}
+#homePage .st-wchip:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:3px}
+
+/* ---- Chart: the day behind a reading ------------------------------------------------------------------------- */
+.st-tip .st-tip-ctx{order:9;margin-top:3px;padding-top:4px;border-top:1px solid rgba(255,255,255,.08);color:#d9ccff;font-weight:560;font-size:11px}
+
+/* ---- D85 · Share your cut ------------------------------------------------------------------------------------- */
+.vn-journey .vn-sect-head{display:flex;align-items:center;gap:10px}
+.vn-journey .vn-sect-head .vn-tiny{margin-right:auto}
+.st-share-b{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 13px 0 11px;border:0;border-radius:999px;cursor:pointer;font:600 13.5px/1 var(--st-font-d);color:var(--st-ink);
+  background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)}
+.st-share-b svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.st-share-b::after{content:"";position:absolute;inset:-4px}
+.st-share-b{position:relative}
+.st-shr{display:grid;gap:16px}
+.st-shr-prev{border-radius:22px;overflow:hidden;background:#07060B;box-shadow:0 20px 50px -24px rgba(0,0,0,.9),inset 0 0 0 1px rgba(255,255,255,.06);aspect-ratio:1080/1350;max-height:52vh;margin:0 auto}
+.st-shr-prev img{display:block;width:100%;height:100%;object-fit:contain;transition:opacity .25s ease}
+.st-shr-prev img.is-busy{opacity:.35}
+.st-shr-t{display:flex !important;align-items:center;justify-content:space-between;gap:12px;min-height:52px;margin:0 !important;padding:0 4px}
+.st-shr-t span{display:flex;flex-direction:column;gap:3px}
+.st-shr-t b{font:600 15px/1.2 var(--st-font);color:var(--st-ink)}
+.st-shr-t small{font:450 12.5px/1.2 var(--st-font);color:var(--st-ink-3)}
+.st-shr-t input{width:52px;height:32px;accent-color:#8b5cf6}
+
+/* ---- D82 · Glance mode ---------------------------------------------------------------------------------------- */
+.st-gl{position:fixed;inset:0;z-index:10030;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;-webkit-tap-highlight-color:transparent;
+  background:radial-gradient(60% 40% at 50% 46%,rgba(109,40,217,.28),transparent 70%),#030207}
+.st-gl[hidden]{display:none}
+.st-gl-in{display:flex;flex-direction:column;align-items:center;text-align:center;gap:18px;padding:calc(var(--nxt-safe-top,0px) + 24px) 24px calc(var(--nxt-safe-bottom,0px) + 24px)}
+.st-gl-ex{margin:0;font:600 22px/1.2 var(--st-font-d);letter-spacing:-.02em;color:rgba(232,224,255,.82);max-width:86vw}
+.st-gl-orb{position:relative;width:min(74vw,320px);aspect-ratio:1}
+.st-gl-orb svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
+.st-gl-tr{fill:none;stroke:rgba(255,255,255,.07);stroke-width:3}
+.st-gl-arc{fill:none;stroke:#c9b6ff;stroke-width:3;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:calc(1 - var(--pct,0) / 100);transition:stroke-dashoffset 1s linear,stroke .4s ease;filter:drop-shadow(0 0 8px rgba(167,139,250,.9))}
+.st-gl-core{position:absolute;inset:16%;border-radius:50%;background:radial-gradient(circle at 42% 36%,rgba(236,228,255,.3),rgba(150,110,250,.22) 45%,rgba(98,52,210,.06) 70%,transparent 72%)}
+.st-gl-t{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.st-gl-t small{font:600 13px/1 var(--st-font-d);letter-spacing:.24em;text-transform:uppercase;color:rgba(214,200,255,.66)}
+.st-gl-t b{font:200 clamp(64px,22vw,96px)/1 var(--st-font-d);letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.st-gl-next{margin:0;display:flex;flex-direction:column;gap:6px}
+.st-gl-next small{font:600 13px/1 var(--st-font-d);letter-spacing:.2em;text-transform:uppercase;color:rgba(214,200,255,.6)}
+.st-gl-next b{font:400 clamp(40px,12vw,54px)/1 var(--st-font-d);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.st-gl-meta{margin:0;font:500 15px/1.3 var(--st-font);color:rgba(214,204,240,.6)}
+.st-gl-hint{margin:6px 0 0;font:500 13px/1 var(--st-font);color:rgba(214,204,240,.36)}
+.st-gl.is-final .st-gl-arc{stroke:#f2ecff;filter:drop-shadow(0 0 12px rgba(226,214,255,1))}
+.st-gl.is-go .st-gl-arc{stroke-dashoffset:0;stroke:#fff}
+.st-gl.is-go .st-gl-t b{font-weight:500}
+@media (prefers-reduced-motion:no-preference){
+  .st-gl:not([hidden]){animation:st-gl-in .7s cubic-bezier(.32,.72,0,1) both}
+  .st-gl.is-out{animation:st-gl-out .26s ease both}
+  .st-gl-core{animation:st-orb-breathe 8s ease-in-out infinite}
+  .st-gl.is-final .st-gl-core,.st-gl.is-final .st-gl-t b{animation:st-orb-tick 1s ease-in-out infinite}
+  .st-gl.is-go .st-gl-core{animation:st-orb-go 1.7s cubic-bezier(.32,.72,0,1) both}
+}
+@keyframes st-gl-in{from{opacity:0;transform:scale(1.04)}}
+@keyframes st-gl-out{to{opacity:0}}
+:root[data-nxp-motion="reduced"] .st-gl,:root[data-nxp-motion="reduced"] .st-gl *{animation:none !important;transition:none !important}
+
+/* ---- Session light on Train (D54 hues) ------------------------------------------------------------------------ */
+:root[data-st-tab="train"][data-st-session="push"]{--st-a1:rgba(191,117,197,.5);--st-a3:rgba(139,92,246,.18);--st-mast:rgba(191,117,197,.5)}
+:root[data-st-tab="train"][data-st-session="pull"]{--st-a1:rgba(85,82,187,.56);--st-a3:rgba(99,102,241,.2);--st-mast:rgba(99,102,241,.5)}
+:root[data-st-tab="train"][data-st-session="legs"]{--st-a1:rgba(164,48,102,.5);--st-a3:rgba(139,92,246,.16);--st-mast:rgba(190,60,120,.46)}
+:root[data-st-tab="train"][data-st-session="walk"]{--st-a1:rgba(211,119,50,.4);--st-a3:rgba(139,92,246,.14);--st-mast:rgba(211,119,50,.42)}
+:root[data-st-tab="train"][data-st-session="full"]{--st-a1:rgba(124,58,237,.52);--st-mast:rgba(124,58,237,.48)}
+.n99-modal .sheet .st-shr-t{display:flex !important;flex-direction:row !important;align-items:center !important;justify-content:space-between !important;text-align:left !important}
+.n99-modal .sheet .st-shr-t input{flex:none;width:51px !important;height:31px !important;min-height:0 !important;margin:0 !important;padding:0 !important}

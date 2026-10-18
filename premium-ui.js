@@ -191,6 +191,7 @@ const NXP = (() => {
           <div>
             <p class="st-eyebrow">${esc(weekday)} · ${esc(dateLine)}</p>
             <h1 class="st-h1">${esc(greeting())}</h1>
+            ${!morning&&new Date().getHours()>=4&&new Date().getHours()<12?`<button type="button" class="st-wchip" onclick="apx95OpenQuickWeight()"><i aria-hidden="true"></i>Log morning weight</button>`:''}
           </div>
           ${lift?`<button type="button" class="st-chip" onclick="cycleGym()">${esc(state.gym||'Gym')}<span aria-hidden="true">⇄</span></button>`:''}
         </header>
@@ -1045,6 +1046,102 @@ const NXP = (() => {
       requestAnimationFrame(step);
     });
   }
+  /* ---- D85 · Share your cut -----------------------------------------------------------------------------
+     A 1080×1350 card drawn on a canvas from the facts the Cut journey already shows — start weight, current
+     trend, goal range, days since the cut began — plus the morning trend line since then and the lifting
+     days logged in that time. "Show weights" off keeps only the changes. Shared through the share sheet, or
+     saved as a PNG where a browser cannot share files. The app stores and sends nothing. */
+  const shareState={kg:true,blob:null,url:null};
+  function progressFacts(){
+    if(!N.cfg().targetConfirmed)return null;
+    const rows=N.weights(),startW=N.finite(typeof START_WEIGHT!=='undefined'?START_WEIGHT:null);
+    const seed=startW!==null?startW:(rows[0]?rows[0].weight:null);
+    const pl=N.detectPlateau(rows),cur=N.finite(pl.lastAvg)!==null?pl.lastAvg:(rows.at(-1)?rows.at(-1).weight:null);
+    const lo=typeof goalLow==='function'?Number(goalLow()):NaN,hi=typeof goalHigh==='function'?Number(goalHigh()):NaN;
+    if(seed===null||cur===null||!Number.isFinite(hi))return null;
+    const cs=typeof settings!=='undefined'&&settings&&Number.isFinite(N.dateMs(settings.cutStart))&&settings.cutStart<=state.date?settings.cutStart:null;
+    const first=cs||(rows[0]&&rows[0].date)||state.date;
+    const days=Math.max(0,Math.round((N.dateMs(state.date)-N.dateMs(first))/864e5));
+    const trend=N.trend(rows).filter(p=>p.avg!==null&&p.date>=first&&p.date<=state.date).map(p=>({d:p.date,v:Number(p.avg)}));
+    const liftDays=new Set(N.workRows().filter(r=>r.date>=first&&r.date<=state.date).map(r=>r.date)).size;
+    return {seed,cur,lo,hi,first,days,trend,liftDays,done:seed-cur,remain:Math.max(0,cur-hi)};
+  }
+  async function drawProgressCard(f,showKg){
+    const W=1080,H=1350,cv=document.createElement('canvas');cv.width=W;cv.height=H;
+    const g=cv.getContext('2d');if(!g)return null;
+    try{if(document.fonts&&document.fonts.load)await Promise.all([document.fonts.load('600 60px Geist'),document.fonts.load('250 240px Geist'),document.fonts.load('500 34px Geist')]);}catch(e){}
+    const F=(w,s)=>`${w} ${s}px Geist, -apple-system, system-ui, sans-serif`;
+    const track=(px)=>{try{g.letterSpacing=px+'px';}catch(e){}};
+    g.fillStyle='#07060B';g.fillRect(0,0,W,H);
+    const glow=(x,y,r,col)=>{const gr=g.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,col);gr.addColorStop(1,'rgba(7,6,11,0)');g.fillStyle=gr;g.fillRect(0,0,W,H);};
+    glow(170,120,820,'rgba(139,92,246,.46)');glow(1010,300,560,'rgba(236,72,153,.17)');glow(520,1330,820,'rgba(85,82,187,.26)');
+    /* the lifting days of the cut as stars (a stable hash of each date) */
+    let seedN=2166136261;const rnd=()=>{seedN=(Math.imul(seedN^(seedN>>>15),2246822507)+1013904223)>>>0;return seedN/4294967296;};
+    const ld=[...new Set(N.workRows().filter(r=>r.date>=f.first&&r.date<=state.date).map(r=>r.date))];
+    ld.forEach((d,i)=>{seedN=2166136261^(N.dateMs(d)/864e5|0);const x=60+rnd()*960,y=40+rnd()*560,s=1.6+rnd()*2.2;g.fillStyle=`rgba(236,228,255,${(.35+rnd()*.5).toFixed(2)})`;g.beginPath();g.arc(x,y,s,0,Math.PI*2);g.fill();});
+    g.textBaseline='alphabetic';g.textAlign='left';
+    g.fillStyle='rgba(206,190,255,.92)';g.font=F(600,30);track(7);g.fillText('NXTFRM  ·  CUT',96,150);track(0);
+    const range=`${N.shortDate(f.first)} – ${N.shortDate(state.date)} ${String(state.date).slice(0,4)}`;
+    g.fillStyle='rgba(214,204,240,.72)';g.font=F(500,32);g.fillText(range,96,202);
+    /* the headline: kilograms down on the trend */
+    const big=f.done>0?f.done.toFixed(1):'0.0';
+    const tg=g.createLinearGradient(0,300,0,560);tg.addColorStop(0,'#FFFFFF');tg.addColorStop(1,'#CDBAFF');
+    g.fillStyle=tg;g.font=F(250,250);track(-10);g.fillText(big,84,520);const bw=g.measureText(big).width;track(0);
+    g.fillStyle='rgba(225,214,255,.86)';g.font=F(520,64);g.fillText('kg down',84+bw+22,520);
+    g.fillStyle='rgba(214,204,240,.8)';g.font=F(480,38);
+    g.fillText(showKg?`${f.days} ${f.days===1?'day':'days'} · ${f.liftDays} lifting ${f.liftDays===1?'day':'days'} · on the morning trend`:'on the morning trend',96,592);
+    /* the trend line since the cut began */
+    const X0=96,X1=984,Y0=690,Y1=1010,pts=f.trend;
+    if(pts.length>=2){
+      const t0=N.dateMs(pts[0].d),t1=Math.max(t0+1,N.dateMs(pts.at(-1).d));
+      const vs=pts.map(p=>p.v),vmin=Math.min(...vs),vmax=Math.max(...vs),pad=Math.max(.3,(vmax-vmin)*.12);
+      const px=p=>X0+(N.dateMs(p.d)-t0)/(t1-t0)*(X1-X0),py=v=>Y0+(vmax+pad-v)/((vmax+pad)-(vmin-pad))*(Y1-Y0);
+      g.strokeStyle='rgba(255,255,255,.07)';g.lineWidth=2;for(let k=0;k<=3;k++){const y=Y0+(Y1-Y0)*k/3;g.beginPath();g.moveTo(X0,y);g.lineTo(X1,y);g.stroke();}
+      const area=g.createLinearGradient(0,Y0,0,Y1);area.addColorStop(0,'rgba(139,92,246,.42)');area.addColorStop(1,'rgba(139,92,246,0)');
+      g.beginPath();pts.forEach((p,i)=>{const x=px(p),y=py(p.v);i?g.lineTo(x,y):g.moveTo(x,y);});g.lineTo(px(pts.at(-1)),Y1);g.lineTo(px(pts[0]),Y1);g.closePath();g.fillStyle=area;g.fill();
+      const line=g.createLinearGradient(X0,0,X1,0);line.addColorStop(0,'#7C4DFF');line.addColorStop(1,'#E9E0FF');
+      g.save();g.shadowColor='rgba(167,139,250,.9)';g.shadowBlur=26;g.beginPath();pts.forEach((p,i)=>{const x=px(p),y=py(p.v);i?g.lineTo(x,y):g.moveTo(x,y);});g.strokeStyle=line;g.lineWidth=9;g.lineJoin='round';g.lineCap='round';g.stroke();g.restore();
+      const e=pts.at(-1),ex=px(e),ey=py(e.v);
+      g.fillStyle='rgba(196,181,253,.28)';g.beginPath();g.arc(ex,ey,30,0,Math.PI*2);g.fill();
+      g.save();g.shadowColor='rgba(255,255,255,.95)';g.shadowBlur=22;g.fillStyle='#fff';g.beginPath();g.arc(ex,ey,12,0,Math.PI*2);g.fill();g.restore();
+      /* Only the end is labelled: the line starts at the first trend value, which is not the saved start weight. */
+      if(showKg){g.font=F(560,34);g.fillStyle='rgba(225,214,255,.9)';g.textAlign='right';g.fillText(`${e.v.toFixed(1)} kg`,X1,Math.max(Y0-22,ey-46));g.textAlign='left';}
+    }
+    /* three facts along the bottom */
+    const cols=showKg?[[f.seed.toFixed(1)+' kg','Start'],[f.cur.toFixed(1)+' kg','Trend now'],[f.remain>0?f.remain.toFixed(1)+' kg':'In range',f.remain>0?'To goal range':'Goal range']]
+      :[[String(f.liftDays),f.liftDays===1?'Lifting day':'Lifting days'],[String(f.days),f.days===1?'Day':'Days'],[f.remain>0?f.remain.toFixed(1)+' kg':'In range',f.remain>0?'To goal range':'Goal range']];
+    g.fillStyle='rgba(255,255,255,.05)';const rr=(x,y,w,h,r)=>{g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();};
+    rr(72,1080,936,180,44);g.fill();g.strokeStyle='rgba(255,255,255,.09)';g.lineWidth=2;g.stroke();
+    cols.forEach(([v,l],i)=>{const cx=72+936/6*(2*i+1);g.textAlign='center';g.fillStyle='#fff';g.font=F(330,58);track(-2);g.fillText(v,cx,1170);track(0);g.fillStyle='rgba(214,204,240,.72)';g.font=F(500,30);g.fillText(l,cx,1218);});
+    g.textAlign='center';g.fillStyle='rgba(206,190,255,.5)';g.font=F(560,24);track(6);g.fillText('BUILD YOUR NEXT FORM',W/2,1312);track(0);
+    return cv;
+  }
+  async function paintShare(){
+    const f=progressFacts(),img=document.getElementById('st-shr-img');if(!f||!img)return;
+    img.classList.add('is-busy');
+    const cv=await drawProgressCard(f,shareState.kg);if(!cv)return;
+    const blob=await new Promise(r=>cv.toBlob(r,'image/png'));if(!blob)return;
+    if(shareState.url)URL.revokeObjectURL(shareState.url);
+    shareState.blob=blob;shareState.url=URL.createObjectURL(blob);
+    img.src=shareState.url;img.classList.remove('is-busy');
+  }
+  async function shareProgress(){
+    if(!progressFacts())return toast('Confirm a goal range to share your cut.');
+    N.modal('Share your cut',`<div class="st-shr"><div class="st-shr-prev"><img id="st-shr-img" class="is-busy" alt="Your cut as a card: kilograms down, days, and the morning trend since the cut began"></div>
+      <label class="st-shr-t"><span><b>Show weights</b><small>Off keeps only the changes</small></span><input type="checkbox" switch role="switch" id="st-shr-kg" ${shareState.kg?'checked':''} onchange="NXP.shareToggle(this.checked)"></label>
+      <button type="button" class="n99-button" onclick="NXP.shareSend()">Share</button></div>`);
+    await paintShare();
+  }
+  function shareToggle(on){shareState.kg=!!on;paintShare();}
+  async function shareSend(){
+    if(!shareState.blob)await paintShare();if(!shareState.blob)return;
+    const file=new File([shareState.blob],'nxtfrm-cut.png',{type:'image/png'});
+    try{
+      if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'My cut · NXTFRM'});return;}
+    }catch(e){if(e&&e.name==='AbortError')return;}
+    const a=document.createElement('a');a.href=shareState.url;a.download='nxtfrm-cut.png';document.body.appendChild(a);a.click();a.remove();
+    toast('Card saved as nxtfrm-cut.png');
+  }
   function momentsHTML(){
     const m=sessionMoments();
     return m.length?`<ul class="st-moments" aria-label="Highlights">${m.map(x=>`<li class="is-${x.k}"><i aria-hidden="true"></i><span>${esc(x.t)}</span></li>`).join('')}</ul>`:'';
@@ -1189,10 +1286,22 @@ const NXP = (() => {
           ${stepper('repsInput','reps','',`<input id="repsInput" type="number" min="1" max="100" step="1" inputmode="numeric" enterkeyhint="done" autocomplete="off" required placeholder="${aim?aim.reps:prev?prev.reps:t.reps[0]}" value="${esc(draft.repsInput??'')}" aria-labelledby="repsInput-label" oninput="NXP.rememberInput(this)">`,'1','reps by one')}`;
     const working=current.filter(r=>r.setType!=='warmup'),warm=current.filter(r=>r.setType==='warmup');
     const planned=Math.max(1,Number(t.sets)||1);
+    /* D83 · New best, per set: the D27 rule (heaviest load, then most reps, against every earlier session of
+       this exercise) applied as the sets come in, so the set that first passed the old best carries a star.
+       Nothing is stored; a first-ever session has nothing to beat and shows none. */
+    const prIds=(()=>{const ids=new Set();try{
+      const prior=N.workRows().filter(x=>(x.exercise||x.name)===ex&&x.date<state.date&&Number(x.weight)>0);
+      let best=prior.length?N.bestSet(prior):null;if(!best)return ids;
+      working.slice().sort((a,b)=>(Number(a.ts||0)-Number(b.ts||0))||(Number(a.setNum||0)-Number(b.setNum||0))).forEach(r=>{
+        const dw=Number(r.weight)-Number(best.weight),dr=Number(r.reps)-Number(best.reps);
+        if(dw>0||(dw===0&&dr>0)){ids.add(r.id);best=r;}
+      });
+    }catch(e){}return ids;})();
     const loggedRow=(r,label)=>{
       const c=cmpBest(r),i=current.indexOf(r),isWarm=r.setType==='warmup';
       const word=isWarm?'Warm-up':c==='up'?'Beat last time':c==='eq'?'Matched':'Logged';
-      return `<li class="st-lrow is-done${isWarm?' is-warm':''}${c==='up'?' is-up':''}${r.id===freshId?' is-fresh':''}"><button type="button" onclick="NXP.editCurrentSet(${i})" aria-label="Edit ${isWarm?'warm-up':'set '+r.setNum}: ${esc(trimNum(r.weight))} kilograms for ${esc(r.reps)}, ${esc(word.toLowerCase())}"><span class="st-ln">${esc(label)}</span><b class="vn-num">${esc(trimNum(r.weight))} <i>×</i> ${esc(r.reps)}</b><small>${c==='up'?'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10V2M2.5 5.5L6 2l3.5 3.5"/></svg>':''}<span class="st-lw">${esc(word)}</span><span class="st-lw-s" aria-hidden="true">${esc(word==='Beat last time'?'Beat':word)}</span></small></button></li>`;
+      const pr=!isWarm&&prIds.has(r.id);
+      return `<li class="st-lrow is-done${isWarm?' is-warm':''}${c==='up'?' is-up':''}${pr?' is-pr':''}${r.id===freshId?' is-fresh':''}"><button type="button" onclick="NXP.editCurrentSet(${i})" aria-label="Edit ${isWarm?'warm-up':'set '+r.setNum}: ${esc(trimNum(r.weight))} kilograms for ${esc(r.reps)}, ${esc(word.toLowerCase())}${pr?', new best':''}"><span class="st-ln">${pr?'<svg class="st-pr-star" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.2l1.9 4.2 4.6.5-3.4 3.1 1 4.5L8 11.2l-4.1 2.3 1-4.5L1.5 5.9l4.6-.5z"/></svg>':esc(label)}</span><b class="vn-num">${esc(trimNum(r.weight))} <i>×</i> ${esc(r.reps)}</b><small>${c==='up'?'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10V2M2.5 5.5L6 2l3.5 3.5"/></svg>':''}<span class="st-lw">${esc(word)}</span><span class="st-lw-s" aria-hidden="true">${esc(word==='Beat last time'?'Beat':word)}</span></small></button></li>`;
     };
     const entryRow=(label)=>`<li class="st-lrow is-now"><span class="st-ln">${esc(label)}</span><div class="st-entry">${entry}</div></li>`;
     const nextRow=(k)=>{
@@ -1269,7 +1378,15 @@ const NXP = (() => {
       <aside class="nxp-rest st-rest st-orbcard${restLeft?' is-active':''}${restLeft&&restLeft<=10?' is-final':''}" aria-label="Rest timer"${restLeft?' role="timer"':''} ${restLeft?'':'hidden'} style="--pct:${restPct.toFixed(1)}">
         <div class="st-orb" aria-hidden="true"><i class="st-orb-core"></i><svg class="st-orb-ring" viewBox="0 0 120 120"><circle class="st-orb-track" cx="60" cy="60" r="54" pathLength="1"/><circle class="st-orb-arc" cx="60" cy="60" r="54" pathLength="1"/></svg></div>
         <span class="st-rest-l"><small>Rest</small><b id="apx96TimerValue" class="vn-num">${restLeft?apx96FormatTimer(restLeft):'Ready'}</b></span>
-        <p class="st-orb-next"><small>Up next</small>${aim&&setType!=='warmup'&&done<Number(t.sets)?`<b class="vn-num">${esc(trimNum(aim.weight))} × ${esc(String(aim.reps))}</b>`:`<b>${esc(setNo)}</b>`}</p>
+        <p class="st-orb-next"><small>Up next</small>${(()=>{
+          /* The coach's target for the next set (the ledger's "Target" row) when there is one; otherwise what
+             the fields will hold — the weight in the field and the Aim's reps. */
+          if(setType==='warmup'||done>=Number(t.sets))return `<b>${esc(setNo)}</b>`;
+          const x=coach&&coach.sets&&coach.sets[done];
+          if(x)return `<b class="vn-num">${tg(x.weight)} × ${esc(String(x.reps))}</b>`;
+          const w=String(weight||'')||(aim?trimNum(aim.weight):''),rp=aim?aim.reps:(prev?prev.reps:t.reps[0]);
+          return w?`<b class="vn-num">${esc(trimNum(w))} × ${esc(String(rp))}</b>`:`<b>${esc(setNo)}</b>`;
+        })()}</p>
         ${restRail(restLeft,ui.restTotal||restPlan)}
         <div class="vn-rest-actions">${button('+30s','apx96AdjustRest(30)',true)}${button('Skip','apx96SkipRest()',true)}</div>
       </aside>
@@ -2895,8 +3012,11 @@ const NXP = (() => {
   }
   function historyRecords(date) {
     const logs=logsForDate(date).slice().sort((a,b)=>(Number(a.ts||0)-Number(b.ts||0))||(Number(a.setNum||0)-Number(b.setNum||0)));
-    const bw=bwForDate(date);
-    return {logs,cardio:cardioForDate(date),floorball:(state.floorball||[]).filter(r=>r&&r.date===date),bw:bw&&historyNum(bw.weight)?bw:null};
+    /* Morning is canonical (D7): when a day has a morning reading it leads, whatever was weighed later. */
+    const all=(state.bws||[]).filter(b=>b&&b.date===date&&historyNum(b.weight)).sort((a,b)=>Number(a.ts||0)-Number(b.ts||0));
+    const morning=all.filter(b=>/^morning$/i.test(String(b.timeOfDay||''))).at(-1)||null;
+    const bw=morning||bwForDate(date);
+    return {logs,cardio:cardioForDate(date),floorball:(state.floorball||[]).filter(r=>r&&r.date===date),bw:bw&&historyNum(bw.weight)?bw:null,bwOthers:all.filter(b=>b!==bw)};
   }
   function historyMarks(date,scope) {
     const r=historyRecords(date);
@@ -2947,6 +3067,14 @@ const NXP = (() => {
     const total=Math.ceil((firstDow+days)/7)*7,today=localToday(),cells=[],counts={lift:0,cardio:0,floor:0,body:0};
     /* Ascension — one status read for the whole grid (NXT.coach.dayStatuses), once per paint. */
     const gridStart=N.dateAdd(`${month}-01`,-firstDow),cxMap=coachDayMap(gridStart,N.dateAdd(gridStart,total-1)),cc={plan:0,missed:0,excused:0,moved:0},ccLetters=[];
+    /* D84 · The calendar shows the numbers: the morning reading under Weight, working sets under Lifting,
+       minutes under Cardio. The same stored values the day card lists; All keeps the marks. */
+    const vf=state.historyFilter||'all',vMap=new Map();
+    if(vf==='body')N.timingRows('Morning').forEach(r=>{if(r&&typeof r.date==='string'&&Number(r.weight)>0)vMap.set(r.date,Number(r.weight));});
+    else if(vf==='strength')(state.logs||[]).forEach(r=>{if(r&&r.setType!=='warmup'&&typeof r.date==='string')vMap.set(r.date,(vMap.get(r.date)||0)+1);});
+    else if(vf==='conditioning')(state.cardio||[]).forEach(r=>{const m=Number(r&&(r.duration||r.minutes));if(r&&typeof r.date==='string'&&m>0)vMap.set(r.date,(vMap.get(r.date)||0)+m);});
+    const vText=v=>vf==='body'?v.toFixed(1):vf==='conditioning'?Math.round(v)+'′':String(v);
+    const vAria=v=>vf==='body'?`, morning ${v.toFixed(1)} kilograms`:vf==='conditioning'?`, ${Math.round(v)} minutes of cardio`:`, ${v} working ${v===1?'set':'sets'}`;
     for(let i=0;i<total;i++){
       const offset=i-firstDow+1;
       let y=year,m=monthNum,d=offset,outside=false;
@@ -2966,8 +3094,9 @@ const NXP = (() => {
       if(!outside){if(marks.lift)counts.lift++;if(marks.cardio)counts.cardio++;if(marks.floorball)counts.floor++;if(marks.body)counts.body++;}
       const cm=coCalMark(cxMap&&cxMap.get(key),scope);
       if(cm){cls.push('has-cs');if(!outside){cc[cm.k]++;if(cm.k==='plan'&&!ccLetters.includes(cm.letter)&&ccLetters.length<3)ccLetters.push(cm.letter);}}
-      const label=new Date(`${key}T12:00:00`).toLocaleDateString('en-SG',{day:'numeric',month:'long'})+(kinds.length?`, ${kinds.join(', ')}`:', no records')+(cm?`, ${cm.aria}`:'');
-      cells.push(`<button type="button" class="${cls.join(' ')}" data-date="${key}" data-k="${kind}"${second?` data-k2="${second}"`:''}${cm?` data-cs="${cm.k}"`:''} style="--i:${i}" tabindex="${key===selected?'0':'-1'}" aria-label="${esc(label)}" aria-pressed="${key===selected?'true':'false'}"${key===today?' aria-current="date"':''} onclick="NXP.historySelect('${key}')"><b${d===1?' class="is-m1"':''}>${d===1?d+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]:d}</b><span class="nxp-cal-marks" aria-hidden="true">${historyMarkHTML(marks)}${coCalMarkHTML(cm)}</span></button>`);
+      const cv=!outside&&vMap.has(key)?vMap.get(key):null;if(cv!==null)cls.push('has-v');
+      const label=new Date(`${key}T12:00:00`).toLocaleDateString('en-SG',{day:'numeric',month:'long'})+(kinds.length?`, ${kinds.join(', ')}`:', no records')+(cv!==null?vAria(cv):'')+(cm?`, ${cm.aria}`:'');
+      cells.push(`<button type="button" class="${cls.join(' ')}" data-date="${key}" data-k="${kind}"${second?` data-k2="${second}"`:''}${cm?` data-cs="${cm.k}"`:''} style="--i:${i}" tabindex="${key===selected?'0':'-1'}" aria-label="${esc(label)}" aria-pressed="${key===selected?'true':'false'}"${key===today?' aria-current="date"':''} onclick="NXP.historySelect('${key}')"><b${d===1?' class="is-m1"':''}>${d===1?d+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]:d}</b><span class="nxp-cal-marks" aria-hidden="true">${historyMarkHTML(marks)}${coCalMarkHTML(cm)}</span>${cv!==null?`<span class="nxp-cal-v" aria-hidden="true">${esc(vText(cv))}</span>`:''}</button>`);
     }
     /* Ascension — legend entries for the status marks, only for those this month actually has. */
     const coLg=[['plan','Planned'],['missed','Not logged'],['excused','Excused'],['moved','Moved']].filter(([k])=>cc[k]).map(([k,w])=>`<span class="co-lg is-${k}">${k==='plan'?`<em aria-hidden="true">${esc(ccLetters.slice().sort().join(' '))}</em>`:coMark(k,'co-cm')}${w}<b>${cc[k]}</b></span>`).join('');
@@ -3005,7 +3134,7 @@ const NXP = (() => {
   /* D50 — a morning weigh-in in History shows where it sat: the change from the previous
      morning and the engine's trend value that day. Contextual readings (post-workout,
      scan) show only their own value, as before (D14). */
-  function historyWeightBlock(bw) {
+  function historyWeightBlock(bw,others) {
     let ctx='';
     if(/^morning$/i.test(String(bw.timeOfDay||''))){
       const mornings=N.timingRows('Morning').filter(r=>r.date<bw.date);
@@ -3015,7 +3144,8 @@ const NXP = (() => {
       if(pt&&pt.avg!==null){const g=w-pt.avg;bits.push(`<span class="st-hw-t">Trend <b class="vn-num">${pt.avg.toFixed(2)}</b><small> · ${Math.abs(g)<0.05?'on trend':Math.abs(g).toFixed(1)+' kg '+(g<0?'below':'above')}</small></span>`);}
       if(bits.length)ctx=`<p class="st-hw">${bits.join('')}</p>`;
     }
-    return `<div class="nxp-history-block vn-hist-block" data-kind="weight"><span class="nxp-history-block-label">Weight</span><div class="nxp-history-ex"><b>${esc(historyNum(bw.weight))} kg</b>${bw.timeOfDay?`<span>${esc(bw.timeOfDay)}</span>`:''}</div>${ctx}</div>`;
+    const more=(others||[]).map(o=>`<p class="st-hw-o"><b class="vn-num">${esc(historyNum(o.weight))} kg</b><span>${esc(o.timeOfDay||'Weigh-in')}</span></p>`).join('');
+    return `<div class="nxp-history-block vn-hist-block" data-kind="weight"><span class="nxp-history-block-label">Weight</span><div class="nxp-history-ex"><b>${esc(historyNum(bw.weight))} kg</b>${bw.timeOfDay?`<span>${esc(bw.timeOfDay)}</span>`:''}</div>${ctx}${more}</div>`;
   }
   /* Structural homes for future State Engine record kinds — layout only, no persistence. */
   function historyAuditLanes() {
@@ -3029,7 +3159,7 @@ const NXP = (() => {
     const r=historyRecords(date),when=new Date(`${date}T12:00:00`),blocks=[],parts=[];
     if(scope.lift&&r.logs.length)blocks.push(historyLiftingBlock(date,r.logs));
     if(scope.cond&&(r.cardio.length||r.floorball.length))blocks.push(historyConditioningBlock(r.cardio,r.floorball));
-    if(scope.body&&r.bw)blocks.push(historyWeightBlock(r.bw));
+    if(scope.body&&r.bw)blocks.push(historyWeightBlock(r.bw,r.bwOthers));
     if(scope.lift&&r.logs.length){
       parts.push(historyPlural(r.logs.length,'set'));
       const exercises=new Set(r.logs.map(x=>x.exercise).filter(Boolean)).size;
@@ -3044,7 +3174,7 @@ const NXP = (() => {
         if(mins)parts.push(`${mins} min`);
       }
     }
-    if(scope.body&&r.bw)parts.push(`${historyNum(r.bw.weight)} kg`);
+    if(scope.body&&r.bw)parts.push(`weighed ${historyNum(r.bw.weight)} kg`);
     /* A weigh-in-only day: the weight block below already says it, so the
        summary line would just repeat "82 kg". */
     if(parts.length===1&&scope.body&&r.bw&&!(scope.lift&&r.logs.length)&&!(scope.cond&&(r.cardio.length||r.floorball.length)))parts.length=0;
@@ -3458,7 +3588,7 @@ const NXP = (() => {
   }
   bindSteppers();
   bindKeyboardDock();
-  return {ask,finishScene,bodyFocus,actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen};
+  return {shareProgress,shareToggle,shareSend,ask,finishScene,bodyFocus,actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;
