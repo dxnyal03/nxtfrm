@@ -6672,7 +6672,12 @@ function gymToggleChipHTML(){
 function startWorkoutNow(){
   switchTab("train");
 }
+/* A script from another origin (Safari's share sheet, an extension, a CDN) can only report
+   "Script error." — no source, no line, no error object. It is not this app's error and nothing in
+   it can be acted on, so it is not shown. Every error from the app's own scripts carries its Error. */
+function nxForeignScriptError(msg,err){return !err&&/^\s*script error\.?\s*$/i.test(String(msg||""));}
 window.addEventListener("error",function(e){
+  if(nxForeignScriptError(e&&e.message,e&&e.error))return;
   try{toast("App error: "+(e.message||"check code"));}catch(_){}
 });
 window.addEventListener("unhandledrejection",function(e){
@@ -7720,6 +7725,7 @@ function exportCSV(){const rows=[["date","type","exercise","set","weight","reps"
 function download(name,text){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"text/plain"}));a.download=name;a.click();URL.revokeObjectURL(a.href)}
 
 if(typeof window!=='undefined') window.onerror=function(msg,src,line,col,err){
+  if(typeof nxForeignScriptError==='function'&&nxForeignScriptError(msg,err))return;
   /* An uncaught error leaves Today as it is: one small dismissible notice goes above it,
      and the message is escaped, never parsed as markup. */
   const root=document.getElementById("homePage");
