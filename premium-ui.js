@@ -2665,7 +2665,7 @@ const NXP = (() => {
       <div class="st-mgroup">
         ${step('sets','Working sets',e.sets,'')}
         ${step('lo','Min reps',e.reps[0],'Bottom of the rep range')}
-        ${step('hi','Max reps',e.reps[1],'Hit this on every set to earn the next load')}
+        ${step('hi','Max reps',e.reps[1],'Your best set reaching this twice, or passing it once, earns the next load')}
         ${step('inc','Load step',trimNum(e.inc)+' kg','How much the weight goes up')}
       </div>
       <div class="st-mgroup">

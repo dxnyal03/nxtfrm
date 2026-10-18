@@ -1060,7 +1060,7 @@ const STRATA = (() => {
      across the gym, the next load, the exercise and the session's running time. Any touch returns to the
      workout; when the rest runs out it says "Go" and returns by itself, so Log is always one step away.
      Reads the engine's own countdown; nothing is stored. Static under reduced motion. */
-  let glEl = null, glShown = false, glTouch = Date.now(), glGo = 0;
+  let glEl = null, glShown = false, glTouch = Date.now(), glGo = 0, glQuiet = 0;
   function restLeftNow() { try { return typeof apx96RestRemaining === "function" ? apx96RestRemaining() : 0; } catch (e) { return 0; } }
   function glanceBlocked() {
     const a = document.activeElement;
@@ -1072,7 +1072,8 @@ const STRATA = (() => {
     glEl.id = "stGlance"; glEl.className = "st-gl"; glEl.hidden = true;
     glEl.setAttribute("role", "button"); glEl.setAttribute("tabindex", "-1");
     glEl.innerHTML = '<div class="st-gl-in"><p class="st-gl-ex"></p><div class="st-gl-orb"><i class="st-gl-core"></i><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="st-gl-tr" cx="60" cy="60" r="55" pathLength="1"/><circle class="st-gl-arc" cx="60" cy="60" r="55" pathLength="1"/></svg><div class="st-gl-t"><small>Rest</small><b></b></div></div><p class="st-gl-next"><small>Up next</small><b></b></p><p class="st-gl-meta"></p><p class="st-gl-hint">Tap to return</p></div>';
-    glEl.addEventListener("click", () => hideGlance());
+    /* Returning by hand means "I am looking": Glance waits 20 s before it offers itself again. */
+    glEl.addEventListener("click", () => { glQuiet = Date.now() + 20000; hideGlance(); });
     document.body.appendChild(glEl);
     return glEl;
   }
@@ -1084,8 +1085,16 @@ const STRATA = (() => {
       return h ? h + ":" + String(m).padStart(2, "0") + ":" + String(sec).padStart(2, "0") : m + ":" + String(sec).padStart(2, "0");
     } catch (e) { return ""; }
   }
+  function glanceMeta() {
+    let setLine = "";
+    try { const t = NXT.targetFor(state.exercise), d = NXT.done(state.exercise); setLine = d < Number(t.sets) ? "Set " + (d + 1) + " of " + t.sets : "Extra set"; } catch (e) {}
+    const clock = sessionClock();
+    return [setLine, clock ? "Session " + clock : ""].filter(Boolean).join("  ·  ");
+  }
   function paintGlance() {
     if (!glEl || !glShown) return;
+    const meta = glEl.querySelector(".st-gl-meta"), mt = glanceMeta();
+    if (meta.textContent !== mt) meta.textContent = mt;
     const left = restLeftNow(), total = (typeof NXP === "object" && NXP.ui && NXP.ui.restTotal) || 90;
     const b = glEl.querySelector(".st-gl-t b");
     if (left > 0) {
@@ -1105,10 +1114,7 @@ const STRATA = (() => {
     const ex = document.querySelector("#trainPage .st-ex-title"), next = document.querySelector("#trainPage .st-orb-next b");
     el.querySelector(".st-gl-ex").textContent = ex ? ex.textContent.trim() : "";
     el.querySelector(".st-gl-next b").textContent = next ? next.textContent.trim() : "";
-    let setLine = "";
-    try { const t = NXT.targetFor(state.exercise), d = NXT.done(state.exercise); setLine = d < Number(t.sets) ? "Set " + (d + 1) + " of " + t.sets : "Extra set"; } catch (e) {}
-    const clock = sessionClock();
-    el.querySelector(".st-gl-meta").textContent = [setLine, clock ? "Session " + clock : ""].filter(Boolean).join("  ·  ");
+    el.querySelector(".st-gl-meta").textContent = glanceMeta();
     el.setAttribute("aria-label", "Rest view. Tap to return to the workout.");
     glShown = true; el.hidden = false; el.classList.remove("is-go", "is-out");
     paintGlance();
@@ -1124,10 +1130,11 @@ const STRATA = (() => {
   }
   function glanceTick(inWorkout, rest) {
     if (glShown) { if (!inWorkout) hideGlance(); else paintGlance(); return; }
-    if (inWorkout && rest > 3 && Date.now() - glTouch > 8000) showGlance();
+    if (inWorkout && rest > 3 && Date.now() - glTouch > 8000 && Date.now() > glQuiet) showGlance();
   }
   function bindGlance() {
     const touch = () => { glTouch = Date.now(); };
+    document.addEventListener("keydown", () => { if (glShown) hideGlance(); }, true);
     ["pointerdown", "keydown", "wheel", "touchstart"].forEach(t => document.addEventListener(t, touch, { capture: true, passive: true }));
     window.addEventListener("scroll", touch, { passive: true });
     document.addEventListener("visibilitychange", () => { if (document.hidden) hideGlance(); });
