@@ -5189,7 +5189,11 @@ if("serviceWorker" in navigator && (location.hostname==="localhost"||location.ho
   navigator.serviceWorker.getRegistrations().then(regs=>regs.forEach(reg=>reg.unregister())).catch(()=>{});
 }else if("serviceWorker" in navigator && location.protocol!=="file:" && !window.NXTFRM_STANDALONE){
   let apexSwRefreshing=false;
+  /* A first visit has no controller yet: the worker's first claim is an install, not an update, so it
+     neither reloads the page nor announces "Update ready". */
+  const apexSwHadController=!!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener("controllerchange",()=>{
+    if(!apexSwHadController)return;
     if(apexSwRefreshing)return;
     apexSwRefreshing=true;
     // Preserve in-progress input. Reopening the app will load the new version.
