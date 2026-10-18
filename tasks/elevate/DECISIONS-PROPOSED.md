@@ -25,3 +25,14 @@ proposals (D60–D68).
 | D84 | **History numbers.** The calendar shows the filter's own number (morning kg, working sets, cardio minutes); the day card leads with the morning reading (D7) and lists later readings under it. |
 | D85 | **Share your cut.** A 1080×1350 card from the Cut journey's facts with the morning trend line and lifting days; "Show weights" off keeps only the changes; Web Share or PNG. Nothing stored or sent by the app. |
 | D86 | **Back where you left off.** A rest interrupted by iOS closing the app resumes on reopening (last set's time + the engine's rest length; nothing stored; a +30 s is not remembered); the first workout screen after launch moves off a finished exercise. |
+| D75b | **Live dock.** On phones the live workout is a row inside the dock's glass above the tabs; wide layouts keep the floating pill. |
+| D87 | **Touch light.** Glass catches light under the finger, follows it while pressed, then opens out and fades (D38's ripple made continuous). |
+| D88 | **Tilt light.** Where the phone reports orientation, a reflection sweeps across tiles and the canvas drifts with the tilt; iPhone asks once from Settings › Appearance; nothing stored. |
+| D89 | **Dock shortcuts.** Long-press or right-click a dock tab for its shortcuts, each calling an existing function; a tap still switches tab. |
+| D90 | **Pull to weigh in.** A rubber-band pull at the top (the root sets `overscroll-behavior:none`); on Today, releasing past the line opens the weigh-in. Not in sheets, fields, chart, rail, calendar or a workout. |
+| D91 | **Session prints.** Each lifting session draws an artwork from its sets (ribbon per exercise, thicker with more kg lifted; bead per set) in History's day card and the finish scene. Seeded by date; nothing stored. |
+| D92 | **The weigh-in moment.** Saving this morning's reading shows it landing on the last three weeks of mornings and the trend, with its gap to trend, to the previous morning, and "Lowest reading yet". |
+| D93 | **The Observatory.** An explorable sky: one constellation per routine (by shown name), stars brighter with more sets, flares for new bests (D27), walks clustered; pan, pinch, tap, open in History. |
+| D94 | **Depth while scrolling.** Cards recede as they pass under the frosted top bar (CSS scroll timelines where supported). |
+| — | **Trial data.** `seed.dev.js` (localhost and previews only, D23) adds five recent weeks of Full Body A/B/C and today's session under way on a lifting day. |
+

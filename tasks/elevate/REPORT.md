@@ -4,7 +4,7 @@ Owner request (2026-10-18): "elevate the whole NXTFRM experience now that you ca
 phone — visual upgrade, animation upgrade, upgrade everything", followed by "go crazy visual creativity", "upgrade
 the chart", "analyse the app thoroughly", "cook even more with the additions and features".
 
-Branch `elevate-ios-experience` (worktree `~/Developer/Worktrees/nxtfrm/elevate`), 9 commits on `origin/main`
+Branch `elevate-ios-experience` (worktree `~/Developer/Worktrees/nxtfrm/elevate`), 12 commits on `origin/main`
 `0ea0fd2` (release 161). **Nothing pushed or deployed. `RELEASE` unchanged.** Presentation and interaction only:
 no calculation, storage key, record shape or stored value changed. Proposed decisions: `DECISIONS-PROPOSED.md`.
 
@@ -63,6 +63,25 @@ no calculation, storage key, record shape or stored value changed. Proposed deci
 - The idle rest card taking space; a duplicate "set saved" alert over the workout header.
 - Settings › Appearance › Reduced not stopping the canvas drift (pre-existing).
 - Routine editor copy that contradicted D20/D24.
+
+## Waves 5 and 6 (added after the first report)
+
+- **Touch light and tilt light:** glass lights under your finger and follows it; on a phone that reports its tilt, a
+  reflection sweeps across the cards as you turn it (iPhone asks once in Settings › Appearance).
+- **The live dock:** a workout in progress becomes a row inside the dock itself, with sets done and the rest countdown.
+- **Dock shortcuts:** long-press any tab for its shortcuts (Log weight, Resume session, Lifts, Your sky, Training plan…).
+- **Pull to weigh in:** pull down at the top of Today and let go to open the weigh-in. This also fixes wave 3's stretchy
+  titles, which could never fire because the page disables iOS's bounce.
+- **The weigh-in moment:** saving the morning weight shows it landing on your trend, with how far below or above it sits.
+- **Session prints:** every lifting session becomes its own artwork in History and in the finish scene.
+- **The Observatory:** "Your sky" in History opens every session as a star in a constellation per routine; pinch, pan,
+  tap a star, open the day.
+- **Body of Light history:** step back through earlier weeks.
+- **Depth while scrolling:** cards recede as they slide under the top bar.
+- **Fixes:** the workout header names the gym; an empty kg or reps field explains itself; the weekly review called this
+  week "Next week"; the Why sheet linked to itself; a coach note no longer adds a second Start-style button; calendar
+  cardio is a diamond so it never reads as "Not logged".
+- **Trial data:** previews now include five recent weeks of Full Body A/B/C and today's session under way.
 
 ## Verification
 
