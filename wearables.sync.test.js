@@ -741,15 +741,33 @@ test("connectLive never fakes success", function () {
   assert.ok(String(out.live_auth.decision).indexOf("LIVE PROVIDER AUTH DEFERRED") !== -1);
 });
 
-test("SW caches production wearable modules only", function () {
+/* Adapted in the Ascension performance pass. This used to assert that sw.js precached the
+   production wearable modules (store, sync, provider-garmin) and no test or fixture file.
+   The page no longer loads the modules (D55 switched the feature off and no provider sync
+   ever shipped), so the shell correctly lists none of them. The intent is kept: the worker
+   ships no test, fixture or dev file. It now also asserts that no wearable module is in
+   VERSIONED or ASSETS, instead of asserting that three of them are. */
+test("SW ships no wearable module, fixture or test file", function () {
   const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
-  assert.ok(sw.indexOf("wearables.store.js") !== -1);
-  assert.ok(sw.indexOf("wearables.sync.js") !== -1);
-  assert.ok(sw.indexOf("wearables.provider-garmin.js") !== -1);
+  // What the worker precaches: the same two lists wearables.release-gate.test.js reads.
+  const versioned = JSON.parse("[" + /const VERSIONED = \[([\s\S]*?)\];/.exec(sw)[1].replace(/'/g, '"').replace(/,\s*$/, "") + "]");
+  const plain = JSON.parse("[" + /const ASSETS = \[([\s\S]*?)\]/.exec(sw)[1].replace(/'/g, '"').replace(/,\s*$/, "") + "]");
+  const shell = plain.concat(versioned.map(function (f) { return "./" + f; }));
+  assert.ok(shell.length > 0, "the shell lists were not found in sw.js");
+  [
+    "wearables.js", "wearables.adapters.js", "wearables.ingest.js", "wearables.canonical.js", "wearables.days.js",
+    "wearables.snapshots.js", "wearables.resolution.js", "wearables.recovery.js", "wearables.recovery-integration.js",
+    "wearables.training-readiness.js", "wearables.store.js", "wearables.provider-garmin.js", "wearables.sync.js"
+  ].forEach(function (m) {
+    assert.ok(shell.every(function (f) { return f.indexOf(m) === -1; }), m + " must not be in the offline shell");
+  });
+  assert.deepStrictEqual(shell.filter(function (f) { return /\.test\.js|fixture/i.test(f); }), [],
+    "no test or fixture file may be in the offline shell");
   assert.ok(/nxtfrm-v\d+-premium-cache/.test(sw));
-  assert.ok(sw.indexOf("wearables.store.test.js") === -1);
-  assert.ok(sw.indexOf("wearables.sync.test.js") === -1);
-  assert.ok(sw.indexOf("wearables.fixtures.js") === -1);
+  // None of the dev-only files is named anywhere in the worker source, comments included.
+  ["wearables.test.js", "wearables.store.test.js", "wearables.sync.test.js", "wearables.fixtures.js"].forEach(function (name) {
+    assert.ok(sw.indexOf(name) === -1, name + " must not appear in sw.js");
+  });
 });
 
 console.log("");

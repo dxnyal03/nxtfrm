@@ -102,21 +102,44 @@ const NXP = (() => {
     const sets=list.reduce((a,e)=>a+Number(e.sets),0);
     const nextDate=N.dateAdd(state.date,1);
     const nextLine=`Next session · ${N.label(N.typeFor(nextDate))} tomorrow`;
-    const weekLogged=N.completedWeek();
+    /* Ascension — the rail and its header read the coach's statuses, so an excused or moved
+       day is neither "not logged" nor counted as a planned lift (NXT.coach.context().week).
+       Without coach.js the rail falls back to the plan, as before. */
+    const cxCtx=coachCall('context'),cxWeek=cxCtx&&cxCtx.week&&Array.isArray(cxCtx.week.days)?cxCtx.week:null;
+    const cxDay={};if(cxWeek)cxWeek.days.forEach(x=>{if(x&&x.date)cxDay[x.date]=x;});
+    const weekLogged=cxWeek?cxWeek.liftsDone:N.completedWeek();
     const weekStart=N.weekStart();
     const weekShort={FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Rest:'Rest',Floorball:'FB',Push:'Push',Pull:'Pull',Legs:'Legs',Pump:'Legs'};
-    const weekStrip=`<div class="vn-week" role="list">${Array.from({length:7},(_,i)=>{
-      const d=N.dateAdd(weekStart,i),t=N.typeFor(d),complete=work.some(row=>row.date===d),isToday=d===state.date;
-      const short=weekShort[t]||String(t).slice(0,3);
+    /* D48 — the rail reads outcome as well as plan. A day is done when its own
+       record exists (lift sets, cardio minutes, or a floorball session); a planned
+       day already behind us with no record is "not logged" (dashed ring); a morning
+       weigh-in is a dot under the label. All from stored rows — no new metric. */
+    const cardioDays=new Set((state.cardio||[]).filter(r=>r&&N.finite(r.duration)>0).map(r=>r.date));
+    const floorDays=new Set((state.floorball||[]).filter(r=>r&&r.date).map(r=>r.date));
+    const planLift=cxWeek?cxWeek.liftsPlanned:Array.from({length:7},(_,i)=>N.typeFor(N.dateAdd(weekStart,i))).filter(liftDays).length;
+    const check='<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.3 4.9 8.6 9.5 3.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const weekStrip=`<div class="vn-week" data-rail="capsule" role="list">${Array.from({length:7},(_,i)=>{
+      const d=N.dateAdd(weekStart,i),t=N.typeFor(d),isToday=d===state.date,dc=cxDay[d]||null;
+      const complete=t==='Zone2'?cardioDays.has(d):t==='Floorball'?floorDays.has(d):work.some(row=>row.date===d);
+      /* "Not logged" means nothing at all was recorded that day. A walk day with an add-on
+         lift is neither done (the plan was the walk) nor empty, so it stays a plain capsule. */
+      const anything=work.some(row=>row.date===d)||cardioDays.has(d)||floorDays.has(d);
+      /* Ascension — an excused or moved day is a decision, not a lapse, and the coach says
+         which; a day before the first record is not "not logged" either. */
+      const excused=!complete&&!!dc&&dc.status==='excused',moved=!complete&&!!dc&&dc.status==='moved';
+      const missed=!complete&&!anything&&t!=='Rest'&&d<state.date&&!excused&&!moved&&!(dc&&dc.status==='untracked');
+      const short=moved?'Moved':weekShort[t]||String(t).slice(0,3);
       const day=Number.isFinite(N.dateMs(d))?new Date(N.dateMs(d)).toLocaleDateString('en-SG',{weekday:'narrow',timeZone:'UTC'}):['M','T','W','T','F','S','S'][i];
-      return `<button type="button" class="vn-week-c${isToday?' is-today':''}${liftDays(t)?' is-lift':''} is-k-${({FullA:'full',FullB:'full',FullC:'full',Push:'push',Pull:'pull',Legs:'legs',Pump:'legs',Zone2:'walk',Floorball:'fb',Rest:'rest'})[t]||(liftDays(t)?'full':'rest')}" role="listitem" onclick="NXT.openDay('${d}')" aria-label="${esc(N.shortDate(d)+' · '+N.label(t))}" ${isToday?'aria-current="date"':''}><span class="vn-week-d">${esc(day)}</span><span class="vn-week-t">${esc(short)}</span><span class="vn-week-m" aria-hidden="true">${complete?'<i></i>':''}</span></button>`;
+      const stateWord=complete?'done':excused?'excused'+(dc.reason&&dc.reason!=='other'?' · '+dc.reason:''):moved?'moved'+(dc.movedTo?' to '+N.shortDate(dc.movedTo):''):missed?'not logged':isToday?'today':d<state.date?(anything?'logged, plan not done':''):'planned';
+      const mark=complete?`<span class="st-cap-s is-done">${check}</span>`:excused?`<span class="st-cap-s is-excused">${coMark('excused','co-rm')}</span>`:moved?`<span class="st-cap-s is-moved">${coMark('moved','co-rm')}</span>`:missed?'<span class="st-cap-s is-missed"></span>':'';
+      return `<button type="button" class="vn-week-c${isToday?' is-today':''}${liftDays(t)?' is-lift':''}${complete?' is-done':''}${missed?' is-missed':''}${excused?' is-excused':''}${moved?' is-moved':''}${d>state.date?' is-future':''} is-k-${({FullA:'full',FullB:'full',FullC:'full',Push:'push',Pull:'pull',Legs:'legs',Pump:'legs',Zone2:'walk',Floorball:'fb',Rest:'rest'})[t]||(liftDays(t)?'full':'rest')}" role="listitem" onclick="NXT.openDay('${d}')" aria-label="${esc(N.shortDate(d)+' · '+N.label(t)+(stateWord?' · '+stateWord:''))}" ${isToday?'aria-current="date"':''}><span class="st-cap"><span class="vn-week-d">${esc(day)}</span>${mark}</span><span class="vn-week-t">${esc(short)}</span></button>`;
     }).join('')}</div>`;
     function liftDays(t){return !['Rest','Zone2','Floorball'].includes(t);}
+    const weekHead=weekLogged<=planLift?`${weekLogged} of ${planLift} lifts done`:`${weekLogged} lifting days`;
     const textAct=(label,fn,mute)=>`<button type="button" class="vn-text${mute?' is-mute':''}" onclick="${esc(fn)}">${label}</button>`;
-    N.logSuggestion({kind:"review",subject:null,payload:{title:r.title,action:r.action,tone:r.tone,reason:r.reason}});
     const logged=list.reduce((a,e)=>a+Math.min(N.done(e.name),Number(e.sets)),0);
     const trainTile=lift?`
-      <article class="st-tile st-t-train" style="--c:var(--st-lift)">
+      <article class="st-tile st-t-train" style="--c:var(--st-lift)"><span class="st-ghost" aria-hidden="true">${esc(weekShort[state.dayType]||N.label(state.dayType))}</span>
         <div class="st-tile-head"><span class="st-cat">${finished?'Workout saved':'Today’s training'}</span>${textAct('Change','showSessionSheet()',true)}</div>
         <div class="st-train-row">
           <div class="st-train-id">
@@ -125,11 +148,11 @@ const NXP = (() => {
           </div>
           ${logged?ringHTML(logged,sets,'sets','var(--st-lift)'):''}
         </div>
-        <div class="st-tweek st-tweek-top"><div class="st-tweek-h"><span>This week · ${weekLogged} lifting ${weekLogged===1?'day':'days'}</span>${textAct('Edit plan',"NXT.more('training')",true)}</div>${weekStrip}</div>
+        <div class="st-tweek st-tweek-top"><div class="st-tweek-h"><span>This week · ${weekHead}</span>${textAct('Edit plan',"NXT.more('training')",true)}</div>${weekStrip}</div>
         <button type="button" class="st-cta" onclick="${esc(finished?"switchTab('train')":action)}">${esc(title)}<span aria-hidden="true">›</span></button>
         ${lastLiftLine?`<p class="st-meta st-mt2 st-center">${esc(lastLiftLine)}</p>`:''}
       </article>`:`
-      <article class="st-tile st-t-train" style="--c:${state.dayType==='Zone2'?'var(--st-cardio)':state.dayType==='Floorball'?'var(--st-floor)':'var(--st-rest)'}">
+      <article class="st-tile st-t-train" style="--c:${state.dayType==='Zone2'?'var(--st-cardio)':state.dayType==='Floorball'?'var(--st-floor)':'var(--st-rest)'}"><span class="st-ghost" aria-hidden="true">${esc(state.dayType==='Zone2'?'Walk':state.dayType==='Floorball'?'Floorball':N.label(state.dayType))}</span>
         <div class="st-tile-head"><span class="st-cat">Today</span>${textAct('Change','showSessionSheet()',true)}</div>
         <h2 class="st-h2">${esc(N.label(state.dayType))}</h2>
         <p class="st-body st-mt2">${state.dayType==='Rest'?'A planned recovery day. Nothing is scheduled.':state.dayType==='Zone2'?'An easy, conversational effort. No lifting session is due.':'Hard conditioning day. Log duration and effort.'}</p>
@@ -148,8 +171,11 @@ const NXP = (() => {
           </button>`:''}
         </div>
         <p class="st-meta st-mt3">${esc(nextLine)}</p>
-        <div class="st-tweek"><div class="st-tweek-h"><span>This week · ${weekLogged} lifting ${weekLogged===1?'day':'days'}</span>${textAct('Edit plan',"NXT.more('training')",true)}</div>${weekStrip}</div>
+        <div class="st-tweek"><div class="st-tweek-h"><span>This week · ${weekHead}</span>${textAct('Edit plan',"NXT.more('training')",true)}</div>${weekStrip}</div>
       </article>`;
+    /* Ascension — the Coach stack and the Week in review sit between the training tile and the
+       minis. Each is a direct child of .st-bento, so it reveals on scroll like its neighbours. */
+    const coStack=coachStackHTML(),coReview=reviewTileHTML();
     document.getElementById('homePage').innerHTML=`<div class="vn-today st-today">
       <div class="vn-pad">
         <header class="st-head">
@@ -160,7 +186,7 @@ const NXP = (() => {
           ${lift?`<button type="button" class="st-chip" onclick="cycleGym()">${esc(state.gym||'Gym')}<span aria-hidden="true">⇄</span></button>`:''}
         </header>
         <div class="st-bento">
-          ${trainTile}
+          ${trainTile}${coStack}${coReview}
           <div class="st-minis">
             ${weightTileHTML()}
             <button type="button" class="st-tile st-mini" style="--c:var(--st-cardio)" onclick="showCardioSheet()">
@@ -169,11 +195,25 @@ const NXP = (() => {
               <span class="st-mini-bar"><i style="width:${Math.min(100,cardioTarget?cardioMins/cardioTarget*100:0).toFixed(0)}%"></i></span>
               <span class="st-meta">min/wk</span>
             </button>
-            <button type="button" class="st-tile st-mini" style="--c:var(--st-lift)" onclick="NXT.ui.view='strength';switchTab('weight')">
+            ${(()=>{
+              /* Recent session (≤7 days): lead with its D20 outcome — "3 of 5 beat" — and name the
+                 session; otherwise the engine status word as before. */
+              const ago=lastLift?Math.round((N.dateMs(state.date)-N.dateMs(lastLift))/864e5):null;
+              const oc=lastLift&&ago!==null&&ago<=7?liftOutcome(lastLift,(lastLiftRow&&lastLiftRow.gym)||state.gym):null;
+              if(oc&&oc.compared){
+                const when=ago===0?'today':ago===1?'yesterday':`${ago}d ago`;
+                return `<button type="button" class="st-tile st-mini st-mini-lifts" style="--c:var(--st-lift)" onclick="NXT.ui.view='strength';switchTab('weight')" aria-label="Lifts: ${oc.up} of ${oc.compared} beat last time, ${N.label(lastLiftRow.dayType||state.dayType)} ${when}">
+              <span class="st-cat">Lifts</span>
+              <span class="st-mini-v"><b class="vn-num">${oc.up}</b><small>/${oc.compared} beat</small></span>
+              <span class="st-meta">${esc(weekShort[lastLiftRow.dayType]||N.label(lastLiftRow.dayType||state.dayType))} · ${when}</span>
+            </button>`;
+              }
+              return `<button type="button" class="st-tile st-mini" style="--c:var(--st-lift)" onclick="NXT.ui.view='strength';switchTab('weight')">
               <span class="st-cat">Lifts</span>
               <span class="st-mini-v st-mini-w">${esc(perfLabel)}</span>
               <span class="st-meta">${perfLabel==='Older history'&&lastPerfDate?`Last ${esc(N.shortDate(lastPerfDate))}`:`${lifts.length} lifts`}</span>
-            </button>
+            </button>`;
+            })()}
           </div>
           <section class="st-tile st-t-dec${toneClass}" data-st-view aria-labelledby="vn-dec-h" style="--c:var(--st-accent)">
             <div class="st-tile-head"><span class="st-cat">Decision</span><button type="button" class="st-link st-why" onclick="NXT.openReview()">Why<span aria-hidden="true">›</span></button></div>
@@ -188,18 +228,301 @@ const NXP = (() => {
       <nav class="vn-pad st-quick" aria-label="Quick actions">
         <button type="button" class="st-qa" style="--c:var(--st-weight)" onclick="apx95OpenQuickWeight()"><span aria-hidden="true">+</span>Weight</button>
         ${state.dayType==='Zone2'?'':`<button type="button" class="st-qa" style="--c:var(--st-cardio)" onclick="showCardioSheet()"><span aria-hidden="true">+</span>Cardio</button>`}
-        <button type="button" class="st-qa" style="--c:var(--st-rest)" onclick="apx96OpenReadiness()"><span aria-hidden="true">+</span>Check-in</button>
+        ${N.features.checkin?`<button type="button" class="st-qa" style="--c:var(--st-rest)" onclick="apx96OpenReadiness()"><span aria-hidden="true">+</span>Check-in</button>`:''}
       </nav>
 
-      <details class="vn-more vn-pad st-more">
+      ${(N.features.wearable||N.features.checkin||N.features.calories)?`<details class="vn-more vn-pad st-more">
         <summary>More for today</summary>
         <div class="vn-more-body">
-          ${recoveryHomeCard()}
-          <button type="button" class="nxp-home-kcal" onclick="NXT.openCalories()"><span><small>Calorie guide</small><strong>${cal?formatNumber(cal)+' <em>kcal</em>':'Set target'}</strong></span><span>${cal?'Edit':'Set up'}</span></button>
-          ${N.adherenceHTML()}
+          ${N.features.wearable||N.features.checkin?recoveryHomeCard():''}
+          ${N.features&&N.features.calories?`<button type="button" class="nxp-home-kcal" onclick="NXT.openCalories()"><span><small>Calorie guide</small><strong>${cal?formatNumber(cal)+' <em>kcal</em>':'Set target'}</strong></span><span>${cal?'Edit':'Set up'}</span></button>${N.adherenceHTML()}`:''}
         </div>
-      </details>
+      </details>`:''}
     </div>`;
+  }
+  /* ---- Ascension · coaching surfaces ------------------------------------------------
+     The presentation of NXT.coach (coach.js, the engine). Every figure and sentence
+     below is the engine's: this block lays them out, maps each action to a function
+     that already exists, and writes only through NXT.coach's own writers (excuse,
+     unexcuse, dismiss, markReviewSeen, applyCatchUp). Nothing here computes a score
+     (D9) or a new statistic. If coach.js is missing, every helper returns an empty
+     string or null and the screens read exactly as they did before. */
+  const CO_DOM={schedule:'Schedule',strength:'Strength',cardio:'Cardio',weight:'Weight',data:'Data'};
+  const CO_GLYPH={
+    schedule:'<rect x="2.5" y="3.5" width="11" height="10" rx="2.5"/><path d="M2.5 7h11M5.5 2v3M10.5 2v3"/>',
+    strength:'<path d="M2.2 6.2v3.6M4.4 4.4v7.2M11.6 4.4v7.2M13.8 6.2v3.6M4.4 8h7.2"/>',
+    cardio:'<path d="M1.6 8.6h3.1l1.8-4.6 2.8 7.2 1.8-3.4h3.3"/>',
+    weight:'<path d="M2.6 12.4a5.6 5.6 0 1 1 10.8 0"/><path d="M8 12l2.6-4.4"/>',
+    data:'<circle cx="8" cy="8" r="5.6"/><path d="M8 4.9V8l2.1 1.5"/>'
+  };
+  /* One small shape per day status, drawn in currentColor on a 12-unit grid: the same
+     shape in the rail, the calendar, the legend, the day card and the review sheet. */
+  const CO_MK={
+    done:'<circle cx="6" cy="6" r="5.2" fill="currentColor"/><path d="M3.7 6.2 5.3 7.8 8.4 4.5" fill="none" stroke="#0d0b16" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+    partial:'<circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 2a4 4 0 0 1 0 8z" fill="currentColor"/>',
+    missed:'<circle cx="6" cy="6" r="3.9" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+    excused:'<path d="M3.1 8.9 8.9 3.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+    moved:'<path d="M2.4 6h6.6M6.7 3.4 9.3 6 6.7 8.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+    rest:'<path d="M3 6h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+    none:'<circle cx="6" cy="6" r="1.4" fill="currentColor"/>'
+  };
+  const CO_KIND={FullA:'full',FullB:'full',FullC:'full',Push:'push',Pull:'pull',Legs:'legs',Pump:'legs',Zone2:'walk',Floorball:'fb',Rest:'rest'};
+  const CO_SHORT={FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Rest:'Rest',Floorball:'FB',Push:'Push',Pull:'Pull',Legs:'Legs',Pump:'Legs'};
+  const CO_LETTER={FullA:'A',FullB:'B',FullC:'C',Push:'Pu',Pull:'Pl',Legs:'Lg',Pump:'Lg'};
+  const CO_REASONS=[['sick','Sick'],['travel','Travel'],['rest','Rest'],['other','Other']];
+  const coIcon=k=>`<svg class="co-gl" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${CO_GLYPH[k]||''}</svg>`;
+  const coMark=(k,cls)=>`<svg class="${cls||'co-cm'} is-${k}" viewBox="0 0 12 12" aria-hidden="true" focusable="false">${CO_MK[k]||CO_MK.none}</svg>`;
+  const coArrow=d=>`<svg viewBox="0 0 12 12" aria-hidden="true" focusable="false">${d==='up'?'<path d="M6 10V2.6M2.9 5.6 6 2.5l3.1 3.1"/>':d==='dn'?'<path d="M6 2v7.4M2.9 6.4 6 9.5l3.1-3.1"/>':'<path d="M2.4 6h7.2M6.9 3.5 9.4 6 6.9 8.5"/>'}</svg>`;
+  const coIsLift=t=>!!t&&!['Rest','Zone2','Floorball'].includes(t);
+  const coDate=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&Number.isFinite(N.dateMs(d));
+  const coDow=d=>coDate(d)?new Date(N.dateMs(d)).toLocaleDateString('en-SG',{weekday:'short',timeZone:'UTC'}):'';
+  const coDayShort=d=>coDate(d)?coDow(d)+' '+N.shortDate(d):'';
+  const coNum=v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v))?null:Number(v);
+  /* Every read goes through here, so an engine failure can never break a screen. */
+  function coachCall(name,...args){
+    try{const C=N.coach;return C&&typeof C[name]==='function'?C[name](...args):null;}catch(e){return null;}
+  }
+  /* The status the engine reports, as a word and a shape (never colour alone, I6). */
+  function coStatus(dc){
+    if(!dc)return null;
+    const why=dc.reason&&dc.reason!=='other'?' · '+dc.reason:'';
+    switch(dc.status){
+      case 'done':return {k:'done',w:'Done'};
+      case 'partial':return {k:'partial',w:dc.logged&&dc.logged.sets>0?'Partly logged':'Plan not done'};
+      case 'missed':return {k:'missed',w:'Not logged'};
+      case 'excused':return {k:'excused',w:'Excused'+why};
+      case 'moved':return {k:'moved',w:'Moved'+(dc.movedTo?' to '+N.shortDate(dc.movedTo):'')};
+      case 'rest':return {k:'rest',w:'Rest'};
+      case 'today':return {k:'plan',w:'Today'};
+      case 'upcoming':return {k:'plan',w:'Planned'};
+      default:return {k:'none',w:'No record'};
+    }
+  }
+  /* What was actually logged that day, from the engine's own counts. Cardio is named;
+     any other activity stays generic (D55: switched-off features are never named). */
+  function coLogged(dc){
+    const l=dc&&dc.logged||{},bits=[];
+    if(l.sets>0)bits.push(`${l.sets} ${l.sets===1?'set':'sets'}`);
+    if(l.cardioMin>0)bits.push(`${l.cardioMin} min cardio`);
+    if(l.floorball>0&&!bits.length)bits.push('other activity');
+    return bits.join(' · ');
+  }
+  const coInstead=p=>{const l=p&&p.logged||{};return l.cardioMin>0?`${l.cardioMin} min of cardio`:l.floorball>0?'other activity':'';};
+  function coRange(ws,we){
+    if(!coDate(ws)||!coDate(we))return '';
+    const sb=N.shortDate(we),sa=N.shortDate(ws);
+    return sa.split(' ').slice(1).join(' ')===sb.split(' ').slice(1).join(' ')?`${Number(ws.slice(8,10))}–${sb}`:`${sa}–${sb}`;
+  }
+  /* Train's coach line and its target rows: the coordinated advice when the engine has
+     it (it is coachFor()'s own output unless a load step meets a cautious weight
+     decision, then a hold), else coachFor() itself. */
+  function coachAdvice(ex){
+    try{
+      const a=N.coach&&typeof N.coach.trainAdvice==='function'?N.coach.trainAdvice(ex):null;
+      if(a)return a;
+    }catch(e){/* fall through to the plain coach */}
+    return N.coachFor(ex);
+  }
+
+  /* ---- Today · Coach stack ---------------------------------------------------------
+     NXT.coach.insights(): at most three, ranked by the engine. weight.review repeats the
+     Decision card's headline directly below, so it is not stacked here (engine report,
+     integration note 3); the next-ranked insight takes its place. */
+  function coachStackHTML() {
+    ui.coachList=[];
+    const list=coachCall('insights');
+    if(!Array.isArray(list))return '';
+    const pool=(Array.isArray(list.all)&&list.all.length?list.all:list).filter(it=>it&&it.id&&it.id!=='weight.review').slice(0,3);
+    ui.coachList=pool;
+    return pool.map(coachTileHTML).join('');
+  }
+  function coachTileHTML(it,i) {
+    const dom=CO_DOM[it.domain]?it.domain:'data';
+    const sev=it.severity==='act'||it.severity==='watch'?it.severity:'info';
+    const ev=(Array.isArray(it.evidence)?it.evidence:[]).filter(e=>e&&e.label&&e.value!==undefined&&e.value!==null&&String(e.value)!=='');
+    /* Three chips are enough on a phone; the folded "Why" carries the evidence sentence. */
+    const chips=ev.slice(0,3).map(e=>`<li class="co-chip"><span class="co-chip-l">${esc(e.label)}</span><span class="co-chip-d" aria-hidden="true">·</span><b class="co-chip-v">${esc(e.value)}</b></li>`).join('');
+    const w=it.why||{};
+    const rows=[['Noticed',w.noticed],['Evidence',w.evidence],['Why it matters',w.matters],['What you can do',w.canDo]].filter(r=>r[1]);
+    const why=rows.length?`<details class="co-why"><summary><span>Why</span><i aria-hidden="true">›</i></summary><dl>${rows.map(r=>`<div><dt>${r[0]}</dt><dd>${esc(r[1])}</dd></div>`).join('')}</dl></details>`:'';
+    /* One primary capsule per tile at most, and only on an act: a watch or info action takes the quieter glass capsule (D56 tiers), so a stack of tiles never reads as three competing primaries. */
+    const act=it.action&&it.action.label?`<button type="button" class="${sev==='act'?'st-cta':'is-q'} co-act" onclick="NXP.coachAct(${i})">${esc(it.action.label)}<span aria-hidden="true">›</span></button>`:'';
+    const sevHTML=sev==='info'?'':`<span class="co-sev"><i class="co-sh" aria-hidden="true"></i>${sev==='act'?'Action':'Watch'}</span>`;
+    return `<article class="st-tile co-tile is-${sev} is-d-${dom}" aria-labelledby="co-h${i}">
+          <div class="st-tile-head co-eb"><span class="co-tags"><span class="st-cat co-dom">${coIcon(dom)}<span>${esc(CO_DOM[dom])}</span></span>${sevHTML}</span><button type="button" class="vn-text co-dismiss" onclick="NXP.coachDismiss(${i})" aria-label="${esc('Dismiss: '+it.title)}">Dismiss</button></div>
+          <h2 class="co-title" id="co-h${i}">${esc(it.title)}</h2>
+          ${it.body?`<p class="co-body">${esc(it.body)}</p>`:''}
+          ${chips?`<ul class="co-chips" aria-label="Evidence">${chips}</ul>`:''}
+          ${act}
+          ${why}
+        </article>`;
+  }
+  /* Each action maps to the function that already exists (engine report §3.5). */
+  function coachAct(i) {
+    const it=ui.coachList&&ui.coachList[i],a=it&&it.action;
+    if(!a)return;
+    const p=a.payload||{};
+    if(a.kind==='catchUp')return catchUpSheet();
+    if(a.kind==='excuse')return excuseSheet(p.date);
+    if(p.sheet==='review')return N.openReview();
+    if(p.sheet==='cardio')return showCardioSheet();
+    if(p.sheet==='weight')return apx95OpenQuickWeight();
+    if(p.sheet==='day')return N.openDay(p.date);
+    if(p.tab==='train')return switchTab('train');
+    if(p.tab==='weight'){if(p.view==='strength')N.ui.view='strength';return switchTab('weight');}
+  }
+  function coachDismiss(i) {
+    /* The stack repaints at once, so a second tap in the same spot would land on the tile that moved up. */
+    const now=Date.now();
+    if(ui.coachTap&&now-ui.coachTap<450)return;
+    ui.coachTap=now;
+    const it=ui.coachList&&ui.coachList[i];
+    if(it&&N.coach)N.coach.dismiss(it.id,it.fingerprint);
+  }
+
+  /* ---- Catch-up: the confirmation shows what changes before anything is written ------
+     The proposal's consequences are the engine's sentences, listed as they come. */
+  function catchUpSheet() {
+    const p=coachCall('catchUp');
+    if(!p){if(typeof toast==='function')toast('This catch-up no longer applies.');return;}
+    ui.catchUp=p;
+    const inst=coInstead(p);
+    N.modal(`Move ${p.missedLabel} to today?`,`<div class="co-sheet">
+      <p class="co-lead">${esc(p.missedLabel)} was planned for ${esc(coDayShort(p.missedDate))} and has no logged sets${inst?` (${esc(inst)} instead)`:''}. This is exactly what changes. Nothing is saved until you confirm.</p>
+      <h3 class="co-sec">What changes</h3>
+      <ul class="co-eff">${(p.consequences||[]).map(c=>`<li><i aria-hidden="true"></i><span>${esc(c)}</span></li>`).join('')}</ul>
+      <div class="n99-stack">${button('Move to today','NXP.catchUpApply()')}${button(`Mark ${esc(coDow(p.missedDate))} excused`,`NXP.excuseSheet('${p.missedDate}')`,true)}</div>
+    </div>`);
+  }
+  function catchUpApply() {
+    const p=ui.catchUp;ui.catchUp=null;
+    if(!p||!N.coach)return;
+    let ok=false;
+    try{ok=N.coach.applyCatchUp(p);}catch(e){ok=false;}
+    /* A refused (stale) proposal writes nothing; close the sheet and show the truth. */
+    if(!ok){closeModal();N.repaint();}
+  }
+
+  /* ---- Excuse: Sick / Travel / Rest / Other, from the coach, History and the day sheet -- */
+  function excuseSheet(date) {
+    const dc=coachCall('dayContext',date);
+    if(!dc||!coDate(date))return;
+    const on=dc.status==='excused',cur=on?dc.reason:null;
+    const lead=on
+      ?`${dc.label} · ${coDayShort(date)}. It does not count as missed. Pick another reason, or remove the excuse.`
+      :`${dc.label} · ${coDayShort(date)}. Mark it excused so it stops counting as missed. Your plan and your logged records do not change.`;
+    N.modal(on?'Excused':'Didn’t happen?',`<div class="co-sheet">
+      <p class="co-lead">${esc(lead)}</p>
+      <div class="n99-picker co-reasons" role="group" aria-label="Reason">${CO_REASONS.map(([k,t])=>`<button type="button" class="n99-button secondary${cur===k?' is-on':''}" aria-pressed="${cur===k?'true':'false'}" onclick="NXT.coach.excuse('${date}','${k}')">${t}</button>`).join('')}</div>
+      ${on?`<div class="n99-stack">${button('Remove excuse',`NXT.coach.unexcuse('${date}')`,true)}</div>`:''}
+    </div>`);
+  }
+
+  /* ---- Today · Week in review --------------------------------------------------------- */
+  function reviewTileHTML() {
+    ui.coachReview=null;
+    const rv=coachCall('weekReview');
+    if(!rv||rv.seen||!coDate(rv.weekStart))return '';
+    ui.coachReview=rv;
+    const range=coRange(rv.weekStart,rv.weekEnd);
+    const L=rv.lifts||{},vs=rv.vsPrev||{},cd=rv.cardio||{},wt=rv.weight||{},oc=rv.outcomes||{};
+    const done=coNum(L.done),plan=coNum(L.planned),sets=coNum(rv.sets),dSets=coNum(vs.sets),cMin=coNum(cd.min),cTgt=coNum(cd.target),avg=coNum(wt.avg),dW=coNum(wt.change);
+    const setsCtx=dSets===null?'':dSets>0?`<span class="co-fig-s is-good">${coArrow('up')}${dSets} more</span>`:dSets<0?`<span class="co-fig-s">${coArrow('dn')}${Math.abs(dSets)} fewer</span>`:`<span class="co-fig-s">${coArrow('eq')}same</span>`;
+    const wCtx=dW===null?'<span class="co-fig-s">kg avg</span>':Math.abs(dW)<0.05?`<span class="co-fig-s">${coArrow('eq')}level</span>`:dW<0?`<span class="co-fig-s is-good">${coArrow('dn')}${Math.abs(dW).toFixed(1)} kg lower</span>`:`<span class="co-fig-s is-up">${coArrow('up')}${dW.toFixed(1)} kg higher</span>`;
+    const fig=(l,v,u,ctx)=>`<div class="co-fig-c" role="listitem"><small>${l}</small><b class="vn-num">${v}${u?`<em>${u}</em>`:''}</b>${ctx}</div>`;
+    const strip=`<div class="co-fig" role="list" aria-label="Last week in four figures">${
+      fig('Lifting',done===null?'—':done,plan===null?'':'/'+plan,'<span class="co-fig-s">days</span>')+
+      fig('Sets',sets===null?'—':sets,'',setsCtx||'<span class="co-fig-s">working</span>')+
+      fig('Cardio',cMin===null?'—':cMin,cTgt===null?'':'/'+cTgt,'<span class="co-fig-s">min</span>')+
+      fig('Weight',avg===null?'—':avg.toFixed(1),'',wCtx)
+    }</div>`;
+    const compared=(coNum(oc.beat)||0)+(coNum(oc.matched)||0)+(coNum(oc.below)||0);
+    const outcomes=compared?`<p class="co-out"><span class="co-out-l">Best set vs last time</span><span class="is-beat"><i aria-hidden="true"></i><b class="vn-num">${oc.beat}</b> beat</span><span class="is-same"><i aria-hidden="true"></i><b class="vn-num">${oc.matched}</b> matched</span><span class="is-below"><i aria-hidden="true"></i><b class="vn-num">${oc.below}</b> below</span></p>`:'';
+    /* The engine's own "Excused: …" and "Moved: …" lines, shown only when it wrote them. */
+    const xm=(Array.isArray(rv.lines)?rv.lines:[]).filter(l=>/^(Excused|Moved): /.test(l)).map(l=>`<p class="co-xm">${esc(l)}</p>`).join('');
+    return `<article class="st-tile co-tile co-review is-info" aria-labelledby="co-rv-h">
+          <button type="button" class="co-open" onclick="NXP.reviewSheet()" aria-label="${esc('Open last week in review, '+range)}"></button>
+          <div class="st-tile-head co-eb"><span class="st-cat co-dom">${coIcon('schedule')}<span>Last week · ${esc(range)}</span></span><button type="button" class="vn-text co-got" onclick="NXP.reviewSeen()">Got it</button></div>
+          <h2 class="co-title" id="co-rv-h">${esc(rv.headline||'Last week')}</h2>
+          ${strip}${outcomes}${xm}
+          <p class="co-more" aria-hidden="true"><span>See the week</span><i>›</i></p>
+        </article>`;
+  }
+  function reviewSheet() {
+    const rv=ui.coachReview||coachCall('weekReview');
+    if(!rv||!coDate(rv.weekStart))return;
+    ui.coachReview=rv;
+    const days=(Array.isArray(rv.days)?rv.days:[]).map(dc=>{
+      const st=coStatus(dc),detail=coLogged(dc);
+      return `<li class="co-day is-${st.k}"><span class="co-day-d"><b>${esc(coDow(dc.date))}</b><small class="vn-num">${Number(dc.date.slice(8,10))}</small></span><span class="co-day-t">${esc(dc.label)}${detail?`<small>${esc(detail)}</small>`:''}</span><span class="co-day-s">${coMark(st.k,'co-cm')}<span>${esc(st.w)}</span></span></li>`;
+    }).join('');
+    const next=(Array.isArray(rv.nextWeek)?rv.nextWeek:[]).map(n=>{
+      const k=CO_KIND[n.type]||(coIsLift(n.type)?'full':'rest');
+      return `<li class="co-nw-c is-k-${k}" aria-label="${esc(coDayShort(n.date)+' · '+n.label)}"><b>${esc(coDow(n.date).slice(0,1))}</b><span>${esc(CO_SHORT[n.type]||String(n.type).slice(0,4))}</span></li>`;
+    }).join('');
+    const lines=(Array.isArray(rv.lines)?rv.lines:[]).map(l=>`<li>${esc(l)}</li>`).join('');
+    N.modal('Last week · '+coRange(rv.weekStart,rv.weekEnd),`<div class="co-sheet co-rvs">
+      <p class="co-lead co-lead-h">${esc(rv.headline||'')}</p>
+      <ol class="co-days" aria-label="The seven days">${days}</ol>
+      ${lines?`<h3 class="co-sec">The week</h3><ul class="co-lines">${lines}</ul>`:''}
+      ${next?`<h3 class="co-sec">Next week</h3><ol class="co-nw" aria-label="Next week's plan">${next}</ol>`:''}
+      <div class="n99-stack">${button('Done','NXP.reviewSeen()')}</div>
+    </div>`);
+  }
+  /* Both "Got it" and the sheet's Done mark the week seen; commit() closes the sheet and repaints. */
+  function reviewSeen() {
+    const rv=ui.coachReview||coachCall('weekReview');
+    if(rv&&coDate(rv.weekStart)&&N.coach)N.coach.markReviewSeen(rv.weekStart);
+  }
+
+  /* ---- Train · a catch-up row on a non-lifting idle day ------------------------------- */
+  function catchUpRowHTML() {
+    const p=coachCall('catchUp');
+    if(!p)return '';
+    const k=Math.round((N.dateMs(state.date)-N.dateMs(p.missedDate))/864e5),inst=coInstead(p);
+    const when=k>=7?'last '+coDow(p.missedDate):coDow(p.missedDate);
+    return `<button type="button" class="co-row" onclick="NXP.catchUpSheet()"><span class="co-row-i" aria-hidden="true"><svg viewBox="0 0 12 12" focusable="false"><path d="M2.4 6h6.6M6.7 3.4 9.3 6 6.7 8.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="co-row-t"><b>${esc(p.missedLabel)} didn’t happen ${esc(when)}${inst?` (${esc(inst)} instead)`:''} — do it today?</b><span class="co-row-s">Optional. You confirm before anything is saved.</span></span><i class="co-row-c" aria-hidden="true">›</i></button>`;
+  }
+
+  /* ---- History · calendar marks and the day card --------------------------------------- */
+  function coachDayMap(start,end) {
+    const list=coachCall('dayStatuses',start,end);
+    if(!Array.isArray(list)||!list.length)return null;
+    const m=new Map();
+    list.forEach(x=>{if(x&&x.date)m.set(x.date,x);});
+    return m;
+  }
+  /* The mark a calendar cell carries: a faint session letter on a planned lifting day, a
+     hollow ring for "Not logged", a short slash for "Excused", an arrow for "Moved".
+     Floorball is not drawn (D40) and the marks follow the History filter. */
+  function coCalMark(dc,scope) {
+    if(!dc)return null;
+    const lift=coIsLift(dc.type),cond=dc.type==='Zone2';
+    if(!((lift&&scope.lift)||(cond&&scope.cond)))return null;
+    const nm=dc.label;
+    if(dc.status==='missed')return {k:'missed',aria:`${nm} not logged`};
+    if(dc.status==='excused')return {k:'excused',aria:`${nm} excused${dc.reason&&dc.reason!=='other'?', '+dc.reason:''}`};
+    if(dc.status==='moved')return {k:'moved',aria:`${nm} moved${dc.movedTo?' to '+N.shortDate(dc.movedTo):''}`};
+    if(lift&&(dc.status==='upcoming'||dc.status==='today'))return {k:'plan',letter:CO_LETTER[dc.type]||String(nm||dc.type).slice(0,1).toUpperCase(),aria:`planned ${nm}`};
+    return null;
+  }
+  const coCalMarkHTML=cm=>!cm?'':cm.k==='plan'?`<em class="co-cm-l" aria-hidden="true">${esc(cm.letter)}</em>`:coMark(cm.k,'co-cm');
+  /* The day card's status line: the word, the shape, the plan it belongs to and, for a day
+     the engine would accept an excuse for, the text action that opens the excuse sheet. */
+  function coachDayLine(date,scope) {
+    const dc=coDate(date)?coachCall('dayContext',date):null;
+    if(!dc)return '';
+    const lift=coIsLift(dc.type),cond=dc.type==='Zone2';
+    if(!((lift&&scope.lift)||(cond&&scope.cond)))return '';
+    const past=date<state.date,st=coStatus(dc);
+    const show=['missed','partial','excused','moved'].includes(dc.status)||(['upcoming','today'].includes(dc.status)&&lift);
+    if(!show&&!dc.movedFrom)return '';
+    let action='';
+    if(dc.status==='excused')action=`<button type="button" class="vn-text co-ds-a" onclick="NXP.excuseSheet('${date}')">Remove excuse</button>`;
+    else if(past&&(dc.status==='missed'||dc.status==='partial')&&!dateRows(date).length)action=`<button type="button" class="vn-text co-ds-a" onclick="NXP.excuseSheet('${date}')">Excuse this day</button>`;
+    const from=dc.movedFrom?coachCall('dayContext',dc.movedFrom):null;
+    const note=dc.movedFrom?`<p class="co-ds-n">${esc(from&&from.label?from.label+' moved here from '+coDayShort(dc.movedFrom)+'.':'A session moved here from '+coDayShort(dc.movedFrom)+'.')}</p>`:'';
+    return `${show||action?`<div class="co-ds is-${st.k}" data-cs="${esc(dc.status)}">${show?`<span class="co-ds-w">${coMark(st.k,'co-cm')}<b>${esc(st.w)}</b><span>${esc(dc.label)}</span></span>`:''}${action}</div>`:''}${note}`;
   }
   /* ---- Today tiles (Strata direction, D19) --------------------------------
      Every figure is read from the engine: the trend series is N.trend() over
@@ -212,56 +535,38 @@ const NXP = (() => {
     const v=Math.max(0,Number(value)||0),tg=Math.max(1,Number(target)||1),pct=Math.min(100,v/tg*100);
     return `<span class="st-count" style="--rc:${color}" role="img" aria-label="${v} of ${tg} ${esc(unit)}"><span class="st-count-v"><b class="vn-num">${v}</b><small>/${tg}</small></span><span class="st-count-u">${esc(unit)}</span><span class="st-count-bar"><i style="width:${pct.toFixed(0)}%"></i></span></span>`;
   }
-  function heroTileHTML() {
-    const rows=N.weights();
-    if(!rows.length)return `<article class="st-tile st-hero is-empty" style="--c:var(--st-weight)"><span class="st-cat">Weight</span><h2 class="st-h3 st-mt2">Your first weigh-in starts the trend</h2><p class="st-body st-mt2">Morning readings appear as dots; the trend line starts once a week has three of them.</p><button type="button" class="st-cta" onclick="apx95OpenQuickWeight()">Log morning weight<span aria-hidden="true">›</span></button></article>`;
-    const start=N.dateAdd(state.date,-29);
-    const series=N.trend(rows).filter(p=>p.date>=start&&p.date<=state.date);
-    const pts=series.map(p=>({d:p.date,w:Math.round(p.weight*100)/100,a:p.avg===null?null:Math.round(p.avg*1000)/1000,t:/^morning$/i.test(String(p.timeOfDay||''))?'m':'o'}));
-    const lastAvg=[...series].reverse().find(p=>p.avg!==null);
-    const firstAvg=series.find(p=>p.avg!==null);
-    const plateau=N.detectPlateau(rows),rate=N.finite(plateau&&plateau.weeklyRate);
-    const main=lastAvg?lastAvg.avg:rows.at(-1).weight;
-    const change=lastAvg&&firstAvg&&lastAvg!==firstAvg?lastAvg.avg-firstAvg.avg:null;
-    const span=lastAvg&&firstAvg?Math.round((N.dateMs(lastAvg.date)-N.dateMs(firstAvg.date))/86400000):0;
-    const data=esc(JSON.stringify({pts,today:state.date}));
-    return `<article class="st-tile st-hero" style="--c:var(--st-weight)" data-st-hero="${data}">
-      <div class="st-hero-top">
-        <span class="st-cat">Weight trend</span>
-        <button type="button" class="st-replay" data-st-replay aria-label="Replay the last 30 days"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.8v10.4L13 8z" fill="currentColor"/></svg><span>Replay</span></button>
-      </div>
-      <p class="st-hero-eb" data-st-eb>${lastAvg?'Trend · '+esc(N.shortDate(lastAvg.date)):'Latest reading · '+esc(N.shortDate(rows.at(-1).date))}</p>
-      <div class="st-big"><span class="st-odo" data-st-odo="${main.toFixed(1)}">${main.toFixed(1)}</span><small>kg</small></div>
-      <div class="st-hero-meta" data-st-meta>
-        ${change!==null?`<span class="st-pill${change<=0?'':' is-up'}">${change>0?'+':'−'}${Math.abs(change).toFixed(1)} kg</span><span>over ${span} days</span>`:'<span>Trend building</span>'}
-        ${rate!==null&&plateau.ok?`<span class="st-rate"><b class="vn-num">${N.signed(rate)}</b> kg/wk</span>`:''}
-      </div>
-      <div class="st-hero-chart" data-st-chart role="img" aria-label="Morning weight and trend, last 30 days. Drag to inspect a day."></div>
-      <div class="st-hero-foot">
-        <span class="st-key"><i class="st-key-line"></i>Trend</span><span class="st-key"><i class="st-key-dot"></i>Morning</span>
-        <button type="button" class="st-link" onclick="NXT.ui.view='overview';switchTab('weight')">Progress<span aria-hidden="true">›</span></button>
-      </div>
-    </article>`;
-  }
   /* Compact weight: the canonical 7-day trend and the engine's weekly rate.
      The chart itself lives on Progress. */
   function decEvidenceHTML(trendEv,confEv,plateau) {
     const rate=N.finite(plateau&&plateau.weeklyRate);
     const dir=rate===null?'flat':rate<-0.05?'down':rate>0.05?'up':'flat';
-    const pts=N.trend(N.weights()).filter(p=>p.avg!==null).slice(-21).map(p=>p.avg);
-    let spark='';
-    if(pts.length>=4){
-      const lo=Math.min(...pts),hi=Math.max(...pts),span=(hi-lo)||1,W=64,H=24,pad=3;
-      const xy=pts.map((v,i)=>[(i/(pts.length-1))*(W-pad*2)+pad,H-pad-((v-lo)/span)*(H-pad*2)]);
-      const d=xy.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
-      const e=xy[xy.length-1];
-      spark=`<svg class="st-dec-spark" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true" focusable="false"><path class="st-dec-line" pathLength="1" d="${d}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle class="st-dec-dot" cx="${e[0].toFixed(1)}" cy="${e[1].toFixed(1)}" r="2.4" fill="currentColor"/></svg>`;
+    /* D50 — the trend chip is a 28-day mini chart: the engine's trend line over an area,
+       each morning reading as a faint dot, the first and last trend values named. Same
+       window as the four-week rate it sits beside. Drawn from N.trend(N.weights()) only. */
+    const from=N.dateAdd(state.date,-27);
+    const series=N.trend(N.weights()).filter(p=>p.date>=from&&p.date<=state.date);
+    const tr=series.filter(p=>p.avg!==null);
+    let plot='',range='';
+    if(tr.length>=4){
+      const W=300,H=64,padX=4,padT=8,padB=6;
+      const vals=series.flatMap(p=>p.avg===null?[p.weight]:[p.weight,p.avg]);
+      const lo=Math.min(...vals),hi=Math.max(...vals),span=(hi-lo)||1;
+      const t0=N.dateMs(from),t1=N.dateMs(state.date),xs=ms=>padX+(ms-t0)/((t1-t0)||1)*(W-padX*2);
+      const ys=v=>padT+(hi-v)/span*(H-padT-padB);
+      const line=tr.map(p=>[xs(N.dateMs(p.date)),ys(p.avg)]);
+      const d=line.map((q,i)=>(i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join(' ');
+      const area=d+` L ${line.at(-1)[0].toFixed(1)} ${H} L ${line[0][0].toFixed(1)} ${H} Z`;
+      const dots=series.map(p=>`<circle class="st-dec-raw" cx="${xs(N.dateMs(p.date)).toFixed(1)}" cy="${ys(p.weight).toFixed(1)}" r="1.9"/>`).join('');
+      const e=line.at(-1),gid='stdg'+Math.random().toString(36).slice(2,6);
+      plot=`<svg class="st-dec-plot" viewBox="0 0 ${W} ${H}" aria-hidden="true" focusable="false"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".22"/><stop offset=".72" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs><path d="${area}" fill="url(#${gid})" class="st-dec-area"/>${dots}<path class="st-dec-line" pathLength="1" d="${d}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle class="st-dec-dot" cx="${e[0].toFixed(1)}" cy="${e[1].toFixed(1)}" r="3.6" fill="currentColor"/></svg>`;
+      range=`<span class="st-dec-range vn-num">${tr[0].avg.toFixed(1)} → ${tr.at(-1).avg.toFixed(1)} kg</span>`;
     }
     const arrow={down:'M12 5v13M6.5 12.5 12 18l5.5-5.5',up:'M12 19V6M6.5 11.5 12 6l5.5 5.5',flat:'M5 12h14'}[dir];
     const lvl={low:1,medium:2,high:3}[String(confEv).toLowerCase()]||0;
     const bars=lvl?`<span class="st-dec-bars" aria-hidden="true">${[1,2,3].map(i=>`<i class="${i<=lvl?'on':''}"></i>`).join('')}</span>`:'';
-    return `<div class="st-dec-ev">
-      <button type="button" class="st-dec-chip st-dec-trend is-${dir}" onclick="NXT.ui.view='overview';switchTab('weight')" aria-label="Open your weight trend"><span class="st-dec-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${arrow}"/></svg></span><span class="st-dec-txt"><small>Trend</small><b class="vn-num st-dec-val">${esc(trendEv)}</b></span>${spark}</button>
+    const label=`Open your weight trend. Trend ${trendEv}${tr.length>=4?`, ${tr[0].avg.toFixed(1)} to ${tr.at(-1).avg.toFixed(1)} kilograms over 28 days`:''}`;
+    return `<div class="st-dec-ev${plot?' has-plot':''}">
+      <button type="button" class="st-dec-chip st-dec-trend is-${dir}${plot?' st-dec-chart':''}" onclick="NXT.ui.view='overview';switchTab('weight')" aria-label="${esc(label)}"><span class="st-dec-top"><span class="st-dec-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${arrow}"/></svg></span><span class="st-dec-txt"><small>Trend${plot?' · 28 days':''}</small><b class="vn-num st-dec-val">${esc(trendEv)}</b></span>${range}</span>${plot}</button>
       <button type="button" class="st-dec-chip st-dec-conf" onclick="NXT.openReview()" aria-label="Why this confidence"><span class="st-dec-txt"><small>Confidence</small><b>${esc(confEv)}</b></span>${bars}</button>
     </div>`;
   }
@@ -274,49 +579,24 @@ const NXP = (() => {
     return `<button type="button" class="st-tile st-mini" style="--c:var(--st-weight)" onclick="NXT.ui.view='overview';switchTab('weight')">
       <span class="st-cat">Trend</span>
       <span class="st-mini-v"><b class="st-odo st-odo-sm" data-st-odo="${v.toFixed(1)}">${v.toFixed(1)}</b><small>kg</small></span>
-      <span class="st-meta">${rate!==null&&pl.ok?`${N.signed(rate)}/wk`:'7-day trend'}</span>
+      <span class="st-meta">${rate!==null&&pl.ok?(Math.abs(rate)<0.05?'Flat':`${N.signed(rate)}/wk`):'7-day trend'}</span>
     </button>`;
   }
-  function weeklyTileHTML() {
-    const rows=N.weights();if(!rows.length)return '';
-    const ws=N.weekStart(state.date),weeks=[];
-    for(let i=4;i>=0;i--){
-      const st=N.dateAdd(ws,-7*i),end=i===0?state.date:N.dateAdd(st,6);
-      const s=N.windowStats(rows,end,i===0?Math.round((N.dateMs(state.date)-N.dateMs(st))/86400000)+1:7);
-      weeks.push({st,avg:s.avg,n:s.n,part:i===0});
-    }
-    const have=weeks.filter(w=>w.avg!==null);if(have.length<2)return '';
-    const lo=Math.min(...have.map(w=>w.avg))-.6,hi=Math.max(...have.map(w=>w.avg))+.2;
-    const cur=weeks.at(-1),prev=weeks.at(-2);
-    const d=cur.avg!==null&&prev.avg!==null?cur.avg-prev.avg:null;
-    return `<button type="button" class="st-tile st-t-avg" style="--c:var(--st-weight)" onclick="NXT.ui.view='overview';switchTab('weight')">
-      <div class="st-tile-head"><span class="st-cat">Weekly average</span>${d!==null?`<span class="st-pill${d<=0?'':' is-up'}">${d>0?'+':'−'}${Math.abs(d).toFixed(1)} kg</span>`:''}</div>
-      <div class="st-bars" role="img" aria-label="${esc(have.map(w=>N.shortDate(w.st)+' '+w.avg.toFixed(1)+' kilograms').join(', '))}">
-        ${weeks.map((w,i)=>`<span class="st-bar${i===weeks.length-1?' is-now':''}" style="--h:${w.avg===null?0:Math.max(.08,(w.avg-lo)/(hi-lo)).toFixed(3)};--i:${i}"><b class="vn-num">${w.avg===null?'—':w.avg.toFixed(1)}</b><i></i><small>${esc(N.shortDate(w.st))}${w.part?` · ${w.n}d`:''}</small></span>`).join('')}
-      </div>
-      <p class="st-meta">Morning weight, averaged Monday to Sunday${cur.part?' · this week so far':''}</p>
-    </button>`;
-  }
-  function calendarTileHTML() {
-    const work=new Set(N.workRows().map(r=>r.date));
-    const cardio=new Set((state.cardio||[]).filter(r=>r&&r.date).map(r=>r.date));
-    const floor=new Set((state.floorball||[]).filter(r=>r&&r.date).map(r=>r.date));
-    const weigh=new Set(N.weights().map(r=>r.date));
-    const end=N.dateAdd(N.weekStart(state.date),6),start=N.dateAdd(end,-34);
-    const dows=['M','T','W','T','F','S','S'];
-    let cells='';
-    for(let i=0;i<35;i++){
-      const d=N.dateAdd(start,i),fut=d>state.date,dn=Number(d.slice(8,10));
-      const marks=(work.has(d)?'<i class="m-lift"></i>':'')+(cardio.has(d)?'<i class="m-cardio"></i>':'');
-      const any=work.has(d)||cardio.has(d);
-      cells+=`<span class="st-cal-d${fut?' is-fut':''}${d===state.date?' is-today':''}${any?' is-active':''}${weigh.has(d)?' is-w':''}" style="--i:${i}"><em>${dn===1?esc(N.shortDate(d)):dn}</em><span class="st-cal-m">${marks}</span></span>`;
-    }
-    const n=[...work].filter(d=>d>=start&&d<=state.date).length;
-    return `<button type="button" class="st-tile st-t-cal" style="--c:var(--st-cardio)" onclick="switchTab('history')">
-      <div class="st-tile-head"><span class="st-cat">Last 5 weeks</span><span class="st-meta">${n} lifting ${n===1?'day':'days'}</span></div>
-      <div class="st-cal">${dows.map(x=>`<span class="st-cal-h">${x}</span>`).join('')}${cells}</div>
-      <div class="st-cal-k"><span><i class="m-lift"></i>Lifting</span><span><i class="m-cardio"></i>Cardio</span><span><i class="m-w"></i>Weigh-in</span></div>
-    </button>`;
+  /* D20 comparison for any logged lifting day: best set per exercise against the
+     previous session of that exercise at that gym. Same rule as the finish card. */
+  function liftOutcome(date,gym) {
+    const rows=N.workRows().filter(r=>r.date===date&&(r.gym||'Gym A')===gym&&r.setType!=='warmup'),byEx={};
+    rows.forEach(r=>{(byEx[r.exercise||r.name]=byEx[r.exercise||r.name]||[]).push(r);});
+    let up=0,same=0,down=0,compared=0;
+    Object.entries(byEx).forEach(([name,sets])=>{
+      const prev=N.sessionRows(name,gym,date,100).at(-1);
+      if(!prev||!prev.sets||!prev.sets.length)return;
+      compared+=1;
+      const a=N.bestSet(sets),b=N.bestSet(prev.sets);
+      const dw=Number(a.weight)-Number(b.weight),dr=Number(a.reps)-Number(b.reps);
+      if(dw>0||(dw===0&&dr>0))up+=1; else if(dw===0&&dr===0)same+=1; else down+=1;
+    });
+    return {up,same,down,compared,exercises:Object.keys(byEx).length};
   }
   function bodyTileHTML() {
     const scans=bodyScanSource().filter(s=>s&&N.finite(s.weight)!==null);
@@ -337,7 +617,6 @@ const NXP = (() => {
       <div class="st-scan-g">${cell('bodyFat','Fat %','%','var(--st-fat)')}${cell('fatMass','Fat mass','kg','var(--st-fat)')}${cell('muscleMass','Muscle','kg','var(--st-lean)')}${cell('weight','Weight','kg','var(--st-weight)')}</div>
     </button>`;
   }
-  function linkSignal(label,value,action) {return `<button type="button" class="nxp-home-signal" onclick="${esc(action)}"><small>${esc(label)}</small><strong>${esc(value)}</strong></button>`;}
   function previewAllowed() {
     const sync=NXT.wearables&&NXT.wearables.sync;
     if(sync&&typeof sync.previewAllowed==='function')return !!sync.previewAllowed();
@@ -448,17 +727,46 @@ const NXP = (() => {
     const mins=N.cardioWeek(),target=Number(settings.zone2WeeklyTarget)||90;
     return {mins,target,pct:target?Math.min(100,mins/target*100):0};
   }
+  /* D50 — on a day with no lifting, Train previews the next planned lifting session from
+     the saved routine: each exercise with its best set last time (D20), straight from
+     N.sessionRows()/N.bestSet(). Read-only; the session is not started or changed. */
+  function upNextHTML() {
+    const isLift=t=>!['Rest','Zone2','Floorball'].includes(t);
+    let date=null,type=null;
+    for(let i=1;i<=7;i++){const d=N.dateAdd(state.date,i),t=N.typeFor(d);if(isLift(t)){date=d;type=t;break;}}
+    if(!date)return '';
+    const list=N.templateFor(type,state.gym)||[];
+    if(!list.length)return '';
+    const ahead=Math.round((N.dateMs(date)-N.dateMs(state.date))/864e5);
+    const when=ahead===1?'Tomorrow':new Date(N.dateMs(date)).toLocaleDateString('en-SG',{weekday:'long',timeZone:'UTC'});
+    const sets=list.reduce((a,e)=>a+Number(e.sets||0),0);
+    const rows=list.map(e=>{
+      const prev=N.sessionRows(e.name,state.gym,N.dateAdd(state.date,1),100).at(-1);
+      const best=prev&&prev.sets&&prev.sets.length?N.bestSet(prev.sets):null;
+      const last=best?`${fmtLoad(best.weight)} × ${best.reps}`:'New';
+      return `<li class="st-next-row"><span class="st-next-n">${esc(e.name)}</span><span class="st-next-s">${Number(e.sets)||0} × ${Array.isArray(e.reps)?esc(e.reps.join('–')):esc(String(e.reps??''))}</span><span class="st-next-b vn-num${best?'':' is-new'}">${esc(last)}</span></li>`;
+    }).join('');
+    return `<section class="st-tile st-next" style="--c:var(--st-lift)" aria-label="Up next: ${esc(N.label(type))}, ${esc(when)}">
+      <div class="st-tile-head"><span class="st-cat">Up next · ${esc(when)}</span><span class="st-meta">${list.length} exercises · ${sets} sets</span></div>
+      <h2 class="st-h3">${esc(N.label(type))}</h2>
+      <div class="st-next-h" aria-hidden="true"><span>Exercise</span><span>Plan</span><span>Best last time</span></div>
+      <ol class="st-next-l">${rows}</ol>
+    </section>`;
+  }
+  function cardioMeterHTML(w) {
+    return `<div class="st-cmeter" role="img" aria-label="${w.mins} of ${w.target} cardio minutes this week"><div class="st-cmeter-h"><span class="st-cat">Cardio this week</span><span class="vn-num"><b>${w.mins}</b> / ${w.target} min</span></div><div class="st-cmeter-bar"><i style="width:${w.pct.toFixed(0)}%"></i></div></div>`;
+  }
   function trainRest() {
     const w=cardioWeekLine();
-    trainIdle('nxp-train-rest',`<section class="nxp-train-idle-copy"><h2>No lifting session due</h2><p>Recovery is part of the plan. Nothing needs to be made up today.</p></section><p class="nxp-caption nxp-train-idle-metric">${w.mins} / ${w.target} cardio min this week</p><div class="nxp-train-idle-actions">${button('Quick recovery check-in','apx96OpenReadiness()')}${idleSecondary('Log cardio','showCardioSheet()')}</div>${addOnSection()}`);
+    trainIdle('nxp-train-rest',`<section class="nxp-train-idle-copy"><h2>No lifting session due</h2><p>Recovery is part of the plan. Nothing needs to be made up today.</p></section>${catchUpRowHTML()}${cardioMeterHTML(w)}<div class="nxp-train-idle-actions">${N.features.checkin?button('Quick recovery check-in','apx96OpenReadiness()')+idleSecondary('Log cardio','showCardioSheet()'):button('Log cardio','showCardioSheet()')}</div>${upNextHTML()}${addOnSection()}`);
   }
   function trainZone2() {
     const w=cardioWeekLine();
-    trainIdle('nxp-train-zone2',`<section class="nxp-train-idle-copy"><p>Zone 2 — a conversational effort. No lifting session is due.</p></section><div class="nxp-train-pace"><span class="nxp-caption">This week</span><strong>${w.mins} <em>/ ${w.target} min</em></strong><div class="n99-session-rail" aria-hidden="true"><span style="width:${w.pct}%"></span></div></div><div class="nxp-train-idle-actions">${button('Log cardio','showCardioSheet()')}${idleSecondary('Check-in','apx96OpenReadiness()')}</div>${addOnSection()}`);
+    trainIdle('nxp-train-zone2',`<section class="nxp-train-idle-copy"><p>Zone 2 — a conversational effort. No lifting session is due.</p></section>${catchUpRowHTML()}<div class="nxp-train-pace"><span class="nxp-caption">This week</span><strong>${w.mins} <em>/ ${w.target} min</em></strong><div class="n99-session-rail" aria-hidden="true"><span style="width:${w.pct}%"></span></div></div><div class="nxp-train-idle-actions">${button('Log cardio','showCardioSheet()')}${N.features.checkin?idleSecondary('Check-in','apx96OpenReadiness()'):''}</div>${upNextHTML()}${addOnSection()}`);
   }
   function trainFloorball() {
     const recent=(state.floorball||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,3);
-    trainIdle('nxp-train-floorball',`<section class="nxp-train-idle-copy"><p>Hard conditioning day. Log duration and effort.</p></section><section class="nxp-train-floorball-log"><div class="nxp-train-floorball-grid"><label>Duration <small>min</small><input id="apx96FbDuration" type="number" min="1" max="600" inputmode="numeric"></label><label>Intensity <small>1–10</small><input id="apx96FbIntensity" type="number" min="1" max="10" inputmode="numeric"></label></div><label class="nxp-train-floorball-notes">Notes<textarea id="apx96FbNotes" rows="2" placeholder="Energy, match load, soreness…"></textarea></label><div class="nxp-train-idle-actions">${button('Save session','apx96SaveFloorball()')}</div></section>${recent.length?`<section class="nxp-train-floorball-history"><h2 class="nxp-caption">Recent</h2>${recent.map(x=>`<div class="nxp-train-recent"><span>${esc(N.shortDate(x.date))}</span><b>${esc(x.duration||'—')} min · RPE ${esc(x.intensity||'—')}</b>${x.notes?`<small>${esc(x.notes)}</small>`:''}</div>`).join('')}</section>`:`<p class="nxp-caption nxp-train-idle-metric">No Floorball sessions logged yet.</p>`}`);
+    trainIdle('nxp-train-floorball',`<section class="nxp-train-idle-copy"><p>Hard conditioning day. Log duration and effort.</p></section>${catchUpRowHTML()}<section class="nxp-train-floorball-log"><div class="nxp-train-floorball-grid"><label>Duration <small>min</small><input id="apx96FbDuration" type="number" min="1" max="600" inputmode="numeric"></label><label>Intensity <small>1–10</small><input id="apx96FbIntensity" type="number" min="1" max="10" inputmode="numeric"></label></div><label class="nxp-train-floorball-notes">Notes<textarea id="apx96FbNotes" rows="2" placeholder="Energy, match load, soreness…"></textarea></label><div class="nxp-train-idle-actions">${button('Save session','apx96SaveFloorball()')}</div></section>${recent.length?`<section class="nxp-train-floorball-history"><h2 class="nxp-caption">Recent</h2>${recent.map(x=>`<div class="nxp-train-recent"><span>${esc(N.shortDate(x.date))}</span><b>${esc(x.duration||'—')} min · RPE ${esc(x.intensity||'—')}</b>${x.notes?`<small>${esc(x.notes)}</small>`:''}</div>`).join('')}</section>`:`<p class="nxp-caption nxp-train-idle-metric">No Floorball sessions logged yet.</p>`}`);
   }
   /* An add-on eligible day can reach here too (a Cardio day carries no lifting
      template), and this is the one Train branch that would otherwise offer no
@@ -475,12 +783,16 @@ const NXP = (() => {
      day's focus is readable at a glance. Both reuse NXTANAT; muscles are
      always named in text beside them. */
   function bleedHTML(name){
+    /* The worked region as a lens: the engine's crop of the muscle (same
+       cropFor() every other close-up uses), widened a little for context and
+       set in a soft circular vignette so it reads as a detail of the body, not
+       a stamp. Out of flow by CSS, so the head's height is the title's; taps
+       open the same detail sheet as the title. */
     if(typeof NXTLIB==='undefined'||typeof NXTANAT==='undefined')return '';
     const m=NXTLIB.musclesFor(name);if(!m.primary.length)return '';
     const view=NXTANAT.viewFor(m.primary,[]);
-    /* Widen the engine's tight crop so the muscle reads in context. */
-    const fig=NXTANAT.figure({primary:m.primary,secondary:m.secondary,view}).replace(/viewBox="([\d.\-]+) ([\d.\-]+) ([\d.]+) ([\d.]+)"/,(s,x,y,w,h)=>{x=+x;y=+y;w=+w;h=+h;const px=w*.3,py=h*.2;return `viewBox="${(x-px).toFixed(0)} ${Math.max(0,y-py).toFixed(0)} ${(w+2*px).toFixed(0)} ${(h+2*py).toFixed(0)}"`;});
-    return `<span class="st-bleed" aria-hidden="true">${fig}</span>`;
+    const fig=NXTANAT.figure({primary:m.primary,secondary:m.secondary,view}).replace(/viewBox="([\d.\-]+) ([\d.\-]+) ([\d.]+) ([\d.]+)"/,(s,x,y,w,h)=>{x=+x;y=+y;w=+w;h=+h;const side=Math.max(w,h)*1.35,cx=x+w/2,cy=y+h/2;return `viewBox="${(cx-side/2).toFixed(0)} ${Math.max(0,cy-side/2).toFixed(0)} ${side.toFixed(0)} ${side.toFixed(0)}"`;});
+    return `<button type="button" class="st-ex-fig is-lens is-${view}" onclick="NXP.exerciseDetails()" aria-label="Show exercise details">${fig}</button>`;
   }
   function muscleMapHTML(names,title,sub){
     if(typeof NXTLIB==='undefined'||typeof NXTANAT==='undefined')return '';
@@ -529,17 +841,6 @@ const NXP = (() => {
      workout engine (targetFor / done / sessionRows / cue). Nothing here invents
      metadata, so an exercise with no history simply shows fewer lines. */
   function trimNum(n) {const v=Math.round(Number(n)*1000)/1000;return Number.isFinite(v)?String(v):'';}
-  function loadLine(weight,reps) {return `${esc(trimNum(weight))}<em>kg</em> × ${esc(reps)}`;}
-  /* One label + one figure. No border, no fill: the comparison is carried by
-     type weight and colour, so three of these read as one line of instruments
-     rather than three competing cards. */
-  function aimCell(label,value,sub,action) {
-    const top=`<span class="nxp-aim-top"><span class="nxp-caption">${esc(label)}</span>${action?'<i aria-hidden="true">›</i>':''}</span>`;
-    const inner=`${top}<b>${value}</b>${sub?`<small>${sub}</small>`:''}`;
-    return action
-      ? `<button type="button" class="nxp-aim-cell is-tappable" onclick="${esc(action)}">${inner}</button>`
-      : `<div class="nxp-aim-cell">${inner}</div>`;
-  }
   /* A stepper is the primary way to set load and reps: it keeps the numeric
      keyboard closed, which keeps the CTA on screen and the layout still. The
      field stays a real <input id="weightInput"> so the engine reads it exactly
@@ -651,7 +952,11 @@ const NXP = (() => {
     const previous=N.sessionRows(ex,state.gym,state.date,100).at(-1),prev=previous?N.bestSet(previous.sets):null,aim=N.aimFor(ex);
     const current=N.sessionLogs().filter(r=>r.exercise===ex),last=current.filter(r=>r.setType!=='warmup').at(-1);
     const total=list.reduce((a,e)=>a+Number(e.sets),0),count=list.reduce((a,e)=>a+Math.min(N.done(e.name),e.sets),0);
-    const weight=draft.weightInput??last?.weight??(cue.weight||'');
+    /* Ascension: the coordinated advice (NXT.coach.trainAdvice) is coachFor()'s own output,
+       except that a load step meeting a cautious weight decision reads as a hold. The field then
+       opens at the hold load, as the headline says; Aim still fills the engine's step on tap. */
+    const coach=finished?null:coachAdvice(ex);
+    const weight=draft.weightInput??last?.weight??(coach&&coach.coordinated&&coach.coordinated.hold?coach.weight:(cue.weight||''));
     const index=list.findIndex(e=>e.name===ex),lastMove=index===list.length-1;
     /* Train repaints on every logged set, so an entrance animation declared in
        CSS alone would replay constantly. The class is only emitted when the
@@ -708,32 +1013,51 @@ const NXP = (() => {
     const fig=(typeof NXTANAT!=='undefined'&&m.primary.length)?NXTANAT.figure({primary:m.primary,secondary:m.secondary,view:NXTANAT.viewFor(m.primary,[]),crop:false}):'';
     const aimText=aim?(aim.kind==='reentry'?'Ease back in · lighter':aim.kind==='load'?`+${trimNum(aim.weight-Number(prev.weight))} kg`:aim.kind==='rep'?(/^Under /.test(aim.why||'')?aim.why:'One more rep'):(aim.why||'Match your best')):'Set a baseline';
     /* D25 coach: note + a target for every planned set. Tapping a target fills the fields; nothing is logged. */
-    const coach=N.coachFor(ex),tg=n=>esc(trimNum(n));
+    const tg=n=>esc(trimNum(n));
     const pillTxt=(()=>{if(!coach)return '';
       if(coach.kind==='load'&&prev)return `+${tg(coach.weight-Number(prev.weight))} kg`;
       return ({rep:'+1 rep',reentry:'Ease in',stall:'Stalled',tired:'Easy day',rebuild:'Rebuild',hold:'Hold',new:'Baseline',baseline:'Baseline'})[coach.kind]||'';})();
-    const coachHTML=coach?`<section class="st-coach is-${coach.kind}${exMove?' is-enter':''}" aria-label="Coach">
-          <div class="st-coach-top">
-            <span class="st-coach-ico" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 2.4l1.8 5.3 5.3 1.8-5.3 1.8L10 16.6l-1.8-5.3L2.9 9.5l5.3-1.8z"/></svg></span>
-            <div class="st-coach-tt"><p class="st-coach-k">Coach</p><h3 class="st-coach-h">${esc(coach.headline)}</h3></div>
-            ${pillTxt?`<span class="st-coach-pill">${esc(pillTxt)}</span>`:''}
-          </div>
+    const coachLine=coach?`<details class="st-coachline is-${coach.kind}${coach.coordinated&&coach.coordinated.hold?' is-coordinated':''}${exMove?' is-enter':''}">
+          <summary><span class="st-coach-ico" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 2.4l1.8 5.3 5.3 1.8-5.3 1.8L10 16.6l-1.8-5.3L2.9 9.5l5.3-1.8z"/></svg></span><b>${esc(coach.headline)}</b>${pillTxt?`<em class="st-coach-pill">${esc(pillTxt)}</em>`:''}<span class="st-coachline-why">Why<i aria-hidden="true">›</i></span></summary>
           <p class="st-coach-n">${esc(coach.note)}</p>
-          ${coach.sets&&coach.sets.length?`<div class="st-coach-sets" role="group" aria-label="Target for each set">${coach.sets.map((x,k)=>`<button type="button" class="st-cs${setType==='working'&&k===done?' is-now':''}${k<done?' is-done':''}" onclick="NXP.useTarget(${k})" aria-label="Set ${x.n}: ${tg(x.weight)} kilograms for ${x.reps} reps. Tap to fill"><small>Set ${x.n}</small><b class="vn-num">${tg(x.weight)} × ${x.reps}</b></button>`).join('')}</div>`:''}
-        </section>`:'';
+        </details>`:'';
     const restPct=restLeft&&(ui.restTotal||restPlan)?Math.max(0,Math.min(100,restLeft/(ui.restTotal||restPlan)*100)):0;
     /* Set chips: warm-ups, then one chip per planned working set (extras are
        appended). Logged chips open the same edit sheet as before. */
     const freshId=justLogged&&loggedEntry&&loggedEntry.exercise===ex?loggedEntry.id:null;
-    const dots=Array.from({length:Number(t.sets)},(_,k)=>`<i class="${k<done?'is-done':k===done?'is-now':''}"></i>`).join('');
     const setNo=setType==='warmup'?'Warm-up':(done>=Number(t.sets)?`Extra set`:`Set ${done+1}`);
     const setOf=setType==='warmup'||done>=Number(t.sets)?'':`of ${t.sets}`;
-    /* Logged sets for this exercise, as small chips inside the card. Each
-       compares with the best set last time (D20). Tap to edit. */
-    const chips=current.map((r,i)=>{
-      const c=cmpBest(r),warm=r.setType==='warmup';
-      return `<button type="button" class="st-chip2${warm?' is-warm':''}${c==='up'?' is-up':''}${r.id===freshId?' is-fresh':''}" onclick="NXP.editCurrentSet(${i})" aria-label="Edit ${warm?'warm-up':'set '+r.setNum}: ${esc(trimNum(r.weight))} kilograms for ${esc(r.reps)}${c==='up'?', beat last time':c==='eq'?', matched last time':''}"><span>${warm?'W':r.setNum}</span>${esc(trimNum(r.weight))}×${esc(r.reps)}${c==='up'?'<i aria-hidden="true">↑</i>':''}</button>`;
-    }).join('');
+    /* The set ledger (NXTFRM 2.0): one row per planned working set. Logged
+       rows show the set and how it compared with the best set last time (D20);
+       the current row IS the entry; rows still to come show the coach's target
+       for that set (D25) and fill the fields on tap. Warm-ups sit above the
+       plan. Nothing is logged by tapping a row; Log set still does that. */
+    const entry=`          ${stepper('weightInput','kg','',`<input id="weightInput" type="number" min="0" max="1000" step="0.1" inputmode="decimal" enterkeyhint="done" autocomplete="off" required placeholder="${esc(trimNum(aim?aim.weight:prev?prev.weight:0))}" value="${esc(weight)}" aria-labelledby="weightInput-label" oninput="NXP.rememberInput(this)">`,trimNum(t.inc||2.5),`weight by ${trimNum(t.inc||2.5)} kilograms`)}
+          <span class="st-x" aria-hidden="true">×</span>
+          ${stepper('repsInput','reps','',`<input id="repsInput" type="number" min="1" max="100" step="1" inputmode="numeric" enterkeyhint="done" autocomplete="off" required placeholder="${aim?aim.reps:prev?prev.reps:t.reps[0]}" value="${esc(draft.repsInput??'')}" aria-labelledby="repsInput-label" oninput="NXP.rememberInput(this)">`,'1','reps by one')}`;
+    const working=current.filter(r=>r.setType!=='warmup'),warm=current.filter(r=>r.setType==='warmup');
+    const planned=Math.max(1,Number(t.sets)||1);
+    const loggedRow=(r,label)=>{
+      const c=cmpBest(r),i=current.indexOf(r),isWarm=r.setType==='warmup';
+      const word=isWarm?'Warm-up':c==='up'?'Beat last time':c==='eq'?'Matched':'Logged';
+      return `<li class="st-lrow is-done${isWarm?' is-warm':''}${c==='up'?' is-up':''}${r.id===freshId?' is-fresh':''}"><button type="button" onclick="NXP.editCurrentSet(${i})" aria-label="Edit ${isWarm?'warm-up':'set '+r.setNum}: ${esc(trimNum(r.weight))} kilograms for ${esc(r.reps)}, ${esc(word.toLowerCase())}"><span class="st-ln">${esc(label)}</span><b class="vn-num">${esc(trimNum(r.weight))} <i>×</i> ${esc(r.reps)}</b><small>${c==='up'?'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10V2M2.5 5.5L6 2l3.5 3.5"/></svg>':''}<span class="st-lw">${esc(word)}</span><span class="st-lw-s" aria-hidden="true">${esc(word==='Beat last time'?'Beat':word)}</span></small></button></li>`;
+    };
+    const entryRow=(label)=>`<li class="st-lrow is-now"><span class="st-ln">${esc(label)}</span><div class="st-entry">${entry}</div></li>`;
+    const nextRow=(k)=>{
+      const x=coach&&coach.sets&&coach.sets[k];
+      return x?`<li class="st-lrow is-next"><button type="button" onclick="NXP.useTarget(${k})" aria-label="Set ${k+1} target: ${tg(x.weight)} kilograms for ${x.reps} reps. Tap to fill"><span class="st-ln">${k+1}</span><b class="vn-num">${tg(x.weight)} <i>×</i> ${x.reps}</b><small>Target · tap to fill</small></button></li>`
+              :`<li class="st-lrow is-next"><span class="st-ln">${k+1}</span><b class="vn-num">—</b><small>${t.reps[0]}–${t.reps[1]} reps</small></li>`;
+    };
+    const rows=[];
+    warm.forEach(r=>rows.push(loggedRow(r,'W')));
+    if(setType==='warmup')rows.push(entryRow('W'));
+    for(let k=0;k<Math.max(planned,working.length);k++){
+      if(k<working.length)rows.push(loggedRow(working[k],String(k+1)));
+      else if(k===working.length&&setType==='working')rows.push(entryRow(String(k+1)));
+      else rows.push(nextRow(k));
+    }
+    if(setType==='working'&&working.length>=planned)rows.push(entryRow('+'));
+    const ledger=`<ol class="st-ledger" aria-label="Sets">${rows.join('')}</ol>`;
     const form=`<form id="nxp-set-form" class="st-card" onsubmit="event.preventDefault();NXP.logSet()">
         <div class="st-card-head">
           <p class="st-card-t"><b>${esc(setNo)}</b>${setOf?` <span>${esc(setOf)}</span>`:''}</p>
@@ -742,20 +1066,7 @@ const NXP = (() => {
             <div class="nxp-seg" role="group">${[['working','Working'],['warmup','Warm-up']].map(([v,l])=>`<button type="button" class="${setType===v?'is-on':''}" aria-pressed="${setType===v}" onclick="NXP.setSetType('${v}')">${l}</button>`).join('')}</div>
           </fieldset>
         </div>
-        <div class="st-dots" role="img" aria-label="${done} of ${t.sets} working sets logged">${dots}</div>
-        ${chips?`<div class="st-chips" aria-label="Logged sets">${chips}</div>`:''}
-        <div class="st-entry">
-          ${stepper('weightInput','kg','',`<input id="weightInput" type="number" min="0" max="1000" step="0.1" inputmode="decimal" enterkeyhint="done" autocomplete="off" required placeholder="${esc(trimNum(aim?aim.weight:prev?prev.weight:0))}" value="${esc(weight)}" aria-labelledby="weightInput-label" oninput="NXP.rememberInput(this)">`,trimNum(t.inc||2.5),`weight by ${trimNum(t.inc||2.5)} kilograms`)}
-          <span class="st-x" aria-hidden="true">×</span>
-          ${stepper('repsInput','reps','',`<input id="repsInput" type="number" min="1" max="100" step="1" inputmode="numeric" enterkeyhint="done" autocomplete="off" required placeholder="${aim?aim.reps:prev?prev.reps:t.reps[0]}" value="${esc(draft.repsInput??'')}" aria-labelledby="repsInput-label" oninput="NXP.rememberInput(this)">`,'1','reps by one')}
-        </div>
-        <div class="st-refs">
-          ${aim?`<button type="button" class="st-refc is-aim" onclick="NXP.useAim()" aria-label="Aim ${esc(trimNum(aim.weight))} kilograms for ${aim.reps}. Tap to fill">
-            <small>Aim <em>Tap to fill</em></small><b class="vn-num">${esc(trimNum(aim.weight))} × ${esc(aim.reps)}</b><span>${esc(aimText)}</span></button>`
-          :`<div class="st-refc is-aim"><small>Aim</small><b class="vn-num">${t.reps[0]}–${t.reps[1]} reps</b><span>Set a baseline</span></div>`}
-          <div class="st-refc"${prev?` data-w="${esc(prev.weight)}" data-r="${esc(prev.reps)}"`:''}><small>Best last time</small><b class="vn-num">${prev?`${esc(trimNum(prev.weight))} × ${esc(prev.reps)}`:'—'}</b><span>${previous?esc(N.shortDate(previous.date)):'No history yet'}</span></div>
-        </div>
-        ${coachHTML}
+        ${ledger}
         <input type="hidden" id="n99-set-type" value="${setType}">
         <input type="hidden" id="n99-rir" value="${esc(rir)}">
         <button id="nxp-log-button" type="submit" class="n99-button nxp-train-cta st-log" data-idle-label="${esc(idleLabel)}">${justLogged?`<span class="nxp-cta-check" aria-hidden="true">✓</span>${esc(confirmLabel)}`:esc(idleLabel)}</button>
@@ -792,6 +1103,14 @@ const NXP = (() => {
         </div>
         ${bleedHTML(ex)}
       </section>
+
+      <div class="st-refline" role="group" aria-label="This exercise">
+        ${aim?`<button type="button" class="st-ref is-aim" onclick="NXP.useAim()" aria-label="Aim ${esc(trimNum(aim.weight))} kilograms for ${aim.reps}. Tap to fill"><small>Aim</small><b class="vn-num">${esc(trimNum(aim.weight))} × ${esc(aim.reps)}</b><span>${esc(aimText)}</span></button>`
+             :`<div class="st-ref is-aim"><small>Aim</small><b class="vn-num">${t.reps[0]}–${t.reps[1]} reps</b><span>Set a baseline</span></div>`}
+        <div class="st-ref"${prev?` data-w="${esc(prev.weight)}" data-r="${esc(prev.reps)}"`:''}><small>Best</small><b class="vn-num">${prev?`${esc(trimNum(prev.weight))} × ${esc(prev.reps)}`:'—'}</b><span>${previous?esc(N.shortDate(previous.date)):'No history yet'}</span></div>
+        <div class="st-ref"><small>Rest</small><b class="vn-num">${esc(apx96FormatTimer(restPlan))}</b><span>planned</span></div>
+      </div>
+      ${coachLine}
 
       ${!addOnActive()&&sessionDiffers()?`<button type="button" class="st-diff" onclick="NXP.saveTodayToRoutine()"><span><b>Changed for today only</b><small>Save this order and these exercises to your ${esc(N.label(state.dayType))} routine</small></span><em>Save</em></button>`:''}
 
@@ -844,7 +1163,7 @@ const NXP = (() => {
       </div>
       <div class="st-mgroup">
         ${row('undo','Undo last set','','closeModal();apx96UndoLastSet()')}
-        ${row('gear','Session options','Shorter session, notes, check-in','NXP.sessionMenu()')}
+        ${row('gear','Session options',N.features.checkin?'Shorter session, notes, check-in':'Shorter session and notes','NXP.sessionMenu()')}
       </div>
       ${addOnEligible()?`<div class="st-mgroup st-madd">${addOnSection()}</div>`:''}
     </div>`);
@@ -859,7 +1178,7 @@ const NXP = (() => {
     fillEntry(aim.weight,aim.reps);
   }
   function useTarget(k) {
-    const c=N.coachFor(state.exercise),s=c&&c.sets&&c.sets[k];if(!s)return;
+    const c=coachAdvice(state.exercise),s=c&&c.sets&&c.sets[k];if(!s)return;
     fillEntry(s.weight,s.reps);
   }
   function scheduleConfirmReset() {
@@ -1033,7 +1352,7 @@ const NXP = (() => {
     /* Leaving state.exercise pointing at a removed add-on would strand the
        logging form on an exercise that is no longer part of the day. */
     if (state.exercise === name) { state.exercise = list[0] || ""; state.setNum = 1; }
-    if (!list.length) { try { apx96StopRest(); } catch (e) {} }
+    if (!list.length) apx96StopRest();
     persist(); render(); toast("Removed " + name);
   }
   function addOnPick() {
@@ -1130,18 +1449,30 @@ const NXP = (() => {
   }
 
   function exerciseDetails() {
-    const ex=state.exercise,t=N.targetFor(ex),cue=N.cue(ex);
-    const note=typeof v88NoteFor==='function'?v88NoteFor(ex):'';
-    const sessions=N.sessionRows(ex,state.gym,state.date,100).slice(-5).reverse();
+    /* Optional arguments are read from `arguments`: the release gate slices this
+       file on the exact marker "function exerciseDetails()". Train passes none —
+       the current exercise at the current gym, with the session actions (swap,
+       equipment note). Progress › Performance passes a lift's name and its gym —
+       that lift's record only: nothing that acts on today's session, and no plan
+       facts (target, rest, increment) unless the lift really is in today's plan at
+       this gym. */
+    const record=typeof arguments[0]==='string'&&arguments[0]!=='';
+    const ex=record?arguments[0]:state.exercise;
+    const gym=record&&typeof arguments[1]==='string'&&arguments[1]!==''?arguments[1]:state.gym;
+    const sameGym=gym===state.gym;
+    const planned=!record||(sameGym&&typeof template==='function'&&template().some(e=>e&&e.name===ex));
+    const t=N.targetFor(ex),cue=sameGym?N.cue(ex):null;
+    const note=sameGym&&typeof v88NoteFor==='function'?v88NoteFor(ex):'';
+    const sessions=N.sessionRows(ex,gym,state.date,100).slice(-5).reverse();
     const rest=typeof suggestedRestSeconds==='function'?suggestedRestSeconds(ex):90;
     /* Equipment shows only when the library actually knows it — no "Unknown"
        placeholder, and never inferred from the exercise name. */
     const equip=typeof NXTLIB!=='undefined'?NXTLIB.equipmentFor(ex):'';
-    const facts=[['Target',`${t.sets} × ${t.reps[0]}–${t.reps[1]} reps`],['Rest',apx96FormatTimer(rest)],['Increment',`${trimNum(t.inc||2.5)} kg`]].concat(equip?[['Equipment',equip]]:[])
+    const facts=(planned?[['Target',`${t.sets} × ${t.reps[0]}–${t.reps[1]} reps`],['Rest',apx96FormatTimer(rest)],['Increment',`${trimNum(t.inc||2.5)} kg`]]:[]).concat(equip?[['Equipment',equip]]:[])
       .map(([k,v])=>`<div class="nxp-detail-fact"><span class="nxp-caption">${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
     const history=sessions.length
       ? `<ol class="nxp-detail-history">${sessions.map(s=>`<li><span>${esc(N.shortDate(s.date))}</span><b>${s.sets.map(r=>`${esc(trimNum(r.weight))}×${esc(r.reps)}`).join(' · ')}</b></li>`).join('')}</ol>`
-      : `<p class="n99-small">No previous sessions recorded for this exercise at ${esc(state.gym)}.</p>`;
+      : `<p class="n99-small">No previous sessions recorded for this exercise at ${esc(gym)}.</p>`;
     /* The full body belongs here, where there is room for it. Same renderer as
        the Train crop — one anatomy implementation, two sizes. */
     const m=typeof NXTLIB!=='undefined'?NXTLIB.musclesFor(ex):{primary:[],secondary:[]};
@@ -1157,13 +1488,267 @@ const NXP = (() => {
        on the same exercise. History and the base programme are not touched. */
     N.modal(ex,`<div class="nxp-detail">
       ${anat}${muscleBlock}
-      <div class="nxp-detail-facts">${facts}</div>
+      ${facts?`<div class="nxp-detail-facts">${facts}</div>`:''}
+      ${exhSectionHTML(ex,gym)}
       ${note?`<section class="nxp-detail-block"><h3>Equipment note</h3><p>${esc(note)}</p></section>`:''}
-      <section class="nxp-detail-block"><h3>${esc(cue.label)}</h3><p>${esc(cue.text)}</p></section>
+      ${cue?`<section class="nxp-detail-block"><h3>${esc(cue.label)}</h3><p>${esc(cue.text)}</p></section>`:''}
       <section class="nxp-detail-block"><h3>Recent sessions</h3>${history}</section>
-      ${button(note?'Edit equipment note':'Add equipment note','NXP.equipmentNote()',true)}
-      <button type="button" class="nxp-detail-swap" onclick="showSubstituteSheet()">Swap exercise</button>
+      ${record?'':`${button(note?'Edit equipment note':'Add equipment note','NXP.equipmentNote()',true)}
+      <button type="button" class="nxp-detail-swap" onclick="showSubstituteSheet()">Swap exercise</button>`}
     </div>`);
+    exhOpen();
+  }
+
+  /* ---- Exercise history (Ascension · charts) ----------------------------------
+     One question: how has my best working set for this exercise moved across
+     sessions? One point per session date, for this exact exercise name at this
+     exact gym — never merged across gyms or aliases. No new maths: N.sessionRows()
+     groups the stored working sets by date (warm-ups already out), N.bestSet() is
+     D20's best set (heaviest load, then most reps at it), and the optional dashed line
+     is the engine's own per-session estimated 1RM — the figure Progress › Performance
+     plots — drawn as an estimate (I11), never as a measurement, and off until the
+     e1RM toggle is switched on (it stretches the kg scale). The SVG is built as
+     a string at the measured width so labels stay a true 11px on a 320px phone;
+     strata.css only animates what this markup carries. */
+  const EXH_N=12;
+  const EXH_WORD={up:'Beat last time',eq:'Matched last time',down:'Below last time',first:'First session'};
+  const EXH_ICON={
+    up:'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10V2M2.5 5.5L6 2l3.5 3.5"/></svg>',
+    eq:'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5h7M2.5 7.5h7"/></svg>',
+    down:'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v8M2.5 6.5L6 10l3.5-3.5"/></svg>',
+    first:'<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="2.4"/></svg>'
+  };
+  let exh=null,exhUid=0,exhBound=false,exhRaf=0;
+  const exhReduced=()=>{try{return document.documentElement.getAttribute('data-nxp-motion')==='reduced'||!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(e){return false;}};
+  const exhYear=d=>String(d).slice(0,4)!==String(state.date).slice(0,4)?' '+String(d).slice(0,4):'';
+  const exhAxis=d=>N.shortDate(d)+exhYear(d);
+  const exhDate=d=>d===state.date?'Today':exhAxis(d);
+  /* Best sets use every working set, as Train's "Best last time" does. The estimate
+     follows the Performance tab's own rule (sets up to 15 reps), so the dashed line
+     is the same figure that tab shows; a session with none has no estimate. */
+  function exhSeries(ex,gym) {
+    const upto=N.dateAdd(state.date,1);
+    const est=new Map(N.sessionRows(ex,gym,upto).map(s=>[s.date,s.value]));
+    const out=[];
+    N.sessionRows(ex,gym,upto,100).forEach(s=>{
+      const b=N.bestSet(s.sets),load=N.finite(b&&b.weight),reps=N.finite(b&&b.reps);
+      if(load===null||reps===null||!(reps>0))return;
+      out.push({date:s.date,load,reps,e1:N.finite(est.get(s.date))});
+    });
+    return out;
+  }
+  /* All-time best by D20's order. A strict improvement is required, so a tie keeps
+     the session that first set it (the same rule as the "New best" moment, D27). */
+  function exhBestIdx(series) {
+    let bi=-1;
+    series.forEach((s,i)=>{const b=bi<0?null:series[bi];if(!b||s.load>b.load||(s.load===b.load&&s.reps>b.reps))bi=i;});
+    return bi;
+  }
+  /* The D20 comparison with the session before it. */
+  function exhCmp(s,prev) {
+    const dw=s.load-prev.load,dr=s.reps-prev.reps;
+    return dw>0||(dw===0&&dr>0)?'up':dw===0&&dr===0?'eq':'down';
+  }
+  function exhParts(i) {
+    const s=exh.series[i],c=i>0?exhCmp(s,exh.series[i-1]):'first';
+    return {
+      date:exhDate(s.date),c,word:EXH_WORD[c],plain:`${fmtLoad(s.load)} kg × ${s.reps}`,
+      val:`${esc(fmtLoad(s.load))}<small>kg</small><i>×</i>${esc(s.reps)}`,
+      e1:s.e1!==null?`e1RM ${fmtLoad(s.e1)} kg · estimate`:'No e1RM estimate for this session'
+    };
+  }
+  /* The section's markup. Zero sessions and one session are text, never a blank
+     panel and never a one-point "line". The plot itself is painted after the sheet
+     is in the page, because only then is its width known (exhOpen). */
+  function exhSectionHTML(ex,gym) {
+    const series=exhSeries(ex,gym);
+    /* The estimate is opt-in (I11, like the weight chart's Projection): a glass toggle, off
+       by default, remembered for the page session in NXT.ui and nowhere else. A lift with no
+       estimate at all (every set above 15 reps) has nothing to switch on, so no toggle. */
+    const hasE1=series.some(s=>s.e1!==null),showE=!!N.ui.showE1rm&&hasE1;
+    exh={ex,gym,series,best:exhBestIdx(series),all:false,sel:null,W:0,off:0,geo:null,hasE1,showE};
+    const head=`<h3 id="exh-h">History · ${esc(gym)}</h3>`;
+    if(!series.length)return `<section class="nxp-detail-block exh is-empty" id="exh" aria-labelledby="exh-h">${head}<div class="exh-empty"><b>No sessions yet</b><span>Log a working set of ${esc(ex)} at ${esc(gym)} and each session’s best set will build a line here.</span></div></section>`;
+    const tog=hasE1
+      ? `<button type="button" class="exh-tog" id="exh-tog" aria-pressed="${showE}" aria-label="Estimated one-rep max, e1RM"><span class="exh-tog-box" aria-hidden="true"></span>e1RM<svg class="exh-tog-key" width="14" height="10" viewBox="0 0 14 10" aria-hidden="true"><line x1="0" y1="5" x2="14" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="2 4" stroke-linecap="round"/></svg></button>`
+      : '';
+    if(series.length===1){
+      const p=exhParts(0);
+      return `<section class="nxp-detail-block exh is-one" id="exh" aria-labelledby="exh-h"><div class="exh-head">${head}${tog}</div><div class="exh-one"><b class="exh-r-v vn-num">${p.val}</b><span>${esc(p.date)} · the only session so far</span>${hasE1?`<span id="exh-one-e"${showE?'':' hidden'}>${esc(p.e1)}</span>`:''}</div><p class="exh-hint">A line appears after the second session.</p></section>`;
+    }
+    const seg=series.length>EXH_N
+      ? `<div class="vn-seg n99-segments exh-seg" role="group" aria-label="Sessions shown"><button type="button" class="active" aria-pressed="true" data-all="0" aria-label="Last ${EXH_N} sessions">Last ${EXH_N}</button><button type="button" aria-pressed="false" data-all="1" aria-label="All ${series.length} sessions">All</button></div>`
+      : '';
+    return `<section class="nxp-detail-block exh" id="exh" aria-labelledby="exh-h">
+      <div class="exh-head">${head}${seg}${tog}</div>
+      <div class="exh-read" aria-hidden="true"><span class="exh-r-d" id="exh-r-d"></span><span class="exh-r-c" id="exh-r-c"></span><b class="exh-r-v vn-num" id="exh-r-v"></b><span class="exh-r-e" id="exh-r-e"></span></div>
+      <p class="st-sr" id="exh-live" aria-live="polite"></p>
+      <div class="exh-plot" id="exh-plot" tabindex="0" role="application" aria-label="History chart, ${esc(ex)} at ${esc(gym)}. Drag across it to inspect a session; left and right arrow keys move; Escape returns to the latest."></div>
+      <p class="st-sr" id="exh-eq"></p>
+      <p class="exh-cap">Evenly spaced per session · numbers are reps</p>
+      <details class="exh-how"><summary>How to read this chart</summary><p>Each point is one session’s best working set: the heaviest load, then the most reps at that load. Warm-ups are left out. Sessions are spaced evenly, not by date.</p><p>Switch on e1RM to add a dashed line: the estimated one-rep max (Epley: load × (1 + reps ÷ 30), working sets up to 15 reps), the figure Progress › Performance uses. It is an estimate, not a tested maximum, and it widens the kg scale, so it is off until you ask for it.</p></details>
+    </section>`;
+  }
+  function exhOpen() {
+    if(!exh||!document.getElementById('exh'))return;
+    document.querySelectorAll('#exh .exh-tog').forEach(b=>b.addEventListener('click',()=>exhE1(b.getAttribute('aria-pressed')!=='true')));
+    const host=document.getElementById('exh-plot');
+    if(!host)return;
+    document.querySelectorAll('#exh .exh-seg button').forEach(b=>b.addEventListener('click',()=>exhRange(b.dataset.all==='1')));
+    /* The sheet closes by dragging down from anywhere; a scrub across the plot must
+       not start that, so the plot keeps its pointerdown to itself. */
+    host.addEventListener('pointerdown',e=>{e.stopPropagation();try{host.setPointerCapture(e.pointerId);}catch(_){ }exhScrub(e);});
+    host.addEventListener('pointermove',e=>{if(e.buttons)exhScrub(e);});
+    host.addEventListener('keydown',exhKey);
+    if(!exhBound){exhBound=true;window.addEventListener('resize',exhResize);}
+    exhPaint(true);
+  }
+  function exhResize() {
+    cancelAnimationFrame(exhRaf);
+    exhRaf=requestAnimationFrame(()=>{
+      const host=document.getElementById('exh-plot');
+      if(host&&exh&&Math.abs((host.clientWidth||0)-exh.W)>1)exhPaint(false);
+    });
+  }
+  /* The e1RM toggle. The choice lives in NXT.ui for the page session (the weight chart keeps
+     its Projection and Post-workout toggles there too) and is never written to storage. It
+     changes the kg scale, so the plot is redrawn; the selection is kept. */
+  function exhE1(on) {
+    if(!exh)return;
+    N.ui.showE1rm=!!on;
+    exh.showE=!!on&&exh.hasE1;
+    document.querySelectorAll('#exh .exh-tog').forEach(b=>b.setAttribute('aria-pressed',String(exh.showE)));
+    const one=document.getElementById('exh-one-e');
+    if(one)one.hidden=!exh.showE;
+    if(document.getElementById('exh-plot'))exhPaint(true);
+  }
+  function exhRange(all) {
+    if(!exh)return;
+    exh.all=!!all;exh.sel=null;
+    document.querySelectorAll('#exh .exh-seg button').forEach(b=>{const on=(b.dataset.all==='1')===exh.all;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});
+    exhPaint(true);
+  }
+  function exhCur() {return exh.sel===null?exh.series.length-1:exh.sel;}
+  /* Selection moves marks and text only; the plot is not redrawn. */
+  function exhSelect(i,opts) {
+    if(!exh)return;
+    const hi=exh.series.length-1,j=opts&&opts.clear?hi:Math.max(exh.off,Math.min(hi,Number(i)||0));
+    exh.sel=j===hi?null:j;
+    exhMark(j);
+  }
+  function exhMark(i) {
+    const host=document.getElementById('exh-plot');
+    if(!host||!exh||!exh.geo)return;
+    const g=exh.geo,k=i-exh.off;
+    if(k<0||k>=g.n)return;
+    const cur=host.querySelector('.exh-cur'),act=host.querySelector('.exh-act');
+    /* The stem joins the selected session's estimate (when it has one) to its best set. */
+    if(cur){cur.setAttribute('x1',g.xs[k].toFixed(1));cur.setAttribute('x2',g.xs[k].toFixed(1));cur.setAttribute('y1',(g.es[k]!==null?g.es[k]:g.top).toFixed(1));cur.setAttribute('y2',g.ys[k].toFixed(1));}
+    if(act){act.setAttribute('cx',g.xs[k].toFixed(1));act.setAttribute('cy',g.ys[k].toFixed(1));}
+    host.querySelectorAll('.exh-reps').forEach(t=>t.classList.toggle('is-sel',Number(t.dataset.k)===k));
+    const p=exhParts(i),set=(id,fn)=>{const el=document.getElementById(id);if(el)fn(el);};
+    set('exh-r-d',e=>{e.textContent=p.date;});
+    set('exh-r-v',e=>{e.innerHTML=p.val;});
+    set('exh-r-c',e=>{e.className='exh-r-c is-'+p.c;e.innerHTML=EXH_ICON[p.c]+esc(p.word);});
+    set('exh-r-e',e=>{e.textContent=exh.showE?p.e1:'';});
+    set('exh-live',e=>{e.textContent=`${p.date} · ${p.plain} · ${p.word}`;});
+  }
+  function exhScrub(e) {
+    const host=document.getElementById('exh-plot'),svg=host&&host.querySelector('svg');
+    if(!svg||!exh||!exh.geo)return;
+    const b=svg.getBoundingClientRect(),x=(e.clientX-b.left)/Math.max(1,b.width)*exh.W,xs=exh.geo.xs;
+    let k=0;
+    xs.forEach((px,i)=>{if(Math.abs(px-x)<Math.abs(xs[k]-x))k=i;});
+    exhSelect(exh.off+k);
+  }
+  /* Escape clears a moved selection back to the latest session and keeps the sheet
+     open; with nothing to clear it is left alone, so it closes the sheet as usual. */
+  function exhKey(e) {
+    if(!exh)return;
+    const cur=exhCur(),hi=exh.series.length-1;
+    if(e.key==='ArrowRight'){exhSelect(Math.min(hi,cur+1));e.preventDefault();}
+    else if(e.key==='ArrowLeft'){exhSelect(Math.max(exh.off,cur-1));e.preventDefault();}
+    else if(e.key==='Home'){exhSelect(exh.off);e.preventDefault();}
+    else if(e.key==='End'){exhSelect(hi);e.preventDefault();}
+    else if(e.key==='Escape'&&cur!==hi){exhSelect(hi,{clear:true});e.preventDefault();e.stopPropagation();}
+  }
+  function exhPaint(animate) {
+    const host=document.getElementById('exh-plot');
+    if(!host||!exh)return;
+    try{
+      const series=exh.series,total=series.length,off=exh.all?0:Math.max(0,total-EXH_N),vis=series.slice(off),n=vis.length;
+      const W=Math.max(240,Math.min(560,Math.round(host.clientWidth)||340)),H=W<330?216:236;
+      const R=14,T=32,B=44,PX=10,base=H-B,plotH=base-T,f=v=>Number(v).toFixed(1);
+      /* The kg axis follows the plotted data only (D2): the measured best-set loads, and the
+         estimate too while its toggle is on, never a hidden series. Headroom is .6 of a step
+         above and below (D51), so the line never presses on the frame; three or four ticks in a
+         left gutter (D58), the unit its own small label above them. */
+      const showE=exh.showE;
+      const lo0=Math.min(...vis.map(p=>p.load)),hi0=Math.max(...vis.map(p=>showE&&p.e1!==null?Math.max(p.e1,p.load):p.load));
+      const STEPS=[.5,1,2,2.5,5,10,20,25,50,100,200,250,500,1000],room=s=>({lo:lo0-s*.6,hi:hi0+s*.6});
+      const cnt=s=>{const r=room(s);return Math.floor(r.hi/s+1e-9)-Math.ceil(r.lo/s-1e-9)+1;};
+      const step=STEPS.find(s=>cnt(s)<=4)||1000;
+      let {lo,hi}=room(step);
+      const tickList=()=>{const a=[];for(let v=Math.ceil(lo/step-1e-9)*step;v<=hi+1e-9;v+=step)a.push(Math.round(v*100)/100);return a;};
+      let ticks=tickList();
+      /* A narrow domain can hold fewer than three ticks; widen it by one step, on the side that costs less. */
+      for(let g=0;ticks.length<3&&g<4;g++){
+        const down=(ticks.length?ticks[0]:Math.ceil(lo/step-1e-9)*step)-step,up=(ticks.length?ticks[ticks.length-1]:Math.floor(hi/step+1e-9)*step)+step;
+        if(lo-down<=up-hi)lo=down;else hi=up;
+        ticks=tickList();
+      }
+      /* The gutter is as wide as its longest tick label needs (34 for up to three characters). */
+      const L=Math.max(34,Math.ceil(10+6.3*Math.max(...ticks.map(v=>String(Number(v.toFixed(1))).length))));
+      const Y=v=>T+(hi-v)/(hi-lo)*plotH;
+      /* Evenly spaced per session: the gaps between dates are not drawn to scale. */
+      const xs=vis.map((_,i)=>L+PX+i/(n-1)*(W-L-R-2*PX)),ys=vis.map(p=>Y(p.load));
+      const slot=(W-L-R-2*PX)/(n-1),dr=slot>=18?4:slot>=9?3:slot>=5?2.2:1.6,dly=i=>Math.round(i/(n-1)*200);
+      const uid='exh'+(++exhUid),bk=exh.best-off,bv=series[exh.best],last=vis[n-1];
+      const d=N.smoothPath(xs.map((x,i)=>({x,y:ys[i]})));
+      const eP=showE?vis.map((p,i)=>p.e1!==null?{x:xs[i],y:Y(p.e1)}:null).filter(Boolean):[];
+      const eTop=eP.reduce((m,q)=>q.y<=m.y?q:m,eP[0]||{x:0,y:0}),es=vis.map(p=>showE&&p.e1!==null?Y(p.e1):null);
+      const grid=ticks.map(v=>`<line class="exh-grid" x1="${L}" x2="${W-R}" y1="${f(Y(v))}" y2="${f(Y(v))}"/><text class="exh-ytick" x="${L-7}" y="${f(Y(v)+4)}" text-anchor="end">${Number(v.toFixed(1))}</text>`).join('');
+      const unit=`<text class="exh-yunit" x="${L-7}" y="${f(Math.max(11,Y(ticks[ticks.length-1])-13))}" text-anchor="end">kg</text>`;
+      const defs=`<defs><linearGradient id="${uid}-l" gradientUnits="userSpaceOnUse" x1="${L}" y1="0" x2="${W-R}" y2="0"><stop offset="0" stop-color="#7C5CFF" stop-opacity=".7"/><stop offset=".55" stop-color="#B49AFF"/><stop offset="1" stop-color="#F3EEFF"/></linearGradient><linearGradient id="${uid}-a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9B7BFF" stop-opacity=".34"/><stop offset=".65" stop-color="#7C5CFF" stop-opacity=".07"/><stop offset="1" stop-color="#7C5CFF" stop-opacity="0"/></linearGradient><filter id="${uid}-g" filterUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
+      const area=`<path class="exh-area" d="${d} L ${f(xs[n-1])} ${f(base)} L ${f(xs[0])} ${f(base)} Z" fill="url(#${uid}-a)"/>`;
+      const line=`<path class="exh-line" d="${d}" pathLength="1" stroke="url(#${uid}-l)" filter="url(#${uid}-g)"/>`;
+      /* The estimate: dashed, no dots (a dot is a measurement), named on the line. */
+      const e1=eP.length>1?`<path class="exh-e1" d="${N.smoothPath(eP)}"/>`:'';
+      const e1l=eP.length>1?`<text class="exh-e1l" x="${f(Math.min(W-R-42,Math.max(L+46,eTop.x)))}" y="${f(eTop.y-9)}" text-anchor="middle">e1RM · estimate</text>`:'';
+      const dots=vis.map((p,i)=>`<circle class="exh-dot" cx="${f(xs[i])}" cy="${f(ys[i])}" r="${dr}" style="--d:${dly(i)}ms"/>`).join('');
+      /* The word sits above and to the side of the ring, away from the selection stem,
+         and above the line: the best load is the highest point, so the line only falls away from it. */
+      const right=bk>=0&&xs[bk]>(L+W-R)/2;
+      const best=bk>=0&&bk<n?`<circle class="exh-ring" cx="${f(xs[bk])}" cy="${f(ys[bk])}" r="${dr+4.5}"/><text class="exh-best" x="${f(xs[bk]+(right?-8:8))}" y="${f(ys[bk]-dr-6)}" text-anchor="${right?'end':'start'}">Best</text>`:'';
+      const sel=`<g class="exh-sel"><line class="exh-cur" x1="0" x2="0" y1="${T-8}" y2="${f(base)}"/><circle class="exh-act" cx="0" cy="0" r="5.5"/></g>`;
+      /* Reps under every point while they fit; on a long range only the selected
+         point's, so the numerals never run together (the readout names the rest). */
+      const reps=vis.map((p,i)=>`<text class="exh-reps${slot>=18?'':' is-off'}" data-k="${i}" x="${f(xs[i])}" y="${f(ys[i]+(i===bk?dr+4.5:dr)+12)}" text-anchor="middle" style="--d:${dly(i)+40}ms">${p.reps}</text>`).join('');
+      const axl=`<text class="exh-ax" x="${L}" y="${H-10}" text-anchor="start">${esc(exhAxis(vis[0].date))}</text><text class="exh-ax" x="${W-R}" y="${H-10}" text-anchor="end">${esc(exhAxis(last.date))}</text>`;
+      const label=`Best working set per session, ${exh.ex} at ${exh.gym}: ${n} sessions from ${exhAxis(vis[0].date)} to ${exhAxis(last.date)}${showE?', with the estimated 1RM as a dashed line':''}`;
+      host.innerHTML=`<svg class="exh-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(label)}" aria-describedby="exh-eq"><title>${esc(label)}</title>${defs}${grid}${unit}${area}${e1}${line}${dots}${best}${sel}${reps}${e1l}${axl}</svg>`;
+      exh.W=W;exh.off=off;exh.geo={xs,ys,es,top:T-8,n};
+      const eq=document.getElementById('exh-eq');
+      if(eq)eq.textContent=`${n} sessions from ${exhAxis(vis[0].date)} to ${exhAxis(last.date)}, best ${fmtLoad(bv.load)} kg × ${bv.reps} on ${exhAxis(bv.date)}${bk<0?' (before this range)':''}${showE&&last.e1!==null?`, e1RM ${fmtLoad(last.e1)} kg (estimate)`:''}. Best set per session: ${vis.map(p=>`${exhAxis(p.date)} ${fmtLoad(p.load)} kg × ${p.reps}`).join('; ')}.`;
+      exhMark(exhCur());
+      /* Draw-in plays on open and on a range change, never on a resize or a scrub,
+         and not at all under reduced motion. Held until the plot is on screen, so a
+         chart below the fold of the sheet is seen drawing, not drawn unseen. */
+      host.classList.remove('is-draw','is-wait');
+      if(animate&&!exhReduced()){
+        host.classList.add('is-draw');
+        if(typeof IntersectionObserver==='function'){
+          host.classList.add('is-wait');
+          const go=()=>host.classList.remove('is-wait');
+          const io=new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting&&x.intersectionRatio>=.3)){io.disconnect();go();}},{threshold:[.3,.35]});
+          io.observe(host);
+          setTimeout(()=>{io.disconnect();go();},3000);
+        }
+      }
+    }catch(err){
+      host.innerHTML='<div class="exh-empty"><b>Chart unavailable</b><span>The sessions are listed under Recent sessions.</span></div>';
+      if(typeof console!=='undefined')console.error(err);
+    }
   }
   function chooseExercise(i) {closeModal();N.selectExercise(i);}
   function editCurrentSet(i) {const r=N.sessionLogs().filter(r=>r.exercise===state.exercise)[i];if(r)openEditSet(r.id);}
@@ -1183,7 +1768,7 @@ const NXP = (() => {
     try{base.logSet();}finally{ui.confirmFrom=null;}
     if(state.logs.length===before&&d)ui.drafts.set(key,d);
   }
-  function sessionMenu() {N.modal('Session options',row('Session',N.label(state.dayType),'showSessionSheet()')+row('Gym',state.gym,'closeModal();cycleGym()')+row('Equipment note',v88NoteFor(state.exercise)?'Saved':'Add note','NXP.equipmentNote()')+row('Recovery','Check-in','apx96OpenReadiness()')+row('Shorter session','First 3 exercises','NXT.shorter()')+row('Full session','Restore queue','NXT.fullSession()')+button('Finish workout','NXT.finish()',true));}
+  function sessionMenu() {N.modal('Session options',row('Session',N.label(state.dayType),'showSessionSheet()')+row('Gym',state.gym,'closeModal();cycleGym()')+row('Equipment note',v88NoteFor(state.exercise)?'Saved':'Add note','NXP.equipmentNote()')+(N.features.checkin?row('Recovery','Check-in','apx96OpenReadiness()'):'')+row('Shorter session','First 3 exercises','NXT.shorter()')+row('Full session','Restore queue','NXT.fullSession()')+button('Finish workout','NXT.finish()',true));}
   function equipmentNote() {v88OpenNoteModal(state.exercise);}
   /* Weight highlights (D28): facts read straight from the weigh-ins, shown only
      when true — a new lowest reading, and weeks of falling averages in a row.
@@ -1249,12 +1834,23 @@ const NXP = (() => {
     applyAppearance();
     syncTrainNav(false);
     const v=N.ui.view,r=N.ui.range;
-    const period=r===14?'Last 2 weeks':r===30?'Last month':r===90?'Last 3 months':'All recorded weigh-ins';
-    const tabs=`<div class="n99-progress-tabs nxp-progress-tabs vn-progress-tabs" role="group" aria-label="Progress view">${[['overview','Weight'],['strength','Performance'],['body','Body']].map(([key,title])=>`<button type="button" class="${v===key?'active':''}" aria-pressed="${v===key}" onclick="NXT.setView('${key}')">${title}</button>`).join('')}</div>`;
+    const period=r===14?'Last 2 weeks':r===30?'Last month':r===90?'Last 3 months':r==='cut'?(settings.cutStart?'Since your cut started · '+N.shortDate(settings.cutStart):'Since your first weigh-in'):'All recorded weigh-ins';
+    const tabs=`<div class="n99-progress-tabs nxp-progress-tabs vn-progress-tabs" role="group" aria-label="Progress view">${[['overview','Weight'],['training','Training'],['strength','Performance','Lifts'],['body','Body']].map(([key,title,short])=>`<button type="button" class="${v===key?'active':''}" aria-pressed="${v===key}" aria-label="${title}" onclick="NXT.setView('${key}')">${short?`<span class="st-tab-l">${title}</span><span class="st-tab-s" aria-hidden="true">${short}</span>`:title}</button>`).join('')}</div>`;
     const chrome=`<header class="nxp-heading nxp-progress-chrome vn-progress-chrome"><div><h1>Progress</h1><p>${esc(period)}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>`;
     if(v==='body'){
       const waist=N.cleanRows(N.cfg().waist,'cm'),scans=bodyScanSource();
       document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-body"><header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(bodyTitle(waist,scans))}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${bodySummary(waist,scans)}${compMapHTML(scans)}${bodyView(waist,scans)}</div>`;
+      return;
+    }
+    if(v!=='training')N.ui.actLast=v;
+    if(v==='training'){
+      /* NXTFRM 2.0 — Training: the activity ledger. Counts and sums over stored
+         rows (N.activityWeeks / N.activitySummary); nothing estimated. */
+      const items=N.activityWeeks(actWeeks()),sum=N.activitySummary(items);
+      /* Bars grow on arrival at this view or on a range change, never on the
+         repaint after logging (same rule as the weight chart). */
+      if(N.ui.actLast!=='training')N.ui.actAnim=true;N.ui.actLast='training';
+      document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-training vn-progress"><header class="nxp-heading nxp-progress-chrome vn-progress-chrome"><div><h1>Progress</h1><p>${esc(activitySubtitle(items,sum))}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${activityView(items,sum)}</div>`;
       return;
     }
     if(v==='strength'){
@@ -1267,19 +1863,7 @@ const NXP = (() => {
     }
     /* Phase 2C — Weight owns its layout inside chartHTML (trajectory + journey).
        TDEE and weigh-in history are demoted below, not deleted. */
-    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${withGoalDate(N.chartHTML()).replace('<div class="vn-mhead"',downSoFarHTML()+weightHighlightsHTML()+slowWeekHTML()+'<div class="vn-mhead"')}<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details><button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${N.weights().length} readings</span></span><span class="vn-chev">›</span></button></div>`;
-  }
-  function syncLatestControl() {
-    const btn=document.getElementById('nxp-progress-latest');
-    if(!btn)return;
-    const pts=N.ui.chart?.points||[];
-    const last=pts.at(-1);
-    const away=!!(last&&N.ui.selected&&N.ui.selected!==last.date);
-    btn.hidden=!away;
-  }
-  function arrangeWeightView() {
-    /* Retired for 2C: chartHTML owns the Weight surface. Kept as a no-op so
-       any stray caller does not throw. */
+    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${withGoalDate(N.chartHTML()).replace('<div class="vn-mhead"',downSoFarHTML()+weightHighlightsHTML()+slowWeekHTML()+'<div class="vn-mhead"')}${N.features&&N.features.calories?`<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details>`:''}<button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${N.weights().length} readings</span></span><span class="vn-chev">›</span></button></div>`;
   }
   /* Engine vocabulary only (I12). The word is the status; colour and shape follow it. */
   const PERF_NOTE='Estimated 1RM is a comparison aid, not a tested maximum or proof of muscle retention. Technique, effort and equipment setup affect it.';
@@ -1342,25 +1926,40 @@ const NXP = (() => {
     if(status==='Building data')return `<circle class="vn-perf-mark is-building" cx="${f(x)}" cy="${f(y)}" r="3.2" fill="none"/>`;
     return `<circle class="vn-perf-mark is-improving" cx="${f(x)}" cy="${f(y)}" r="3.2"/>`;
   }
+  /* D50 — a performance row leads with the best set of the latest session (D20: heaviest
+     load, then most reps), names the status as a pill, and plots the engine's estimated
+     1RM per session as dots on a line with a soft area, the latest point carrying the
+     status mark. The read sentence shows only when it says something the pill does not. */
+  function performanceBest(item) {
+    const last=item.history.at(-1),sets=last&&last.sets;
+    if(!sets||!sets.length)return null;
+    const b=N.bestSet(sets),load=N.finite(b&&b.weight),reps=N.finite(b&&b.reps);
+    return load!==null&&reps!==null&&reps>0?{load,reps}:null;
+  }
   function performanceMeta(item) {
-    const bits=[item.gym,item.sessions===1?'1 session':item.sessions+' sessions'];
+    const bits=[];
     if(item.latestDate)bits.push(N.shortDate(item.latestDate));
-    const last=item.history.at(-1),set=last?.sets?.at(-1);
-    const load=set?N.finite(set.weight):null,reps=set?N.finite(set.reps):null;
-    if(load!==null&&reps!==null&&reps>0)bits.push(fmtLoad(load)+' kg × '+reps);
-    if(item.latestE1rm)bits.push('Est. 1RM '+fmtLoad(item.latestE1rm));
+    bits.push(item.sessions===1?'1 session':item.sessions+' sessions');
+    bits.push(item.gym);
     return bits.join(' · ');
   }
   function performanceRow(item, i) {
     const flag=statusFlag(item.status);
     const delta=deltaText(item);
     const model=sparkModel(item.history);
+    const best=performanceBest(item);
     const title=item.name+' at '+item.gym+', estimated 1RM';
     const eq=model?sparkText(item, model):item.name+' at '+item.gym+'. No sessions to plot.';
     const lineTone=item.tone==='good'?'is-good':item.tone==='watch'?'is-watch':'is-neutral';
     const lastPt=model?.points.at(-1);
-    const plot=model?`<div class="vn-perf-plot"><svg class="n99-spark vn-perf-spark" viewBox="0 0 110 40" role="img" aria-label="${esc(title)}" aria-labelledby="vn-perf-t-${i}" aria-describedby="vn-perf-eq-${i}" data-min="${model.min}" data-max="${model.max}"><title id="vn-perf-t-${i}">${esc(title)}</title><line class="vn-perf-grid" x1="4" y1="21" x2="106" y2="21"/><path class="vn-perf-line ${lineTone} ${flag}" d="${model.d}" fill="none"/>${lastPt?endMark(lastPt, item.status):''}</svg><p class="vn-perf-eq" id="vn-perf-eq-${i}">${esc(eq)}</p></div>`:'';
-    return `<li class="vn-perf-row" data-status="${esc(item.status)}" data-gym="${esc(item.gym)}" data-e1rm="${Number(item.latestE1rm)||0}"><div class="vn-perf-main"><h3 class="vn-perf-name">${esc(item.name)}</h3><p class="vn-perf-meta">${esc(performanceMeta(item))}</p><p class="vn-perf-statusline"><span class="vn-perf-flag ${flag}">${esc(item.status)}<i aria-hidden="true"></i></span>${delta?`<span class="vn-perf-delta">${esc(delta)}</span>`:''}</p><p class="vn-perf-read">${esc(statusRead(item.status))}</p></div>${plot}</li>`;
+    const f=n=>Number(n).toFixed(2);
+    const gid='vpg'+i;
+    const area=model&&model.points.length>1?`<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".3"/><stop offset=".75" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs><path class="vn-perf-area ${lineTone}" fill="url(#${gid})" d="${model.d} L ${f(model.points.at(-1).x)} 40 L ${f(model.points[0].x)} 40 Z"/>`:'';
+    const dots=model?model.points.slice(0,-1).map(p=>`<circle class="vn-perf-dot" cx="${f(p.x)}" cy="${f(p.y)}" r="1.7"/>`).join(''):'';
+    const plot=model?`<div class="vn-perf-plot"><svg class="n99-spark vn-perf-spark" viewBox="0 0 110 40" role="img" aria-labelledby="vn-perf-t-${i}" aria-describedby="vn-perf-eq-${i}" data-min="${model.min}" data-max="${model.max}"><title id="vn-perf-t-${i}">${esc(title)}</title>${area}<path class="vn-perf-line ${lineTone} ${flag}" d="${model.d}" fill="none"/>${dots}${lastPt?endMark(lastPt, item.status):''}</svg><span class="vn-perf-e1rm vn-num">e1RM ${esc(fmtLoad(item.latestE1rm))}</span><p class="vn-perf-eq" id="vn-perf-eq-${i}">${esc(eq)}</p></div>`:'';
+    const read=['Review','Watch','Improving'].includes(item.status)?statusRead(item.status):'';
+    const pillWord={'Building data':'Building','Older history':'Older','Holding steady':'Holding'}[item.status]||item.status;
+    return `<li class="vn-perf-row st-perf" data-status="${esc(item.status)}" data-gym="${esc(item.gym)}" data-e1rm="${Number(item.latestE1rm)||0}" aria-label="${esc(item.name+'. '+(best?'Best set last time '+fmtLoad(best.load)+' kilograms for '+best.reps+'. ':'')+item.status+(delta?' '+delta:'')+'. '+statusRead(item.status))}"><div class="vn-perf-main"><h3 class="vn-perf-name">${esc(item.name)}<svg class="st-ico st-perf-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l7 7-7 7"/></svg></h3><div class="st-perf-line">${best?`<p class="st-perf-best vn-num">${esc(fmtLoad(best.load))}<small>kg</small> × ${best.reps}</p>`:''}<span class="vn-perf-flag st-perf-pill ${flag}" title="${esc(statusRead(item.status))}"><i aria-hidden="true"></i>${esc(pillWord)}${delta?` <b class="vn-num">${esc(delta)}</b>`:''}</span></div><p class="vn-perf-meta">${esc(performanceMeta(item))}</p>${read?`<p class="vn-perf-read">${esc(read)}</p>`:''}</div>${plot}<button type="button" class="st-perf-open" data-ex="${esc(item.name)}" data-gym="${esc(item.gym)}" onclick="NXP.exerciseDetails(this.dataset.ex,this.dataset.gym)" aria-label="${esc('Exercise details: '+item.name+' at '+item.gym)}"></button></li>`;
   }
   function performanceSubtitle(items) {
     const last=items.map(x=>x.latestDate).filter(Boolean).sort().at(-1);
@@ -1393,9 +1992,156 @@ const NXP = (() => {
     if(!items.length)return `<section class="vn-perf">${performanceSummary(items)}${note}</section>`;
     return `<section class="vn-perf" aria-label="Exercise comparisons">${performanceSummary(items)}<ol class="vn-perf-rows">${items.map(performanceRow).join('')}</ol>${note}</section>`;
   }
-  function arrangeStrengthView() {
-    /* 2G paints the comparison list in performanceView(). The V99 cards this
-       used to reorder are no longer injected. Kept so a stray caller does not throw. */
+  /* ---- Progress › Training: the activity ledger (NXTFRM 2.0) ---------------
+     Every figure is N.activityWeeks() / N.activitySummary(): counts and sums
+     over the stored rows, through the engine's own workRows() filter. Three
+     bar charts share one selected week and one stable readout; drag or arrow
+     across any chart and the readout changes, the layout does not. The plan
+     line is the CURRENT weekly plan drawn over past weeks as a reference and
+     labelled as such — the app keeps no plan history, so it cannot claim
+     what the plan was. Weeks before the first record are absent, never zero.
+     No score, no streak badge, no estimate. */
+  const ACT_RANGES=[[12,'12W'],[26,'26W'],[52,'1Y']];
+  function actWeeks() { const n=Number(N.ui.actWeeks)||12; return ACT_RANGES.some(([w])=>w===n)?n:12; }
+  function actFmt(n) { return Number(n||0).toLocaleString('en-SG'); }
+  function actWeekLabel(w) { return w.current?'This week':'Week of '+N.shortDate(w.start); }
+  function actWeekLong(w) { return N.shortDate(w.start)+' – '+N.shortDate(w.end); }
+  function actWeekSub(w) { return w.current&&w.daysElapsed<7?`${actWeekLong(w)} · day ${w.daysElapsed} of 7`:actWeekLong(w); }
+  function actTick(top) {
+    /* One or two round gridlines under the bars; never more, the bars carry the value. */
+    const raw=top/2,mag=Math.pow(10,Math.floor(Math.log10(Math.max(1,raw))));
+    const step=[1,2,2.5,5,10].map(m=>m*mag).find(v=>v>=raw)||mag*10;
+    const ticks=[];for(let v=step;v<top;v+=step)ticks.push(v);
+    return ticks.slice(0,2);
+  }
+  function actBars(items,key,o) {
+    const W=420,H=150,L=26,R=8,T=20,B=22,n=items.length;
+    const vals=items.map(w=>Number(w[key])||0),ref=o.ref>0?o.ref:null;
+    const top=Math.max(1,...vals,ref||0)*1.15;
+    const y=v=>T+(1-v/top)*(H-T-B),base=y(0);
+    const slot=(W-L-R)/n,bw=Math.min(34,slot*.62),x=i=>L+slot*i+(slot-bw)/2;
+    const f=v=>Number(v).toFixed(1);
+    const grid=actTick(top).map(v=>`<line class="st-act-grid" x1="${L}" x2="${W-R}" y1="${f(y(v))}" y2="${f(y(v))}"/><text class="st-ax st-act-gl" x="${L-6}" y="${f(y(v)+3.5)}" text-anchor="end">${actFmt(Math.round(v))}</text>`).join('');
+    const bars=items.map((w,i)=>{
+      const v=vals[i],h=v>0?Math.max(2,base-y(v)):0;
+      const cls=['st-act-bar',i===o.sel?'is-sel':'',w.current?'is-cur':'',v===0?'is-zero':''].filter(Boolean).join(' ');
+      const r=Math.min(6,bw/2);
+      const rect=v>0
+        ?`<rect class="${cls}" data-i="${i}" x="${f(x(i))}" y="${f(base-h)}" width="${f(bw)}" height="${f(h)}" rx="${f(r)}" style="--i:${i}"/>`
+        :`<rect class="${cls}" data-i="${i}" x="${f(x(i))}" y="${f(base-2)}" width="${f(bw)}" height="2" rx="1" style="--i:${i}"/>`;
+      const val=n<=13&&v>0?`<text class="st-act-val${i===o.sel?' is-sel':''}" data-i="${i}" x="${f(x(i)+bw/2)}" y="${f(base-h-5)}" text-anchor="middle">${actFmt(v)}</text>`:'';
+      return rect+val;
+    }).join('');
+    const refLine=ref?`<line class="st-act-ref" x1="${L}" x2="${W-R}" y1="${f(y(ref))}" y2="${f(y(ref))}"/><text class="st-act-refl" x="${W-R}" y="${f(y(ref)-4)}" text-anchor="end">${esc(o.refLabel||'')}</text>`:'';
+    const idx=n<=1?[0]:n<=4?items.map((_,i)=>i):[0,Math.round((n-1)/2),n-1];
+    const xl=[...new Set(idx)].map((i,k,arr)=>{
+      const w=items[i],anchor=k===0?'start':k===arr.length-1?'end':'middle';
+      const cx=anchor==='start'?x(i):anchor==='end'?x(i)+bw:x(i)+bw/2;
+      return `<text class="st-ax" x="${f(cx)}" y="${H-6}" text-anchor="${anchor}">${esc(w.current?'Now':N.shortDate(w.start))}</text>`;
+    }).join('');
+    return `<svg class="st-act-svg" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="${esc(o.id)}-t" aria-describedby="${esc(o.id)}-eq" style="--c:${o.color}"><title id="${esc(o.id)}-t">${esc(o.title)}</title>${grid}<line class="st-act-base" x1="${L}" x2="${W-R}" y1="${f(base)}" y2="${f(base)}"/>${refLine}${bars}${xl}</svg>`;
+  }
+  function actEq(items,key,unit) {
+    return items.map(w=>N.shortDate(w.start)+' '+actFmt(w[key])+(unit?' '+unit:'')).join(', ')+'.';
+  }
+  function activitySubtitle(items,sum) {
+    if(!items.length)return 'No training logged yet';
+    const span=items.length===1?'This week':`Last ${items.length} weeks`;
+    return `${span} · ${actFmt(sum.totalLiftDays)} lifting ${sum.totalLiftDays===1?'day':'days'} · ${actFmt(sum.totalCardioMin)} min cardio`;
+  }
+  function activityHeadline(items,sum) {
+    if(!items.length)return 'Nothing logged yet';
+    if(sum.fullWeeks===0)return 'Your first week of records';
+    const lifts=sum.avgLiftDays===null?null:Math.round(sum.avgLiftDays*10)/10;
+    if(lifts===null||lifts===0)return sum.avgCardioMin?`${Math.round(sum.avgCardioMin)} min of cardio a week on average`:'No lifting in these weeks';
+    return `${lifts} lifting ${lifts===1?'day':'days'} a week on average`;
+  }
+  function activityView(items,sum) {
+    const ranges=`<div class="vn-seg n99-segments st-act-seg" role="group" aria-label="Weeks shown">${ACT_RANGES.map(([w,l])=>`<button type="button" aria-pressed="${actWeeks()===w}" class="${actWeeks()===w?'active':''}" onclick="NXP.actRange(${w})">${l}</button>`).join('')}</div>`;
+    if(!items.length){
+      return `<section class="st-act is-empty" aria-label="Training activity">
+        <p class="st-sect">Training</p>
+        <h2 class="st-h3">Nothing logged yet</h2>
+        <p class="st-body st-mt2">Lifting days, working sets, kg lifted and cardio minutes appear here week by week once a session or a walk is logged. Nothing is estimated.</p>
+        <button type="button" class="st-cta" onclick="switchTab('train')">Open Train<span aria-hidden="true">›</span></button>
+      </section>`;
+    }
+    const n=items.length,selIdx=N.ui.actSel!==null&&N.ui.actSel!==undefined&&N.ui.actSel<n?N.ui.actSel:n-1,sel=items[selIdx];
+    const anim=N.ui.actAnim?' is-draw':'';N.ui.actAnim=false;
+    const planLabel=sum.planLifts>0?`Plan · ${sum.planLifts}/wk`:'';
+    const plan=sum.planLifts>0?`${sum.planLifts} lifting ${sum.planLifts===1?'day':'days'} a week in your current plan`:'No lifting days in your current plan';
+    const consHead=sum.planLifts>0
+      ?(sum.fullWeeks?`${sum.weeksAtPlan} of ${sum.fullWeeks} full ${sum.fullWeeks===1?'week':'weeks'} reached the plan${sum.bestRun>1?` · best run ${sum.bestRun} weeks`:''}`:'No full week yet')
+      :'Set lifting days in Settings › Training to compare';
+    const cons=sum.planLifts>0?`<ol class="st-act-cons" aria-label="Weeks at plan">${items.map((w,i)=>{
+      const met=!w.current&&w.liftDays>=sum.planLifts;
+      const cls=w.current?'is-cur':met?'is-met':'is-miss';
+      const word=w.current?'this week, in progress':met?'plan met':'below plan';
+      return `<li class="${cls}" style="--i:${i}"><span class="st-act-cd" aria-hidden="true"></span><span class="st-sr">${esc(actWeekLabel(w))}: ${w.liftDays} of ${sum.planLifts} lifting days, ${word}.</span></li>`;
+    }).join('')}</ol>`:'';
+    const read=`<div class="st-act-read" id="st-act-read" aria-live="polite">
+        <p class="st-act-rl"><b id="st-act-rl">${esc(actWeekLabel(sel))}</b><span id="st-act-rs">${esc(actWeekSub(sel))}</span></p>
+        <div class="st-act-rv">
+          <div style="--c:var(--st-lift)"><b class="vn-num" id="st-act-v0">${sel.liftDays}</b><small>lift days</small></div>
+          <div style="--c:var(--st-lift)"><b class="vn-num" id="st-act-v1">${sel.sets}</b><small>sets</small></div>
+          <div style="--c:var(--st-lift)"><b class="vn-num" id="st-act-v2">${actFmt(sel.tonnage)}</b><small>kg lifted</small></div>
+          <div style="--c:var(--st-cardio)"><b class="vn-num" id="st-act-v3">${sel.cardioMin}</b><small>cardio min</small></div>
+        </div>
+      </div>`;
+    const block=(id,title,meta,key,o,unit)=>`<div class="st-act-blk">
+        <div class="st-act-bh"><span class="st-cat" style="--c:${o.color}">${esc(title)}</span>${meta?`<span class="st-meta">${esc(meta)}</span>`:''}</div>
+        <div class="st-act-wrap${anim}" id="${id}" tabindex="0" role="application" aria-label="${esc(title)} by week. Drag to inspect a week; left and right arrow keys move; Escape returns to this week."
+          onpointerdown="NXP.actScrub(event)" onpointermove="if(event.buttons)NXP.actScrub(event)" onkeydown="NXP.actKey(event)">${actBars(items,key,Object.assign({id,title,sel:selIdx},o))}</div>
+        <p class="st-sr" id="${id}-eq">${esc(title)}, by week: ${esc(actEq(items,key,unit))}</p>
+      </div>`;
+    const avgSets=sum.avgSets===null?'':`avg ${Math.round(sum.avgSets)} / full week`;
+    return `<section class="st-act" aria-label="Training activity">
+      <div class="st-act-head">
+        <div><p class="st-sect">Training</p><h2 class="st-h3">${esc(activityHeadline(items,sum))}</h2><p class="st-meta st-mt2">${esc(plan)}${sum.cardioTarget?` · cardio target ${sum.cardioTarget} min`:''}</p></div>
+      </div>
+      <div class="st-range-row st-act-range">${ranges}</div>
+      ${read}
+      ${block('st-act-lifts','Lifting days',planLabel,'liftDays',{color:'var(--st-lift)',ref:sum.planLifts,refLabel:planLabel},'days')}
+      ${block('st-act-sets','Working sets',avgSets,'sets',{color:'var(--st-lift)'},'sets')}
+      ${block('st-act-cardio','Cardio minutes',sum.cardioTarget?`Target · ${sum.cardioTarget} min`:'','cardioMin',{color:'var(--st-cardio)',ref:sum.cardioTarget,refLabel:sum.cardioTarget?`Target · ${sum.cardioTarget}`:''},'min')}
+      <div class="st-act-blk st-act-consblk">
+        <div class="st-act-bh"><span class="st-cat" style="--c:var(--st-accent-lift)">Weeks at plan</span></div>
+        <p class="st-meta">${esc(consHead)}</p>
+        ${cons}
+      </div>
+      <details class="st-csum-d"><summary>How to read this</summary>
+        <p>Every bar is a count over your saved records: lifting days are days with at least one working set, working sets exclude warm-ups, kg lifted is load × reps across working sets (a set at 0 kg adds none), and cardio is the minutes you logged.</p>
+        <p>Weeks run Monday to Sunday. Weeks before your first record are not shown. The plan and cardio lines are your <em>current</em> settings drawn over past weeks as a reference — the app does not keep a history of plan changes. Nothing here is a score.</p>
+      </details>
+    </section>`;
+  }
+  function actRange(weeks) { N.ui.actWeeks=weeks;N.ui.actSel=null;N.ui.actAnim=true;N.repaint(); }
+  function actItems() { return N.activityWeeks(actWeeks()); }
+  function actSelect(index,opts) {
+    const items=actItems();if(!items.length)return;
+    const n=items.length,i=opts&&opts.clear?n-1:Math.max(0,Math.min(n-1,Number(index)||0));
+    N.ui.actSel=i===n-1?null:i;
+    const w=items[i];
+    const text=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+    text('st-act-rl',actWeekLabel(w));text('st-act-rs',actWeekSub(w));
+    text('st-act-v0',w.liftDays);text('st-act-v1',w.sets);text('st-act-v2',actFmt(w.tonnage));text('st-act-v3',w.cardioMin);
+    document.querySelectorAll('.st-act-bar[data-i],.st-act-val[data-i]').forEach(el=>el.classList.toggle('is-sel',Number(el.dataset.i)===i));
+  }
+  function actScrub(event) {
+    const wrap=event.currentTarget||(event.target&&event.target.closest&&event.target.closest('.st-act-wrap')),svg=wrap&&wrap.querySelector('svg');
+    const items=actItems();if(!svg||!items.length)return;
+    if(event.type==='pointerdown'&&wrap.setPointerCapture){try{wrap.setPointerCapture(event.pointerId);}catch(_){}}
+    const b=svg.getBoundingClientRect(),x=(event.clientX-b.left)/b.width*420;
+    const n=items.length,slot=(420-26-8)/n;
+    actSelect(Math.max(0,Math.min(n-1,Math.floor((x-26)/slot))));
+  }
+  function actKey(event) {
+    const items=actItems();if(!items.length)return;
+    const n=items.length,cur=N.ui.actSel===null||N.ui.actSel===undefined?n-1:N.ui.actSel;
+    if(event.key==='ArrowRight'){actSelect(Math.min(n-1,cur+1));event.preventDefault();}
+    else if(event.key==='ArrowLeft'){actSelect(Math.max(0,cur-1));event.preventDefault();}
+    else if(event.key==='Home'){actSelect(0);event.preventDefault();}
+    else if(event.key==='End'||event.key==='Escape'){actSelect(n-1,{clear:true});event.preventDefault();}
   }
   function bodyScans() {
     return [...(state.scans||[])].filter(s=>s&&Number.isFinite(N.dateMs(s.date))&&s.date<=state.date)
@@ -1469,7 +2215,9 @@ const NXP = (() => {
   }
   function bodyView(waist,scans) {
     const waistRows=waist.slice().reverse().map(r=>`<button type="button" class="n99-list-row nxp-progress-body-row" onclick="NXT.openWaist('${r.date}')"><span>${esc(N.shortDate(r.date))}</span><b>${r.cm.toFixed(1)} cm</b><span>Edit ›</span></button>`).join('');
-    return `<section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">All readings</h2>${waist.length?waistRows:`<p class="nxp-progress-body-empty">No waist measurements yet. Optional, about once a week, with the same tape position.</p>`}${row('Log waist','+',"NXT.openWaist()",'Same position and similar conditions')}</section><section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Evo scans</h2>${bodyScanAnalysis(scans)}${row('New scan','Add','NXP.openBodyCapture()','Review and save in Settings')}${row('Import from Strata','Paste','NXT.importScans()','Bring in scans exported from Strata as CSV')}</section><p class="n99-small nxp-progress-body-note">Body fat and muscle figures only appear from saved Evo scans. They are not calculated from waist or scale weight.</p>`;
+    /* D55: the waist section shows only while the waist feature is on. */
+    const waistSec=`<section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">All readings</h2>${waist.length?waistRows:`<p class="nxp-progress-body-empty">No waist measurements yet. Optional, about once a week, with the same tape position.</p>`}${row('Log waist','+',"NXT.openWaist()",'Same position and similar conditions')}</section>`;
+    return `${N.features.waist?waistSec:''}<section class="nxp-progress-body-section"><h2 class="nxp-caption nxp-progress-body-heading">Evo scans</h2>${bodyScanAnalysis(scans)}${row('New scan','Add','NXP.openBodyCapture()','Review and save in Settings')}${row('Import from Strata','Paste','NXT.importScans()','Bring in scans exported from Strata as CSV')}</section><p class="n99-small nxp-progress-body-note">Body fat and muscle figures only appear from saved Evo scans. They are not calculated from waist or scale weight.</p>`;
   }
   /* Opens the Settings capture form. It does not paint that form here, and
      it does not send the user to the analysis board to go looking. */
@@ -1503,8 +2251,30 @@ const NXP = (() => {
     const sub=(ph.bytes>262144?'Scan photos use '+(ph.bytes/1048576).toFixed(1)+' MB \u2014 open to remove them. ':nearFull?'Getting full \u2014 export a backup. ':pct+'% of roughly 5 MB. ')+'Backup: '+(ts?backupLabel()+(stale?' \u2014 over a month ago':''):'none recorded yet');
     return {used,sub,tone:(nearFull||stale||ph.bytes>262144)?'watch':''};
   }
+  /* D53 — Settings rows carry an iOS-style icon tile in a category hue. Decorative only
+     (aria-hidden); the row's text still names it. Unknown titles get no icon. */
+  const SET_ICONS={
+    'Goals':['#8B5CF6','<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1" fill="currentColor"/>'],
+    'Goals & calories':['#8B5CF6','<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1" fill="currentColor"/>'],
+    'Training':['#7C6CF2','<path d="M6.5 8v8M17.5 8v8M3.5 10v4M20.5 10v4M6.5 12h11"/>'],
+    'Cardio & recovery':['#D37732','<path d="M3.5 12.5h3.6l2.1-4.8 3.6 9.3 2.4-6.2 1.3 1.7h4"/>'],
+    'Cardio':['#D37732','<path d="M3.5 12.5h3.6l2.1-4.8 3.6 9.3 2.4-6.2 1.3 1.7h4"/>'],
+    'Your name':['#9B7BFF','<circle cx="12" cy="9" r="3.6"/><path d="M5.5 19.2c1.3-3.3 3.8-4.9 6.5-4.9s5.2 1.6 6.5 4.9"/>'],
+    'Appearance':['#6366F1','<circle cx="12" cy="12" r="7.6"/><path d="M12 4.4v15.2" /><path d="M12 4.4a7.6 7.6 0 0 1 0 15.2z" fill="currentColor" stroke="none"/>'],
+    'Reminders':['#E8A93A','<path d="M7 16.5V11a5 5 0 0 1 10 0v5.5l1.5 1.5h-13z"/><path d="M10.3 20.2a1.9 1.9 0 0 0 3.4 0"/>'],
+    'Body & scans':['#F07A52','<path d="M4.5 8V5.5a1 1 0 0 1 1-1H8M16 4.5h2.5a1 1 0 0 1 1 1V8M19.5 16v2.5a1 1 0 0 1-1 1H16M8 19.5H5.5a1 1 0 0 1-1-1V16"/><path d="M8 12h8"/>'],
+    'Cloud & sync':['#5552BB','<path d="M7.5 18.5h9a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 6.6 9.3 4.6 4.6 0 0 0 7.5 18.5z"/>'],
+    'Storage':['#7D7891','<ellipse cx="12" cy="6.8" rx="6.5" ry="2.6"/><path d="M5.5 6.8v10.4c0 1.4 2.9 2.6 6.5 2.6s6.5-1.2 6.5-2.6V6.8M5.5 12c0 1.4 2.9 2.6 6.5 2.6s6.5-1.2 6.5-2.6"/>'],
+    'Wearable':['#A43066','<rect x="7" y="6.5" width="10" height="11" rx="3"/><path d="M9 6.5l.7-3h4.6l.7 3M9 17.5l.7 3h4.6l.7-3M12 9.8V12l1.5 1"/>'],
+    'App & install':['#8B5CF6','<rect x="7" y="3.5" width="10" height="17" rx="2.6"/><path d="M10.5 17.6h3"/>'],
+    'Classic app':['#7D7891','<path d="M4.8 12a7.2 7.2 0 1 0 2.1-5.1"/><path d="M4.5 4.8v3.4h3.4M12 8.2V12l2.6 1.6"/>']
+  };
+  function setIcon(title) {
+    const ic=SET_ICONS[title];
+    return ic?`<span class="st-set-ic" style="--ic:${ic[0]}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ic[1]}</svg></span>`:'';
+  }
   function setRow(title,value,action,sub='',tone='') {
-    return `<button type="button" class="vn-set-row" onclick="${esc(action)}">`
+    return `<button type="button" class="vn-set-row${SET_ICONS[title]?' has-ic':''}" onclick="${esc(action)}">`+setIcon(title)
       +`<span class="vn-set-l"><span class="vn-set-t">${esc(title)}</span>${sub?`<span class="vn-set-s">${esc(sub)}</span>`:''}</span>`
       +`<span class="vn-set-v${tone?' vn-set-flag is-'+tone:''}">${tone?'<i aria-hidden="true"></i>':''}${esc(value||'')}</span>`
       +`<i class="vn-chev" aria-hidden="true">›</i></button>`;
@@ -1568,7 +2338,7 @@ const NXP = (() => {
   function setRoutineGym(g){ui.routineGym=g;trainingView();}
   function pickDay(d){
     const cur=(settings.weeklyPlan||{})[d];
-    N.modal(DAY_LONG[d],`<div class="st-mgroup">${N.typeNames().map(ty=>`<button type="button" class="st-mrow st-pick${ty===cur?' is-on':''}" onclick="NXP.setDay(${d},'${ty}')"><span class="st-mrow-l"><b>${esc(N.label(ty))}</b>${NON_LIFT.includes(ty)?'':`<small>${N.templateFor(ty,routineGym()).length} exercises</small>`}</span><i aria-hidden="true">${ty===cur?'✓':''}</i></button>`).join('')}</div>`);
+    N.modal(DAY_LONG[d],`<div class="st-mgroup">${N.pickTypes(cur).map(ty=>`<button type="button" class="st-mrow st-pick${ty===cur?' is-on':''}" onclick="NXP.setDay(${d},'${ty}')"><span class="st-mrow-l"><b>${esc(N.label(ty))}</b>${NON_LIFT.includes(ty)?'':`<small>${N.templateFor(ty,routineGym()).length} exercises</small>`}</span><i aria-hidden="true">${ty===cur?'✓':''}</i></button>`).join('')}</div>`);
   }
   function setDay(d,ty){
     if(!N.typeNames().includes(ty))return;
@@ -1743,22 +2513,22 @@ const NXP = (() => {
     page.innerHTML=shell(`<h1 class="vn-set-title">Settings</h1>
       ${moreAccount()}
       ${setGroup('Plan',
-        setRow('Goals & calories',c.calories?formatNumber(c.calories)+' kcal':'Set up',"NXT.more('goals')",c.targetConfirmed?goalLow()+'–'+goalHigh()+' kg range':'Calorie guide and optional goal range')
+        (N.features&&N.features.calories?setRow('Goals & calories',c.calories?formatNumber(c.calories)+' kcal':'Set up',"NXT.more('goals')",c.targetConfirmed?goalLow()+'–'+goalHigh()+' kg range':'Calorie guide and optional goal range'):setRow('Goals',c.targetConfirmed?goalLow()+'–'+goalHigh()+' kg':'Set up',"NXT.more('goals')",settings.cutStart?'Goal range and cut start · from '+N.shortDate(settings.cutStart):'Optional goal range and cut start'))
         +setRow('Training',lifts+(lifts===1?' lifting day':' lifting days'),"NXT.more('training')",'Weekly plan, saved workouts and gyms')
-        +setRow('Cardio & recovery',(Number(settings.zone2WeeklyTarget)||90)+' min / week',"NXT.more('coach')",'Weekly minutes and recovery check-ins'))}
+        +setRow(N.features.checkin?'Cardio & recovery':'Cardio',(Number(settings.zone2WeeklyTarget)||90)+' min / week',"NXT.more('coach')",N.features.checkin?'Weekly minutes and recovery check-ins':'Weekly minutes'))}
       ${setGroup('Preferences',
         setRow('Your name',userName()||'Not set',"NXP.nameSheet()",'Used in the greeting on Today')
         +setRow('Appearance',look,"NXT.more('appearance')",'Text size and motion')
-        +setRow('Reminders',state.notifs?.enabled?'On':'Off',"NXT.more('notifications')",'Weigh-in, cardio and backup prompts'))}
+        +(N.features.reminders?setRow('Reminders',state.notifs?.enabled?'On':'Off',"NXT.more('notifications')",'Weigh-in, cardio and backup prompts'):''))}
       ${setGroup('Body',
         setRow('Body & scans',waist?waist+(waist===1?' waist entry':' waist entries'):'None yet',"NXT.more('body')",'Evo scans and measurements'))}
       ${setGroup('Data',
         setRow('Cloud & sync',cloud.word,"NXT.more('data')",cloud.sub,cloud.tone)
         +(()=>{const st=storageStatus();return st?setRow('Storage',st.used,"NXT.more('data')",st.sub,st.tone):'';})()
-        +setRow('Wearable',wearableConnectionLabel(),'NXP.openWearableConnection()','Connection stays off until a secure backend exists'))}
+        +(N.features.wearable?setRow('Wearable',wearableConnectionLabel(),'NXP.openWearableConnection()','Connection stays off until a secure backend exists'):''))}
       ${setGroup('About',
         setRow('App & install','',"NXT.more('app')",'Install, build version and safe reset')
-        +setRow('Classic app','Backup',"location.href='classic/'",'The previous design, using the same data'))}
+        +(N.features.classic?setRow('Classic app','Backup',"location.href='classic/'",'The previous design, using the same data'):''))}
       ${cloudUser?`<div class="vn-set-account-out"><button type="button" class="vn-set-text" onclick="cloudSignOut()">Sign out</button></div>`:''}
       <p class="vn-set-foot">NXTFRM · your next form</p>`,'vn-settings');
   }
@@ -1767,7 +2537,9 @@ const NXP = (() => {
     const configured=!!((localStorage.getItem('apm_sb_url')||'').trim()&&(localStorage.getItem('apm_sb_key')||'').trim());
     const title=signed?(cloudUser.email||'Signed in'):configured?'Sign-in needed':'Local-only';
     const detail=[state.gym||null,signed?'Cloud session on this device':'Stored on this device'].filter(Boolean).join(' · ');
-    return `<section class="vn-set-account"><span class="vn-set-eyebrow">Account</span><h2>${esc(title)}</h2><p>${esc(detail)}</p></section>`;
+    /* D53: the account block is an identity card — monogram, name, storage state. */
+    const name=userName(),mono=(name||'N').trim().charAt(0).toUpperCase();
+    return `<section class="vn-set-account st-id"><span class="st-id-mono" aria-hidden="true">${esc(mono)}</span><span class="st-id-t"><b>${esc(name||'NXTFRM')}</b><span class="st-id-s">${esc(title)}</span><small>${esc(detail)}</small></span></section>`;
   }
   /* Tier 2 / Tier 3 (§3.5): the bodies of goals / training / coach live in
      cut-support.js and body / notifications / app in index.html, neither of
@@ -1869,7 +2641,7 @@ const NXP = (() => {
       </section>
       <section class="vn-set-block">
         <h2 class="vn-set-grp">Backup &amp; restore</h2>
-        <p class="vn-set-body">Export workouts, weigh-ins, settings and check-ins stored in this browser. Wearable evidence in the on-device wearable store is not included; it remains on this device until you reset the app, and can be rebuilt by a later provider sync.</p>
+        <p class="vn-set-body">Export workouts, weigh-ins, settings and check-ins stored in this browser. Wearable evidence in the on-device wearable store is not included; wearable sync is switched off, so the app holds none.</p>
         <p class="vn-set-note">Export last requested: ${esc(backupLabel())}. Check your Downloads to confirm the file was saved.</p>
         <div class="vn-set-actions"><button type="button" class="vn-set-act" onclick="exportJSON()">Export app backup</button><button type="button" class="vn-set-act is-quiet" onclick="exportCSV()">Export workout CSV</button></div>
         <details class="vn-set-disc nxp-advanced"><summary>Restore a backup</summary>${backupRestoreHTML()}</details>
@@ -1911,6 +2683,7 @@ const NXP = (() => {
   }
   async function testConnection() {
     if(ui.connection.busy)return;
+    if(!window.supabase&&typeof loadSupabase==='function')await loadSupabase();
     const savedUrl=(localStorage.getItem('apm_sb_url')||'').trim().replace(/\/$/,''),savedKey=(localStorage.getItem('apm_sb_key')||'').trim();
     const url=(document.getElementById('sbUrl')?.value??savedUrl).trim().replace(/\/$/,''),key=(document.getElementById('sbKey')?.value??savedKey).trim();
     ui.connection={busy:true,lines:[],summary:'Checking',tone:''};paintConnection();
@@ -2010,6 +2783,8 @@ const NXP = (() => {
     const monthName=first.toLocaleDateString('en-SG',{month:narrow?'short':'long'}),yearNum=String(year),title=monthName+' '+yearNum;
     const firstDow=(first.getDay()+6)%7,days=new Date(year,monthNum,0).getDate(),prevDays=new Date(year,monthNum-1,0).getDate();
     const total=Math.ceil((firstDow+days)/7)*7,today=localToday(),cells=[],counts={lift:0,cardio:0,floor:0,body:0};
+    /* Ascension — one status read for the whole grid (NXT.coach.dayStatuses), once per paint. */
+    const gridStart=N.dateAdd(`${month}-01`,-firstDow),cxMap=coachDayMap(gridStart,N.dateAdd(gridStart,total-1)),cc={plan:0,missed:0,excused:0,moved:0},ccLetters=[];
     for(let i=0;i<total;i++){
       const offset=i-firstDow+1;
       let y=year,m=monthNum,d=offset,outside=false;
@@ -2027,10 +2802,14 @@ const NXP = (() => {
       const kind=marks.lift?'lift':marks.cardio?'cardio':marks.floorball?'floor':marks.body?'w':'none';
       const second=marks.lift?(marks.cardio?'cardio':marks.floorball?'floor':''):(marks.cardio&&marks.floorball?'floor':'');
       if(!outside){if(marks.lift)counts.lift++;if(marks.cardio)counts.cardio++;if(marks.floorball)counts.floor++;if(marks.body)counts.body++;}
-      const label=new Date(`${key}T12:00:00`).toLocaleDateString('en-SG',{day:'numeric',month:'long'})+(kinds.length?`, ${kinds.join(', ')}`:', no records');
-      cells.push(`<button type="button" class="${cls.join(' ')}" data-date="${key}" data-k="${kind}"${second?` data-k2="${second}"`:''} style="--i:${i}" aria-label="${esc(label)}" aria-pressed="${key===selected?'true':'false'}"${key===today?' aria-current="date"':''} onclick="NXP.historySelect('${key}')"><b${d===1?' class="is-m1"':''}>${d===1?d+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]:d}</b><span class="nxp-cal-marks" aria-hidden="true">${historyMarkHTML(marks)}</span></button>`);
+      const cm=coCalMark(cxMap&&cxMap.get(key),scope);
+      if(cm){cls.push('has-cs');if(!outside){cc[cm.k]++;if(cm.k==='plan'&&!ccLetters.includes(cm.letter)&&ccLetters.length<3)ccLetters.push(cm.letter);}}
+      const label=new Date(`${key}T12:00:00`).toLocaleDateString('en-SG',{day:'numeric',month:'long'})+(kinds.length?`, ${kinds.join(', ')}`:', no records')+(cm?`, ${cm.aria}`:'');
+      cells.push(`<button type="button" class="${cls.join(' ')}" data-date="${key}" data-k="${kind}"${second?` data-k2="${second}"`:''}${cm?` data-cs="${cm.k}"`:''} style="--i:${i}" tabindex="${key===selected?'0':'-1'}" aria-label="${esc(label)}" aria-pressed="${key===selected?'true':'false'}"${key===today?' aria-current="date"':''} onclick="NXP.historySelect('${key}')"><b${d===1?' class="is-m1"':''}>${d===1?d+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]:d}</b><span class="nxp-cal-marks" aria-hidden="true">${historyMarkHTML(marks)}${coCalMarkHTML(cm)}</span></button>`);
     }
-    return `<section class="nxp-history-calendar vn-hist-calendar" id="vn-hist-calendar"><div class="nxp-cal-head" id="vn-hist-calhead"><h2 class="nxp-cal-month" aria-label="${esc(title)}"><span>${esc(monthName)}</span> <em>${yearNum}</em></h2><div class="nxp-cal-nav"><button type="button" aria-label="Previous month" onclick="NXP.historyShiftMonth(-1)">‹</button><button type="button" class="nxp-cal-today" aria-label="Jump to current month" onclick="NXP.historyThisMonth()">Today</button><button type="button" aria-label="Next month" onclick="NXP.historyShiftMonth(1)">›</button></div></div><div class="nxp-cal-weekdays" aria-hidden="true">${['M','T','W','T','F','S','S'].map(x=>`<span>${x}</span>`).join('')}</div><div class="nxp-cal-grid" id="vn-hist-grid">${cells.join('')}</div><p class="nxp-cal-legend st-cal-stats" aria-label="This month">${scope.lift?`<span class="lift${counts.lift?'':' is-zero'}"><i></i>Lifting<b>${counts.lift}</b></span>`:''}${scope.cond?`<span class="cond${counts.cardio?'':' is-zero'}"><i></i>Cardio<b>${counts.cardio}</b></span>`:''}${scope.body?`<span class="body${counts.body?'':' is-zero'}"><i></i>Weigh-in<b>${counts.body}</b></span>`:''}</p></section>`;
+    /* Ascension — legend entries for the status marks, only for those this month actually has. */
+    const coLg=[['plan','Planned'],['missed','Not logged'],['excused','Excused'],['moved','Moved']].filter(([k])=>cc[k]).map(([k,w])=>`<span class="co-lg is-${k}">${k==='plan'?`<em aria-hidden="true">${esc(ccLetters.slice().sort().join(' '))}</em>`:coMark(k,'co-cm')}${w}<b>${cc[k]}</b></span>`).join('');
+    return `<section class="nxp-history-calendar vn-hist-calendar" id="vn-hist-calendar"><div class="nxp-cal-head" id="vn-hist-calhead"><h2 class="nxp-cal-month" aria-label="${esc(title)}"><span>${esc(monthName)}</span> <em>${yearNum}</em></h2><div class="nxp-cal-nav"><button type="button" aria-label="Previous month" onclick="NXP.historyShiftMonth(-1)">‹</button><button type="button" class="nxp-cal-today" aria-label="Jump to current month" onclick="NXP.historyThisMonth()">Today</button><button type="button" aria-label="Next month" onclick="NXP.historyShiftMonth(1)">›</button></div></div><div class="nxp-cal-weekdays" aria-hidden="true">${['M','T','W','T','F','S','S'].map(x=>`<span>${x}</span>`).join('')}</div><div class="nxp-cal-grid" id="vn-hist-grid" role="group" aria-label="${esc(title)}" onkeydown="NXP.historyKey(event)">${cells.join('')}</div><p class="nxp-cal-legend st-cal-stats" aria-label="This month">${scope.lift?`<span class="lift${counts.lift?'':' is-zero'}"><i></i>Lifting<b>${counts.lift}</b></span>`:''}${scope.cond?`<span class="cond${counts.cardio?'':' is-zero'}"><i></i>Cardio<b>${counts.cardio}</b></span>`:''}${scope.body?`<span class="body${counts.body?'':' is-zero'}"><i></i>Weigh-in<b>${counts.body}</b></span>`:''}${coLg}</p></section>`;
   }
   function historyLiftingBlock(date,logs) {
     const order=[],groups=new Map();
@@ -2061,8 +2840,20 @@ const NXP = (() => {
     });
     return `<div class="nxp-history-block vn-hist-block" data-kind="conditioning"><span class="nxp-history-block-label">Conditioning</span>${rows.map(r=>`<div class="nxp-history-ex" data-kind="${r.kind}"><b>${esc(r.name)}</b>${r.value?`<span>${esc(r.value)}</span>`:''}</div>${r.meta.length?`<p class="nxp-history-meta">${esc(r.meta.join(' · '))}</p>`:''}`).join('')}</div>`;
   }
+  /* D50 — a morning weigh-in in History shows where it sat: the change from the previous
+     morning and the engine's trend value that day. Contextual readings (post-workout,
+     scan) show only their own value, as before (D14). */
   function historyWeightBlock(bw) {
-    return `<div class="nxp-history-block vn-hist-block" data-kind="weight"><span class="nxp-history-block-label">Weight</span><div class="nxp-history-ex"><b>${esc(historyNum(bw.weight))} kg</b>${bw.timeOfDay?`<span>${esc(bw.timeOfDay)}</span>`:''}</div></div>`;
+    let ctx='';
+    if(/^morning$/i.test(String(bw.timeOfDay||''))){
+      const mornings=N.timingRows('Morning').filter(r=>r.date<bw.date);
+      const prev=mornings.at(-1),pt=N.trend(N.weights()).find(p=>p.date===bw.date);
+      const w=Number(bw.weight),bits=[];
+      if(prev){const d=w-Number(prev.weight),ago=Math.round((N.dateMs(bw.date)-N.dateMs(prev.date))/864e5);bits.push(`<span class="st-hw-c ${d<-0.04?'is-dn':d>0.04?'is-up':''}"><i aria-hidden="true">${d<-0.04?'↓':d>0.04?'↑':'→'}</i>${Math.abs(d).toFixed(1)} kg<small> vs ${ago===1?'yesterday':N.shortDate(prev.date)}</small></span>`);}
+      if(pt&&pt.avg!==null){const g=w-pt.avg;bits.push(`<span class="st-hw-t">Trend <b class="vn-num">${pt.avg.toFixed(2)}</b><small> · ${Math.abs(g)<0.05?'on trend':Math.abs(g).toFixed(1)+' kg '+(g<0?'below':'above')}</small></span>`);}
+      if(bits.length)ctx=`<p class="st-hw">${bits.join('')}</p>`;
+    }
+    return `<div class="nxp-history-block vn-hist-block" data-kind="weight"><span class="nxp-history-block-label">Weight</span><div class="nxp-history-ex"><b>${esc(historyNum(bw.weight))} kg</b>${bw.timeOfDay?`<span>${esc(bw.timeOfDay)}</span>`:''}</div>${ctx}</div>`;
   }
   /* Structural homes for future State Engine record kinds — layout only, no persistence. */
   function historyAuditLanes() {
@@ -2096,7 +2887,7 @@ const NXP = (() => {
        summary line would just repeat "82 kg". */
     if(parts.length===1&&scope.body&&r.bw&&!(scope.lift&&r.logs.length)&&!(scope.cond&&(r.cardio.length||r.floorball.length)))parts.length=0;
     const emptyCopy=filter==='strength'?'No lifting logged on this date.':filter==='conditioning'?'No cardio logged on this date.':filter==='body'?'No weigh-in recorded on this date.':'No training or measurements logged.';
-    return `<section class="nxp-history-selected vn-hist-day"><header class="nxp-history-selected-head"><h2>${esc(when.toLocaleDateString('en-SG',{weekday:'short'}))} ${esc(when.toLocaleDateString('en-SG',{day:'numeric',month:'long'}))} <em>${esc(String(when.getFullYear()))}</em></h2>${parts.length?`<p class="nxp-history-selected-summary">${esc(parts.join(' · '))}</p>`:''}${(()=>{const k=[scope.lift&&r.logs.length?'<span class="lift"><i></i>Lifting</span>':'',scope.cond&&r.cardio.length?'<span class="cond"><i></i>Cardio</span>':'',scope.cond&&r.floorball.length?'<span class="floor"><i></i>Floorball</span>':'',scope.body&&r.bw?'<span class="body"><i></i>Weigh-in</span>':''].join('');return k?`<p class="st-day-k" aria-hidden="true">${k}</p>`:'';})()}</header>${blocks.length?blocks.join(''):`<p class="nxp-history-empty">${esc(emptyCopy)}</p>`}${historyAuditLanes()}</section>`;
+    return `<section class="nxp-history-selected vn-hist-day"><header class="nxp-history-selected-head"><h2 class="st-dayhead" aria-label="${esc(when.toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))}"><span class="st-dayhead-n" aria-hidden="true">${when.getDate()}</span><span class="st-dayhead-t" aria-hidden="true"><b>${esc(when.toLocaleDateString('en-SG',{weekday:'long'}))}</b><em>${esc(when.toLocaleDateString('en-SG',{month:'long'}))} ${esc(String(when.getFullYear()))}</em></span></h2>${coachDayLine(date,scope)}${parts.length?`<p class="nxp-history-selected-summary">${esc(parts.join(' · '))}</p>`:''}${(()=>{const k=[scope.lift&&r.logs.length?'<span class="lift"><i></i>Lifting</span>':'',scope.cond&&r.cardio.length?'<span class="cond"><i></i>Cardio</span>':'',scope.cond&&r.floorball.length?'<span class="floor"><i></i>Floorball</span>':'',scope.body&&r.bw?'<span class="body"><i></i>Weigh-in</span>':''].join('');return k?`<p class="st-day-k" aria-hidden="true">${k}</p>`:'';})()}</header>${blocks.length?blocks.join(''):`<p class="nxp-history-empty">${esc(emptyCopy)}</p>`}${historyAuditLanes()}</section>`;
   }
   function historyPaintDay(date) {
     const host=document.getElementById('vn-hist-dayhost');
@@ -2119,7 +2910,8 @@ const NXP = (() => {
       if(prev){prev.classList.remove('is-selected');prev.setAttribute('aria-pressed','false');}
     }
     const next=root.querySelector(`.nxp-cal-day[data-date="${to}"]`);
-    if(next){next.classList.add('is-selected');next.setAttribute('aria-pressed','true');}
+    if(next){next.classList.add('is-selected');next.setAttribute('aria-pressed','true');next.setAttribute('tabindex','0');}
+    if(from&&from!==to){const prev=root.querySelector(`.nxp-cal-day[data-date="${from}"]`);if(prev)prev.setAttribute('tabindex','-1');}
   }
   function history() {
     applyAppearance();
@@ -2152,6 +2944,35 @@ const NXP = (() => {
     }
     historyMoveSelection(prev,date);
     historyPaintDay(date);
+  }
+  /* Keyboard on the calendar: a roving tabindex (the selected day is the one
+     tab stop) and arrow keys that move the selection a day or a week, PageUp
+     and PageDown a month, Home and End to the week's ends. Each move goes
+     through historySelect, the same path a tap takes, and focus follows the
+     selected cell — including after a month repaint. The days are toggle buttons in
+     one labelled group: role="grid" would need row and gridcell owners, and the
+     layout (cells as direct children of the grid) has none. */
+  function historyKey(event) {
+    const KEYS={ArrowLeft:-1,ArrowRight:1,ArrowUp:-7,ArrowDown:7};
+    const cur=state.historyDate||localToday();
+    let next=null;
+    if(KEYS[event.key]!==undefined)next=N.dateAdd(cur,KEYS[event.key]);
+    else if(event.key==='Home')next=N.weekStart(cur);
+    else if(event.key==='End')next=N.dateAdd(N.weekStart(cur),6);
+    else if(event.key==='PageUp'||event.key==='PageDown'){
+      const [y,m]=cur.split('-').map(Number),d=new Date(y,m-1+(event.key==='PageUp'?-1:1),1,12,0,0);
+      const days=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+      next=dateKeyFromParts(d.getFullYear(),d.getMonth()+1,Math.min(Number(cur.slice(8,10)),days));
+    }
+    if(!next||!Number.isFinite(N.dateMs(next)))return;
+    event.preventDefault();
+    historySelect(next);
+    const cell=document.querySelector(`#historyPage .nxp-cal-day[data-date="${next}"]`);
+    if(cell){
+      document.querySelectorAll('#historyPage .nxp-cal-day[tabindex="0"]').forEach(el=>{if(el!==cell)el.setAttribute('tabindex','-1');});
+      cell.setAttribute('tabindex','0');
+      cell.focus({preventScroll:true});
+    }
   }
   function historyShiftMonth(delta) {
     const [y,m]=calendarMonthState().split('-').map(Number),d=new Date(y,m-1+delta,1,12,0,0);
@@ -2215,6 +3036,8 @@ const NXP = (() => {
     if(next===base&&input.value!=='')return false;
     input.value=String(next);
     rememberInput(input);
+    /* A script write raises no input event; this lets strata's numeral fit follow every step of a hold. */
+    input.dispatchEvent(new Event('input',{bubbles:true}));
     return true;
   }
   function holdEnd() {
@@ -2421,7 +3244,10 @@ const NXP = (() => {
        repaint, so per-element listeners would leak on each logged set. */
     document.addEventListener('pointerdown',holdStart);
     document.addEventListener('pointermove',holdMove,{passive:true});
-    ['pointerup','pointercancel','pointerleave','contextmenu','blur'].forEach(name=>document.addEventListener(name,holdEnd,true));
+    ['pointerup','pointercancel','pointerleave','blur'].forEach(name=>document.addEventListener(name,holdEnd,true));
+    /* A long press can raise the context menu on some touch browsers. It is suppressed on a
+       stepper, so the hold keeps repeating until the finger lifts (strata.js used to do this). */
+    document.addEventListener('contextmenu',event=>{if(event.target.closest?.('.nxp-step'))event.preventDefault();},true);
     document.addEventListener('click',event=>{
       /* detail === 0 is a keyboard-activated button; pointer taps already
          stepped on pointerdown and must not step twice. */
@@ -2457,7 +3283,7 @@ const NXP = (() => {
   }
   bindSteppers();
   bindKeyboardDock();
-  return {removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom};
+  return {actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;
@@ -2498,6 +3324,10 @@ if(typeof apx96StartRest==='function'){
     return apx96StartRestSource.apply(this,arguments);
   };
 }
+/* Removing the last add-on stops the rest timer under this name. The engine's stop is
+   apx96SkipRest: it clears the deadline and the interval, then ticks, and the tick wrapper
+   above repaints the strip. */
+function apx96StopRest(){return apx96SkipRest();}
 /* Mode entry: Today CTA and legacy startWorkoutNow both enter focused Train. */
 if(typeof startWorkoutNow==='function'){
   const startWorkoutNowSource=startWorkoutNow;

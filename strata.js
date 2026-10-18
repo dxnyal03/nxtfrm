@@ -5,7 +5,7 @@
 "use strict";
 const STRATA = (() => {
   const NS = "http://www.w3.org/2000/svg";
-  const state0 = { lastTab: null, replay: null, animatedKeys: new Set() };
+  const state0 = { lastTab: null, replay: null };
   const reduced = () => {
     try {
       if (document.documentElement.getAttribute("data-nxp-motion") === "reduced") return true;
@@ -13,10 +13,7 @@ const STRATA = (() => {
     } catch (e) { return false; }
   };
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const DAY = 86400000;
-  const dms = d => Date.parse(d + "T00:00:00Z");
   const shortDate = d => (typeof NXT === "object" && NXT.shortDate) ? NXT.shortDate(d) : d;
-  const readJSON = el => { try { return JSON.parse(el.getAttribute(el.dataset.stHero !== undefined ? "data-st-hero" : "data-st-cmap")); } catch (e) { return null; } };
 
   /* ---- Rolling digits ---------------------------------------------------- */
   function odoHTML(text) {
@@ -69,18 +66,6 @@ const STRATA = (() => {
   }
 
   /* ---- Shared geometry ---------------------------------------------------- */
-  function smooth(points) {
-    if (!points.length) return "";
-    if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
-    const s = points.slice(1).map((p, i) => (p.y - points[i].y) / (p.x - points[i].x || 1));
-    const tg = points.map((p, i) => i === 0 ? s[0] : i === points.length - 1 ? s[s.length - 1] : s[i - 1] * s[i] <= 0 ? 0 : 2 / (1 / s[i - 1] + 1 / s[i]));
-    let d = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
-    for (let i = 1; i < points.length; i++) {
-      const a = points[i - 1], b = points[i], dx = (b.x - a.x) / 3;
-      d += ` C ${(a.x + dx).toFixed(2)} ${(a.y + dx * tg[i - 1]).toFixed(2)}, ${(b.x - dx).toFixed(2)} ${(b.y - dx * tg[i]).toFixed(2)}, ${b.x.toFixed(2)} ${b.y.toFixed(2)}`;
-    }
-    return d;
-  }
   function niceDomain(vals) {
     const lo0 = Math.min(...vals), hi0 = Math.max(...vals), span = Math.max(1, hi0 - lo0);
     const step = span <= 2 ? .5 : span <= 4 ? 1 : span <= 10 ? 2 : Math.ceil(span / 20) * 5;
@@ -89,119 +74,6 @@ const STRATA = (() => {
     return { lo, hi, step, ticks };
   }
 
-  /* ---- Today hero: trend chart with scrub + replay ------------------------ */
-  const MON = d => { const x = new Date(dms(d)); return (x.getUTCDay() + 6) % 7; };
-  function drawHero(tile, animate) {
-    const data = readJSON(tile); if (!data || !data.pts || !data.pts.length) return;
-    const host = tile.querySelector("[data-st-chart]"), odo = tile.querySelector("[data-st-odo]"), eb = tile.querySelector("[data-st-eb]");
-    const W = Math.max(240, host.clientWidth || 320), H = W < 330 ? 170 : 192, P = { l: 4, r: 34, t: 30, b: 24 };
-    const pts = data.pts;
-    /* Same rule as the Progress chart (D2): the domain comes from the plotted
-       readings and trend only. */
-    const vals = pts.flatMap(p => p.a === null ? [p.w] : [p.w, p.a]);
-    const dom = niceDomain(vals);
-    const t0 = dms(pts[0].d), t1 = Math.max(dms(data.today), t0 + DAY);
-    const X = d => P.l + (dms(d) - t0) / (t1 - t0) * (W - P.l - P.r);
-    const Y = v => P.t + (dom.hi - v) / (dom.hi - dom.lo) * (H - P.t - P.b);
-    const tr = pts.filter(p => p.a !== null).map(p => ({ x: X(p.d), y: Y(p.a), p }));
-    const uid = "sth" + Math.random().toString(36).slice(2, 7);
-    const ticks = dom.ticks.length > 5 ? dom.ticks.filter((_, i) => i % 2 === 0) : dom.ticks;
-    const tpath = smooth(tr);
-    const base = H - P.b;
-    const lastT = tr[tr.length - 1], firstT = tr[0];
-    /* Week bands: every other Monday–Sunday week is faintly shaded, and weeks
-       are labelled by their Monday, so the eye can count weeks. */
-    const mondays = [];
-    for (let ms = t0 - MON(pts[0].d) * DAY; ms <= t1; ms += 7 * DAY) mondays.push(ms);
-    const xm = ms => P.l + (ms - t0) / (t1 - t0) * (W - P.l - P.r);
-    const bands = mondays.map((ms, i) => i % 2 ? `<rect class="st-band" x="${Math.max(P.l, xm(ms)).toFixed(1)}" y="${P.t - 18}" width="${(Math.min(W - P.r, xm(ms + 7 * DAY)) - Math.max(P.l, xm(ms))).toFixed(1)}" height="${base - P.t + 18}" rx="6"/>` : "").join("");
-    const wlabs = mondays.filter(ms => ms >= t0 && xm(ms) < W - P.r - 18).map(ms => `<text class="st-ax" x="${xm(ms).toFixed(1)}" y="${H - 6}" text-anchor="${xm(ms) - P.l < 14 ? "start" : "middle"}">${esc(shortDate(new Date(ms).toISOString().slice(0, 10)))}</text>`).join("");
-    const pill = (x, y, txt, cls) => {
-      const w = 12 + txt.length * 7.4, px = Math.min(W - P.r + 30 - w, Math.max(P.l, x - w / 2));
-      return `<g class="st-pillg ${cls || ""}"><rect x="${px.toFixed(1)}" y="${(y - 30).toFixed(1)}" width="${w.toFixed(1)}" height="21" rx="10.5"/><text x="${(px + w / 2).toFixed(1)}" y="${(y - 15.5).toFixed(1)}" text-anchor="middle">${esc(txt)}</text></g>`;
-    };
-    host.innerHTML = `<svg class="st-hc${animate && !reduced() ? " is-draw" : ""}" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" tabindex="0" focusable="true">
-      <defs>
-        <linearGradient id="${uid}-a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9B7BFF" stop-opacity=".5"/><stop offset=".6" stop-color="#7C5CFF" stop-opacity=".1"/><stop offset="1" stop-color="#7C5CFF" stop-opacity="0"/></linearGradient>
-        <linearGradient id="${uid}-l" x1="${P.l}" y1="0" x2="${W - P.r}" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7C5CFF" stop-opacity=".55"/><stop offset=".55" stop-color="#B49AFF"/><stop offset="1" stop-color="#F3EEFF"/></linearGradient>
-        <filter id="${uid}-g" x="-10%" y="-60%" width="120%" height="220%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-        <clipPath id="${uid}-c"><rect class="st-hc-reveal" x="0" y="0" width="${W}" height="${H}"/></clipPath>
-      </defs>
-      ${bands}
-      ${ticks.map(v => `<g><line x1="${P.l}" x2="${W - P.r}" y1="${Y(v)}" y2="${Y(v)}" class="st-grid"/><text x="${W - P.r + 8}" y="${Y(v) + 4}" class="st-ax">${Number(v.toFixed(1))}</text></g>`).join("")}
-      <g clip-path="url(#${uid}-c)">
-        ${tr.length > 1 ? `<path d="${tpath} L ${lastT.x} ${base} L ${firstT.x} ${base} Z" fill="url(#${uid}-a)" class="st-hc-area"/>` : ""}
-        ${pts.map((p, i) => `<circle class="st-hc-dot${p.t === "m" ? "" : " is-other"}" cx="${X(p.d).toFixed(2)}" cy="${Y(p.w).toFixed(2)}" r="${p.t === "m" ? 2.5 : 2.7}" style="--i:${i}"/>`).join("")}
-        ${tr.length > 1 ? `<path d="${tpath}" class="st-hc-line" stroke="url(#${uid}-l)" filter="url(#${uid}-g)" pathLength="1"/>` : ""}
-      </g>
-      ${firstT && tr.length > 1 ? `<circle class="st-hc-start" cx="${firstT.x}" cy="${firstT.y}" r="4"/>` : ""}
-      ${lastT ? `<circle class="st-hc-halo" cx="${lastT.x}" cy="${lastT.y}" r="12"/><circle class="st-hc-end" cx="${lastT.x}" cy="${lastT.y}" r="5.5"/>${pill(lastT.x, lastT.y, lastT.p.a.toFixed(1), "is-end")}` : ""}
-      ${firstT && tr.length > 1 ? pill(firstT.x + 18, firstT.y, firstT.p.a.toFixed(1), "is-start") : ""}
-      <line class="st-hc-cur" x1="0" x2="0" y1="${P.t - 18}" y2="${base}" opacity="0"/>
-      <circle class="st-hc-act" r="6" cx="0" cy="0" opacity="0"/>
-      ${wlabs}
-    </svg><div class="st-tip" hidden></div>`;
-    const svg = host.querySelector("svg"), cur = svg.querySelector(".st-hc-cur"), act = svg.querySelector(".st-hc-act"), tip = host.querySelector(".st-tip");
-    const restText = odo ? odo.getAttribute("aria-label") || odo.textContent : "";
-    const restEb = eb ? eb.textContent : "";
-    const fmt = v => Number(v).toFixed(1);
-    const show = (i, fromReplay) => {
-      const p = pts[i]; if (!p) return;
-      const v = p.a !== null ? p.a : p.w, x = X(p.d);
-      cur.setAttribute("x1", x); cur.setAttribute("x2", x); cur.setAttribute("opacity", fromReplay ? "0" : "1");
-      act.setAttribute("cx", x); act.setAttribute("cy", Y(v)); act.setAttribute("opacity", fromReplay ? "0" : "1");
-      odoSet(odo, fmt(v), false);
-      if (eb) eb.textContent = (p.a !== null ? "Trend · " : "Reading · ") + shortDate(p.d);
-      if (tip) {
-        tip.hidden = !!fromReplay;
-        tip.innerHTML = `<b>${esc(shortDate(p.d))}</b><span>${p.t === "m" ? "Morning" : "Reading"} <em>${fmt(p.w)}</em></span>${p.a !== null ? `<span>Trend <em>${Number(p.a).toFixed(2)}</em></span>` : ""}`;
-        const r = svg.getBoundingClientRect(), k = r.width / W;
-        tip.style.left = Math.min(Math.max(x * k, 58), r.width - 58) + "px";
-      }
-      tile.classList.add("is-scrubbing");
-    };
-    const clear = () => {
-      cur.setAttribute("opacity", "0"); act.setAttribute("opacity", "0");
-      odoSet(odo, restText, false);
-      if (eb) eb.textContent = restEb;
-      if (tip) tip.hidden = true;
-      tile.classList.remove("is-scrubbing");
-    };
-    const nearest = clientX => {
-      const r = svg.getBoundingClientRect(), x = (clientX - r.left) / r.width * W;
-      let best = 0; pts.forEach((p, i) => { if (Math.abs(X(p.d) - x) < Math.abs(X(pts[best].d) - x)) best = i; });
-      return best;
-    };
-    let kIdx = -1;
-    svg.addEventListener("pointerdown", e => { stopReplay(); try { svg.setPointerCapture(e.pointerId); } catch (_) {} show(nearest(e.clientX)); });
-    svg.addEventListener("pointermove", e => { if (e.buttons || e.pointerType === "mouse") show(nearest(e.clientX)); });
-    svg.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") clear(); });
-    svg.addEventListener("pointerup", e => { if (e.pointerType !== "mouse") setTimeout(clear, 1200); });
-    svg.addEventListener("keydown", e => {
-      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-        kIdx = kIdx < 0 ? pts.length - 1 : Math.max(0, Math.min(pts.length - 1, kIdx + (e.key === "ArrowRight" ? 1 : -1)));
-        show(kIdx); e.preventDefault();
-      } else if (e.key === "Escape") { kIdx = -1; clear(); }
-    });
-    const btn = tile.querySelector("[data-st-replay]");
-    if (btn) btn.onclick = () => {
-      if (state0.replay) { stopReplay(); return; }
-      if (reduced()) { show(pts.length - 1, true); setTimeout(clear, 600); return; }
-      const rect = svg.querySelector(".st-hc-reveal"), dur = 6500, start = performance.now();
-      tile.classList.add("is-replaying"); btn.querySelector("span").textContent = "Stop";
-      const run = now => {
-        const k = Math.min(1, (now - start) / dur), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
-        const xr = P.l + e * (W - P.l - P.r);
-        rect.setAttribute("width", xr + 1);
-        let idx = 0; pts.forEach((p, i) => { if (X(p.d) <= xr + .5) idx = i; });
-        show(idx, true);
-        if (k < 1) state0.replay = { raf: requestAnimationFrame(run), done };
-        else done();
-      };
-      const done = () => { state0.replay = null; rect.setAttribute("width", W); tile.classList.remove("is-replaying"); btn.querySelector("span").textContent = "Replay"; clear(); };
-      state0.replay = { raf: requestAnimationFrame(run), done };
-    };
-  }
   /* ---- Progress chart finish: gradient trend, week bands, end label and a
      tooltip that follows NXT.selectPoint (the engine's own readout). Adds
      marks only; the model, scale and data are untouched. ------------------- */
@@ -306,10 +178,10 @@ const STRATA = (() => {
   }
   /* ---- Week by week ------------------------------------------------------
      The last five Monday-to-Sunday averages of the morning weigh-ins, one row
-     per week on a shared scale so the descent is visible at a glance. Every
-     figure is the engine's own NXT.windowStats over NXT.weights(), the same
-     call the old Today tile used; nothing is computed here beyond a bar
-     length. Scrubbing the chart lights the row that holds the selected day. -- */
+     per week with its change from the week before and the mornings weighed.
+     Every figure is the engine's own NXT.windowStats over NXT.weights(); nothing
+     is computed here beyond that difference. Scrubbing the chart lights the
+     row that holds the selected day. -- */
   function dressWeeks(page, entering) {
     const m = typeof NXT === "object" && NXT.ui && NXT.ui.chart, anchor = page.querySelector(".vn-togs") || page.querySelector("#vn-chart-wrap");
     if (!m || !anchor || page.querySelector(".st-weeks") || typeof NXT.windowStats !== "function") return;
@@ -322,34 +194,11 @@ const STRATA = (() => {
     }
     const have = weeks.filter(w => w.avg !== null && w.avg !== undefined);
     if (have.length < 2) return;
-    /* Each week's lowest and highest morning reading, straight from the rows the chart plots. */
-    weeks.forEach(w => {
-      const end = w.part ? today : w.end, inWk = rows.filter(r => r.date >= w.st && r.date <= end).map(r => Number(r.weight)).filter(Number.isFinite);
-      w.min = inWk.length ? Math.min(...inWk) : null; w.max = inWk.length ? Math.max(...inWk) : null;
-    });
-    const lo = Math.min(...have.map(w => w.min ?? w.avg)) - 0.15, hi = Math.max(...have.map(w => w.max ?? w.avg)) + 0.15, pc = v => ((v - lo) / (hi - lo) * 100).toFixed(2);
-    let prev = null;
-    const shown = weeks.filter(w => w.avg !== null && w.avg !== undefined), n = shown.length;
-    const li = shown.map((w, i) => {
-      const d = prev === null ? null : w.avg - prev; prev = w.avg;
-      const dTxt = d === null ? "" : Math.abs(d) < 0.05 ? "±0.0" : `${d > 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}`;
-      const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], dd = new Date(w.st + "T12:00:00"), name = dd.getDate() + " " + MON[dd.getMonth()];
-      const sofar = w.part ? Math.round((NXT.dateMs(today) - NXT.dateMs(w.st)) / 86400000) + 1 : 7;
-      const say = `${w.part ? "This week so far" : "Week of " + shortDate(w.st)}: average ${w.avg.toFixed(1)} kilograms from ${w.n} readings${w.min !== null ? `, lowest ${w.min.toFixed(1)}, highest ${w.max.toFixed(1)}` : ""}${d === null ? "" : Math.abs(d) < 0.05 ? ", unchanged" : `, ${d < 0 ? "down" : "up"} ${Math.abs(d).toFixed(1)} on the week before`}`;
-      return `<li class="st-wk${w.part ? " is-now" : ""}" data-a="${w.st}" data-b="${w.end}" style="--i:${i};--lo:${pc(w.min ?? w.avg)}%;--hi:${pc(w.max ?? w.avg)}%;--a:${pc(w.avg)}%" aria-label="${esc(say)}">
-        <b class="st-wk-v" aria-hidden="true">${w.avg.toFixed(1)}</b>
-        <span class="st-wk-c${d !== null && d > 0.04 ? " is-up" : ""}" aria-hidden="true">${dTxt || "&nbsp;"}</span>
-        <span class="st-wk-trk" aria-hidden="true"><i class="st-wk-rng"></i><i class="st-wk-avg"></i></span>
-        <span class="st-wk-d" aria-hidden="true">${esc(name)}<small>${w.part ? "now · " : ""}${w.n}/${sofar}</small></span>
-      </li>`;
-    }).join("");
-    const pts = shown.map((w, i) => `${((i + .5) / n * 100).toFixed(2)},${(100 - Number(pc(w.avg))).toFixed(2)}`).join(" ");
+    const shown = weeks.filter(w => w.avg !== null && w.avg !== undefined);
     const host = document.createElement("section");
-    host.className = "st-weeks" + (entering && !reduced() ? " is-draw" : "");
     host.setAttribute("aria-label", "Week by week: average and range of morning weight");
-    host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Average and range, Mon–Sun</small></div><ol class="st-wk-l" style="--n:${n}"><svg class="st-wk-link" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}"/></svg>${li}</ol><p class="st-wk-note"><span class="st-wk-key"><i class="st-wk-key-r"></i>Lowest to highest reading</span><span class="st-wk-key"><i class="st-wk-key-a"></i>Average</span><span class="st-wk-key">6/7 = mornings weighed</span></p>`;
     {
-      /* Week by week as a ledger (owner pick, 2026-10-08). Same data as above. */
+      /* Week by week as a ledger (owner pick, 2026-10-08): one row per week, the engine's own averages. */
       const style = "ledger";
       if (style === "ledger") {
         const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], have = new Set(rows.map(r => r.date));
@@ -415,61 +264,6 @@ const STRATA = (() => {
       h.addEventListener("click", toggle);
       h.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
     });
-  }
-  /* Weekly recap on Home: Sunday shows the week ending today, Monday the week just gone.
-     Everything is read from logged rows with the engine's own helpers; no new metric. */
-  function recapWeek() {
-    if (typeof NXT !== "object" || typeof state !== "object") return null;
-    const dow = new Date(NXT.dateMs(state.date)).getUTCDay();
-    if (dow !== 0 && dow !== 1) return null;
-    const ws = dow === 1 ? NXT.dateAdd(NXT.weekStart(state.date), -7) : NXT.weekStart(state.date);
-    return { ws, we: NXT.dateAdd(ws, 6) };
-  }
-  function dressRecap(page) {
-    if (page.id !== "homePage") return;
-    const old = page.querySelector(".st-recap");
-    if (old) old.remove();
-    const wk = recapWeek();
-    const bento = page.querySelector(".st-bento");
-    if (!wk || !bento) return;
-    const N = NXT, esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-    const all = N.workRows ? N.workRows() : [];
-    const inWk = all.filter(r => r.date >= wk.ws && r.date <= wk.we);
-    const cardio = (state.cardio || []).filter(r => r && r.date >= wk.ws && r.date <= wk.we && Number(r.duration) > 0).reduce((a, r) => a + Number(r.duration), 0);
-    const days = new Set(inWk.map(r => r.date)).size;
-    let planned = 0;
-    for (let i = 0; i < 7; i++) { const t = N.typeFor(N.dateAdd(wk.ws, i)); if (t && !["Rest", "Zone2", "Floorball"].includes(t)) planned++; }
-    const rows = N.weights ? N.weights() : [];
-    const cur = N.windowStats(rows, wk.we, 7), prev = N.windowStats(rows, N.dateAdd(wk.we, -7), 7);
-    if (!inWk.length && !cardio && !cur.n) return;
-    const by = new Map();
-    inWk.forEach(r => { const k = (r.exercise || r.name) + "|" + (r.gym || ""); (by.get(k) || by.set(k, []).get(k)).push(r); });
-    const best = [];
-    by.forEach((sets, k) => {
-      const b = N.bestSet(sets); if (!b) return;
-      const before = all.filter(r => r.date < wk.ws && (r.exercise || r.name) + "|" + (r.gym || "") === k);
-      const pb = N.bestSet(before);
-      const beat = !!pb && (Number(b.weight) > Number(pb.weight) || (Number(b.weight) === Number(pb.weight) && Number(b.reps) > Number(pb.reps)));
-      best.push({ name: b.exercise || b.name, w: Number(b.weight), r: Number(b.reps), beat });
-    });
-    best.sort((a, b) => (b.beat - a.beat) || (b.w - a.w));
-    const top = best.slice(0, 3), fmt = n => String(Math.round(n * 10) / 10);
-    const wt = cur.avg !== null ? `${cur.avg.toFixed(1)}<small> kg</small>` : "—";
-    const dl = cur.avg !== null && prev.avg !== null && cur.n >= 2 && prev.n >= 2 ? (cur.avg - prev.avg) : null;
-    const dtxt = dl === null ? `avg of ${cur.n}` : `avg · `+ `${dl > 0 ? "+" : dl < 0 ? "\u2212" : ""}${Math.abs(dl).toFixed(1)} kg vs last week`;
-    const range = `${N.shortDate(wk.ws)} \u2013 ${N.shortDate(wk.we)}`;
-    const el = document.createElement("section");
-    el.className = "st-tile st-recap"; el.setAttribute("aria-label", "Your week");
-    el.style.setProperty("--c", "var(--st-accent)");
-    el.innerHTML = `<div class="st-tile-head"><h3 class="st-h3">${recapWeek() && new Date(N.dateMs(state.date)).getUTCDay() === 1 ? "Last week" : "Your week"}</h3><span class="st-meta">${esc(range)}</span></div>
-      <div class="st-rc-stats">
-        <div><b class="vn-num">${days}${planned ? `<small> / ${planned}</small>` : ""}</b><span>Lifting</span><em>${inWk.length} working sets</em></div>
-        <div><b class="vn-num">${Math.round(cardio)}<small> min</small></b><span>Cardio</span><em>&nbsp;</em></div>
-        <div><b class="vn-num">${wt}</b><span>Weight</span><em>${esc(dtxt)}</em></div>
-      </div>
-      ${top.length ? `<ul class="st-rc-best" aria-label="Best sets">${top.map(t => `<li${t.beat ? ' data-beat="1"' : ""}><span>${esc(t.name)}</span><b class="vn-num">${fmt(t.w)} \u00d7 ${t.r}</b>${t.beat ? '<i>New best</i>' : ""}</li>`).join("")}</ul>` : ""}`;
-    const anchor = [...bento.children].find(c => /NXTFRM decision/i.test(c.textContent));
-    if (anchor) anchor.insertAdjacentElement("beforebegin", el); else bento.appendChild(el);
   }
   function foldPerf(page) {
     const list = page.querySelector(".vn-perf-rows");
@@ -562,6 +356,10 @@ const STRATA = (() => {
       <defs><marker id="${uid}-ar" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--st-accent-lift)"/></marker></defs>
       ${fx.ticks.map(v => `<line class="st-grid" x1="${X(v)}" x2="${X(v)}" y1="${P.t}" y2="${H - P.b}"/><text class="st-ax" x="${X(v)}" y="${H - 12}" text-anchor="middle">${Number(v.toFixed(1))}</text>`).join("")}
       ${my.ticks.map(v => `<line class="st-grid" x1="${P.l}" x2="${W - P.r}" y1="${Y(v)}" y2="${Y(v)}"/><text class="st-ax" x="${P.l - 6}" y="${Y(v) + 4}" text-anchor="end">${Number(v.toFixed(1))}</text>`).join("")}
+      ${/* D50: the region up and to the left of the first scan is "less fat, more muscle than the first scan". Geometry only, no score. */""}
+      <rect class="st-cm-zone" x="${P.l}" y="${P.t}" width="${Math.max(0, A.x - P.l).toFixed(1)}" height="${Math.max(0, A.y - P.t).toFixed(1)}" rx="6"/>
+      ${A.x - P.l > 70 && A.y - P.t > 24 ? `<text class="st-cm-zl" x="${P.l + 7}" y="${P.t + 14}">Less fat · more muscle</text>` : ""}
+      <line class="st-cm-ref" x1="${A.x.toFixed(1)}" x2="${A.x.toFixed(1)}" y1="${P.t}" y2="${H - P.b}"/><line class="st-cm-ref" x1="${P.l}" x2="${W - P.r}" y1="${A.y.toFixed(1)}" y2="${A.y.toFixed(1)}"/>
       <text class="st-ax st-ax-f" x="${W - P.r}" y="${H - 1}" text-anchor="end">Fat mass kg →</text>
       <text class="st-ax st-ax-m" x="${P.l}" y="${P.t - 6}">↑ Muscle mass kg</text>
       <path d="${d}" class="st-cm-path" pathLength="1" marker-end="url(#${uid}-ar)"/>
@@ -591,7 +389,7 @@ const STRATA = (() => {
     }, { passive: true });
   }
 
-  /* ---- Train: swipe between exercises, bump steppers, tick the count ------ */
+  /* ---- Train: swipe between exercises, bump steppers ---------------------- */
   function fitTrain() {
     const root = document.querySelector("#trainPage .st-train-active");
     if (!root) return;
@@ -600,56 +398,10 @@ const STRATA = (() => {
     const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
     root.style.minHeight = Math.max(560, Math.round(vh - top)) + "px";
   }
-  /* Live read of the set you are about to log against Best last time (D20: heaviest
-     load, then most reps). It compares two numbers already on screen; nothing is stored. */
-  function syncVs() {
-    const refs = document.querySelector("#trainPage .st-refs");
-    if (!refs) return;
-    let el = document.getElementById("st-vs");
-    if (!el || !el.isConnected) {
-      el = document.createElement("p"); el.id = "st-vs"; el.className = "st-vs"; el.setAttribute("role", "status");
-      refs.insertAdjacentElement("beforebegin", el);
-    }
-    const best = refs.querySelector(".st-refc[data-w]");
-    const wi = document.getElementById("weightInput"), ri = document.getElementById("repsInput"), ty = document.getElementById("n99-set-type");
-    const w = wi && wi.value !== "" ? Number(wi.value) : NaN, r = ri && ri.value !== "" ? Number(ri.value) : NaN;
-    let kind = "", text = "";
-    if (best && Number.isFinite(w) && Number.isFinite(r) && (!ty || ty.value !== "warmup")) {
-      const pw = Number(best.dataset.w), pr = Number(best.dataset.r), fmt = n => String(Math.round(n * 100) / 100);
-      if (w > pw) { kind = "up"; text = `+${fmt(w - pw)} kg on your best last time`; }
-      else if (w === pw && r > pr) { kind = "up"; text = `+${r - pr} ${r - pr === 1 ? "rep" : "reps"} on your best last time`; }
-      else if (w === pw && r === pr) { kind = "eq"; text = "Matches your best last time"; }
-      else { kind = "dn"; text = "Below your best last time"; }
-    }
-    el.dataset.k = kind; el.textContent = text;
-    const lb = document.getElementById("nxp-log-button");
-    if (lb) { if (kind === "up") lb.dataset.beat = "1"; else delete lb.dataset.beat; }
-  }
-  /* Hold a stepper to keep stepping: starts after a beat, then speeds up. */
-  function bindHold() {
-    let t = 0, iv = 0, n = 0, btn = null, swallow = 0;
-    const stop = () => { clearTimeout(t); clearInterval(iv); btn = null; };
-    const tick = () => {
-      if (!btn) return;
-      n++; swallow = Date.now(); btn.click();
-      if (n === 10) { clearInterval(iv); iv = setInterval(tick, 90); }
-    };
-    document.addEventListener("pointerdown", e => {
-      const b = e.target && e.target.closest && e.target.closest("#trainPage .nxp-step");
-      if (!b || (e.pointerType === "mouse" && e.button !== 0)) return;
-      stop(); btn = b; n = 0;
-      t = setTimeout(() => { iv = setInterval(tick, 160); tick(); }, 450);
-    }, true);
-    ["pointerup", "pointercancel", "pointerleave"].forEach(ev => document.addEventListener(ev, e => { if (btn && (ev !== "pointerleave" || e.target === btn)) stop(); }, true));
-    document.addEventListener("contextmenu", e => { if (e.target && e.target.closest && e.target.closest("#trainPage .nxp-step")) e.preventDefault(); }, true);
-    document.addEventListener("click", e => {
-      if (swallow && e.isTrusted && Date.now() - swallow < 400) { e.stopPropagation(); e.preventDefault(); swallow = 0; }
-    }, true);
-  }
-  function bindTrain(page, entering) {
+  /* Hold-to-repeat on the steppers lives in premium-ui.js (one loop, one place). */
+  function bindTrain(page) {
     fitTrain();
     fitNums();
-    syncVs();
     const ex = page.querySelector(".st-train-active .st-ex");
     if (ex && !ex.__stSwipe) {
       ex.__stSwipe = true;
@@ -668,12 +420,6 @@ const STRATA = (() => {
       };
       ex.addEventListener("pointerup", end);
       ex.addEventListener("pointercancel", () => { x0 = null; ex.style.transform = ""; });
-    }
-    const b = page.querySelector(".st-tr-count b");
-    if (b) {
-      const n = Number(b.textContent), prev = state0.lastCount;
-      if (!entering && Number.isFinite(prev) && n > prev && !reduced()) { b.classList.remove("st-tick"); void b.offsetWidth; b.classList.add("st-tick"); }
-      state0.lastCount = n;
     }
   }
   /* Long values (72.5, 102.5) step down in size so they never collide. */
@@ -961,34 +707,17 @@ const STRATA = (() => {
     stopReplay();
     page.classList.toggle("st-enter", entering && !reduced());
     if (entering && !reduced()) setTimeout(() => page.classList.remove("st-enter"), 1400);
-    page.querySelectorAll("[data-st-hero]").forEach(t => {
-      const odo = t.querySelector("[data-st-odo]");
-      if (odo) odoSet(odo, odo.dataset.stOdo, entering);
-      drawHero(t, entering);
-    });
-    page.querySelectorAll("[data-st-odo]").forEach(o => { if (!o.closest("[data-st-hero]")) odoSet(o, o.dataset.stOdo, entering); });
+    page.querySelectorAll("[data-st-odo]").forEach(o => odoSet(o, o.dataset.stOdo, entering));
     page.querySelectorAll("[data-st-cmap]").forEach(h => drawCompMap(h, entering));
     if (entering) page.querySelectorAll("[data-st-count]").forEach(countUp);
     dressProgress(page);
     dressWeeks(page, entering);
     foldPerf(page);
     foldBody(page);
-    dressRecap(page);
-    if (page.id === "trainPage") bindTrain(page, entering);
+    if (page.id === "trainPage") bindTrain(page);
     bindProgressReplay(page);
     bindView(page, entering);
     syncDock();
-  }
-  function wrap(name, pageId) {
-    const fn = window[name];
-    if (typeof fn !== "function" || fn.__strata) return;
-    const wrapped = function () {
-      const out = fn.apply(this, arguments);
-      try { hydrate(document.getElementById(pageId)); } catch (e) { console.error(e); }
-      return out;
-    };
-    wrapped.__strata = true;
-    window[name] = wrapped;
   }
   function install() {
     /* The global render slots are `let`/function bindings in index.html, so
@@ -999,7 +728,7 @@ const STRATA = (() => {
       if (typeof renderWeight === "function" && !renderWeight.__strata) { const f = renderWeight; renderWeight = function () { const o = f.apply(this, arguments); hydrate(document.getElementById("weightPage")); return o; }; renderWeight.__strata = true; }
       if (typeof renderHistory === "function" && !renderHistory.__strata) { const f = renderHistory; renderHistory = function () { const o = f.apply(this, arguments); hydrate(document.getElementById("historyPage")); return o; }; renderHistory.__strata = true; }
       if (typeof renderMore === "function" && !renderMore.__strata) { const f = renderMore; renderMore = function () { const o = f.apply(this, arguments); hydrate(document.getElementById("morePage")); return o; }; renderMore.__strata = true; }
-    } catch (e) { void wrap; console.error(e); }
+    } catch (e) { console.error(e); }
     bindSpotlight();
     bindStepBump();
     bindSheets();
@@ -1010,12 +739,10 @@ const STRATA = (() => {
     }
     bindCalSwipe();
     bindIcons();
-    bindHold();
     bindRipple();
     bindParallax();
     bindPress();
     queueSegs();
-    ['input','click','pointerup'].forEach(ev=>document.addEventListener(ev,e=>{ if(e.target&&e.target.closest&&e.target.closest('#trainPage .st-entry,#trainPage .st-refc,#trainPage .nxp-seg'))setTimeout(syncVs,0); },true));
     document.addEventListener("pointerup", e => {
       const w = e.target && e.target.closest && e.target.closest("#vn-chart-wrap");
       if (w) setTimeout(() => { const t = w.querySelector(".st-tip"); if (t) t.hidden = true; }, 1400);
@@ -1024,7 +751,6 @@ const STRATA = (() => {
     window.addEventListener("resize", () => {
       clearTimeout(rt);
       rt = setTimeout(() => {
-        document.querySelectorAll("[data-st-hero]").forEach(t => drawHero(t, false));
         document.querySelectorAll("[data-st-cmap]").forEach(h => drawCompMap(h, false));
         fitTrain();
       }, 150);
