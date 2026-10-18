@@ -1020,6 +1020,7 @@ const NXP = (() => {
     const coachLine=coach?`<details class="st-coachline is-${coach.kind}${coach.coordinated&&coach.coordinated.hold?' is-coordinated':''}${exMove?' is-enter':''}">
           <summary><span class="st-coach-ico" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 2.4l1.8 5.3 5.3 1.8-5.3 1.8L10 16.6l-1.8-5.3L2.9 9.5l5.3-1.8z"/></svg></span><b>${esc(coach.headline)}</b>${pillTxt?`<em class="st-coach-pill">${esc(pillTxt)}</em>`:''}<span class="st-coachline-why">Why<i aria-hidden="true">›</i></span></summary>
           <p class="st-coach-n">${esc(coach.note)}</p>
+          <p class="st-coach-basis">Targets use your recorded weights, reps and sets. They can’t assess technique or how hard the sets felt.</p>
         </details>`:'';
     const restPct=restLeft&&(ui.restTotal||restPlan)?Math.max(0,Math.min(100,restLeft/(ui.restTotal||restPlan)*100)):0;
     /* Set chips: warm-ups, then one chip per planned working set (extras are
@@ -2683,7 +2684,15 @@ const NXP = (() => {
   }
   async function testConnection() {
     if(ui.connection.busy)return;
-    if(!window.supabase&&typeof loadSupabase==='function')await loadSupabase();
+    if(typeof awaitCloudLibrary==='function'&&!window.supabase){
+      ui.connection={busy:true,lines:[],summary:'Loading the cloud library',tone:''};paintConnection();
+      const lib=await awaitCloudLibrary({show:false});
+      ui.connection.busy=false;
+      if(lib!==true){
+        ui.connection={busy:false,lines:[],summary:lib===false?'Cloud library unavailable. Check your connection and try again.':'The cloud library is still loading. Try again shortly.',tone:'watch',checkedAt:Date.now()};
+        paintConnection();return;
+      }
+    }
     const savedUrl=(localStorage.getItem('apm_sb_url')||'').trim().replace(/\/$/,''),savedKey=(localStorage.getItem('apm_sb_key')||'').trim();
     const url=(document.getElementById('sbUrl')?.value??savedUrl).trim().replace(/\/$/,''),key=(document.getElementById('sbKey')?.value??savedKey).trim();
     ui.connection={busy:true,lines:[],summary:'Checking',tone:''};paintConnection();

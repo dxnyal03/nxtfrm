@@ -5555,6 +5555,30 @@ function loadSupabase(){
   if(!settled)loadSupabase.pending=pending;
   return pending;
 }
+/* The gate every cloud action passes when supabase-js has not landed yet. One library request
+   (loadSupabase shares it), one waiting action, a bounded wait, and an answer the user can act
+   on: true = the library is here, false = the attempt failed (next tap retries), null = still
+   loading or another tap is already waiting (nothing to do now). A late arrival after the boot
+   restore had given up restores the stored session first (restore=true) so Save and Load have a
+   user. Never resolves to a null client being used. */
+async function awaitCloudLibrary(opts){
+  opts=opts||{};
+  const show=opts.show!==false,say=m=>{if(show)toast(m);};
+  if(window.supabase)return true;
+  if(typeof loadSupabase!=="function")return false;
+  if(awaitCloudLibrary.waiting){say("Still connecting to the cloud…");return null;}
+  awaitCloudLibrary.waiting=true;
+  try{
+    say(loadSupabase.pending?"Connecting to the cloud…":"Loading the cloud library…");
+    let timer=null;
+    const ok=await Promise.race([loadSupabase(),new Promise(r=>{timer=setTimeout(()=>r("timeout"),awaitCloudLibrary.waitMs||8000);})]);
+    clearTimeout(timer);
+    if(ok==="timeout"){say("The cloud library is still loading. Try again shortly.");return null;}
+    if(!ok){say("Cloud library unavailable. Check your connection and try again.");return false;}
+    if(opts.restore&&!cloudUser&&typeof hasStoredSbAuthToken==="function"&&hasStoredSbAuthToken())await initCloudFromStorage();
+    return true;
+  }finally{awaitCloudLibrary.waiting=false;}
+}
 function initSupabaseClient(){
   const url=localStorage.getItem("apm_sb_url")||"";
   const key=localStorage.getItem("apm_sb_key")||"";
@@ -5647,13 +5671,12 @@ async function loadCloudNow(){
 }
 async function cloudLogin(){
   try{
-    if(!window.supabase&&typeof loadSupabase==="function")await loadSupabase(); // tapped before the library landed: wait for it, do not fail
-
     const url=val("sbUrl").trim();
     const key=val("sbKey").trim();
     const email=val("sbEmail").trim();
     const password=val("sbPass");
     if(!url||!key||!email||!password)return toast("Enter URL, key, email, password");
+    if(await awaitCloudLibrary({show:true})!==true)return; // loading, unavailable or already waiting: the gate said so
     /* Keep the client unless the project URL or key changed: a second createClient in the same page is what raises "Multiple GoTrueClient". */
     if(localStorage.getItem("apm_sb_url")!==url||localStorage.getItem("apm_sb_key")!==key)sbClient=null;
     localStorage.setItem("apm_sb_url",url);
@@ -5669,13 +5692,12 @@ async function cloudLogin(){
 }
 async function cloudSignup(){
   try{
-    if(!window.supabase&&typeof loadSupabase==="function")await loadSupabase();
-
     const url=val("sbUrl").trim();
     const key=val("sbKey").trim();
     const email=val("sbEmail").trim();
     const password=val("sbPass");
     if(!url||!key||!email||!password)return toast("Enter URL, key, email, password");
+    if(await awaitCloudLibrary({show:true})!==true)return;
     /* Same rule as sign-in: the client is rebuilt only when the project URL or key changed. */
     if(localStorage.getItem("apm_sb_url")!==url||localStorage.getItem("apm_sb_key")!==key)sbClient=null;
     localStorage.setItem("apm_sb_url",url);

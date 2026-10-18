@@ -1617,6 +1617,7 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 .st-coach.is-tired .st-coach-pill,.st-coach.is-reentry .st-coach-pill{color:#FFD98A;background:rgba(255,194,74,.13);box-shadow:inset 0 0 0 1px rgba(255,194,74,.34)}
 .st-coach.is-stall .st-coach-pill{color:#FFB08C;background:rgba(255,138,91,.13);box-shadow:inset 0 0 0 1px rgba(255,138,91,.34)}
 .st-coach-n{margin:0;font:450 13.5px/1.4 var(--st-font);color:var(--st-ink-2)}
+.st-coach-basis{margin:6px 0 0;font:450 12.5px/1.4 var(--st-font);color:var(--st-ink-3)}/* Stage 1: one quiet line inside the Why fold */
 .st-coach-sets{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:7px}
 .st-cs{position:relative;isolation:isolate;display:flex;flex-direction:column;gap:3px;min-width:0;min-height:46px;padding:8px 6px 8px 11px;border:0;border-radius:14px;
   background:linear-gradient(160deg,rgba(255,255,255,.09),rgba(255,255,255,.03));box-shadow:inset 0 1px 0 rgba(255,255,255,.1);
@@ -2174,6 +2175,7 @@ html{caret-color:#B49AFF;-webkit-tap-highlight-color:transparent}
 #trainPage h3.st-coach-h{font-size:var(--fs-sect) !important;font-weight:var(--fw-semi) !important}/* 17/590 */
 #trainPage legend.st-sr{font-size:var(--fs-micro) !important;font-weight:var(--fw-med) !important}/* 11/500 */
 #trainPage p.st-coach-n{font-size:var(--fs-label) !important;font-weight:var(--fw-reg) !important}/* 13.5/400 */
+#trainPage p.st-coach-basis{font-size:var(--fs-label) !important;font-weight:var(--fw-reg) !important;color:var(--st-ink-3) !important}/* Stage 1: same size as the note, a step quieter */
 #trainPage p.st-ex-mus{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/400 */
 #trainPage p.st-tbar-s{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/450 */
 #trainPage p.st-tbar-t{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/400 */

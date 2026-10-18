@@ -308,6 +308,17 @@ const NXT = (() => {
     }
     return {...base,title:"Let the trend settle",message:"One week is not enough to identify a plateau or explain a gain. Keep the plan consistent and reassess with more readings.",action:"Hold steady"};
   }
+  /* Stage 1 — one caution predicate for every surface. Today's decision card, the Progress
+     diagnosis and Train's coach line all ask this instead of re-reading the rate: review()
+     already applied the 1% rule, the lift review and the recovery check-in, so "cautious"
+     is simply what review() concluded (tone watch, or a recovery / slipping-lifts verdict). */
+  function cautionOf(r) {
+    return !!r&&(r.tone==="watch"||/slipping|recovery/i.test(String(r.title||""))||/recovery/i.test(String(r.action||"")));
+  }
+  function caution() {
+    const r=review();
+    return {cautious:cautionOf(r),tone:r.tone,title:r.title,message:r.message,action:r.action,reason:r.reason};
+  }
   function estimate(p) {
     const age=finite(p.age),height=finite(p.height),weight=finite(p.weight),activity=finite(p.activity);
     if(age===null||height===null||weight===null||activity===null||!["male","female"].includes(p.sex))return {error:"Complete your profile to calculate a starting estimate."};
@@ -433,6 +444,17 @@ const NXT = (() => {
       if(FEATURES.checkin&&lifts.length<2&&lowReady<5)return {what:"recovery check-ins",need:Math.max(1,5-lowReady)};
       return {what:"weigh-ins",need:7};
     };
+    if(!p.plateau) {
+      /* Stage 1: this card may not say "keep the plan" while the shared decision says to be
+         careful. Same verdict words, same rate sentence and same action as Today; the two
+         extra rows are the decision itself and how many mornings it rests on. */
+      const care=caution();
+      if(care.cautious) {
+        const cover={label:"Readings",value:`${p.n||0} over ${p.spanDays||0} days`,tone:"neutral"};
+        return pack("caution",`${care.title} — ${care.message}`,[{label:"Decision",value:care.title,tone:"watch"},cover],
+          [{text:`${care.action}.`,kind:"hold"}],p.ok&&p.confidence==="high"?"high":p.ok?"medium":"low",care.reason);
+      }
+    }
     if(!p.plateau&&f.ok&&finite(f.slope)!==null&&f.slope<0) {
       const extra=[{label:"Forecast",value:f.weeks===0?"At goal range":`~${f.weeks} week${f.weeks===1?"":"s"} to goal`,tone:"good"}];
       const conf=f.confidence==="high"&&p.ok&&p.confidence==="high"?"high":f.confidence==="low"||!p.ok?"low":"medium";
@@ -453,8 +475,9 @@ const NXT = (() => {
       const extra=[];
       if(lifts.length)extra.push({label:"Strength",value:lifts.slice(0,2).map(x=>`${x.name} ${x.delta.toFixed(1)}%`).join(" · "),tone:"watch"});
       if(lowReady)extra.push({label:"Readiness",value:`Below 60 on ${lowReady} day${lowReady===1?"":"s"}`,tone:"watch"});
-      return pack("recovery_deficit","Strength or recovery is slipping. This looks like load, not metabolism.",extra,
-        [{text:"Deload or sleep more before cutting further.",kind:"hold"}],
+      /* Stage 1: an observation and a hypothesis, never a claim about what the cause is not. */
+      return pack("recovery_deficit",`Weight is flat while ${lifts.length>=2?"two or more lifts are down":"recovery check-ins are low"} — load or recovery may be involved; this is a hypothesis, not a diagnosis.`,extra,
+        [{text:"Review training load and recovery before cutting further.",kind:"hold"}],
         rank(lifts.length>=2||lowReady>=5),
         lifts.length>=2?"Two or more lifts dropped at least 8%.":"Readiness stayed below 60 for at least five days.");
     }
@@ -669,7 +692,9 @@ const NXT = (() => {
     const imp=(x,y)=>Number(y.weight)>Number(x.weight)||(Number(y.weight)===Number(x.weight)&&Number(y.reps)>Number(x.reps));
     const three=all.slice(-3).map(x=>bestSet(x.sets)),stalled=three.length===3&&three.every(Boolean)&&!imp(three[0],three[1])&&!imp(three[1],three[2])&&all.at(-3).date>=dateAdd(state.date,-28);
     const lighter=!!pb&&imp(best,pb);
-    const out=(kind,headline,note)=>({kind,headline,note,sets,weight:a.weight,reps:a.reps,gap});
+    /* Stage 1: the coach carries the effort fact (recorded / unknown) without commenting on it. */
+    const effort=c.effort||null;
+    const out=(kind,headline,note)=>({kind,headline,note,sets,weight:a.weight,reps:a.reps,gap,effort});
     if(a.kind==="load"){
       const steps=Math.round((a.weight-w)/step);
       return out("load",`Add ${num(a.weight-w)} kg`,
@@ -705,13 +730,20 @@ const NXT = (() => {
         /* D24: going past the top of the range is proof on its own; exactly reaching it still needs a second session. */
         const over=s=>{const b=s&&bestSet(s.sets);return !!b&&Number(b.weight)===weight&&Number(b.reps)>t.reps[1];};
         const effortOkay=last.sets.every(r=>r.rir===null||r.rir===undefined||r.rir===""||Number(r.rir)>=2);
+        /* Stage 1: how much of last session carried a reps-in-reserve value, kept as a fact on
+           the suggestion (none / partial / full). The owner does not log reserve, so "none" is
+           normal use, not a gap: nothing below asks for it or says it is missing. A value from
+           an earlier build is still read by effortOkay above exactly as before. Warm-ups are
+           not in last.sets (workRows), so they never count. */
+        const effortKnown=last.sets.filter(r=>r.rir!==null&&r.rir!==undefined&&r.rir!=="").length;
+        const effort={known:effortKnown,sets:last.sets.length,state:effortKnown===0?"none":effortKnown<last.sets.length?"partial":"full"};
         const r=cfg().recovery[state.date],tired=r&&(Number(r.energy)<=2&&r.energy!==""||Number(r.soreness)>=4);
         const earned=top(last)&&(top(prev)||over(last)),step=Number(t.inc)>0;
-        if(!tired&&earned&&effortOkay&&step)out={label:"Ready to consider an increase",weight:weight+Number(t.inc)*(Number(bestSet(last.sets).reps)>=t.reps[1]+3?2:1),text:over(last)&&!top(prev)?"You went past the top of the rep range last time. Use the next increment only if today’s warm-up feels controlled.":"You reached the top of the rep range in two sessions. Use the next increment only if today’s warm-up feels controlled."};
+        if(!tired&&earned&&effortOkay&&step)out={label:"Ready to consider an increase",effort,weight:weight+Number(t.inc)*(Number(bestSet(last.sets).reps)>=t.reps[1]+3?2:1),text:over(last)&&!top(prev)?"You went past the top of the rep range last time. Use the next increment only if today’s warm-up feels controlled.":"You reached the top of the rep range in two sessions. Use the next increment only if today’s warm-up feels controlled."};
         else {
           const lb=bestSet(last.sets),lowReps=lb&&Number(lb.reps)<t.reps[0];
           const why=tired?"Tired today · hold":earned&&!effortOkay?"Low reserve · hold":earned&&!step?"No kg step set":top(last)?"Top once · repeat to add":lowReps?`Under ${t.reps[0]} · rebuild`:"";
-          out={label:tired?"Keep today manageable":"Hold load · build clean reps",weight,why,text:tired?"Your check-in suggests fatigue. Keep the session manageable; use the shorter option if needed.":"Match your recent load within the rep range. Maintaining performance while cutting counts; an increase is optional."};
+          out={label:tired?"Keep today manageable":"Hold load · build clean reps",effort,weight,why,text:tired?"Your check-in suggests fatigue. Keep the session manageable; use the shorter option if needed.":"Match your recent load within the rep range. Maintaining performance while cutting counts; an increase is optional."};
         }
       }
     }
@@ -807,7 +839,7 @@ const NXT = (() => {
   }
   function diagnosisCard() {
     const d=diagnose();
-    const tone={dietary_drift:"watch",water_masking:"good",recovery_deficit:"watch",metabolic_adaptation:"watch"}[d.verdict]||"";
+    const tone={dietary_drift:"watch",water_masking:"good",recovery_deficit:"watch",metabolic_adaptation:"watch",caution:"watch"}[d.verdict]||"";
     const evidence=(d.evidence||[]).filter(e=>cfg().targetConfirmed||e.label!=='Forecast');
 
     /* --- Presentation only. Every string below comes out of diagnose() as-is;
@@ -924,7 +956,7 @@ const NXT = (() => {
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard()}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' weigh-ins')}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' weigh-ins')}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any change to your plan stays your choice.</p><div class="n99-stack">${CALORIES_ENABLED?button('Review calorie guide','NXT.openCalories()',true):''}${FEATURES.checkin?button('Update recovery check-in','apx96OpenReadiness()',true):''}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,features:FEATURES,pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,features:FEATURES,pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
@@ -2344,7 +2376,9 @@ let cloudSaveQuiet=false;
 /* afterRead: the save a load makes of its own merge; it must not wait on that load. */
 saveCloudNow=async function(show=true,afterRead=false){
   try{
-    if(!window.supabase&&typeof loadSupabase==="function")await loadSupabase(); // library loads lazily (non-blocking boot)
+    /* The library loads lazily. The gate answers loading / unavailable / retry itself; a save never
+       reports success it did not get, so a missing library simply leaves the change local for now. */
+    if(typeof awaitCloudLibrary==="function"&&(await awaitCloudLibrary({show,restore:true}))!==true)return;
 
     const client=initSupabaseClient();
     if(!client||!cloudUser){
@@ -2395,7 +2429,7 @@ loadCloudNow=function(quiet){
 async function readCloudRow(quiet){
   const say=m=>{if(!quiet)toast(m);};
   try{
-    if(!window.supabase&&typeof loadSupabase==="function")await loadSupabase();
+    if(typeof awaitCloudLibrary==="function"&&(await awaitCloudLibrary({show:!quiet,restore:true}))!==true)return 'offline';
 
     const client=initSupabaseClient();
     if(!client||!cloudUser){

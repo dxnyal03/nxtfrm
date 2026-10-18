@@ -78,7 +78,7 @@
       lifts:[{name, gym, lastDate, daysSince, best:{weight,reps}|null,
               aim:{weight,reps,kind,why}|null, holdReason, stall,
               readyToIncrement, returning, nextDate, nextType,
-              coach:{kind,headline,note}|null}]
+              coach:{kind,headline,note,effort}|null}]   (effort: {known,sets,state} from cue(); Stage 1)
         Lifts in the routines scheduled over the next 7 days at state.gym,
         plus every lift with working sets in the last 28 days (any gym), max
         40, planned first. aim/coach come from aimFor()/coachFor() run for that
@@ -486,7 +486,7 @@ Object.assign(NXT, (() => {
         const a = N.aimFor(name), c = N.coachFor(name);
         return {
           aim: a ? {weight: numOr(a.weight), reps: numOr(a.reps), kind: a.kind || null, why: a.why || null} : null,
-          coach: c ? {kind: c.kind || null, headline: c.headline || null, note: c.note || null} : null
+          coach: c ? {kind: c.kind || null, headline: c.headline || null, note: c.note || null, effort: c.effort || null} : null
         };
       });
     });
@@ -948,6 +948,8 @@ Object.assign(NXT, (() => {
      6 ranked by severity, then schedule > strength > cardio > weight > data,
      then id. */
   function cautious(r) {
+    /* Stage 1: the engine owns the predicate (NXT.cautionOf) so Today, Progress and Train read one rule. */
+    if (typeof N.cautionOf === "function") return N.cautionOf(r);
     return !!r && (r.tone === "watch" || /slipping|recovery/i.test(String(r.title || "")) || /recovery/i.test(String(r.action || "")));
   }
   function evaluate(date) {
