@@ -170,6 +170,38 @@
       });
       sessionIndex++;
     }
+    /* Recent block (Elevate trial data, localhost and previews only): the last five weeks of the plan's
+       Full Body A/B/C on Mon/Wed/Fri with steady double progression and one skipped session, and when
+       today is a lifting day its session already under way (two exercises logged), so a preview shows
+       this week's muscles, session prints, new bests and the live workout without logging first. */
+    const FULL = {
+      FullA: [['Incline Dumbbell Press', 3, 8, 12, 29, 2.5], ['Chest Supported T-Bar Row', 3, 8, 12, 40, 2.5], ['Leg Press', 3, 8, 12, 105, 5], ['Hamstring Curl', 2, 10, 15, 32.5, 2.5], ['Cable Lateral Raise', 2, 12, 20, 6, 1], ['Ab Crunch', 2, 12, 20, 17.5, 2.5]],
+      FullB: [['Romanian Deadlift', 3, 8, 10, 60, 5], ['Lat Pulldown', 3, 8, 12, 47.5, 2.5], ['Smith Machine Bench Press', 3, 8, 12, 45, 2.5], ['Leg Extension', 2, 10, 15, 37.5, 2.5], ['Reverse Fly', 2, 12, 20, 7, 1], ['DB Preacher Curl', 2, 10, 15, 9, 1]],
+      FullC: [['Leg Press', 2, 10, 15, 100, 5], ['Machine Shoulder Press', 2, 8, 12, 27.5, 2.5], ['Unilateral Seated Row', 3, 8, 12, 30, 2.5], ['Hamstring Curl', 2, 10, 15, 32.5, 2.5], ['Tricep Pushdown', 2, 10, 15, 22.5, 2.5], ['Ab Crunch', 2, 12, 20, 17.5, 2.5]]
+    };
+    const PLAN_DAYS = { 1: 'FullA', 3: 'FullB', 5: 'FullC' };
+    const seenRecent = {};
+    let recentIndex = 0;
+    for (let day = -35; day <= 0; day++) {
+      const date = dateFromToday(day);
+      const dayType = PLAN_DAYS[new Date(date + 'T12:00:00').getDay()];
+      if (!dayType) continue;
+      recentIndex++;
+      if (recentIndex === 4) continue;
+      const isToday = day === 0;
+      const base = isToday ? Date.now() - 22 * 60000 : Date.parse(date + 'T18:30:00');
+      FULL[dayType].forEach(([name, sets, lo, hi, start, inc], exIdx) => {
+        if (isToday && exIdx > 1) return;
+        const n = (seenRecent[name] = (seenRecent[name] || 0) + 1) - 1;
+        const weight = round05(start + Math.floor(n / 2) * inc);
+        for (let setNum = 1; setNum <= sets; setNum++) {
+          const reps = Math.max(lo, Math.min(hi, lo + 2 + (n % 3)) - (setNum - 1));
+          const entry = { id: uid(), date, dayType, gym: 'Gym A', exercise: name, setNum, weight, reps, volume: Math.round(weight * reps), setType: 'working', ts: base + exIdx * 360000 + setNum * 120000, _seed: true };
+          if (typeof exerciseFamily === 'function') entry.movementFamily = exerciseFamily(name);
+          logs.push(entry);
+        }
+      });
+    }
     return logs;
   }
 

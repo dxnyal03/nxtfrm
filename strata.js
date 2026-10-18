@@ -976,7 +976,7 @@ const STRATA = (() => {
       t.classList.add("st-island");
       /* In a workout the Log button already confirms the set in place; the alert is still announced to
          VoiceOver but not drawn over the instrument. */
-      t.classList.toggle("is-quiet", /^(working|warm-up|extra) set saved/i.test(t.textContent) && !!document.querySelector("#trainPage .st-train-active"));
+      t.classList.toggle("is-quiet", quietToast || (/^(working|warm-up|extra) set saved/i.test(t.textContent) && !!document.querySelector("#trainPage .st-train-active")));
       t.style.display = "block";
       toastTimer = setTimeout(() => {
         t.classList.add("is-out");
@@ -1211,6 +1211,239 @@ const STRATA = (() => {
     } catch (e) {}
   }
 
+  /* ---- D92 · The weigh-in moment ------------------------------------------------------------------
+     Saving this morning's reading lands it: a glass card shows the last three weeks of mornings and the
+     trend line, the new reading drops onto its place, and the card says how it sits against the trend
+     ("0.3 kg below trend", the History wording) and the previous morning — plus "Lowest reading yet"
+     when the save itself says so. Same numbers the chart shows; nothing stored. The toast is still
+     announced to VoiceOver; the card is what you see. Tap or wait to close. */
+  let quietToast = false, wmEl = null, wmT = 0;
+  function weighMoment(entry, newLow) {
+    try {
+      if (!entry || typeof NXT !== "object") return false;
+      const rows = NXT.weights(), tr = NXT.trend(rows), pt = tr.find(p => p.date === entry.date);
+      const since = NXT.dateAdd(entry.date, -20);
+      const morn = NXT.timingRows("Morning").filter(r => r.date >= since && r.date <= entry.date);
+      const line = tr.filter(p => p.date >= since && p.date <= entry.date && p.avg !== null);
+      if (morn.length < 2 || line.length < 2) return false;
+      const W = 300, H = 120, d0 = NXT.dateMs(since), d1 = NXT.dateMs(entry.date);
+      const vs = morn.map(r => Number(r.weight)).concat(line.map(p => Number(p.avg)));
+      const lo = Math.min(...vs) - .25, hi = Math.max(...vs) + .25;
+      const X = d => 10 + (NXT.dateMs(d) - d0) / Math.max(1, d1 - d0) * (W - 20), Y = v => 12 + (hi - v) / (hi - lo) * (H - 24);
+      const path = line.map((p, i) => (i ? "L" : "M") + X(p.date).toFixed(1) + " " + Y(Number(p.avg)).toFixed(1)).join("");
+      const dots = morn.filter(r => r !== entry && !(r.date === entry.date && Number(r.weight) === Number(entry.weight))).map(r => `<circle cx="${X(r.date).toFixed(1)}" cy="${Y(Number(r.weight)).toFixed(1)}" r="2.6"/>`).join("");
+      const w = Number(entry.weight), gap = pt && pt.avg !== null ? w - Number(pt.avg) : null;
+      const prev = morn.filter(r => r.date < entry.date).at(-1);
+      const chips = [];
+      if (gap !== null) chips.push(Math.abs(gap) < .05 ? "On trend" : Math.abs(gap).toFixed(1) + " kg " + (gap < 0 ? "below" : "above") + " trend");
+      if (prev) { const dd = w - Number(prev.weight); chips.push((Math.abs(dd) < .05 ? "Same as" : (dd < 0 ? "↓ " : "↑ ") + Math.abs(dd).toFixed(1) + " kg vs") + " " + (NXT.dateAdd(prev.date, 1) === entry.date ? "yesterday" : NXT.shortDate(prev.date))); }
+      if (newLow) chips.unshift("Lowest reading yet");
+      clearTimeout(wmT);
+      if (wmEl) wmEl.remove();
+      wmEl = document.createElement("div");
+      wmEl.className = "st-wm"; wmEl.setAttribute("aria-hidden", "true");
+      const ex = X(entry.date), ey = Y(w);
+      wmEl.innerHTML = `<div class="st-wm-card${newLow ? " is-low" : ""}"><p class="st-wm-eb">Morning · ${esc(NXT.shortDate(entry.date))}</p><p class="st-wm-v"><b>${w.toFixed(1)}</b><small>kg</small></p>
+        <svg class="st-wm-g" viewBox="0 0 ${W} ${H}"><path class="st-wm-tr" d="${path}" pathLength="1"/><g class="st-wm-d">${dots}</g><line class="st-wm-drop" x1="${ex.toFixed(1)}" x2="${ex.toFixed(1)}" y1="0" y2="${ey.toFixed(1)}"/><circle class="st-wm-halo" cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="11"/><circle class="st-wm-new" cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="5" style="--dy:${(-ey).toFixed(1)}px"/></svg>
+        <p class="st-wm-chips">${chips.map(c => `<span>${esc(c)}</span>`).join("")}</p></div>`;
+      wmEl.addEventListener("click", () => closeWm());
+      const el = wmEl;
+      setTimeout(() => { if (wmEl === el) { document.body.appendChild(el); wmT = setTimeout(closeWm, reduced() ? 2600 : 3600); } }, 260);
+      return true;
+    } catch (e) { return false; /* the save itself already happened */ }
+  }
+  function closeWm() {
+    clearTimeout(wmT);
+    if (!wmEl) return;
+    const el = wmEl; wmEl = null;
+    el.classList.add("is-out"); setTimeout(() => el.remove(), reduced() ? 0 : 320);
+  }
+  function bindWeighMoment() {
+    if (typeof apx95SaveQuickWeight !== "function" || apx95SaveQuickWeight.__strataWM) return;
+    const f = apx95SaveQuickWeight;
+    apx95SaveQuickWeight = function () {
+      const before = state && Array.isArray(state.bws) ? state.bws.length : 0;
+      const prior = typeof NXT === "object" ? NXT.weights().map(r => Number(r.weight)) : [];
+      quietToast = true;
+      let out;
+      try { out = f.apply(this, arguments); } finally { quietToast = false; }
+      const after = state && Array.isArray(state.bws) ? state.bws.length : 0;
+      let shown = false;
+      if (after > before) {
+        const e = state.bws[state.bws.length - 1];
+        const morning = String(e && e.timeOfDay || "Morning") === "Morning";
+        const newLow = morning && prior.length >= 5 && Number(e.weight) < Math.min(...prior);
+        if (morning) shown = weighMoment(e, newLow);
+      }
+      /* Anything the moment does not replace — a validation message, a non-morning save — is shown as usual. */
+      if (!shown) { const t = document.getElementById("toast"); if (t) t.classList.remove("is-quiet"); }
+      return out;
+    };
+    apx95SaveQuickWeight.__strataWM = true;
+    apx95SaveQuickWeight.__strataH = true;
+  }
+
+  /* ---- D93 · The Observatory ------------------------------------------------------------------------
+     Your sky, explorable. Every lifting session is a star, gathered into one constellation per routine and
+     laid out on a sunflower spiral in the order you trained (the first session at the centre); walks have
+     their own cluster. A star is brighter and larger with more working sets; a four-point flare marks a
+     session that set a new best (D27's rule: heaviest load, then most reps, against every earlier session
+     of that exercise). Drag to pan, pinch or scroll to zoom, tap a star for its session and open it in
+     History. Read-only; nothing stored or scored. */
+  const GOLD = Math.PI * (3 - Math.sqrt(5));
+  const OBS_HUE = { FullA: "#A78BFA", FullB: "#C4B5FD", FullC: "#8B5CF6", Push: "#BF75C5", Pull: "#7C83F5", Pump: "#E06C9F", Legs: "#E06C9F", Zone2: "#E39A5C", Floorball: "#E2B04A" };
+  let obs = null;
+  function obsData() {
+    const rows = NXT.workRows().filter(r => Number(r.weight) > 0).slice().sort((a, b) => a.date.localeCompare(b.date) || (Number(a.ts || 0) - Number(b.ts || 0)));
+    const sessions = new Map();
+    for (const r of rows) {
+      const k = r.date + "|" + (r.gym || "Gym A") + "|" + (r.dayType || "Lift");
+      let s = sessions.get(k);
+      if (!s) { s = { key: k, date: r.date, gym: r.gym || "Gym A", type: r.dayType || "Lift", sets: 0, rows: [], pr: false, kind: "lift" }; sessions.set(k, s); }
+      s.sets++; s.rows.push(r);
+    }
+    const best = new Map(), beats = (a, b) => Number(a.weight) > Number(b.weight) || (Number(a.weight) === Number(b.weight) && Number(a.reps) > Number(b.reps));
+    const lifts = [...sessions.values()].sort((a, b) => a.date.localeCompare(b.date));
+    for (const s of lifts) {
+      const byEx = {};
+      s.rows.forEach(r => { const e = r.exercise || r.name; (byEx[e] = byEx[e] || []).push(r); });
+      s.exercises = Object.keys(byEx).length; s.bests = [];
+      for (const [ex, sets] of Object.entries(byEx)) {
+        const a = NXT.bestSet(sets); if (!a) continue;
+        const b = best.get(ex);
+        if (b && beats(a, b)) { s.pr = true; s.bests.push(ex + " " + a.weight + " kg × " + a.reps); }
+        if (!b || beats(a, b)) best.set(ex, a);
+      }
+    }
+    const walks = new Map();
+    (state.cardio || []).forEach(c => { const m = Number(c && (c.duration || c.minutes)); if (!c || !(m > 0) || typeof c.date !== "string" || c.date > state.date) return; const w = walks.get(c.date) || { key: "walk|" + c.date, date: c.date, type: "Zone2", kind: "walk", minutes: 0 }; w.minutes += m; walks.set(c.date, w); });
+    const order = NXT.typeNames ? NXT.typeNames() : [];
+    const groups = [];
+    /* Grouped by the name the app shows: older "Legs" records and today's "Legs" (stored as Pump, D33)
+       are one constellation, while the stored records stay exactly as they are. */
+    const byName = new Map();
+    lifts.forEach(s => { const n = NXT.label(s.type); if (!byName.has(n)) byName.set(n, { type: s.type, items: [] }); byName.get(n).items.push(s); });
+    const rank = t => { const i = order.indexOf(t); return i < 0 ? 99 : i; };
+    [...byName.entries()].sort((a, b) => rank(a[1].type) - rank(b[1].type)).forEach(([n, G]) => groups.push({ type: G.type, name: n, items: G.items.sort((a, b) => a.date.localeCompare(b.date)) }));
+    const wl = [...walks.values()].sort((a, b) => a.date.localeCompare(b.date));
+    if (wl.length) groups.push({ type: "Zone2", name: "Walks", items: wl });
+    /* Constellations sit on a ring sized by the largest one, so a few sessions stay close and readable. */
+    const g = groups.length, maxR = Math.max(0, ...groups.map(G => 12 * Math.sqrt(G.items.length + .6) + 8));
+    const R = g === 1 ? 0 : Math.max(70, maxR * 2.1 + 28 + 6 * g);
+    let gi = 0;
+    groups.forEach((G, i) => {
+      const a = -Math.PI / 2 + i / Math.max(1, g) * Math.PI * 2;
+      G.cx = R * Math.cos(a); G.cy = R * Math.sin(a) * .82;
+      G.items.forEach((s, j) => {
+        const r = 12 * Math.sqrt(j + .6), th = j * GOLD;
+        s.x = G.cx + r * Math.cos(th); s.y = G.cy + r * Math.sin(th);
+        s.r = s.kind === "walk" ? 1.3 + Math.min(2.6, s.minutes / 25) : 1.5 + Math.min(3.1, s.sets / 5);
+        s.hue = OBS_HUE[G.type] || "#B49AFF"; s.gi = gi++;
+      });
+      G.r = 12 * Math.sqrt(G.items.length + .6) + 8;
+    });
+    const all = groups.flatMap(G => G.items);
+    return { groups, all, lifts: lifts.length, walks: wl.length, first: all.length ? all.map(s => s.date).sort()[0] : null };
+  }
+  function observatory() {
+    if (typeof NXT !== "object") return;
+    closeObservatory(true);
+    const D = obsData();
+    const el = document.createElement("div");
+    el.id = "stObs"; el.className = "st-obs";
+    el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "st-obs-t");
+    let dust = "";
+    let sd = 9;
+    const rnd = () => { sd = (Math.imul(sd, 1664525) + 1013904223) >>> 0; return sd / 4294967296; };
+    for (let i = 0; i < 140; i++) dust += `<circle cx="${(rnd() * 140 - 20).toFixed(1)}%" cy="${(rnd() * 140 - 20).toFixed(1)}%" r="${(.4 + rnd() * .9).toFixed(2)}" style="--d:${(rnd() * 6).toFixed(2)}s;opacity:${(.15 + rnd() * .45).toFixed(2)}"/>`;
+    const groupsSvg = D.groups.map(G => {
+      const ln = G.items.length > 1 ? `<path class="st-obs-ln" d="${G.items.map((s, j) => (j ? "L" : "M") + s.x.toFixed(1) + " " + s.y.toFixed(1)).join("")}" stroke="${G.items[0].hue}" pathLength="1"/>` : "";
+      const glow = `<circle class="st-obs-neb" cx="${G.cx.toFixed(1)}" cy="${G.cy.toFixed(1)}" r="${(G.r * 1.6).toFixed(1)}" fill="${G.items[0].hue}"/>`;
+      const stars = G.items.map(s => `<g class="st-obs-s${s.pr ? " is-pr" : ""}" data-k="${esc(s.key)}" style="--i:${s.gi};--h:${s.hue}" transform="translate(${s.x.toFixed(1)} ${s.y.toFixed(1)})"><g class="st-obs-si">${s.pr ? `<path class="st-obs-flare" d="M0 -${(s.r * 3.4).toFixed(1)}L${(s.r * .45).toFixed(1)} 0L0 ${(s.r * 3.4).toFixed(1)}L-${(s.r * .45).toFixed(1)} 0ZM-${(s.r * 3.4).toFixed(1)} 0L0 ${(s.r * .45).toFixed(1)}L${(s.r * 3.4).toFixed(1)} 0L0 -${(s.r * .45).toFixed(1)}Z"/>` : ""}<circle class="st-obs-halo" r="${(s.r * 2.6).toFixed(1)}"/><circle class="st-obs-core" r="${s.r.toFixed(2)}"/></g></g>`).join("");
+      const lab = `<text class="st-obs-lab" x="${G.cx.toFixed(1)}" y="${(G.cy + G.r + 16).toFixed(1)}" text-anchor="middle">${esc(G.name)}<tspan x="${G.cx.toFixed(1)}" dy="15">${G.items.length} ${G.type === "Zone2" ? (G.items.length === 1 ? "walk" : "walks") : (G.items.length === 1 ? "session" : "sessions")}</tspan></text>`;
+      return `<g class="st-obs-g">${glow}${ln}${stars}${lab}</g>`;
+    }).join("");
+    const count = D.lifts + " lifting " + (D.lifts === 1 ? "session" : "sessions") + (D.walks ? " · " + D.walks + " " + (D.walks === 1 ? "walk" : "walks") : "");
+    const list = D.all.slice().sort((a, b) => a.date.localeCompare(b.date)).map(s => `<li><button type="button" data-k="${esc(s.key)}">${esc(NXT.shortDate(s.date))} · ${esc(s.kind === "walk" ? "Walk · " + Math.round(s.minutes) + " min" : NXT.label(s.type) + " · " + s.sets + " sets")}${s.pr ? " · new best" : ""}</button></li>`).join("");
+    el.innerHTML = `<div class="st-obs-bg" aria-hidden="true"></div>
+      <svg class="st-obs-svg" aria-hidden="true"><g class="st-obs-dust">${dust}</g><g class="st-obs-world">${groupsSvg}</g></svg>
+      <header class="st-obs-head"><div><p class="st-obs-eb">The Observatory</p><h2 id="st-obs-t">Your sky</h2><p class="st-obs-sub">${D.all.length ? esc(count) + (D.first ? " · since " + esc(NXT.shortDate(D.first)) : "") : "Log a session and its star appears here."}</p></div><button type="button" class="st-obs-x" aria-label="Close">×</button></header>
+      <p class="st-obs-legend" aria-hidden="true"><span><i></i>A session, brighter with more sets</span><span><i class="is-pr"></i>A new best</span></p>
+      <section class="st-obs-card" hidden aria-live="polite"></section>
+      <ul class="st-sr st-obs-list" aria-label="Sessions">${list}</ul>`;
+    document.body.appendChild(el);
+    if (typeof iconify === "function") iconify(el.querySelector(".st-obs-head"));
+    const svg = el.querySelector(".st-obs-svg"), world = el.querySelector(".st-obs-world"), dustG = el.querySelector(".st-obs-dust");
+    const view = { x: 0, y: 0, k: 1 };
+    const size = () => svg.getBoundingClientRect();
+    const apply = () => {
+      const r = size();
+      world.setAttribute("transform", `translate(${(r.width / 2).toFixed(1)} ${(r.height / 2 + 10).toFixed(1)}) scale(${view.k.toFixed(3)}) translate(${(-view.x).toFixed(1)} ${(-view.y).toFixed(1)})`);
+      dustG.setAttribute("transform", `translate(${(-view.x * .12 * view.k).toFixed(1)} ${(-view.y * .12 * view.k).toFixed(1)})`);
+    };
+    const fit = () => {
+      const r = size(); if (!D.all.length) return;
+      const xs = D.all.map(s => s.x), ys = D.all.map(s => s.y);
+      const x0 = Math.min(...xs) - 40, x1 = Math.max(...xs) + 40, y0 = Math.min(...ys) - 40, y1 = Math.max(...ys) + 70;
+      view.x = (x0 + x1) / 2; view.y = (y0 + y1) / 2;
+      view.k = Math.max(.5, Math.min(3, Math.min(r.width / (x1 - x0), (r.height - 220) / (y1 - y0))));
+      apply();
+    };
+    const card = el.querySelector(".st-obs-card");
+    const select = key => {
+      el.querySelectorAll(".st-obs-s.is-sel").forEach(g => g.classList.remove("is-sel"));
+      const s = D.all.find(x => x.key === key); if (!s) { card.hidden = true; return; }
+      const g = el.querySelector(`.st-obs-s[data-k="${CSS.escape(key)}"]`); if (g) g.classList.add("is-sel");
+      const day = new Date(NXT.dateMs(s.date)).toLocaleDateString("en-SG", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+      card.innerHTML = `<p class="st-obs-c-eb" style="--h:${s.hue}"><i></i>${esc(s.kind === "walk" ? "Walk" : NXT.label(s.type))}${s.kind === "walk" ? "" : " · " + esc(s.gym)}</p><h3>${esc(day)}</h3>
+        <p class="st-obs-c-v">${s.kind === "walk" ? `<b>${Math.round(s.minutes)}</b> min` : `<b>${s.sets}</b> working ${s.sets === 1 ? "set" : "sets"} · <b>${s.exercises}</b> ${s.exercises === 1 ? "exercise" : "exercises"}`}</p>
+        ${s.pr && s.bests.length ? `<p class="st-obs-c-pr">New best · ${esc(s.bests.slice(0, 2).join(" · "))}</p>` : ""}
+        <button type="button" class="st-obs-open">Open in History</button>`;
+      card.hidden = false;
+      card.querySelector(".st-obs-open").addEventListener("click", () => { closeObservatory(); if (currentTab() !== "history") switchTab("history"); setTimeout(() => { if (typeof NXP === "object" && NXP.historySelect) NXP.historySelect(s.date); }, 80); });
+    };
+    el.querySelector(".st-obs-list").addEventListener("click", e => { const b = e.target.closest("button[data-k]"); if (b) select(b.dataset.k); });
+    el.querySelector(".st-obs-x").addEventListener("click", () => closeObservatory());
+    /* pan · pinch · wheel · tap */
+    const pts = new Map(); let start = null, pinch = null;
+    svg.addEventListener("pointerdown", e => { svg.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pts.size === 1) start = { x: e.clientX, y: e.clientY, t: performance.now(), moved: 0 }; if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), k: view.k }; } });
+    svg.addEventListener("pointermove", e => {
+      const p = pts.get(e.pointerId); if (!p) return;
+      const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+      if (pts.size === 1) { view.x -= dx / view.k; view.y -= dy / view.k; if (start) start.moved += Math.abs(dx) + Math.abs(dy); apply(); }
+      else if (pts.size === 2 && pinch) { const [a, b] = [...pts.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); view.k = Math.max(.4, Math.min(5, pinch.k * d / Math.max(1, pinch.d))); if (start) start.moved = 99; apply(); }
+    });
+    const up = e => {
+      const r = size();
+      if (pts.size === 1 && start && start.moved < 8 && performance.now() - start.t < 400) {
+        const wx = view.x + (e.clientX - r.left - r.width / 2) / view.k, wy = view.y + (e.clientY - r.top - r.height / 2 - 10) / view.k;
+        let hit = null, bd = 26 / view.k;
+        D.all.forEach(s => { const d = Math.hypot(s.x - wx, s.y - wy); if (d < bd) { bd = d; hit = s; } });
+        if (hit) { select(hit.key); haptic("tick"); } else { card.hidden = true; el.querySelectorAll(".st-obs-s.is-sel").forEach(g => g.classList.remove("is-sel")); }
+      }
+      pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) start = null;
+    };
+    svg.addEventListener("pointerup", up); svg.addEventListener("pointercancel", e => { pts.delete(e.pointerId); pinch = null; start = null; });
+    svg.addEventListener("wheel", e => { e.preventDefault(); view.k = Math.max(.4, Math.min(5, view.k * Math.exp(-e.deltaY * .0015))); apply(); }, { passive: false });
+    const key = e => { if (e.key === "Escape") { e.preventDefault(); closeObservatory(); } };
+    document.addEventListener("keydown", key, true);
+    const onResize = () => apply();
+    window.addEventListener("resize", onResize);
+    obs = { el, key, onResize, back: document.activeElement };
+    document.documentElement.classList.add("st-obs-open");
+    fit();
+    el.querySelector(".st-obs-x").focus({ preventScroll: true });
+  }
+  function closeObservatory(now) {
+    if (!obs) return;
+    const o = obs; obs = null;
+    document.removeEventListener("keydown", o.key, true);
+    window.removeEventListener("resize", o.onResize);
+    document.documentElement.classList.remove("st-obs-open");
+    if (now || reduced()) o.el.remove(); else { o.el.classList.add("is-out"); setTimeout(() => o.el.remove(), 320); }
+    try { if (o.back && o.back.focus && document.contains(o.back)) o.back.focus(); } catch (e) {}
+  }
+
   /* D69 · Living sky. The canvas follows the device clock (the clock the greeting already reads):
      dawn 05–09, day 09–17, dusk 17–21, night 21–05. Presentation only; refreshed every five minutes
      and whenever the app comes back to the foreground. sky(name) pins a state (verification only). */
@@ -1318,7 +1551,7 @@ const STRATA = (() => {
       home: [["Log weight", () => apx95OpenQuickWeight()], ["Log cardio", () => showCardioSheet()]],
       train: [lift ? [s ? "Resume " + sessionName : "Start " + sessionName, () => NXP.enterTrain()] : null, ["Change today's session", () => showSessionSheet()], ["Log cardio", () => showCardioSheet()]],
       weight: [["Weight", view("overview")], ["Training", view("training")], ["Lifts", view("strength")], ["Body", view("body")], ["Log weight", () => apx95OpenQuickWeight()], ["Share your cut", () => NXP.shareProgress && NXP.shareProgress()]],
-      history: [["Today", go("history", () => NXP.historySelect && NXP.historySelect(localToday()))], ["Lifting days", hist("strength")], ["Weigh-ins", hist("body")], ["Cardio", hist("conditioning")]],
+      history: [["Your sky", () => observatory()], ["Today", go("history", () => NXP.historySelect && NXP.historySelect(localToday()))], ["Lifting days", hist("strength")], ["Weigh-ins", hist("body")], ["Cardio", hist("conditioning")]],
       more: [["Training plan", () => NXT.more("training")], ["Data & sync", () => NXT.more("data")], ["Appearance", () => NXT.more("appearance")]]
     };
     return (L[tab] || []).filter(Boolean);
@@ -1520,6 +1753,7 @@ const STRATA = (() => {
     bindTilt();
     bindDockShortcuts();
     bindPull();
+    bindWeighMoment();
     if (typeof switchTab === "function" && !switchTab.__strata) {
       const f = switchTab;
       switchTab = function () { return navigate(f, arguments); };
@@ -1541,7 +1775,7 @@ const STRATA = (() => {
     });
     document.documentElement.classList.add("st-on");
   }
-  return { hydrate, install, odoSet, stopReplay, sky, haptic, glance: () => { glTouch = 0; showGlance(); }, tiltState, allowTilt, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
+  return { observatory, closeObservatory, iconify, hydrate, install, odoSet, stopReplay, sky, haptic, glance: () => { glTouch = 0; showGlance(); }, tiltState, allowTilt, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
 })();
 STRATA.install();
 if (typeof NXT === "object" && NXT && typeof NXT.repaint === "function" && document.readyState !== "loading") {

@@ -612,8 +612,8 @@ const NXP = (() => {
      carry no count. Exercises the library does not know are counted and named as unmapped, never
      guessed (train-anatomy.js: no inference from names). Read-only: nothing here is stored, and no
      number is a score. */
-  function weekMuscles() {
-    const start=N.weekStart(),end=N.dateAdd(start,6);
+  function weekMuscles(off) {
+    const start=N.dateAdd(N.weekStart(),7*Math.min(0,Number(off)||0)),end=N.dateAdd(start,6);
     const rows=N.workRows().filter(r=>r.date>=start&&r.date<=end);
     const prim={},sec={},ex={};let unmapped=0;
     const lib=typeof NXTLIB!=='undefined'?NXTLIB:null;
@@ -630,7 +630,7 @@ const NXP = (() => {
   }
   function bodyLightHTML() {
     if(typeof NXTANAT==='undefined'||typeof NXTLIB==='undefined')return '';
-    const w=weekMuscles();
+    const off=Math.max(-104,Math.min(0,Number(ui.blWeek)||0)),w=weekMuscles(off);
     const lv=id=>w.max?(0.38+0.62*(w.prim[id]/w.max)).toFixed(2):'0';
     /* The full-figure canvas carries ~13% empty margin around the body; frame the body itself. */
     const fig=view=>NXTANAT.figure({primary:w.ranked,secondary:w.assisted,view,crop:false})
@@ -644,14 +644,23 @@ const NXP = (() => {
     const more=w.ranked.length>6?`<p class="st-bl-more">${w.ranked.slice(6).map(id=>`<span class="st-bl-chip">${esc(NXTANAT.label(id))} <b class="vn-num">${w.prim[id]}</b></span>`).join('')}</p>`:'';
     const empty=!w.ranked.length;
     return `<section class="st-tile st-bl${empty?' is-empty':''}" data-st-view data-st-bl aria-labelledby="st-bl-h" style="--c:var(--st-lift)">
-      <div class="st-tile-head"><span class="st-cat" id="st-bl-h">Muscles this week</span><span class="st-meta">${esc(range)}</span></div>
+      <div class="st-tile-head"><span class="st-cat" id="st-bl-h">${off===0?'Muscles this week':off===-1?'Muscles last week':'Muscles'}</span><span class="st-bl-nav"><button type="button" class="st-bl-step" aria-label="Previous week" onclick="NXP.bodyWeek(-1)">‹</button><span class="st-meta" aria-live="polite">${esc(range)}</span><button type="button" class="st-bl-step" aria-label="Next week"${off>=0?' disabled':''} onclick="NXP.bodyWeek(1)">›</button></span></div>
       <div class="st-bl-grid">
         <div class="st-bl-stage" aria-hidden="true"><i class="st-bl-halo"></i><div class="st-bl-fig">${fig('front')}<small>Front</small></div><div class="st-bl-fig">${fig('back')}<small>Back</small></div><i class="st-bl-scan"></i></div>
-        ${empty?`<p class="st-bl-empty">No working sets yet this week. Each set you log lights the muscles it trains.</p>`:`<div class="st-bl-side"><p class="st-bl-sum"><b class="vn-num">${w.sets-w.unmapped}</b> working ${N.plural(w.sets-w.unmapped,'set')}<span>${w.ranked.length} ${N.plural(w.ranked.length,'muscle group')}</span></p><ol class="st-bl-list">${rows}</ol>${more}</div>`}
+        ${empty?`<p class="st-bl-empty">${off===0?'No working sets yet this week. Each set you log lights the muscles it trains.':'No working sets that week.'}</p>`:`<div class="st-bl-side"><p class="st-bl-sum"><b class="vn-num">${w.sets-w.unmapped}</b> working ${N.plural(w.sets-w.unmapped,'set')}<span>${w.ranked.length} ${N.plural(w.ranked.length,'muscle group')}</span></p><ol class="st-bl-list">${rows}</ol>${more}</div>`}
       </div>
       ${w.unmapped?`<p class="st-bl-note">${w.unmapped} ${N.plural(w.unmapped,'set')} from exercises without anatomy data ${w.unmapped===1?'is':'are'} not drawn.</p>`:''}
       ${w.assisted.length?`<p class="st-bl-note"><i class="st-bl-k" aria-hidden="true"></i>Dimmer on the body: assisted only — ${esc(w.assisted.map(id=>NXTANAT.label(id)).join(', '))}</p>`:''}
     </section>`;
+  }
+  /* Step back through earlier weeks: the tile redraws in place and lights again. */
+  function bodyWeek(d) {
+    ui.blWeek=Math.max(-104,Math.min(0,(Number(ui.blWeek)||0)+(Number(d)||0)));
+    const host=document.querySelector('#homePage [data-st-bl]');if(!host)return;
+    host.insertAdjacentHTML('afterend',bodyLightHTML());host.remove();
+    const el=document.querySelector('#homePage [data-st-bl]');if(!el)return;
+    el.classList.add('is-in');void el.offsetWidth;el.classList.add('st-play');
+    if(typeof STRATA==='object'&&STRATA.iconify)STRATA.iconify(el);
   }
   /* Tapping a muscle in the list lights it alone on the figure for a moment. Presentation only. */
   function bodyFocus(id) {
@@ -3246,7 +3255,7 @@ const NXP = (() => {
     syncTrainNav(false);
     const month=calendarMonthState(),filter=state.historyFilter||'all',scope=historyScope(filter),selected=historySelectedDate(month,scope);
     state.historyDate=selected;
-    document.getElementById('historyPage').innerHTML=`<div class="n99 nxp nxp-history vn-history"><header class="nxp-heading nxp-history-chrome vn-hist-chrome" id="vn-hist-chrome"><div><h1>History</h1><p id="vn-hist-summary">${esc(historyMonthSummary(month,filter,scope))}</p></div></header>${historyFiltersHTML(filter)}<div id="vn-hist-calhost">${historyCalendar(month,scope,selected)}</div><div id="vn-hist-dayhost" class="vn-hist-dayhost">${historyDayView(selected,filter,scope)}</div></div>`;
+    document.getElementById('historyPage').innerHTML=`<div class="n99 nxp nxp-history vn-history"><header class="nxp-heading nxp-history-chrome vn-hist-chrome" id="vn-hist-chrome"><div><h1>History</h1><p id="vn-hist-summary">${esc(historyMonthSummary(month,filter,scope))}</p></div><button type="button" class="st-sky-b" onclick="STRATA.observatory()" aria-label="Open your sky: every session as a star"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5l1.6 4.4 4.4 1.6-4.4 1.6L10 14.5l-1.6-4.4L4 8.5l4.4-1.6z"/><circle cx="15.5" cy="14.5" r="1.2"/><circle cx="4.5" cy="15.5" r=".9"/></svg>Your sky</button></header>${historyFiltersHTML(filter)}<div id="vn-hist-calhost">${historyCalendar(month,scope,selected)}</div><div id="vn-hist-dayhost" class="vn-hist-dayhost">${historyDayView(selected,filter,scope)}</div></div>`;
   }
   function setHistoryFilter(filter) {
     state.historyFilter=filter;
@@ -3624,7 +3633,7 @@ const NXP = (() => {
   }
   bindSteppers();
   bindKeyboardDock();
-  return {shareProgress,shareToggle,shareSend,ask,finishScene,bodyFocus,actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen};
+  return {bodyWeek,shareProgress,shareToggle,shareSend,ask,finishScene,bodyFocus,actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;
