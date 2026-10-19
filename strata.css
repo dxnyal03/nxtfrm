@@ -4378,3 +4378,4 @@ body.st-live-on main::after{height:76px}
 @media (max-width:359px){#weightPage .wk-head,#weightPage .wk-leg{grid-template-columns:62px minmax(0,1fr) 62px;gap:8px}#weightPage .wk-ctx{margin-left:6px}#weightPage .wk-h small{display:none}}
 @media (prefers-reduced-motion:reduce){#weightPage .st-weeks.is-draw .wk-row,#weightPage .wk-row.is-open .wk-p,#weightPage .wk-row.is-open .wk-day{animation:none !important}#weightPage .wk-row{transition:none}}
 :root[data-nxp-motion="reduced"] #weightPage .st-weeks.is-draw .wk-row,:root[data-nxp-motion="reduced"] #weightPage .wk-row.is-open .wk-p,:root[data-nxp-motion="reduced"] #weightPage .wk-row.is-open .wk-day{animation:none !important}
+#weightPage .wk-al.is-v{font-weight:600;fill:#CBC6DA;font-feature-settings:"tnum" 1}

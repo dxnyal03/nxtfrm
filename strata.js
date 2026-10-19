@@ -232,7 +232,8 @@ const STRATA = (() => {
     const have = days.filter(x => x.v !== null);
     if (!have.length) return `<p class="wk-pe">No mornings weighed this week.</p>`;
     const avg = w.avg !== null ? w.avg : have.reduce((s, x) => s + x.v, 0) / have.length, dev = Math.max(.4, ...have.map(x => Math.abs(x.v - avg)));
-    const Wd = 340, mid = 58, slot = (Wd - 20) / 7, X = i => 10 + slot * i + slot / 2, H = v => Math.max(4, Math.abs(v - avg) / dev * 34);
+    /* The average gets its own gutter at the left of its line, so no day's bar or value can ever cover it. */
+    const Wd = 340, mid = 58, G = 44, slot = (Wd - G - 6) / 7, X = i => G + slot * i + slot / 2, H = v => Math.max(4, Math.abs(v - avg) / dev * 34);
     const bars = days.map(x => {
       const cx = X(x.i).toFixed(1);
       if (x.fut) return `<circle class="wk-fut" cx="${cx}" cy="${mid}" r="3"/>`;
@@ -244,7 +245,7 @@ const STRATA = (() => {
     const missed = days.filter(x => !x.fut && x.v === null).map(x => WKLONG[x.i]);
     const foot = w.part && days.some(x => x.fut) ? `${days.filter(x => x.fut).length} ${days.filter(x => x.fut).length === 1 ? "day" : "days"} to go` : missed.length === 0 ? "Every morning weighed" : missed.length === 1 ? `${missed[0]} not weighed` : missed.length === 2 ? `${missed[0]} and ${missed[1]} not weighed` : `${missed.length} mornings not weighed`;
     const sr = days.map(x => `${WKLONG[x.i]} ${x.fut ? "still to come" : x.v === null ? "not weighed" : x.v.toFixed(1) + " kilograms"}${x.note ? ", note: " + N.noteLabel(x.note.kind) + (x.note.text ? " " + x.note.text : "") : ""}`).join("; ");
-    return `<svg class="wk-days" viewBox="0 0 ${Wd} 132" aria-hidden="true"><line class="wk-avg" x1="6" x2="${Wd - 6}" y1="${mid}" y2="${mid}"/><text class="wk-al" x="${Wd - 6}" y="${mid - 6}" text-anchor="end">avg ${avg.toFixed(1)}</text>${bars}${labs}</svg>
+    return `<svg class="wk-days" viewBox="0 0 ${Wd} 132" aria-hidden="true"><line class="wk-avg" x1="${G - 4}" x2="${Wd - 4}" y1="${mid}" y2="${mid}"/><text class="wk-al" x="0" y="${mid - 3}">avg</text><text class="wk-al is-v" x="0" y="${mid + 11}">${avg.toFixed(1)}</text>${bars}${labs}</svg>
       <p class="st-sr">${esc(sr)}.</p>
       <div class="wk-pf"><span>${esc(foot)}</span><button type="button" class="wk-go">Show on chart<span aria-hidden="true"> ›</span></button></div>`;
   }
