@@ -4379,3 +4379,5 @@ body.st-live-on main::after{height:76px}
 .st-note-f .st-note-k input:focus-visible+span{outline:2px solid rgba(180,154,255,.85);outline-offset:2px}
 /* A note can be long: the tooltip's context line wraps inside a sensible width instead of running off the chart. */
 #weightPage .st-tip .st-tip-ctx{white-space:normal;max-width:min(230px,64vw);line-height:1.3;overflow-wrap:anywhere}
+/* I4: the reading's time label under the chart figure measured 4.15:1 on the chart card in ink-4; ink-3 clears AA. */
+#weightPage #vn-mhead #n99-chart-timing{color:var(--st-ink-3) !important}
