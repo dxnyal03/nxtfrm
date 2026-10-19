@@ -93,10 +93,14 @@ const NXT = (() => {
     return {full,days:d,label:full?"4-week rate":`${d}-day rate`,over:full?"over four weeks":`over ${d} days`};
   }
   /* Readings logged at another time of day (D14: contextual, never canonical) — counted so a person who only
-     weighs in later in the day is told where their readings are, not that there are none. */
+     weighs in later in the day is told where their readings are, not that there are none. It counts readings
+     (the copy says "N readings"), each passing cleanRows()'s own validity test (above 0, 20–400 kg). */
   function otherTimingCount(input=state.bws) {
-    return (Array.isArray(input)?input:[]).filter(r=>r&&Number.isFinite(dateMs(r.date))&&r.date<=state.date&&finite(r.weight)!==null
-      &&String(r.timeOfDay||"").trim()!==""&&String(r.timeOfDay||"").trim().toLowerCase()!=="morning").length;
+    return (Array.isArray(input)?input:[]).filter(r=>{
+      if(!r||!Number.isFinite(dateMs(r.date))||r.date>state.date)return false;
+      const v=finite(r.weight),t=String(r.timeOfDay||"").trim().toLowerCase();
+      return v!==null&&v>0&&v>=20&&v<=400&&t!==""&&t!=="morning";
+    }).length;
   }
   function cleanRows(input,key="weight") {
     const byDate=new Map();
@@ -571,8 +575,12 @@ const NXT = (() => {
     const pack=(verdict,headline,extra,actions,confidence,reason)=>({
       ok:true,verdict,headline,evidence:base.concat(extra).slice(0,4),actions,confidence,reason
     });
+    /* D108: a paused forecast (one that was made, then went stale) means mornings stopped, not that a count is short; and with the readings
+       already at PLATEAU_MIN_READINGS the shortfall is span, not readings. "1 more day" after a 15-day absence
+       named neither, so both take the no-missing-record read ("Keep weighing in each morning"). */
+    const lapsed=!!(f.ok&&fv.modelOriginDate&&!fv.current);
     const gap=()=>{
-      if(!p.ok)return {what:"weigh-ins",need:Math.max(1,PLATEAU_MIN_READINGS-p.n)};
+      if(!p.ok)return lapsed||(p.n||0)>=PLATEAU_MIN_READINGS?{what:"weigh-ins",need:null}:{what:"weigh-ins",need:Math.max(1,PLATEAU_MIN_READINGS-p.n)};
       if(CALORIES_ENABLED&&adhLogged<10)return {what:"adherence",need:10-adhLogged};
       if(FEATURES.waist&&waistRows.length<2)return {what:"waist",need:Math.max(1,2-waistRows.length)};
       if(CALORIES_ENABLED&&(hist.length<2&&!(hist.length>=1&&at.ok&&hist[0].date!==state.date)))return {what:"TDEE snapshots",need:Math.max(1,2-hist.length)};
@@ -594,10 +602,14 @@ const NXT = (() => {
     }
     /* D104: "Cut is progressing" needs a forecast that is still current (fresh or aging). Its row counts from
        today to the anchored date, names that date and, once not fresh, the reading it rests on; without a
-       confirmed goal there is no row at all. A paused forecast falls through to the cases below. */
-    if(!p.plateau&&f.ok&&finite(f.slope)!==null&&f.slope<0&&fv.current) {
-      const wk=fv.weeksRemaining,asOf=fw.asOf?` · ${fw.asOf}`:"";
-      const extra=!fv.goalConfirmed?[]:[{label:"Forecast",value:f.weeks===0?`At goal range${asOf}`:`~${wk} week${wk===1?"":"s"} to goal · around ${shortDate(fv.arrivalDate)}${asOf}`,tone:"good"}];
+       confirmed goal there is no row at all. A paused forecast falls through to the cases below. It also needs
+       the rate Today's review() reads (the plateau window's, else week on week): with neither, Today says
+       "Building your baseline" and this card may not say "progressing" (D108). */
+    const ts=trendStats(),rateRead=p.ok&&finite(p.weeklyRate)!==null?p.weeklyRate:ts.change;
+    const fcRow=()=>{const wk=fv.weeksRemaining,asOf=fw.asOf?` · ${fw.asOf}`:"";
+      return {label:"Forecast",value:f.weeks===0?`At goal range${asOf}`:`~${wk} week${wk===1?"":"s"} to goal · around ${shortDate(fv.arrivalDate)}${asOf}`,tone:"good"};};
+    if(!p.plateau&&f.ok&&finite(f.slope)!==null&&f.slope<0&&fv.current&&finite(rateRead)!==null) {
+      const extra=!fv.goalConfirmed?[]:[fcRow()];
       const conf=f.confidence==="high"&&p.ok&&p.confidence==="high"?"high":f.confidence==="low"||!p.ok?"low":"medium";
       return pack("no_issue","Cut is progressing.",extra,[{text:"Keep the current plan.",kind:"hold"}],conf,"Weight is still trending down.");
     }
@@ -631,9 +643,13 @@ const NXT = (() => {
     }
     const need=gap();
     /* D104: a projection that has gone quiet says so, with the reading it last rested on. */
-    const paused=!p.plateau&&fv.goalConfirmed&&f.ok&&f.weeks>0&&!fv.current&&fw.paused?[{label:"Forecast",value:`Paused · ${fw.paused.replace(/\.$/,"")}`,tone:"neutral"}]:[];
+    /* A current forecast that reached here (no rate read yet) keeps its anchored row, so the Why fold and the
+       Evidence tile still name the same date. */
+    const paused=!p.plateau&&fv.goalConfirmed&&f.ok&&f.weeks>0&&!fv.current&&fw.paused?[{label:"Forecast",value:`Paused · ${fw.paused.replace(/\.$/,"")}`,tone:"neutral"}]
+      :!p.plateau&&fv.goalConfirmed&&f.ok&&finite(f.slope)!==null&&f.slope<0&&fv.current&&fv.showArrival?[fcRow()]:[];
     if(need.need===null) {
-      const covered={label:"Readings",value:`${p.n||0} over ${p.spanDays||0} ${plural(p.spanDays||0,"day")}`,tone:"neutral"};
+      /* Without a plateau read there is no fitted span; say what the window holds instead of "over 0 days". */
+      const covered={label:"Readings",value:p.ok?`${p.n||0} over ${p.spanDays||0} ${plural(p.spanDays||0,"day")}`:`${p.n||0} in the last ${PLATEAU_WINDOW_DAYS} days`,tone:"neutral"};
       return pack("insufficient_context",p.plateau
         ?"Plateau confirmed. Not enough context to name the cause — food intake is not logged, so no cause matched."
         :"Not enough context to name the cause from the records the app keeps.",
@@ -1360,7 +1376,10 @@ Object.assign(NXT, (()=>{
     const nowNoteTxt=!nl?'From your latest morning reading. An estimated level starts once three mornings make a trend.':nl.source==='trend'?'Estimated level is your smoothed trend for now. A fitted line needs ten mornings in three weeks.':'';
     /* The legend reads in rail order, so after a net gain "Now" comes before "Start". */
     const startLab=`<span><b class="vn-num">${seed.toFixed(1)}</b>Start${first?`<i>${esc(N.shortDate(first))}</i>`:''}</span>`;
-    const nowLab=`<span class="is-now"><b class="vn-num" data-st-jr-nowv>${cur.toFixed(1)}</b><em data-st-jr-noww>${nowName}<i>${esc(nowWord)}</i></em></span>`;
+    /* The legend row is aria-hidden (the summary and the slider carry the full name). "Estimated level · 19 Oct"
+       wrapped to three lines in a column the Start and Goal labels fill in two, so the row shows "Est. level". */
+    const nowShort=nl?'Est. level':nowName;
+    const nowLab=`<span class="is-now"><b class="vn-num" data-st-jr-nowv>${cur.toFixed(1)}</b><em data-st-jr-noww>${nowShort}<i>${esc(nowWord)}</i></em></span>`;
     const days=lv.length?Math.max(0,Math.round((N.dateMs(state.date)-N.dateMs(lv[0].date))/864e5)):0;
     const canRewind=lv.length>=3;
     const payload={seed:+seed.toFixed(2),first:first||null,lo,hi,max:+max.toFixed(3),span:+span.toFixed(3),today:state.date,now:+cur.toFixed(2),nowWord,
@@ -1567,7 +1586,7 @@ Object.assign(NXT, (()=>{
     const lowPt=points.reduce((m,q)=>q.weight<m.weight?q:m,points[0]);
     const tChange=trPts.length>=2?trPts.at(-1).avg-trPts[0].avg:null;
     const rangeRead=`<div class="st-rread" role="group" aria-label="This range">
-      <div><small>Trend change</small><b class="vn-num">${tChange===null?'—':N.signedFixed(tChange,1,'−')}<em>kg</em></b><span>${trPts.length>=2?'over '+(d=>d+' '+N.plural(d,'day'))(Math.round((N.dateMs(trPts.at(-1).date)-N.dateMs(trPts[0].date))/864e5)):'building'}</span></div>
+      <div><small>Smoothed change</small><b class="vn-num">${tChange===null?'—':N.signedFixed(tChange,1,'−')}<em>kg</em></b><span>${trPts.length>=2?'over '+(d=>d+' '+N.plural(d,'day'))(Math.round((N.dateMs(trPts.at(-1).date)-N.dateMs(trPts[0].date))/864e5)):'building'}</span></div>
       <div><small>Lowest</small><b class="vn-num">${lowPt.weight.toFixed(1)}<em>kg</em></b><span>${esc(N.shortDate(lowPt.date))}</span></div>
       <div><small>Weighed</small><b class="vn-num">${points.length}<em>/${spanDays}</em></b><span>${Math.round(points.length/spanDays*100)}% of days</span></div>
     </div>`;
@@ -1624,7 +1643,7 @@ Object.assign(NXT, (()=>{
         </svg>
       </div>
       <div class="vn-legend n99-legend" id="vn-legend">
-        <span><i class="vn-key-trend"></i>Smoothed trend</span>
+        <span><i class="vn-key-trend"></i>Smoothed<span class="st-sr"> trend</span></span>
         <span><i class="vn-key-raw raw"></i>Morning</span>
         ${N.ui.showPost?'<span><i class="vn-key-post post"></i>Post-workout</span>':''}
         ${forecast?'<span><i class="vn-key-proj dash"></i>Projection</span>':''}

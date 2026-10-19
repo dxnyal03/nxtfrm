@@ -149,7 +149,8 @@ const STRATA = (() => {
         defs2 && defs2.insertAdjacentHTML("beforeend", `<linearGradient id="st-scan-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B49AFF" stop-opacity="0"/><stop offset=".5" stop-color="#B49AFF" stop-opacity=".16"/><stop offset="1" stop-color="#B49AFF" stop-opacity="0"/></linearGradient>`);
         g.insertAdjacentHTML("afterend", `<g class="st-devg" aria-hidden="true">${strip}</g>`);
         const lg = page.querySelector("#vn-legend");
-        if (strip && lg && !lg.querySelector(".st-lg-dev")) lg.insertAdjacentHTML("beforeend", `<span class="st-lg-dev"><svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><path d="M1 8L4.5 1.5 8 8z" fill="none" stroke="#CDBBFF" stroke-width="1.3" stroke-linejoin="round"/></svg>Above trend</span><span class="st-lg-dev"><svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><path d="M1 1L4.5 7.5 8 1z" fill="#8B5CF6"/></svg>Below trend</span>`);
+        if (strip && lg && !lg.querySelector(".st-lg-dev")) lg.insertAdjacentHTML("beforeend", `<span class="st-lg-dev"><svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><path d="M1 8L4.5 1.5 8 8z" fill="none" stroke="#CDBBFF" stroke-width="1.3" stroke-linejoin="round"/></svg>Above <svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><path d="M1 1L4.5 7.5 8 1z" fill="#8B5CF6"/></svg>below trend</span>`);
+        /* One key for both marks: as two keys "Below trend" wrapped alone onto a second line at 375 and 390. */
       }
     }
     /* Week bands (Mon–Sun, alternate weeks), the lowest morning reading tagged,
@@ -1899,7 +1900,7 @@ const STRATA = (() => {
       JR.at = null; JR.k = null;
       const b = JR.base;
       set("[data-st-jr-done]", b.done); set("[data-st-jr-sub]", b.sub); set("[data-st-jr-togo]", b.togo); set("[data-st-jr-togol]", b.togol);
-      set("[data-st-jr-nowv]", b.nowv); jrWord(b.nowName || "Estimated level", b.noww); if (when) when.textContent = b.when;
+      set("[data-st-jr-nowv]", b.nowv); jrWord(b.nowName || "Est. level", b.noww); if (when) when.textContent = b.when;
       dot.style.left = jrPct(d, d.now) + "%"; trav.style.left = b.trav.left; trav.style.width = b.trav.width; trav.classList.toggle("is-back", b.trav.back);
       fut.hidden = true; today.hidden = true; if (back) back.hidden = true;
       sec.querySelectorAll(".st-jr-bead").forEach((x, i) => x.classList.toggle("is-on", !!b.beads[i]));
@@ -2054,7 +2055,10 @@ const STRATA = (() => {
       } else {
         /* D104: counted from the day Now is measured (d.base), which can be before today. */
         const from = d.base || d.today, on = from < d.today ? "on " + shortDate(from) : "now";
-        const weeks = (d.now - d.hi) / kg, date = NXT.dateAdd(from, Math.max(1, Math.round(weeks * 7))), wk = Math.max(1, Math.round(weeks));
+        /* The date runs from d.base; "About N weeks" counts from today to that date, as weeksRemaining does, so the
+           what-if and the Projection tile on one card count weeks the same way (verification of D104). */
+        const weeks = (d.now - d.hi) / kg, date = NXT.dateAdd(from, Math.max(1, Math.round(weeks * 7)));
+        const wk = Math.max(1, Math.round((Date.parse(date + "T12:00:00") - Date.parse(d.today + "T12:00:00")) / 864e5 / 7));
         if (date <= d.today) {
           b.textContent = "Already past at this pace";
           sp.textContent = `At −${kg.toFixed(2)} kg/wk from ${Number(d.now).toFixed(1)} kg ${on}, ${hiTxt} kg would fall before today. Weigh in to see where you are. A what-if, not a forecast.`;

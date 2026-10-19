@@ -243,7 +243,8 @@ test("the chart header names the reading and the smoothed trend, 1 dp", () => {
 test("the Journey's Now is the Estimated level with its date; the trend fallback says so", () => {
   const N = world(STEADY()), nl = N.nowLevel(), j = strip(N.journeyHTML());
   assert.strictEqual(nl.source, "line");
-  assert.ok(j.indexOf(nl.value.toFixed(1) + " Estimated level 19 Oct") !== -1, j);
+  assert.ok(j.indexOf(nl.value.toFixed(1) + " Est. level 19 Oct") !== -1, j); // legend row shows "Est. level" (verification: the full name wrapped)
+  assert.ok(j.indexOf("estimated level " + nl.value.toFixed(1) + " on 19 Oct") !== -1, "the summary keeps the full name");
   assert.strictEqual(/\bNow\b/.test(j), false, "no bare Now label");
   assert.strictEqual(j.indexOf("smoothed trend for now"), -1, "no fallback note while the line holds");
   /* Five mornings: the level is the smoothed trend (fewer than ten in three weeks). */
@@ -277,6 +278,10 @@ test("contextual-only weigh-ins are named, not denied (missing mornings stay mis
   assert.ok(t.indexOf("12 readings logged at other times of day are in History") !== -1, t);
   assert.strictEqual(t.indexOf("Your first weigh-in starts here"), -1);
   assert.strictEqual(world(STEADY()).otherTimingCount(), 0);
+  /* Same validity test as cleanRows(): a 0 kg or 500 kg evening row is not a reading (verification of D107). */
+  const bad = mornings(12, () => 82.1, "Evening");
+  bad[0] = Object.assign({}, bad[0], { weight: 0 }); bad[1] = Object.assign({}, bad[1], { weight: 500 });
+  assert.strictEqual(world(bad).otherTimingCount(), 10);
 });
 
 test("coach evidence uses the same names: Rate precision and the rate's own span", () => {

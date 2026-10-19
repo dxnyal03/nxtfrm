@@ -636,7 +636,8 @@ Object.assign(NXT, (() => {
   }
   function stale(c, date) {
     /* D104: the morning weigh-in nudge is about an absence, so its evidence (the last morning reading) ages by
-       design. It stays on day 15 and after, exactly while the weight forecast is paused, instead of vanishing. */
+       design. It is exempt from the 14-day drop: it stays until a morning weigh-in is logged, whether or not a
+       forecast is pending (it vanished on day 15, the day the forecast pauses). */
     if (c.id === "data.morning") return false;
     const ds = c.evidence.map(e => e.date).filter(isDate).sort();
     return ds.length > 0 && gap(ds[ds.length - 1], date) > T.STALE_DAYS;

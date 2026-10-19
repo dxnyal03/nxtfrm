@@ -295,6 +295,24 @@ test("stale and expired pause: \"Last morning weigh-in 18 Oct, N days ago\", and
   }
 });
 
+test("Today and the Why fold agree at the aging edge, and a paused forecast asks for no \"N more days\" (verification)", () => {
+  /* 1 Nov, 14 days after the last reading: the forecast is still aging, but the 28-day window no longer spans the
+     14 days a rate needs, so Today says "Building your baseline". The Why fold may not say "progressing" then;
+     its Forecast row keeps the anchored date the Evidence tile shows. */
+  const N = view("2026-11-01"), r = N.review(), dg = N.diagnose(), s = surfaces(N);
+  assert.strictEqual(N.forecastView().freshness, "aging");
+  assert.strictEqual(r.title, "Building your baseline");
+  assert.notStrictEqual(dg.verdict, "no_issue", dg.headline);
+  assert.strictEqual(/Keep the current plan/.test(s.diagnosis), false);
+  assert.ok(/Forecast: ~6 weeks to goal · around 13 Dec · as of 18 Oct/.test(s.diagnose), s.diagnose);
+  assert.ok(/Readings: \d+ in the last 28 days/.test(s.diagnose), s.diagnose);
+  for (const d of ["2026-11-02", "2026-11-27", "2027-01-10"]) {
+    const P = view(d), pd = P.diagnose();
+    assert.strictEqual(/more day/.test(pd.headline + " " + pd.evidence.map(e => e.value).join(" ")), false, d + ": " + pd.headline);
+    assert.strictEqual(pd.actions[0].text, "Keep weighing in each morning.");
+  }
+});
+
 test("the chart draws no cone while paused; while aging the cone still reaches past the today line", () => {
   const paused = view("2026-11-02");
   paused.ui.showForecast = true;
@@ -322,7 +340,7 @@ test("elapsed copy ends where Now is measured once the forecast is not fresh", (
   for (const d of VIEWS) {
     const j = strip(view(d).journeyHTML());
     assert.ok(j.indexOf("4.9 kg down in 11 weeks") !== -1, d + ": " + j.slice(0, 120));
-    assert.ok(j.indexOf("82.1 Estimated level 18 Oct") !== -1, d); // D107: "Now" is labelled "Estimated level"
+    assert.ok(j.indexOf("82.1 Est. level 18 Oct") !== -1, d); // D107: "Now" is the Estimated level, shown "Est. level" in the legend row (verification: it wrapped)
   }
 });
 

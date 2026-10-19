@@ -1947,7 +1947,7 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 #weightPage .vn-weight .vn-evidence>.vn-h-sect,#weightPage .vn-weight .vn-journey .vn-h-sect{font:590 18px/1.2 var(--st-font) !important;letter-spacing:-.01em !important;color:var(--st-ink) !important;text-transform:none !important;margin:0 0 12px !important}
 #weightPage .vn-chart-svg>text{font-size:calc(11px * var(--tsc,1)) !important}
 #weightPage .st-dev-t,#weightPage .st-dev-k text{font-size:calc(10.5px * var(--tsc,1)) !important}
-#weightPage .st-lg-dev{display:inline-flex;align-items:center;gap:6px}
+#weightPage .st-lg-dev{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 
 
 /* Week by week options */
@@ -2125,7 +2125,7 @@ html{caret-color:#B49AFF;-webkit-tap-highlight-color:transparent}
 #weightPage span.wx-chip.is-down{font-size:var(--fs-cap) !important;font-weight:var(--fw-semi) !important}/* 12.5/600 */
 #weightPage span.wx-chip.is-none{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12.5/500 */
 /* Progress legend sits on one line at phone width */
-#weightPage .vn-legend{gap:6px 14px !important}
+#weightPage .vn-legend{gap:6px 10px !important}
 /* History: logged values read in the same thin numerals as Progress */
 #historyPage .nxp-history-ex b{font:300 22px/1.1 var(--st-font-d) !important;letter-spacing:-.02em !important;font-variant-numeric:tabular-nums}
 /* Remaining off-scale text, snapped with its own context (audit, second pass) */
@@ -4024,7 +4024,7 @@ body.st-live-on main::after{height:76px}
 #weightPage .st-jr-ahead{position:absolute;top:19px;height:0;border-top:2px dashed rgba(196,181,253,.5)}
 #weightPage .st-jr-rail .vn-journey-now{top:10px;width:20px;height:20px;background:radial-gradient(circle at 40% 35%,#FFFFFF,#B49AFF 55%,#7C4DFF);
   box-shadow:0 0 0 5px rgba(139,92,246,.25),0 0 18px rgba(167,139,250,.9) !important}
-#weightPage .st-jr-labs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:4px}
+#weightPage .st-jr-labs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr);gap:8px;margin-top:4px}/* the middle "Est. level · 19 Oct" needs ~103px; 1.2fr keeps it on one line at 375 and 390 */
 #weightPage .st-jr-labs span{font:500 12.5px/1.35 var(--st-font);color:var(--st-ink-3)}
 #weightPage .st-jr-labs b{display:block;margin-bottom:1px;font:600 15px/1.25 var(--st-font-d);color:var(--st-ink-2);font-feature-settings:"tnum" 1}
 #weightPage .st-jr-labs span:nth-child(2){text-align:center}

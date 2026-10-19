@@ -217,6 +217,23 @@ test("today's Finish record is read at planDone()'s key only: another gym's reco
   assert.deepStrictEqual([P.dayState(TODAY).k, P.dayState(TODAY).finished], ["progress", null]);
 });
 
+test("finished at Gym A, selector moved to Gym B: still Workout finished, never In progress (verification of D105)", () => {
+  const at = Date.parse("2026-10-21T11:30:00Z");
+  const w = world({ logs: partOf(TODAY, "FullB", 15), cutSupport: { sessions: finishRecord(TODAY, "FullB", 15, at) } });
+  w.state.gym = "Gym B";
+  const { P, N } = load(w);
+  assert.strictEqual(N.planDone(), false, "planDone() reads the selected gym, which has no record");
+  const ds = P.dayState(TODAY);
+  assert.deepStrictEqual(pick(ds, ["k", "w", "inProgress", "finished", "loggedSets"]),
+    { k: "finished", w: "Workout finished", inProgress: false, finished: { at }, loggedSets: 15 });
+  assert.strictEqual(ds.plan.gym, "Gym A", "the gym the day was trained at");
+  /* Without a Finish record the same day is not live either: its sets are at the other gym. */
+  const w2 = world({ logs: partOf(TODAY, "FullB", 6) });
+  w2.state.gym = "Gym B";
+  const d2 = load(w2).P.dayState(TODAY);
+  assert.deepStrictEqual(pick(d2, ["k", "inProgress", "loggedSets"]), { k: "partial", inProgress: false, loggedSets: 6 });
+});
+
 test("warm-ups never count: a warm-up-only morning is still Today, not in progress", () => {
   const { P, N } = load(world({ logs: sets(TODAY, "Romanian Deadlift", 2, { dayType: "FullB", setType: "warmup" }) }));
   assert.strictEqual(N.sessionLogs().length, 2, "the rows are there");

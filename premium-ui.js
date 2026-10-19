@@ -396,15 +396,19 @@ const NXP = (() => {
     if(dc===undefined)dc=coachCall('dayContext',d);
     const today=d===state.date,type=N.typeFor(d),lift=coIsLift(type),pt=today&&state.dayType?state.dayType:type;
     const rows=ix.work.get(d)||[],sets=rows.length,cardioMin=Math.round(ix.cardio.get(d)||0),floorball=ix.floor.get(d)||0;
-    const any=sets>0||cardioMin>0||floorball>0,gym=today?(state.gym||'Gym A'):dayGym(rows);
-    const p=lift?dayPlan(d,pt,gym,rows):{planned:0,logged:0};
-    const fin=!lift?null:today?(N.planDone()?(ix.sessions[sessionKey()]||{finished:true}):null):(ix.fin.get(d+'|'+pt)||null);
     const session=today&&lift?N.sessionLogs().filter(r=>r&&r.setType!=='warmup').length:0;
+    /* Today reads the live session (state.gym, planDone()'s key) only while it holds this day's working sets or
+       none were logged. Sets logged at Gym A with the selector moved to Gym B read like a past day: the gym
+       trained at and that day's Finish record, so a finished workout never turns back into "In progress". */
+    const live=today&&(session>0||!sets);
+    const any=sets>0||cardioMin>0||floorball>0,gym=live?(state.gym||'Gym A'):dayGym(rows);
+    const p=lift?dayPlan(d,pt,gym,rows):{planned:0,logged:0};
+    const fin=!lift?null:live?(N.planDone()?(ix.sessions[sessionKey()]||{finished:true}):null):(ix.fin.get(d+'|'+pt)||null);
     const inProgress=today&&lift&&!fin&&session>0,setsComplete=lift&&p.planned>0&&p.logged>=p.planned,addOn=!lift&&sets>0;
     const own=lift?sets>0:type==='Zone2'?cardioMin>0:type==='Floorball'?floorball>0:false,st=dc&&dc.status||null;
     let k;
     if(fin)k='finished';
-    else if(own&&lift)k=setsComplete?'complete':today?'progress':'partial';
+    else if(own&&lift)k=setsComplete?'complete':inProgress?'progress':'partial';
     else if(own)k='done';
     else if(st==='excused'||st==='moved')k=st;
     else if(addOn)k='addon';
@@ -718,14 +722,16 @@ const NXP = (() => {
     /* Missing stays missing, but readings logged at other times are named rather than denied (D14). */
     const other=rows.length?0:N.otherTimingCount();
     if(!rows.length)return `<button type="button" class="st-tile st-mini" style="--c:var(--st-weight)" onclick="apx95OpenQuickWeight()"><span class="st-cat">Weight</span><span class="st-mini-v">—</span><span class="st-meta">${other?`No morning readings yet · ${other} other-time`:'Log a weigh-in'}</span></button>`;
-    /* D107 — the smoothed trend under its own name; without one yet, the latest morning reading under its own. */
+    /* D107 — the smoothed trend under its own name; without one yet, the latest morning reading under its own.
+       The tile shows "Smoothed" (the full name wrapped beside Cardio and Lifts at 390); screen readers hear
+       "Smoothed trend". The rate prints with U+2212 like every other rate surface. */
     const s=N.trend(rows).filter(p=>p.avg!==null).at(-1);
     const v=s?s.avg:rows.at(-1).weight;
     const pl=N.detectPlateau(rows),rate=N.finite(pl&&pl.weeklyRate);
     return `<button type="button" class="st-tile st-mini" style="--c:var(--st-weight)" onclick="NXT.ui.view='overview';switchTab('weight')">
-      <span class="st-cat">${s?'Smoothed trend':'Latest morning'}</span>
+      <span class="st-cat">${s?'Smoothed<span class="st-sr"> trend</span>':'Latest morning'}</span>
       <span class="st-mini-v"><b class="st-odo st-odo-sm" data-st-odo="${v.toFixed(1)}">${v.toFixed(1)}</b><small>kg</small></span>
-      <span class="st-meta">${s&&rate!==null&&pl.ok?(Math.abs(rate)<0.05?'Flat':`${N.signed(rate)}/wk`):N.shortDate(s?s.date:rows.at(-1).date)}</span>
+      <span class="st-meta">${s&&rate!==null&&pl.ok?(Math.abs(rate)<0.05?'Flat':`${N.signedFixed(rate,2,'−')}/wk`):N.shortDate(s?s.date:rows.at(-1).date)}</span>
     </button>`;
   }
   /* D20 comparison for any logged lifting day: best set per exercise against the
