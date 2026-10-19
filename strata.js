@@ -1702,14 +1702,7 @@ const STRATA = (() => {
     bindProgressReplay(page);
     if (page.id === "weightPage") {
       dressChartHead();
-      const jh = page.querySelector(".vn-journey .vn-sect-head");
-      if (jh && !jh.querySelector(".st-share-b") && typeof NXP === "object" && NXP.shareProgress) {
-        const b = document.createElement("button");
-        b.type = "button"; b.className = "st-share-b";
-        b.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5.5 9.5H5a1.5 1.5 0 0 0-1.5 1.5v4.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V11A1.5 1.5 0 0 0 15 9.5h-.5"/></svg>Share';
-        b.addEventListener("click", () => NXP.shareProgress());
-        jh.appendChild(b);
-      }
+      /* D85's Share button is part of the Cut journey markup now (D95), so nothing is injected here. */
     }
     resumeRest();
     resumeExercise(page);

@@ -959,7 +959,7 @@ const NXT = (() => {
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard(true)}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' '+plural(s.current.n,'weigh-in'))}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' '+plural(s.previous.n,'weigh-in'))}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any change to your plan stays your choice.</p><div class="n99-stack">${CALORIES_ENABLED?button('Review calorie guide','NXT.openCalories()',true):''}${FEATURES.checkin?button('Update recovery check-in','apx96OpenReadiness()',true):''}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,features:FEATURES,pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,plural,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,features:FEATURES,flatKgWeek:PLATEAU_FLAT_KG_WEEK,pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,plural,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
@@ -1147,7 +1147,14 @@ Object.assign(NXT, (()=>{
     return 'Direction still settling';
   }
   /* D3 — long-term goal as a separate non-time-series rail: start → current → target. */
-  function journeyHTML() {
+  /* Cut journey and Evidence (proposed D95; the owner approved the direction on 2026-10-19). Presentation
+     only: every figure is the engine's own — the start weight, the trend now (plateau.lastAvg), the goal
+     range, the four-week rate and its 95% range (detectPlateau), the D37 1%-of-body-weight line (review()),
+     and the goal forecast (forecastGoal; its date is the D28 formula). What changes: the projection names
+     its date and both of its inputs (where the last three weeks put you today, and their pace), so the
+     weeks add up on the card; the rate leads with its share of body weight and the word review() already
+     uses; confidence says what it measures; a plateau only takes a card when there is one. */
+  function journeyHTML(forecastRead) {
     if(!N.cfg().targetConfirmed)return '';
     const rows=N.weights();
     const startW=N.finite(typeof START_WEIGHT!=='undefined'?START_WEIGHT:null);
@@ -1162,63 +1169,98 @@ Object.assign(NXT, (()=>{
     const cs=typeof settings!=='undefined'&&settings&&Number.isFinite(N.dateMs(settings.cutStart))&&settings.cutStart<=state.date?settings.cutStart:null;
     const first=cs||rows[0]?.date;
     const elapsed=first?Math.round((N.dateMs(state.date)-N.dateMs(first))/86400000):0;
+    const sinceTxt=elapsed>=14?`${Math.round(elapsed/7)} weeks`:`${elapsed} ${N.plural(elapsed,'day')}`;
+    const dir=done>=.05?'down':done<=-.05?'up':'no change';
+    const f=forecastRead||N.forecastGoal(rows);
+    const arrive=remain>0&&f&&f.ok&&N.finite(f.weeks)!==null&&f.weeks>0?N.shortDate(N.dateAdd(state.date,f.weeks*7)):null;
     const leftTrav=Math.min(pct(seed),pct(cur)),widthTrav=Math.abs(pct(cur)-pct(seed));
     const leftBand=Math.min(pct(lo),pct(hi)),widthBand=Math.abs(pct(lo)-pct(hi));
-    return `<section class="vn-journey" aria-label="Cut journey">
+    /* A net gain is ground to make up: drawn in the review hue, and the road ahead starts where it ends. */
+    const back=done<=-.05,aheadFrom=back?pct(seed):pct(cur),aheadW=remain>0?Math.max(0,pct(hi)-aheadFrom):0;
+    const share='<button type="button" class="st-share-b is-icon" aria-label="Share your cut" onclick="window.NXP&&NXP.shareProgress&&NXP.shareProgress()"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5.5 9.5H5a1.5 1.5 0 0 0-1.5 1.5v4.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V11A1.5 1.5 0 0 0 15 9.5h-.5"/></svg></button>';
+    const hiTxt=Number.isInteger(hi)?String(hi):hi.toFixed(1);
+    /* The legend reads in rail order, so after a net gain "Now" comes before "Start". */
+    const startLab=`<span><b class="vn-num">${seed.toFixed(1)}</b>Start${first?`<i>${esc(N.shortDate(first))}</i>`:''}</span>`;
+    const nowLab=`<span class="is-now"><b class="vn-num">${cur.toFixed(1)}</b>Now · trend</span>`;
+    return `<section class="vn-journey st-jr" aria-label="Cut journey">
       <div class="vn-sect-head"><p class="vn-h-sect">Cut journey</p>
-        <span class="vn-tiny">${first?esc(N.shortDate(first)):'Start'} → now</span></div>
-      <div class="vn-journey-metrics">
-        <div><span class="vn-metric-l">Down</span><div class="vn-metric-v vn-num">${done.toFixed(1)}<em>kg</em></div></div>
-        <div class="vn-journey-remain"><span class="vn-metric-l">To goal range</span>
-          <div class="vn-h-sub vn-num">${remain.toFixed(1)} kg</div></div>
+        <span class="vn-tiny">${first?esc(N.shortDate(first)):'Start'} → now</span>${share}</div>
+      <div class="st-jr-hero">
+        <div><div class="st-jr-big vn-num">${Math.abs(done).toFixed(1)}<small>kg</small></div><p class="st-jr-sub">${dir}${first&&elapsed>0?` in ${esc(sinceTxt)}`:''}</p></div>
+        <div class="st-jr-togo">${remain>0?`<b class="vn-num">${remain.toFixed(1)} kg</b><span>to your ${esc(hiTxt)} kg goal</span>`:cur>=lo?'<b>In range</b><span>your goal range</span>':`<b class="vn-num">${(lo-cur).toFixed(1)} kg</b><span>below your goal range</span>`}</div>
       </div>
-      <div class="vn-journey-rail" role="img" aria-label="Start ${seed.toFixed(1)} kilograms, now ${cur.toFixed(1)}, goal ${lo} to ${hi}">
+      <div class="vn-journey-rail st-jr-rail" role="img" aria-label="Start ${seed.toFixed(1)} kilograms${first?' on '+esc(N.shortDate(first)):''}, now ${cur.toFixed(1)} on the trend, goal ${lo} to ${hi}${arrive?', projected around '+esc(arrive):''}">
         <div class="vn-journey-track"></div>
         <div class="vn-journey-band" style="left:${leftBand}%;width:${Math.max(2,widthBand)}%"></div>
-        <div class="vn-journey-travel" style="left:${leftTrav}%;width:${Math.max(0,widthTrav)}%"></div>
+        <div class="vn-journey-travel${back?' is-back':''}" style="left:${leftTrav}%;width:${Math.max(0,widthTrav)}%"></div>
+        ${aheadW>0?`<div class="st-jr-ahead" style="left:${aheadFrom}%;width:${aheadW}%"></div>`:''}
         <div class="vn-journey-now" style="left:${pct(cur)}%"></div>
       </div>
-      <div class="vn-journey-labels">
-        <span class="vn-tiny">Start ${seed.toFixed(1)}</span>
-        <span class="vn-tiny vn-journey-now-l">Now ${cur.toFixed(1)}</span>
-        <span class="vn-tiny">Goal ${lo}–${hi}</span>
+      <div class="st-jr-labs" aria-hidden="true">
+        ${back?nowLab+startLab:startLab+nowLab}
+        <span class="is-goal"><b class="vn-num">${lo}–${hi}</b>Goal${arrive?`<i>~${esc(arrive)}</i>`:''}</span>
       </div>
-      <p class="vn-tiny vn-mt3">Elapsed ${elapsed} ${N.plural(elapsed,"day")}. A weight range alone does not measure leanness.</p>
     </section>`;
   }
   function evidenceHTML(plateau,forecastRead) {
-    const rate=N.finite(plateau&&plateau.weeklyRate);
-    const rateTxt=rate===null?'—':`${signed(rate)} kg`;
-    const band=rate!==null&&N.finite(plateau.lower)!==null&&N.finite(plateau.upper)!==null
-      ?`28-day window · 95% range ${signed(plateau.upper)} to ${signed(plateau.lower)}`:'28-day window';
-    let plateauStatus='—',plateauTone='is-neutral';
-    if(plateau&&plateau.ok){
-      if(plateau.status==='flat'&&plateau.plateau){plateauStatus=`${plateau.plateauDays} days`;plateauTone='is-watch';}
-      else if(plateau.status==='losing'){plateauStatus='None';plateauTone='is-ok';}
-      else if(plateau.status==='gaining'){plateauStatus='Gaining';plateauTone='is-watch';}
-      else {plateauStatus='Settling';plateauTone='is-neutral';}
+    const rate=N.finite(plateau&&plateau.weeklyRate),ref=N.finite(plateau&&plateau.lastAvg);
+    const ok=!!(plateau&&plateau.ok)&&rate!==null;
+    /* The D37 reading, exactly as review() takes it: the four-week rate over the trend now. */
+    const pct=ok&&ref?rate/ref*100:null;
+    let word='',tone='is-neutral';
+    if(ok){
+      if(pct!==null&&pct<-1){word='Losing quickly';tone='is-watch';}
+      else if(rate<-N.flatKgWeek){word='Cutting steadily';tone='is-ok';}
+      else if(plateau.status==='gaining'){word='Trending up';tone='is-watch';}
+      else if(plateau.plateau){word='Flat';tone='is-watch';}
+      else {word='Settling';tone='is-neutral';}
     }
-    /* A horizon only means something against a goal the lifter confirmed (same gate as the chart and Today). */
-    const proj=N.cfg().targetConfirmed&&forecastRead&&forecastRead.ok&&forecastRead.weeks!==null
-      ?`${forecastRead.weeks} wk <span class="vn-ink-3">(${forecastRead.lowWeeks}–${forecastRead.highWeeks})</span>`
-      :(N.cfg().targetConfirmed?'Unavailable':'Set a goal');
-    const conf=plateau&&plateau.confidence&&plateau.confidence!=='none'
-      ?plateau.confidence.charAt(0).toUpperCase()+plateau.confidence.slice(1):'—';
-    return `<section class="vn-evidence">
+    const sgn=v=>{const r=Math.round(v*100)/100;return `${r<0?'−':r>0?'+':''}${Math.abs(r).toFixed(2)}`;};
+    const rateV=rate===null?'—':sgn(rate);
+    const band=ok&&N.finite(plateau.lower)!==null&&N.finite(plateau.upper)!==null?{lo:plateau.lower,hi:plateau.upper,half:(plateau.upper-plateau.lower)/2}:null;
+    /* A gauge of the loss rate as a share of body weight: flat band, steady, the 1% line, fast. */
+    let gauge='';
+    if(ok&&pct!==null&&ref&&rate<N.flatKgWeek&&plateau.status!=='gaining'){
+      const axis=Math.max(2,Math.min(4,Math.abs(pct)+.3)),flat=N.flatKgWeek/ref*100;
+      const w=v=>(Math.max(0,Math.min(axis,v))/axis*100).toFixed(2);
+      gauge=`<div class="st-ev-g" role="img" aria-label="${rate<0?'Losing':'Gaining'} ${Math.abs(pct).toFixed(1)} percent of body weight a week; the 1 percent line is where losing quickly starts"><div class="st-ev-z"><i class="z-flat" style="width:${w(flat)}%"></i><i class="z-steady" style="width:${(w(1)-w(flat)).toFixed(2)}%"></i><i class="z-fast" style="flex:1"></i></div><i class="st-ev-mk" style="left:${w(Math.max(0,-pct))}%"></i><div class="st-ev-zl" aria-hidden="true"><span>Flat</span>${axis<=2.2?`<span class="is-mid is-steady" style="left:${w((flat+1)/2)}%">Steady</span>`:''}<span class="is-mid" style="left:${w(1)}%">1% line</span><span>Fast</span></div></div>`;
+    }
+    const plateauLine=!ok?esc((plateau&&plateau.reason)||''):plateau.plateau?'':plateau.status==='losing'?'No plateau: still trending down.':esc(plateau.reason||'');
+    const plateauTile=ok&&plateau.plateau?`<div class="st-ev-t is-wide is-watch"><p>Plateau</p><b>${esc(String(plateau.plateauDays))} days</b><span>${esc(plateau.reason||'')}</span></div>`:'';
+    /* Projection: the D28 date and the pace it runs at, so it adds up beside the four-week rate. */
+    let proj;
+    if(!N.cfg().targetConfirmed)proj=`<b>Set a goal</b><span>A projection needs a confirmed goal range.</span>`;
+    else if(forecastRead&&forecastRead.ok&&N.finite(forecastRead.weeks)!==null){
+      if(forecastRead.weeks===0){
+        const la=N.finite(forecastRead.lastAvg),under=la!==null&&la<goalLow();
+        proj=under?`<b>Below goal</b><span>The trend is under your goal range.</span>`:`<b>At goal</b><span>The trend is in your goal range.</span>`;
+      }
+      else{
+        const d=N.shortDate(N.dateAdd(state.date,forecastRead.weeks*7)),pace=N.finite(forecastRead.slope)!==null?forecastRead.slope*7:null;
+        const range=forecastRead.lowWeeks!==forecastRead.weeks||forecastRead.highWeeks!==forecastRead.weeks?` <small>(${forecastRead.lowWeeks}–${forecastRead.highWeeks})</small>`:'';
+        /* The forecast starts where the line through the last three weeks sits today (fittedLevel), which
+           runs ahead of the trend figure; naming both inputs lets the weeks add up on the card. */
+        const lvl=N.finite(forecastRead.fittedLevel);
+        const basis=pace===null?"At your last 3 weeks' pace":lvl!==null?`Your last 3 weeks: ${lvl.toFixed(1)} kg today, ${sgn(pace)} kg/wk`:`At your last 3 weeks' pace, ${sgn(pace)} kg/wk`;
+        proj=`<b class="vn-num">~${forecastRead.weeks} wk${range}</b><em>around ${esc(d)}</em><span>${basis}. An estimate, not a measurement.</span>`;
+      }
+    } else proj=`<b>Unavailable</b><span>${esc((forecastRead&&forecastRead.reason)||'Not enough recent weigh-ins for a projection.')}</span>`;
+    const conf=plateau&&plateau.confidence&&plateau.confidence!=='none'?plateau.confidence:null;
+    const steps=conf==='high'?3:conf==='medium'?2:conf==='low'?1:0;
+    const confTxt=band?`The 4-week rate is known to within ±${band.half.toFixed(2)} kg a week.${conf==='high'?'':' More mornings and steadier readings tighten it.'}`:'How tightly the 4-week rate is known, from your morning readings.';
+    return `<section class="vn-evidence st-ev">
       <p class="vn-h-sect">Evidence</p>
-      <div class="vn-rows">
-        <div class="vn-row"><span class="vn-row-l"><span class="vn-row-t">Weekly rate</span>
-          <span class="vn-row-s">${esc(band)}</span></span>
-          <span class="vn-row-v vn-num">${rateTxt}</span></div>
-        <div class="vn-row"><span class="vn-row-l"><span class="vn-row-t">Plateau</span>
-          <span class="vn-row-s">${esc(plateau&&plateau.reason||'')}</span></span>
-          <span class="vn-row-v"><span class="vn-status ${plateauTone}"><i></i>${esc(plateauStatus)}</span></span></div>
-        <div class="vn-row"><span class="vn-row-l"><span class="vn-row-t">Projection</span>
-          <span class="vn-row-s">Model estimate, not a measurement</span></span>
-          <span class="vn-row-v vn-num">${proj}</span></div>
-        <div class="vn-row"><span class="vn-row-l"><span class="vn-row-t">Confidence</span>
-          <span class="vn-row-s">Reading coverage and consistency</span></span>
-          <span class="vn-row-v">${esc(conf)}</span></div>
+      <div class="st-ev-rate ${tone}">
+        <div class="st-ev-rt"><p>4-week rate</p>${word?`<span class="st-ev-pill ${tone}"><i aria-hidden="true"></i>${esc(word)}</span>`:''}</div>
+        <div class="st-ev-rv vn-num">${rateV}${rate===null?'':'<small> kg/wk</small>'}</div>
+        ${pct!==null?`<p class="st-ev-pct">${pct>0?'+':''}${Math.abs(pct).toFixed(1)}% of body weight a week</p>`:''}
+        ${gauge}
+        ${band||plateauLine?`<p class="st-ev-note">${band?`Likely between ${Math.abs(band.hi)<=Math.abs(band.lo)?`${sgn(band.hi)} and ${sgn(band.lo)}`:`${sgn(band.lo)} and ${sgn(band.hi)}`} kg/wk. `:''}${plateauLine}</p>`:''}
+      </div>
+      ${plateauTile}
+      <div class="st-ev-two">
+        <div class="st-ev-t"><p>Projection</p>${proj}</div>
+        <div class="st-ev-t"><p>Confidence</p><b>${conf?esc(conf.charAt(0).toUpperCase()+conf.slice(1)):'—'}</b>${steps?`<div class="st-ev-meter" aria-hidden="true">${[1,2,3].map(k=>`<i${k<=steps?' class="on"':''}></i>`).join('')}</div>`:''}<span>${esc(confTxt)}</span></div>
       </div>
     </section>`;
   }
@@ -1244,7 +1286,7 @@ Object.assign(NXT, (()=>{
         <div class="vn-chart-empty n99-chart-empty"><div class="n99-empty-number">—<small> kg</small></div>
           <h3>${emptyTitle}</h3><p>${emptyBody}</p>${N.button('+ Log weight','apx95OpenQuickWeight()')}</div>
         ${journeyHTML()}
-        <details class="vn-more-block"><summary>Why NXTFRM says this</summary>${N.diagnosisCard()}</details>
+        <details class="vn-more-block"><summary>Why NXTFRM says this</summary>${N.diagnosisCard()}${N.cfg().targetConfirmed?'<p class="vn-tiny vn-mt3">A weight range alone does not measure leanness.</p>':''}</details>
       </section>`;
     }
     const {points,post,postByDate,segments,ticks,y,bands,forecast,anchor,plateau,forecastRead,canForecast,futureDays,todayX,low,high}=model;
@@ -1365,9 +1407,9 @@ Object.assign(NXT, (()=>{
       ${rangeRead}
       <details class="st-csum-d"><summary>How to read this chart</summary><p class="vn-tiny" id="vn-csum">${esc(summary)}</p></details>
       <div class="vn-togs">${togPost}${togProj}</div>
-      ${journeyHTML()}
+      ${journeyHTML(forecastRead)}
       ${evidenceHTML(plateau,forecastRead)}
-      <details class="vn-more-block"><summary>Why NXTFRM says this</summary>${N.diagnosisCard()}${N.reviewCard()}</details>
+      <details class="vn-more-block"><summary>Why NXTFRM says this</summary>${N.diagnosisCard()}${N.reviewCard()}${N.cfg().targetConfirmed?'<p class="vn-tiny vn-mt3">A weight range alone does not measure leanness.</p>':''}</details>
       <input type="hidden" id="n99-chart-slider" value="${idx}" aria-hidden="true">
     </section>`;
   }
