@@ -299,7 +299,8 @@ const STRATA = (() => {
       if (gap !== null && p.ty !== null && p.ty !== undefined && Math.abs(p.y - p.ty) > 3) { stem.setAttribute("x1", p.x); stem.setAttribute("x2", p.x); stem.setAttribute("y1", p.y); stem.setAttribute("y2", p.ty); stem.setAttribute("visibility", "visible"); }
       else stem.setAttribute("visibility", "hidden");
     }
-    const did = dayDid(p.date);
+    const nt = typeof NXT.chartNotes === "function" ? NXT.chartNotes()[p.date] : null;
+    const did = [dayDid(p.date), nt ? NXT.noteLabel(nt.kind) + (nt.text ? ": " + nt.text : "") : ""].filter(Boolean).join(" · ");
     tip.innerHTML = `${did ? `<span class="st-tip-ctx">${esc(did)}</span>` : ""}<b>${esc(shortDate(p.date))}</b><span>Reading <em>${Number(p.weight).toFixed(1)}</em></span>${p.avg !== null ? `<span>Trend <em>${Number(p.avg).toFixed(2)}</em></span>` : ""}${gap !== null && Math.abs(gap) >= 0.05 ? `<span class="st-tip-gap">${Math.abs(gap).toFixed(1)} kg ${gap < 0 ? "below" : "above"} trend</span>` : ""}`;
     tip.style.left = Math.min(Math.max(r.left - wr.left + p.x * k, 58), wr.width - 58) + "px";
     tip.hidden = false;
@@ -1729,7 +1730,7 @@ const STRATA = (() => {
     bindSheets();
     if (typeof NXT === "object" && typeof NXT.selectPoint === "function" && !NXT.selectPoint.__strata) {
       const sp = NXT.selectPoint;
-      NXT.selectPoint = function (index, opts) { const o = sp.apply(this, arguments); try { progressTip(index, opts); weeksSync(index); weeksReplay(index); jrFromChart(index, opts); if (index !== lastScrub && !(opts && opts.clear)) { if (lastScrub !== -1 && !JR.dragging) haptic("tick"); lastScrub = index; } } catch (e) {} return o; };
+      NXT.selectPoint = function (index, opts) { const o = sp.apply(this, arguments); try { progressTip(index, opts); weeksSync(index); weeksReplay(index); jrFromChart(index, opts); noteChipSync(index); if (index !== lastScrub && !(opts && opts.clear)) { if (lastScrub !== -1 && !JR.dragging) haptic("tick"); lastScrub = index; } } catch (e) {} return o; };
       NXT.selectPoint.__strata = true;
     }
     bindCalSwipe();
@@ -1901,6 +1902,16 @@ const STRATA = (() => {
     const ln = g.querySelector("line"), c = g.querySelector("circle");
     ln.setAttribute("x1", x); ln.setAttribute("x2", x); c.setAttribute("cx", x); c.setAttribute("cy", String(pt[1]));
     g.setAttribute("visibility", "visible");
+  }
+  /* D100 · The note chip follows the day the chart shows. */
+  function noteChipSync(index) {
+    const chip = document.getElementById("st-note-chip"), m = NXT.ui && NXT.ui.chart, p = m && m.points && m.points[index];
+    if (!chip || !p || typeof NXT.chartNotes !== "function") return;
+    const n = NXT.chartNotes()[p.date];
+    chip.dataset.date = p.date;
+    chip.classList.toggle("has-note", !!n);
+    chip.innerHTML = n ? `<i aria-hidden="true"></i><span>${esc(NXT.noteLabel(n.kind))}${n.text ? " · " + esc(n.text) : ""}</span>` : "<span>+ Note</span>";
+    chip.setAttribute("aria-label", n ? `Note on ${shortDate(p.date)}: ${NXT.noteLabel(n.kind)}${n.text ? ", " + n.text : ""}. Edit` : `Add a note for ${shortDate(p.date)}`);
   }
   /* Replay fills the week list as it goes: weeks after the replayed day wait their turn. */
   function weeksReplay(index) {

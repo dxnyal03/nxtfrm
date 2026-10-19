@@ -4357,3 +4357,25 @@ body.st-live-on main::after{height:76px}
 #weightPage.st-enter .st-since-bar i{animation:st-sy-fill .8s var(--st-glide) calc(.25s + var(--i,0) * 45ms) both}
 @media (prefers-reduced-motion:reduce){#weightPage.st-enter .st-since-bar i{animation:none}}
 :root[data-nxp-motion="reduced"] #weightPage.st-enter .st-since-bar i{animation:none}
+
+/* ---- D100 · Notes on the weight chart ----------------------------------------------------------------------- */
+#weightPage .st-mh-l{display:flex;align-items:center;gap:8px;min-width:0}
+#weightPage .st-note-chip{position:relative;display:inline-flex;align-items:center;gap:6px;max-width:170px;min-height:26px;padding:0 10px;border:0;border-radius:999px;cursor:pointer;
+  font:600 12px/1 var(--st-font-d);color:#E4DBFF;background:rgba(139,92,246,.16);box-shadow:inset 0 0 0 1px rgba(180,154,255,.38)}
+#weightPage .st-note-chip::after{content:"";position:absolute;left:-4px;right:-4px;top:-9px;bottom:-9px}
+#weightPage .st-note-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#weightPage .st-note-chip i{width:7px;height:7px;flex:none;border-radius:1.5px;transform:rotate(45deg);background:#D9CCFF}
+#weightPage .st-note-chip:not(.has-note){color:var(--st-ink-2);background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+#weightPage .st-note-chip:focus-visible{outline:2px solid rgba(180,154,255,.8);outline-offset:2px}
+#weightPage .st-nflag line{stroke:rgba(214,200,255,.38);stroke-width:1.2;stroke-dasharray:2 4}
+#weightPage .st-nflag path{fill:#D9CCFF;filter:drop-shadow(0 0 4px rgba(196,181,253,.8))}
+#weightPage .st-key-note{display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:1.5px;transform:rotate(45deg);background:#D9CCFF;vertical-align:1px}
+.st-note-f .st-note-ks{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px;padding:0;border:0}
+.st-note-f .st-note-k{position:relative;display:inline-flex;margin:0}
+.st-note-f .st-note-k input{position:absolute;opacity:0;width:1px;height:1px}
+.st-note-f .st-note-k span{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:999px;cursor:pointer;font:600 14.5px/1 var(--st-font-d);color:var(--st-ink);
+  background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+.st-note-f .st-note-k input:checked+span{color:#FFFFFF;background:linear-gradient(170deg,rgba(139,92,246,.55),rgba(109,40,217,.38));box-shadow:inset 0 1px 0 rgba(255,255,255,.25),inset 0 0 0 1px rgba(196,181,253,.6)}
+.st-note-f .st-note-k input:focus-visible+span{outline:2px solid rgba(180,154,255,.85);outline-offset:2px}
+/* A note can be long: the tooltip's context line wraps inside a sensible width instead of running off the chart. */
+#weightPage .st-tip .st-tip-ctx{white-space:normal;max-width:min(230px,64vw);line-height:1.3;overflow-wrap:anywhere}

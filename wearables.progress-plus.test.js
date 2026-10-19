@@ -134,6 +134,8 @@ function cutFixture(opts = {}) {
 
 const N = loadNXT(cutFixture());
 const r4 = v => (v === null || v === undefined ? v : Math.round(v * 10000) / 10000);
+/* Objects made inside the sandbox carry its own Object prototype; compare plain copies. */
+const plain = v => JSON.parse(JSON.stringify(v));
 
 /* =========================================================================
    D97 · where your weight is now
@@ -222,6 +224,55 @@ test("D96 · milestones are the first day at or below each mark", function () {
   assert.ok(firstKg, "the fixture loses more than a kilogram");
   assert.ok(html.indexOf("First kg down") !== -1);
   assert.ok(html.indexOf(`data-st-jr-go="${firstKg.date}"`) !== -1, "First kg down points at its day");
+});
+
+/* =========================================================================
+   D100 · notes on the chart
+   ========================================================================= */
+test("D100 · reading notes never creates the record", function () {
+  const fx = cutFixture(), M = loadNXT(fx);
+  assert.deepStrictEqual(plain(M.chartNotes()), {});
+  M.cfg(); M.chartNotes();
+  assert.strictEqual(fx.settings.cutSupport.chartNotes, undefined, "no chartNotes object created");
+});
+
+test("D100 · notes are cleaned on read: kind, text and date", function () {
+  const fx = cutFixture();
+  fx.settings.cutSupport.chartNotes = {
+    "2026-10-01": { kind: "refeed", text: "  Higher   carb\nday ", ts: 5 },
+    "2026-10-02": { kind: "party", text: "x".repeat(120), ts: "7" },
+    "2026-10-03": "not an object",
+    "2026-10-04": ["array"],
+    "2026-13-40": { kind: "sick" },
+    "yesterday": { kind: "sick" },
+    "2026-10-05": { kind: "holiday" }
+  };
+  const n = plain(loadNXT(fx).chartNotes());
+  assert.deepStrictEqual(Object.keys(n).sort(), ["2026-10-01", "2026-10-02", "2026-10-05"]);
+  assert.deepStrictEqual(n["2026-10-01"], { kind: "refeed", text: "Higher carb day", ts: 5 });
+  assert.strictEqual(n["2026-10-02"].kind, "other", "an unknown kind reads as other");
+  assert.strictEqual(n["2026-10-02"].text.length, 80, "text is capped at 80 characters");
+  assert.strictEqual(n["2026-10-02"].ts, 7);
+  assert.deepStrictEqual(n["2026-10-05"], { kind: "holiday", text: "", ts: 0 });
+});
+
+test("D100 · notes change no number: trend, level, rate, forecast and plateau", function () {
+  const plain = loadNXT(cutFixture()), fx = cutFixture();
+  fx.settings.cutSupport.chartNotes = { "2026-10-10": { kind: "sick", text: "flu", ts: 1 }, "2026-10-12": { kind: "refeed", text: "", ts: 2 } };
+  const noted = loadNXT(fx);
+  const sig = M => JSON.stringify({ t: M.ewmaTrend().map(r => r4(r.avg)), l: M.levelSeries().map(p => r4(p.value)), r: M.rateSeries(M.weights(), "2026-08-31").map(p => r4(p.weeklyRate)),
+    f: (({ weeks, lowWeeks, highWeeks, slope }) => [weeks, lowWeeks, highWeeks, r4(slope)])(M.forecastGoal()), p: (({ weeklyRate, status, plateauDays }) => [r4(weeklyRate), status, plateauDays])(M.detectPlateau()) });
+  assert.strictEqual(sig(noted), sig(plain));
+});
+
+test("D100 · the chart draws one flag per note in range, the legend names it", function () {
+  const fx = cutFixture();
+  fx.settings.cutSupport.chartNotes = { "2026-10-10": { kind: "sick", text: "flu", ts: 1 }, "2025-01-01": { kind: "holiday", text: "", ts: 2 } };
+  const M = loadNXT(fx);
+  M.ui.range = 30;
+  const html = M.chartHTML();
+  assert.strictEqual((html.match(/class="st-nflag"/g) || []).length, 1, "the note outside the range is not drawn");
+  assert.ok(html.indexOf('st-key-note') !== -1, "legend entry present");
 });
 
 console.log((failed ? "FAILED  " : "OK  ") + passed + " passed, " + failed + " failed");

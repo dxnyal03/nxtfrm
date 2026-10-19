@@ -52,6 +52,21 @@ const NXT = (() => {
     return c;
   }
   function finite(v) { return v!==""&&v!==null&&v!==undefined&&Number.isFinite(Number(v))?Number(v):null; }
+  /* D100 (proposed; the owner asked for notes on the chart, 2026-10-19) — a holiday, a sick day, a refeed, or
+     anything else worth seeing beside the line. One per day in cutSupport.chartNotes as {kind, text, ts}; the
+     object exists only once a note is saved. Context only: no calculation reads it. */
+  const NOTE_KINDS=["holiday","sick","refeed","other"];
+  function chartNotes() {
+    const raw=settings&&settings.cutSupport&&settings.cutSupport.chartNotes,out={};
+    if(!raw||typeof raw!=="object"||Array.isArray(raw))return out;
+    for(const date of Object.keys(raw)) {
+      const n=raw[date];
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date+"T12:00:00Z"))||!n||typeof n!=="object"||Array.isArray(n))continue;
+      out[date]={kind:NOTE_KINDS.includes(n.kind)?n.kind:"other",text:typeof n.text==="string"?n.text.replace(/\s+/g," ").trim().slice(0,80):"",ts:Number.isFinite(Number(n.ts))?Number(n.ts):0};
+    }
+    return out;
+  }
+  function noteLabel(kind) { return {holiday:"Holiday",sick:"Sick",refeed:"Refeed",other:"Note"}[kind]||"Note"; }
   function dateMs(d) {
     if(!/^\d{4}-\d{2}-\d{2}$/.test(String(d)))return NaN;
     const ms=Date.parse(d+"T12:00:00Z");
@@ -999,7 +1014,7 @@ const NXT = (() => {
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard(true)}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' '+plural(s.current.n,'weigh-in'))}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' '+plural(s.previous.n,'weigh-in'))}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any change to your plan stays your choice.</p><div class="n99-stack">${CALORIES_ENABLED?button('Review calorie guide','NXT.openCalories()',true):''}${FEATURES.checkin?button('Update recovery check-in','apx96OpenReadiness()',true):''}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,features:FEATURES,flatKgWeek:PLATEAU_FLAT_KG_WEEK,levelSeries,nowLevel,rateSeries,pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,plural,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,features:FEATURES,flatKgWeek:PLATEAU_FLAT_KG_WEEK,levelSeries,nowLevel,rateSeries,chartNotes,noteLabel,noteKinds:NOTE_KINDS.slice(),pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,plural,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
@@ -1444,7 +1459,7 @@ Object.assign(NXT, (()=>{
       <div class="vn-mhead" id="vn-mhead" aria-live="polite">
         <div class="vn-mhead-row">
           <div class="vn-mhead-cell">
-            <span class="vn-metric-l" id="n99-chart-date">${esc(dateLabel)}</span>
+            <div class="st-mh-l"><span class="vn-metric-l" id="n99-chart-date">${esc(dateLabel)}</span>${noteChipHTML(p.date)}</div>
             <div class="vn-metric-v vn-num" id="n99-chart-weight">${p.weight.toFixed(1)}<em>kg</em></div>
             <small class="vn-tiny" id="n99-chart-timing">${esc(pointTiming(p))}</small>
           </div>
@@ -1475,7 +1490,7 @@ Object.assign(NXT, (()=>{
           </defs>
           ${narrowTicks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}" pointer-events="none"/><text class="vn-ytick" x="${left-7}" y="${px(t.y+3.8)}" text-anchor="end" fill="${CHART.axisText}" font-size="11" pointer-events="none">${Number(t.value.toFixed(1))}</text>`).join('')}<text class="vn-yunit" x="${left-7}" y="${px(Math.max(11,Math.min(...narrowTicks.map(k=>k.y))-11))}" text-anchor="end" fill="${CHART.axisText}" font-size="10" pointer-events="none">kg</text>
           <g clip-path="url(#vn-chart-clip)" pointer-events="none">
-            ${today}${cone}${bandFill}${trendPaths}${forecastLine}${postSeries}
+            ${today}${cone}${bandFill}${noteFlags(points,top,baseline)}${trendPaths}${forecastLine}${postSeries}
             ${points.map(pt=>`<circle class="vn-raw-dot" cx="${pt.x}" cy="${pt.y}" r="${dense?1.7:points.length>45?2.2:2.8}" fill="${CHART.raw}" fill-opacity="${dense?.5:points.length>45?.7:.85}"/>`).join('')}
             <line id="n99-chart-cursor" x1="${p.x}" x2="${p.x}" y1="${top}" y2="${baseline}" stroke="${CHART.cursor}" stroke-opacity=".38" stroke-dasharray="3 4"/>
             <circle id="st-chart-halo" class="st-halo" cx="${p.x}" cy="${p.y}" r="11" fill="${CHART.ink}"/>
@@ -1491,6 +1506,7 @@ Object.assign(NXT, (()=>{
         <span><i class="vn-key-raw raw"></i>Morning</span>
         ${N.ui.showPost?'<span><i class="vn-key-post post"></i>Post-workout</span>':''}
         ${forecast?'<span><i class="vn-key-proj dash"></i>Projection</span>':''}
+        ${noteFlags(points,top,baseline)?'<span><i class="st-key-note"></i>Note</span>':''}
       </div>
       ${rangeRead}
       <details class="st-csum-d"><summary>How to read this chart</summary><p class="vn-tiny" id="vn-csum">${esc(summary)}</p></details>
@@ -1623,6 +1639,44 @@ Object.assign(NXT, (()=>{
     const row=N.cfg().waist.find(r=>r.date===date);
     N.modal(row?'Edit waist measurement':'Log waist',`<form onsubmit="event.preventDefault();NXT.saveWaist('${date}')"><label>Date<input id="n99-waist-date" type="date" max="${state.date}" required value="${date}"></label><label>Waist · cm<input id="n99-waist" type="number" inputmode="decimal" min="30" max="250" step="0.1" required value="${row?row.cm:''}"></label><p class="n99-small">Use the same position each time, with the tape level and without pulling it tight.</p><button class="n99-button" type="submit">Save measurement</button>${row?N.button('Delete measurement',`NXT.deleteWaist('${date}')`,true):''}</form>`);
   }
+  /* D100 · The chart header's note chip for the shown day, and a faint flag on the plot for each note in range
+     (one colour for every kind: the kind is a word in the chip and the tooltip, never a colour, I6). */
+  function noteChipHTML(date) {
+    const n=N.chartNotes()[date];
+    const label=n?`Note on ${N.shortDate(date)}: ${N.noteLabel(n.kind)}${n.text?', '+n.text:''}. Edit`:`Add a note for ${N.shortDate(date)}`;
+    return `<button type="button" class="st-note-chip${n?' has-note':''}" id="st-note-chip" data-date="${date}" onclick="NXT.openNote(this.dataset.date)" aria-label="${esc(label)}">${n?`<i aria-hidden="true"></i><span>${esc(N.noteLabel(n.kind))}${n.text?' · '+esc(n.text):''}</span>`:'<span>+ Note</span>'}</button>`;
+  }
+  function noteFlags(points,top,baseline) {
+    if(!points||points.length<2)return '';
+    const notes=N.chartNotes(),a=points[0],b=points[points.length-1],t0=N.dateMs(a.date),t1=N.dateMs(b.date);
+    return Object.keys(notes).filter(d=>d>=a.date&&d<=b.date).sort().map(d=>{
+      const x=(a.x+(N.dateMs(d)-t0)/Math.max(1,t1-t0)*(b.x-a.x)).toFixed(1);
+      return `<g class="st-nflag"><line x1="${x}" x2="${x}" y1="${top+12}" y2="${baseline}"/><path d="M${x} ${top+1} l5 5 -5 5 -5 -5z"/></g>`;
+    }).join('');
+  }
+  /* D100 · Notes on the chart: one sheet to add, change or remove a day's note. */
+  function openNote(date) {
+    if(!Number.isFinite(N.dateMs(date))||date>state.date)date=state.date;
+    const n=N.chartNotes()[date],kind=n?n.kind:'holiday';
+    const kinds=N.noteKinds.map(k=>`<label class="st-note-k"><input type="radio" name="st-note-kind" value="${k}"${k===kind?' checked':''}><span>${N.noteLabel(k)==='Note'?'Other':N.noteLabel(k)}</span></label>`).join('');
+    N.modal(n?'Edit note':'Add a note',`<form class="st-note-f" onsubmit="event.preventDefault();NXT.saveNote('${date}')"><p class="n99-small">${esc(N.shortDate(date))}. Shown on the weight chart as context; nothing is calculated from it.</p><fieldset class="st-note-ks"><legend class="st-sr">What kind of day</legend>${kinds}</fieldset><label>Note <span class="n99-small">optional</span><input id="st-note-text" type="text" maxlength="80" autocomplete="off" enterkeyhint="done" value="${esc(n?n.text:'')}" placeholder="For example, trip to KL"></label><button class="n99-button" type="submit">Save note</button>${n?N.button('Remove note',`NXT.removeNote('${date}')`,true):''}</form>`);
+  }
+  function saveNote(date) {
+    if(!Number.isFinite(N.dateMs(date))||date>state.date)return toast('Notes are for days up to today.');
+    const pick=document.querySelector('input[name="st-note-kind"]:checked'),kind=pick&&N.noteKinds.includes(pick.value)?pick.value:'other';
+    const text=String(val('st-note-text')||'').replace(/\s+/g,' ').trim().slice(0,80);
+    const c=N.cfg();
+    if(!c.chartNotes||typeof c.chartNotes!=='object'||Array.isArray(c.chartNotes))c.chartNotes={};
+    c.chartNotes[date]={kind,text,ts:Date.now()};
+    N.commit('Note saved');
+  }
+  async function removeNote(date) {
+    const ok=typeof NXP==='object'&&NXP.ask?await NXP.ask({title:'Remove this note?',body:`${N.shortDate(date)}. Your weigh-ins are not affected.`,ok:'Remove',danger:true}):confirm('Remove this note?');
+    if(!ok)return;
+    const c=N.cfg();
+    if(c.chartNotes&&c.chartNotes[date]){delete c.chartNotes[date];N.commit('Note removed');}
+    else if(typeof closeModal==='function')closeModal();
+  }
   function saveWaist(original) {
     const date=val('n99-waist-date'),cm=N.finite(val('n99-waist'));
     if(!Number.isFinite(N.dateMs(date))||date>state.date||cm===null||cm<30||cm>250)return toast('Enter a valid date and waist measurement.');
@@ -1713,7 +1767,7 @@ Object.assign(NXT, (()=>{
     if(!(await ask))return;
     state.bws=state.bws.filter(x=>x!==r);N.commit('Weigh-in deleted');
   }
-  return {signed,smoothPath,trendReadText,chartModel,chartHTML,journeyHTML,selectPoint,scrub,chartKey,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
+  return {signed,smoothPath,trendReadText,chartModel,chartHTML,journeyHTML,selectPoint,scrub,chartKey,openNote,saveNote,removeNote,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
 })());
 
 Object.assign(NXT, (()=>{
