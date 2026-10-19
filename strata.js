@@ -860,8 +860,8 @@ const STRATA = (() => {
   function bindTop() { window.addEventListener("scroll", queueTop, { passive: true }); window.addEventListener("resize", queueTop); queueTop(); }
 
   /* ---- D75 · Workout mini-player, live Train tab, screen stays awake ----------------------------------
-     A lift session that has started and is not finished (N.sessionLogs() has rows, N.planDone() is
-     false) follows you: on any other tab a glass pill above the dock shows the session, sets done of
+     A lift session that has started and is not finished (working sets logged, N.planDone() is false;
+     D105) follows you: on any other tab a glass pill above the dock shows the session, sets done of
      planned and the live rest countdown — tap it to return (it morphs into the workout header). The
      Train tab carries the same progress as a ring. While the workout itself is on screen the screen
      stays awake (Screen Wake Lock), so the rest timer never hides behind the lock screen. Everything
@@ -871,12 +871,16 @@ const STRATA = (() => {
     try {
       if (typeof NXT !== "object" || typeof template !== "function" || typeof state !== "object" || !state) return null;
       if (["Rest", "Zone2", "Floorball"].includes(state.dayType)) return null;
-      if (!NXT.sessionLogs().length || NXT.planDone()) return null;
-      const list = template() || [];
-      const total = list.reduce((a, e) => a + (Number(e.sets) || 0), 0);
-      const count = list.reduce((a, e) => a + Math.min(NXT.done(e.name), Number(e.sets) || 0), 0);
+      /* D105 — the same day state as the rail and the tile (records only, no coach read: this runs
+         every second). A session is live from its first working set (warm-ups alone do not start it)
+         until Finish; its count is the ring's, and its word says when every planned set is in. */
+      const ds = typeof NXP === "object" && NXP && typeof NXP.dayState === "function" ? NXP.dayState(state.date, null, null) : null;
+      if (ds ? !ds.inProgress : (!NXT.sessionLogs().some(r => r && r.setType !== "warmup") || NXT.planDone())) return null;
+      const list = ds ? [] : template() || [];
+      const total = ds ? ds.plan.plannedSets : list.reduce((a, e) => a + (Number(e.sets) || 0), 0);
+      const count = ds ? ds.loggedSets : list.reduce((a, e) => a + Math.min(NXT.done(e.name), Number(e.sets) || 0), 0);
       const rest = typeof apx96RestRemaining === "function" ? apx96RestRemaining() : 0;
-      return { name: NXT.label(state.dayType), count, total, rest };
+      return { name: NXT.label(state.dayType), count, total, rest, word: ds && ds.k === "complete" ? "planned sets complete" : "in progress" };
     } catch (e) { return null; }
   }
   function fmt(s) { return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
@@ -921,7 +925,7 @@ const STRATA = (() => {
       el.querySelector(".st-live-c").textContent = s.count + "/" + s.total + " sets";
       el.querySelector(".st-live-r").textContent = s.rest ? " · Rest " + fmt(s.rest) : "";
       el.classList.toggle("is-resting", s.rest > 0);
-      el.setAttribute("aria-label", "Return to workout: " + s.name + ", " + s.count + " of " + s.total + " sets" + (s.rest ? ", resting " + fmt(s.rest) : ""));
+      el.setAttribute("aria-label", "Return to workout: " + s.name + ", " + s.word + ", " + s.count + " of " + s.total + " sets" + (s.rest ? ", resting " + fmt(s.rest) : ""));
       const dock = document.querySelector(".tabs");
       if (dock && !el.classList.contains("is-docked")) { const r = dock.getBoundingClientRect(); if (r.height) el.style.setProperty("--st-live-bottom", Math.max(12, Math.round((window.innerHeight || 0) - r.top + 10)) + "px"); }
     }

@@ -3183,7 +3183,9 @@ html.nx-reveal .tabs{animation:nx-dock-in .42s cubic-bezier(.32,.72,0,1) .06s ba
 /* the week sheet is long: Done stays in reach at the foot of the sheet */
 .n99-modal .co-rvs .n99-stack{position:sticky;bottom:0;z-index:3;margin:14px -4px 0;padding:16px 4px calc(10px + var(--nxt-safe-bottom,0px));background:linear-gradient(180deg,rgba(21,20,29,0),#15141D 34%)}
 /* status shapes in a sheet row take their hue from the status; the word is always beside them */
-.n99-modal .co-sheet .co-day.is-done .co-cm{color:var(--st-lean)}
+.n99-modal .co-sheet .co-day.is-done .co-cm,.n99-modal .co-sheet .co-day.is-finished .co-cm,.n99-modal .co-sheet .co-day.is-complete .co-cm{color:var(--st-lean)}
+.n99-modal .co-sheet .co-day.is-progress .co-cm,.n99-modal .co-sheet .co-day.is-addon .co-cm{color:var(--st-accent-lift)}
+.n99-modal .co-sheet .co-day.is-other .co-cm{color:var(--st-rest)}
 .n99-modal .co-sheet .co-day.is-partial .co-cm,.n99-modal .co-sheet .co-day.is-excused .co-cm,.n99-modal .co-sheet .co-day.is-moved .co-cm{color:var(--st-accent-lift)}
 .n99-modal .co-sheet .co-day.is-missed .co-cm,.n99-modal .co-sheet .co-day.is-none .co-cm,.n99-modal .co-sheet .co-day.is-rest .co-cm{color:var(--st-rest)}
 /* the day sheet's "Didn't happen?" block (cut-support.js openDay) */
@@ -3225,6 +3227,19 @@ html.nx-reveal .tabs{animation:nx-dock-in .42s cubic-bezier(.32,.72,0,1) .06s ba
 #homePage .st-tweek [data-rail] .vn-week-c.is-moved .vn-week-t{letter-spacing:-.03em !important}
 #homePage .st-tweek [data-rail] .st-cap-s.is-excused,#homePage .st-tweek [data-rail] .st-cap-s.is-moved{width:12px;height:12px;border-radius:0;color:color-mix(in srgb,var(--k) 55%,#fff)}
 #homePage .st-tweek [data-rail] .st-cap-s .co-rm{display:block;width:12px;height:12px}
+/* D105 · the session states, a shape for each (the hue still only says which kind of day it is). In progress: an
+   arc of the planned sets logged. Planned sets complete: a check ring (the filled check stays for a finished
+   workout). Partly logged (past): the half-disc. Add-on lift on a walk or rest day: a plus. Other activity: a dot. */
+#homePage .st-tweek [data-rail] .st-cap-s.is-progress,#homePage .st-tweek [data-rail] .st-cap-s.is-complete,#homePage .st-tweek [data-rail] .st-cap-s.is-partial,
+#homePage .st-tweek [data-rail] .st-cap-s.is-addon,#homePage .st-tweek [data-rail] .st-cap-s.is-other{color:color-mix(in srgb,var(--k) 55%,#fff)}
+#homePage .st-tweek [data-rail] .st-cap-s.is-partial,#homePage .st-tweek [data-rail] .st-cap-s.is-addon,#homePage .st-tweek [data-rail] .st-cap-s.is-other{width:12px;height:12px;border-radius:0}
+#homePage .st-tweek [data-rail] .st-cap-s.is-progress svg{display:block;width:14px;height:14px;transform:rotate(-90deg);overflow:visible}
+#homePage .st-tweek [data-rail] .st-cap-s.is-progress .t{fill:none;stroke:currentColor;stroke-opacity:.3;stroke-width:2}
+#homePage .st-tweek [data-rail] .st-cap-s.is-progress .a{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+#homePage .st-tweek [data-rail] .st-cap-s.is-complete{box-shadow:inset 0 0 0 1.5px currentColor}
+#homePage .st-tweek [data-rail] .st-cap-s.is-complete svg{width:9px;height:9px}
+#homePage .st-tweek [data-rail] .vn-week-c.is-today .st-cap-s:not(.is-done){color:#fff}
+#homePage .st-tweek-h .st-tweek-ao{white-space:nowrap}
 
 /* ---- History · calendar status marks, legend and the day card ---------------------------- */
 #historyPage .nxp-cal-marks{min-height:9px}
@@ -3232,6 +3247,8 @@ html.nx-reveal .tabs{animation:nx-dock-in .42s cubic-bezier(.32,.72,0,1) .06s ba
 #historyPage .co-cm.is-missed{color:color-mix(in srgb,var(--st-rest) 80%,#fff)}
 #historyPage .co-cm.is-excused{color:var(--st-accent-lift)}
 #historyPage .co-cm.is-moved{color:var(--st-lean)}
+#historyPage .co-cm.is-progress,#historyPage .co-cm.is-partial,#historyPage .co-cm.is-addon{color:var(--st-accent-lift)}
+#historyPage .co-cm.is-finished,#historyPage .co-cm.is-done,#historyPage .co-cm.is-complete{color:var(--st-lean)}
 #historyPage .co-cm-l{font:650 11px/9px var(--st-font);font-style:normal;letter-spacing:0;color:var(--st-ink-4)}
 #historyPage .nxp-cal-day.is-selected .co-cm,#historyPage .nxp-cal-day.is-selected .co-cm-l{color:#fff}
 #historyPage .st-cal-stats .co-lg .co-cm{width:10px;height:10px}

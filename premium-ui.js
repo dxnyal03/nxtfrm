@@ -70,10 +70,9 @@ const NXP = (() => {
   function home() {
     applyAppearance();
     syncTrainNav(false);
-    const list=template(),logs=N.sessionLogs(),lift=!['Rest','Zone2','Floorball'].includes(state.dayType),finished=N.planDone();
+    const list=template(),lift=!['Rest','Zone2','Floorball'].includes(state.dayType),finished=N.planDone();
     const s=N.trendStats(),r=N.review(),cal=N.finite(N.cfg().calories);
     const action=lift?"startWorkoutNow()":state.dayType==='Zone2'?"showCardioSheet()":state.dayType==='Floorball'?"startWorkoutNow()":"apx96OpenReadiness()";
-    const title=finished?'Review workout':lift?(logs.length?'Resume workout':'Start workout'):state.dayType==='Zone2'?'Log cardio':state.dayType==='Floorball'?'Open session':'Recovery check-in';
     const dayMs=N.dateMs(state.date);
     const weekday=Number.isFinite(dayMs)?new Date(dayMs).toLocaleDateString('en-SG',{weekday:'long',timeZone:'UTC'}):'';
     const dateLine=Number.isFinite(dayMs)?new Date(dayMs).toLocaleDateString('en-SG',{day:'numeric',month:'long',timeZone:'UTC'}):N.shortDate(state.date);
@@ -108,37 +107,50 @@ const NXP = (() => {
     const weekLogged=cxWeek?cxWeek.liftsDone:N.completedWeek();
     const weekStart=N.weekStart();
     const weekShort={FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Rest:'Rest',Floorball:'FB',Push:'Push',Pull:'Pull',Legs:'Legs',Pump:'Legs'};
-    /* D48 — the rail reads outcome as well as plan. A day is done when its own
-       record exists (lift sets, cardio minutes, or a floorball session); a planned
-       day already behind us with no record is "not logged" (dashed ring); a morning
-       weigh-in is a dot under the label. All from stored rows — no new metric. */
-    const cardioDays=new Set((state.cardio||[]).filter(r=>r&&N.finite(r.duration)>0).map(r=>r.date));
-    const floorDays=new Set((state.floorball||[]).filter(r=>r&&r.date).map(r=>r.date));
+    /* D48, revised by D105 — the rail reads outcome as well as plan, one day state per capsule
+       (dayState(), the same read as the tile, History and the dock). A lifting day is in
+       progress (today, an arc of its planned sets), planned sets complete (check ring), workout
+       finished (the filled capsule and check: an explicit Finish), or partly logged (past, a
+       half-disc); a walk or floorball day is done when its own record exists; lifting on a walk
+       or rest day is an add-on (plus); a planned day already behind us with nothing at all
+       recorded is "not logged" (hollow ring). Every state is also a word in the label. */
     const planLift=cxWeek?cxWeek.liftsPlanned:Array.from({length:7},(_,i)=>N.typeFor(N.dateAdd(weekStart,i))).filter(liftDays).length;
     const check='<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.3 4.9 8.6 9.5 3.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    const weekStrip=`<div class="vn-week" data-rail="capsule" role="list">${Array.from({length:7},(_,i)=>{
-      const d=N.dateAdd(weekStart,i),t=N.typeFor(d),isToday=d===state.date,dc=cxDay[d]||null;
-      const complete=t==='Zone2'?cardioDays.has(d):t==='Floorball'?floorDays.has(d):work.some(row=>row.date===d);
-      /* "Not logged" means nothing at all was recorded that day. A walk day with an add-on
-         lift is neither done (the plan was the walk) nor empty, so it stays a plain capsule. */
-      const anything=work.some(row=>row.date===d)||cardioDays.has(d)||floorDays.has(d);
-      /* Ascension — an excused or moved day is a decision, not a lapse, and the coach says
-         which; a day before the first record is not "not logged" either. */
-      const excused=!complete&&!!dc&&dc.status==='excused',moved=!complete&&!!dc&&dc.status==='moved';
-      const missed=!complete&&!anything&&t!=='Rest'&&d<state.date&&!excused&&!moved&&!(dc&&dc.status==='untracked');
-      const short=moved?'Moved':weekShort[t]||String(t).slice(0,3);
+    const dsx=dayIndex(),dsWeek=Array.from({length:7},(_,i)=>{const d=N.dateAdd(weekStart,i);return dayState(d,dsx,cxWeek?cxDay[d]||null:null);});
+    const dsToday=dsWeek.find(x=>x&&x.today)||dayState(state.date,dsx,null);
+    const arc=f=>`<svg viewBox="0 0 14 14" aria-hidden="true" focusable="false"><circle class="t" cx="7" cy="7" r="5.2"/><circle class="a" cx="7" cy="7" r="5.2" pathLength="100" stroke-dasharray="${Math.round(Math.max(.08,Math.min(1,f))*100)} 100"/></svg>`;
+    const railMark=x=>{
+      switch(x.k){
+        case 'finished':case 'done':return `<span class="st-cap-s is-done">${check}</span>`;
+        case 'complete':return `<span class="st-cap-s is-complete">${check}</span>`;
+        case 'progress':return `<span class="st-cap-s is-progress">${arc(x.plan.plannedSets?x.loggedSets/x.plan.plannedSets:.5)}</span>`;
+        case 'partial':case 'addon':case 'other':case 'excused':case 'moved':return `<span class="st-cap-s is-${x.k}">${coMark(x.k,'co-rm')}</span>`;
+        case 'missed':return '<span class="st-cap-s is-missed"></span>';
+        default:return '';
+      }
+    };
+    const weekStrip=`<div class="vn-week" data-rail="capsule" role="list">${dsWeek.map((x,i)=>{
+      const d=x.date,t=x.type,isToday=x.today,k=x.k;
+      const short=k==='moved'?'Moved':weekShort[t]||String(t).slice(0,3);
       const day=Number.isFinite(N.dateMs(d))?new Date(N.dateMs(d)).toLocaleDateString('en-SG',{weekday:'narrow',timeZone:'UTC'}):['M','T','W','T','F','S','S'][i];
-      const stateWord=complete?'done':excused?'excused'+(dc.reason&&dc.reason!=='other'?' · '+dc.reason:''):moved?'moved'+(dc.movedTo?' to '+N.shortDate(dc.movedTo):''):missed?'not logged':isToday?'today':d<state.date?(anything?'logged, plan not done':''):'planned';
-      const mark=complete?`<span class="st-cap-s is-done">${check}</span>`:excused?`<span class="st-cap-s is-excused">${coMark('excused','co-rm')}</span>`:moved?`<span class="st-cap-s is-moved">${coMark('moved','co-rm')}</span>`:missed?'<span class="st-cap-s is-missed"></span>':'';
-      return `<button type="button" class="vn-week-c${isToday?' is-today':''}${liftDays(t)?' is-lift':''}${complete?' is-done':''}${missed?' is-missed':''}${excused?' is-excused':''}${moved?' is-moved':''}${d>state.date?' is-future':''} is-k-${({FullA:'full',FullB:'full',FullC:'full',Push:'push',Pull:'pull',Legs:'legs',Pump:'legs',Zone2:'walk',Floorball:'fb',Rest:'rest'})[t]||(liftDays(t)?'full':'rest')}" role="listitem" onclick="NXT.openDay('${d}')" aria-label="${esc(N.shortDate(d)+' · '+N.label(t)+(stateWord?' · '+stateWord:''))}" ${isToday?'aria-current="date"':''}><span class="st-cap"><span class="vn-week-d">${esc(day)}</span>${mark}</span><span class="vn-week-t">${esc(short)}</span></button>`;
+      const words=[isToday&&k!=='today'?'Today':'',k==='rest'?'':x.w,x.detail,x.addOn&&k!=='addon'?'add-on logged':''].filter(Boolean).join(' · ');
+      const kind=({FullA:'full',FullB:'full',FullC:'full',Push:'push',Pull:'pull',Legs:'legs',Pump:'legs',Zone2:'walk',Floorball:'fb',Rest:'rest'})[t]||(liftDays(t)?'full':'rest');
+      return `<button type="button" class="vn-week-c${isToday?' is-today':''}${liftDays(t)?' is-lift':''}${k==='finished'||k==='done'?' is-done':''}${['missed','excused','moved','progress','complete','partial','addon','other'].includes(k)?' is-'+k:''}${d>state.date?' is-future':''} is-k-${kind}" data-ds="${k}" role="listitem" onclick="NXT.openDay('${d}')" aria-label="${esc(N.shortDate(d)+' · '+N.label(t)+(words?' · '+words:''))}" ${isToday?'aria-current="date"':''}><span class="st-cap"><span class="vn-week-d">${esc(day)}</span>${railMark(x)}</span><span class="vn-week-t">${esc(short)}</span></button>`;
     }).join('')}</div>`;
     function liftDays(t){return !['Rest','Zone2','Floorball'].includes(t);}
-    const weekHead=weekLogged<=planLift?`${weekLogged} of ${planLift} ${N.plural(planLift,"lift")} done`:`${weekLogged} lifting ${N.plural(weekLogged,"day")}`;
+    /* D105 — the header keeps the engine's count (liftsDone: every day this week with working sets)
+       and says what it holds: lifting days of the plan, then any add-on days on walk or rest days. */
+    const addOnDays=dsWeek.filter(x=>x&&x.addOn&&x.date<=state.date).length,planLogged=Math.max(0,weekLogged-addOnDays);
+    const weekHead=(planLift?`${planLogged} of ${planLift} planned ${N.plural(planLift,"lift")}`:'No planned lifts')+(addOnDays?` <span class="st-tweek-ao">· +${addOnDays} ${N.plural(addOnDays,'add-on')}</span>`:'');/* the add-on count wraps whole, never mid-word */
     const textAct=(label,fn,mute)=>`<button type="button" class="vn-text${mute?' is-mute':''}" onclick="${esc(fn)}">${label}</button>`;
     const logged=list.reduce((a,e)=>a+Math.min(N.done(e.name),Number(e.sets)),0);
+    /* D105 — the tile says what the rail says: finished, planned sets complete, in progress. A session
+       starts with its first working set, so warm-ups alone still offer Start (as Train does). */
+    const title=finished?'Review workout':lift?(dsToday&&dsToday.inProgress?'Resume workout':'Start workout'):state.dayType==='Zone2'?'Log cardio':state.dayType==='Floorball'?'Open session':'Recovery check-in';
+    const liftCat=finished?'Workout finished':dsToday&&dsToday.k==='complete'?'Planned sets complete':dsToday&&dsToday.k==='progress'?'In progress':'Today’s training';
     const trainTile=lift?`
       <article class="st-tile st-t-train" style="--c:var(--st-lift)"><span class="st-ghost" aria-hidden="true">${esc(weekShort[state.dayType]||N.label(state.dayType))}</span>
-        <div class="st-tile-head"><span class="st-cat">${finished?'Workout saved':'Today’s training'}</span>${textAct('Change','showSessionSheet()',true)}</div>
+        <div class="st-tile-head"><span class="st-cat">${esc(liftCat)}</span>${textAct('Change','showSessionSheet()',true)}</div>
         <div class="st-train-row">
           <div class="st-train-id">
             <h2 class="st-h2">${esc(N.label(state.dayType))}</h2>
@@ -150,7 +162,7 @@ const NXP = (() => {
         <button type="button" class="st-cta" onclick="${esc(finished?"switchTab('train')":action)}">${esc(title)}<span aria-hidden="true">›</span></button>
       </article>`:`
       <article class="st-tile st-t-train" style="--c:${state.dayType==='Zone2'?'var(--st-cardio)':state.dayType==='Floorball'?'var(--st-floor)':'var(--st-rest)'}"><span class="st-ghost" aria-hidden="true">${esc(state.dayType==='Zone2'?'Walk':state.dayType==='Floorball'?'Floorball':N.label(state.dayType))}</span>
-        <div class="st-tile-head"><span class="st-cat">Today</span>${textAct('Change','showSessionSheet()',true)}</div>
+        <div class="st-tile-head"><span class="st-cat">${dsToday&&dsToday.k==='addon'?'Today · add-on logged':'Today'}</span>${textAct('Change','showSessionSheet()',true)}</div>
         <h2 class="st-h2">${esc(N.label(state.dayType))}</h2>
         <p class="st-body st-mt2">${state.dayType==='Rest'?'A planned recovery day. Nothing is scheduled.':state.dayType==='Zone2'?'An easy, conversational effort. No lifting session is due.':'Hard conditioning day. Log duration and effort.'}</p>
         ${state.dayType==='Rest'?'':`<button type="button" class="st-cta" onclick="${esc(action)}">${esc(title)}<span aria-hidden="true">›</span></button>`}
@@ -292,8 +304,16 @@ const NXP = (() => {
     excused:'<path d="M3.1 8.9 8.9 3.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
     moved:'<path d="M2.4 6h6.6M6.7 3.4 9.3 6 6.7 8.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
     rest:'<path d="M3 6h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
-    none:'<circle cx="6" cy="6" r="1.4" fill="currentColor"/>'
+    none:'<circle cx="6" cy="6" r="1.4" fill="currentColor"/>',
+    /* D105 — the session states: an arc while under way, a check ring once every planned set is
+       logged (the filled check is kept for a finished workout), a plus for an add-on lift on a walk
+       or rest day, a dot for activity other than the plan. */
+    progress:'<circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><path d="M6 2a4 4 0 0 1 3.46 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    complete:'<circle cx="6" cy="6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M3.9 6.1 5.4 7.6 8.2 4.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
+    addon:'<path d="M6 2.6v6.8M2.6 6h6.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+    other:'<circle cx="6" cy="6" r="2.1" fill="currentColor"/>'
   };
+  CO_MK.finished=CO_MK.done;
   const CO_KIND={FullA:'full',FullB:'full',FullC:'full',Push:'push',Pull:'pull',Legs:'legs',Pump:'legs',Zone2:'walk',Floorball:'fb',Rest:'rest'};
   const CO_SHORT={FullA:'Full A',FullB:'Full B',FullC:'Full C',Zone2:'Walk',Rest:'Rest',Floorball:'FB',Push:'Push',Pull:'Pull',Legs:'Legs',Pump:'Legs'};
   const CO_LETTER={FullA:'A',FullB:'B',FullC:'C',Push:'Pu',Pull:'Pl',Legs:'Lg',Pump:'Lg'};
@@ -310,21 +330,103 @@ const NXP = (() => {
   function coachCall(name,...args){
     try{const C=N.coach;return C&&typeof C[name]==='function'?C[name](...args):null;}catch(e){return null;}
   }
-  /* The status the engine reports, as a word and a shape (never colour alone, I6). */
-  function coStatus(dc){
-    if(!dc)return null;
-    const why=dc.reason&&dc.reason!=='other'?' · '+dc.reason:'';
-    switch(dc.status){
-      case 'done':return {k:'done',w:'Done'};
-      case 'partial':return {k:'partial',w:dc.logged&&dc.logged.sets>0?'Partly logged':'Plan not done'};
-      case 'missed':return {k:'missed',w:'Not logged'};
-      case 'excused':return {k:'excused',w:'Excused'+why};
-      case 'moved':return {k:'moved',w:'Moved'+(dc.movedTo?' to '+N.shortDate(dc.movedTo):'')};
-      case 'rest':return {k:'rest',w:'Rest'};
-      case 'today':return {k:'plan',w:'Today'};
-      case 'upcoming':return {k:'plan',w:'Planned'};
-      default:return {k:'none',w:'No record'};
+  /* ---- D105 · One state per day ---------------------------------------------------------------
+     The Today rail and tile, Train's idle card, the live dock, the History day card and calendar and
+     the week sheet all read a day here, so one record gets one word everywhere. Derived from stored
+     records only; no key, record shape, threshold or count changes, nothing written.
+       plan       {type, lift, plannedSets, gym}: planned working sets counted as the Today ring counts
+                  them (the day's session queue, else its saved routine; sets from the session targets,
+                  else the routine), without template()'s write of a missing queue
+       recorded   {workingSets (workRows: warm-ups never count), cardioMin, floorball, any}
+       loggedSets planned sets logged, capped per exercise (the ring's own number)
+       outcome    the coach's status, unchanged: its half-plan done/partial rule still says what counts
+                  toward the week (liftsDone, the review, streaks); it no longer picks the word
+       inProgress today only: a lifting day with working sets in this session and no Finish record
+       setsComplete loggedSets ≥ plannedSets
+       finished   {at} from the explicit Finish record (cutSupport.sessions[date__gym__type]); today reads
+                  planDone()'s own key, a past day its latest finished record of that type. Optional
+                  evidence: it may lift the word to "Workout finished", never change what counted.
+       addOn      working sets on a day whose plan is not a lift (walk, rest)
+     k / w is the presentation. A lifting day with sets: finished › planned sets complete › in progress
+     (today) or partly logged (past). Without sets: excused, moved, not logged as the coach says. */
+  const DS_WORD={planned:'Planned',today:'Today',progress:'In progress',complete:'Planned sets complete',finished:'Workout finished',partial:'Partly logged',done:'Done',other:'Plan not done',addon:'Add-on logged',missed:'Not logged',rest:'Rest',untracked:''};
+  /* One pass over the records for any number of days (the calendar reads 42). */
+  function dayIndex(){
+    const work=new Map(),cardio=new Map(),floor=new Map(),fin=new Map();
+    for(const r of N.workRows()){const a=work.get(r.date);if(a)a.push(r);else work.set(r.date,[r]);}
+    for(const r of Array.isArray(state.cardio)?state.cardio:[]){const m=r?N.finite(r.duration):null;if(m>0&&typeof r.date==='string')cardio.set(r.date,(cardio.get(r.date)||0)+m);}
+    for(const r of Array.isArray(state.floorball)?state.floorball:[])if(r&&typeof r.date==='string')floor.set(r.date,(floor.get(r.date)||0)+1);
+    const ss=N.cfg().sessions,sessions=ss&&typeof ss==='object'?ss:{};
+    for(const k of Object.keys(sessions)){
+      const r=sessions[k],d=k.slice(0,10);
+      if(!r||r.finished!==true||!coDate(d))continue;
+      const t=k.slice(k.lastIndexOf('__')+2),prev=fin.get(d+'|'+t);
+      if(!prev||Number(r.finishedAt||0)>Number(prev.finishedAt||0))fin.set(d+'|'+t,r);
     }
+    return {work,cardio,floor,fin,sessions};
+  }
+  /* The gym the day was trained at: most working sets, ties alphabetical (the coach's gymOf rule). */
+  function dayGym(rows){
+    if(!rows.length)return state.gym||'Gym A';
+    const c=new Map();rows.forEach(r=>{const g=r.gym||'Gym A';c.set(g,(c.get(g)||0)+1);});
+    return [...c.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))[0][0];
+  }
+  function dayPlan(d,type,gym,rows){
+    const key=typeof sessionKey==='function'?sessionKey(type,d,gym):`${d}__${gym}__${type}`;
+    const plans=state.sessionPlans&&typeof state.sessionPlans==='object'?state.sessionPlans:{},tg=N.cfg().sessionTargets||{};
+    let tpl=[];try{tpl=N.templateFor(type,gym)||[];}catch(e){tpl=[];}
+    const targets=Array.isArray(tg[key])?tg[key]:null,names=Array.isArray(plans[key])?plans[key]:tpl.map(e=>e&&e.name);
+    const def=n=>(targets&&targets.find(e=>e&&e.name===n))||tpl.find(e=>e&&e.name===n)||(N.old&&typeof N.old.getT==='function'?N.old.getT(n):null)||{sets:3};
+    let planned=0,logged=0;
+    for(const n of names){
+      const s=typeof n==='string'&&n?Number(def(n).sets):0;
+      if(!(s>0))continue;
+      planned+=s;logged+=Math.min(rows.filter(r=>(r.gym||'Gym A')===gym&&(r.exercise||r.name)===n).length,s);
+    }
+    return {planned,logged};
+  }
+  /* dayState(date[, index][, coachDay]) — pass the coach's DayContext when it is already in hand, null
+     to read records only (the dock does, once a second), or nothing to ask the coach. */
+  function dayState(d,ix,dc){
+    if(!coDate(d))return null;
+    ix=ix||dayIndex();
+    if(dc===undefined)dc=coachCall('dayContext',d);
+    const today=d===state.date,type=N.typeFor(d),lift=coIsLift(type),pt=today&&state.dayType?state.dayType:type;
+    const rows=ix.work.get(d)||[],sets=rows.length,cardioMin=Math.round(ix.cardio.get(d)||0),floorball=ix.floor.get(d)||0;
+    const any=sets>0||cardioMin>0||floorball>0,gym=today?(state.gym||'Gym A'):dayGym(rows);
+    const p=lift?dayPlan(d,pt,gym,rows):{planned:0,logged:0};
+    const fin=!lift?null:today?(N.planDone()?(ix.sessions[sessionKey()]||{finished:true}):null):(ix.fin.get(d+'|'+pt)||null);
+    const session=today&&lift?N.sessionLogs().filter(r=>r&&r.setType!=='warmup').length:0;
+    const inProgress=today&&lift&&!fin&&session>0,setsComplete=lift&&p.planned>0&&p.logged>=p.planned,addOn=!lift&&sets>0;
+    const own=lift?sets>0:type==='Zone2'?cardioMin>0:type==='Floorball'?floorball>0:false,st=dc&&dc.status||null;
+    let k;
+    if(fin)k='finished';
+    else if(own&&lift)k=setsComplete?'complete':today?'progress':'partial';
+    else if(own)k='done';
+    else if(st==='excused'||st==='moved')k=st;
+    else if(addOn)k='addon';
+    else if(today)k='today';
+    else if(d>state.date)k='planned';
+    else if(type==='Rest')k='rest';
+    else if(st==='untracked')k='untracked';
+    else k=any?'other':'missed';
+    const why=dc&&dc.reason&&dc.reason!=='other'?' · '+dc.reason:'';
+    const w=k==='excused'?'Excused'+why:k==='moved'?'Moved'+(dc&&dc.movedTo?' to '+N.shortDate(dc.movedTo):''):DS_WORD[k];
+    return {date:d,type,label:N.label(type),lift,today,
+      plan:{type:pt,lift,plannedSets:p.planned,gym:lift?gym:null},
+      recorded:{workingSets:sets,cardioMin,floorball,any},
+      loggedSets:p.logged,outcome:st,reason:dc&&dc.reason||null,movedTo:dc&&dc.movedTo||null,
+      inProgress,setsComplete,finished:fin?{at:Number(fin.finishedAt)>0?Number(fin.finishedAt):null}:null,addOn,k,w,
+      detail:lift&&p.planned>0&&(sets>0||!!fin)?`${p.logged} of ${p.planned} sets`:''};
+  }
+  /* The day as a word and a shape (never colour alone, I6), for the day card, the calendar legend and
+     the week sheet. A planned day keeps the 'plan' shape; a day before the first record has none. */
+  function dsStatus(ds){
+    if(!ds)return null;
+    return {k:ds.k==='today'||ds.k==='planned'?'plan':ds.k==='untracked'?'none':ds.k,w:ds.k==='untracked'?'No record':ds.w};
+  }
+  function coStatus(dc){
+    return dc?dsStatus(dayState(dc.date,null,dc)):null;
   }
   /* What was actually logged that day, from the engine's own counts. Cardio is named;
      any other activity stays generic (D55: switched-off features are never named). */
@@ -523,35 +625,44 @@ const NXP = (() => {
   }
   /* The mark a calendar cell carries: a faint session letter on a planned lifting day, a
      hollow ring for "Not logged", a short slash for "Excused", an arrow for "Moved".
-     Floorball is not drawn (D40) and the marks follow the History filter. */
-  function coCalMark(dc,scope) {
+     Floorball is not drawn (D40) and the marks follow the History filter.
+     D105 — a lifting day under way today carries the rail's arc and a past one short of its plan
+     its half-disc; a complete, finished or add-on day (the lifting dot already shows it) says its
+     word in the cell's label only (k empty: no mark, no legend entry). */
+  function coCalMark(dc,scope,ds) {
     if(!dc)return null;
-    const lift=coIsLift(dc.type),cond=dc.type==='Zone2';
-    if(!((lift&&scope.lift)||(cond&&scope.cond)))return null;
+    const lift=coIsLift(dc.type),cond=dc.type==='Zone2',addon=!!(ds&&ds.k==='addon'&&scope.lift);
+    if(!((lift&&scope.lift)||(cond&&scope.cond)||addon))return null;
     const nm=dc.label;
     if(dc.status==='missed')return {k:'missed',aria:`${nm} not logged`};
     if(dc.status==='excused')return {k:'excused',aria:`${nm} excused${dc.reason&&dc.reason!=='other'?', '+dc.reason:''}`};
     if(dc.status==='moved')return {k:'moved',aria:`${nm} moved${dc.movedTo?' to '+N.shortDate(dc.movedTo):''}`};
+    if(ds&&lift&&(ds.k==='progress'||ds.k==='partial'))return {k:ds.k,aria:`${nm} ${ds.w.toLowerCase()}, ${ds.detail}`};
+    if(ds&&(ds.k==='complete'||ds.k==='finished'||addon))return {k:'',aria:`${nm} ${ds.w.toLowerCase()}`};
     if(lift&&(dc.status==='upcoming'||dc.status==='today'))return {k:'plan',letter:CO_LETTER[dc.type]||String(nm||dc.type).slice(0,1).toUpperCase(),aria:`planned ${nm}`};
     return null;
   }
-  const coCalMarkHTML=cm=>!cm?'':cm.k==='plan'?`<em class="co-cm-l" aria-hidden="true">${esc(cm.letter)}</em>`:coMark(cm.k,'co-cm');
+  const coCalMarkHTML=cm=>!cm||!cm.k?'':cm.k==='plan'?`<em class="co-cm-l" aria-hidden="true">${esc(cm.letter)}</em>`:coMark(cm.k,'co-cm');
   /* The day card's status line: the word, the shape, the plan it belongs to and, for a day
-     the engine would accept an excuse for, the text action that opens the excuse sheet. */
+     the engine would accept an excuse for, the text action that opens the excuse sheet.
+     D105 — the word is the day state's, the same as the rail's: a finished, complete or done day
+     says so too (it used to say nothing), and an add-on day on a walk or rest day is named. The
+     excuse rule stays the engine's (coach status, no logged rows). */
   function coachDayLine(date,scope) {
     const dc=coDate(date)?coachCall('dayContext',date):null;
     if(!dc)return '';
-    const lift=coIsLift(dc.type),cond=dc.type==='Zone2';
-    if(!((lift&&scope.lift)||(cond&&scope.cond)))return '';
-    const past=date<state.date,st=coStatus(dc);
-    const show=['missed','partial','excused','moved'].includes(dc.status)||(['upcoming','today'].includes(dc.status)&&lift);
+    const ds=dayState(date,null,dc),st=dsStatus(ds);
+    const lift=coIsLift(dc.type),cond=dc.type==='Zone2',addon=!!(ds&&ds.addOn&&scope.lift);
+    if(!((lift&&scope.lift)||(cond&&scope.cond)||addon))return '';
+    const past=date<state.date;
+    const show=!!st&&!!st.w&&st.k!=='rest'&&st.k!=='none'&&(st.k!=='plan'||lift);
     if(!show&&!dc.movedFrom)return '';
     let action='';
     if(dc.status==='excused')action=`<button type="button" class="vn-text co-ds-a" onclick="NXP.excuseSheet('${date}')">Remove excuse</button>`;
     else if(past&&(dc.status==='missed'||dc.status==='partial')&&!dateRows(date).length)action=`<button type="button" class="vn-text co-ds-a" onclick="NXP.excuseSheet('${date}')">Excuse this day</button>`;
     const from=dc.movedFrom?coachCall('dayContext',dc.movedFrom):null;
     const note=dc.movedFrom?`<p class="co-ds-n">${esc(from&&from.label?from.label+' moved here from '+coDayShort(dc.movedFrom)+'.':'A session moved here from '+coDayShort(dc.movedFrom)+'.')}</p>`:'';
-    return `${show||action?`<div class="co-ds is-${st.k}" data-cs="${esc(dc.status)}">${show?`<span class="co-ds-w">${coMark(st.k,'co-cm')}<b>${esc(st.w)}</b><span>${esc(dc.label)}</span></span>`:''}${action}</div>`:''}${note}`;
+    return `${show||action?`<div class="co-ds is-${st.k}" data-cs="${esc(dc.status)}" data-ds="${esc(ds.k)}">${show?`<span class="co-ds-w">${coMark(st.k,'co-cm')}<b>${esc(st.w)}</b><span>${esc(dc.label)}${ds.detail?`<i class="st-sr">, ${esc(ds.detail)}</i>`:''}</span></span>`:''}${action}</div>`:''}${note}`;
   }
   /* ---- Today tiles (Strata direction, D19) --------------------------------
      Every figure is read from the engine: the trend series is N.trend() over
@@ -835,6 +946,8 @@ const NXP = (() => {
     const sets=list.reduce((a,e)=>a+Number(e.sets),0);
     const logged=list.reduce((a,e)=>a+Math.min(N.done(e.name),Number(e.sets)),0);
     const title=working.length?'Resume workout':'Start workout';
+    /* D105 — the same word as the rail and the tile once every planned set is logged. */
+    const ds=dayState(state.date,null,null),dsCat=ds&&ds.k==='complete'?'Planned sets complete':working.length?'In progress':'Ready when you are';
     const plan=list.map((e,i)=>{
       const done=N.done(e.name);
       const prev=N.sessionRows(e.name,state.gym,state.date,100).at(-1);
@@ -854,7 +967,7 @@ const NXP = (() => {
       ${trainGuidanceHTML()}
       <section class="st-tile st-ready" style="--c:var(--st-lift)">
         <div class="st-train-row">
-          <div><span class="st-cat">${working.length?'In progress':'Ready when you are'}</span>
+          <div><span class="st-cat">${dsCat}</span>
           <h2 class="st-h2 st-mt2">${list.length} ${N.plural(list.length,"exercise")}</h2>
           <p class="st-meta">${sets} working sets${working.length?` · ${working.length} logged`:''}</p></div>
           ${logged?ringHTML(logged,sets,'sets','var(--st-lift)'):''}
@@ -1021,7 +1134,7 @@ const NXP = (() => {
       <svg class="st-fin-sky" viewBox="0 0 ${Wd} ${Ht}" aria-hidden="true"><defs><radialGradient id="st-fin-neb"><stop offset="0" stop-color="rgba(167,139,250,.38)"/><stop offset=".55" stop-color="rgba(124,77,255,.12)"/><stop offset="1" stop-color="rgba(124,77,255,0)"/></radialGradient></defs><ellipse class="st-fin-neb" cx="${Wd/2}" cy="${Ht*.5}" rx="${Wd*.48}" ry="${Ht*.46}" fill="url(#st-fin-neb)"/><g class="st-fin-lines">${lines.join('')}</g><g class="st-fin-stars">${stars.join('')}</g></svg>
       <p class="st-fin-cap">${working.length} ${N.plural(working.length,'set')} · added to your sky</p>
       <div class="st-fin-head"><svg class="st-fin-ring" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="25" pathLength="1"/><path d="M18 28.5l6.5 6.5L38 21.5" pathLength="1"/></svg>
-        <div><p class="st-fin-eb">Workout complete</p><h2 id="st-fin-t">${esc(N.label(state.dayType))}</h2><p class="st-fin-sub">${esc(state.gym||'Gym A')} · ${esc(N.shortDate(state.date))}</p></div></div>
+        <div><p class="st-fin-eb">Workout finished</p><h2 id="st-fin-t">${esc(N.label(state.dayType))}</h2><p class="st-fin-sub">${esc(state.gym||'Gym A')} · ${esc(N.shortDate(state.date))}</p></div></div>
       <div class="st-fin-stats">${stat(working.length,'Working sets')}${stat(order.length,order.length===1?'Exercise':'Exercises')}${stat(volume,'Volume','kg')}</div>
       ${moments.length?`<ul class="st-fin-moments" aria-label="Highlights">${moments.map((m,i)=>`<li class="is-${m.k}" style="--i:${i}"><i aria-hidden="true"></i><span>${esc(m.t)}</span></li>`).join('')}</ul>`:''}
       <section class="st-fin-printwrap"><h3>Session print</h3>${sessionPrintSVG(working,state.date+'|'+state.gym,{h:132,cls:'is-fin'})}</section>
@@ -1240,7 +1353,7 @@ const NXP = (() => {
         ${trainChrome()}
         <section class="st-tile st-done" style="--c:var(--st-lift)">
           <div class="st-done-badge" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="21"/><path d="M15 24.5l6 6 12-13"/></svg></div>
-          <span class="st-cat">Workout saved</span>
+          <span class="st-cat">Workout finished</span>
           <h2 class="st-h2 st-mt2">${esc(N.label(state.dayType))} · ${esc(state.gym||'Gym')}</h2>
           ${momentsHTML()}
           ${sessionOutcomeHTML()}
@@ -3049,7 +3162,7 @@ const NXP = (() => {
     const r=historyRecords(date);
     /* Four kinds, four shapes — floorball is never folded into cardio. */
     return {
-      lift:scope.lift&&r.logs.length>0,
+      lift:scope.lift&&r.logs.some(x=>x&&x.setType!=='warmup'),/* D105: working sets, as the day state counts them */
       cardio:scope.cond&&r.cardio.length>0,
       floorball:false,/* floorball is no longer drawn on the calendar; the records stay in the day detail */
       body:scope.body&&!!r.bw
@@ -3057,7 +3170,7 @@ const NXP = (() => {
   }
   function historyMonthDates(month,scope) {
     const seen=new Set(),add=arr=>(arr||[]).forEach(r=>{const d=r&&r.date;if(typeof d==='string'&&d.startsWith(month)&&Number.isFinite(N.dateMs(d)))seen.add(d);});
-    if(scope.lift)add(state.logs);
+    if(scope.lift)add((state.logs||[]).filter(r=>r&&r.setType!=='warmup'));
     if(scope.cond){add(state.cardio);}
     if(scope.body)add(state.bws);
     return [...seen].sort();
@@ -3093,7 +3206,9 @@ const NXP = (() => {
     const firstDow=(first.getDay()+6)%7,days=new Date(year,monthNum,0).getDate(),prevDays=new Date(year,monthNum-1,0).getDate();
     const total=Math.ceil((firstDow+days)/7)*7,today=localToday(),cells=[],counts={lift:0,cardio:0,floor:0,body:0};
     /* Ascension — one status read for the whole grid (NXT.coach.dayStatuses), once per paint. */
-    const gridStart=N.dateAdd(`${month}-01`,-firstDow),cxMap=coachDayMap(gridStart,N.dateAdd(gridStart,total-1)),cc={plan:0,missed:0,excused:0,moved:0},ccLetters=[];
+    const gridStart=N.dateAdd(`${month}-01`,-firstDow),cxMap=coachDayMap(gridStart,N.dateAdd(gridStart,total-1)),cc={plan:0,progress:0,partial:0,missed:0,excused:0,moved:0},ccLetters=[];
+    /* D105 — the same day state as the rail and the day card, read from one pass over the records. */
+    const dsx=cxMap?dayIndex():null;
     /* D84 · The calendar shows the numbers: the morning reading under Weight, working sets under Lifting,
        minutes under Cardio. The same stored values the day card lists; All keeps the marks. */
     const vf=state.historyFilter||'all',vMap=new Map();
@@ -3119,14 +3234,14 @@ const NXP = (() => {
       const kind=marks.lift?'lift':marks.cardio?'cardio':marks.floorball?'floor':marks.body?'w':'none';
       const second=marks.lift?(marks.cardio?'cardio':marks.floorball?'floor':''):(marks.cardio&&marks.floorball?'floor':'');
       if(!outside){if(marks.lift)counts.lift++;if(marks.cardio)counts.cardio++;if(marks.floorball)counts.floor++;if(marks.body)counts.body++;}
-      const cm=coCalMark(cxMap&&cxMap.get(key),scope);
-      if(cm){cls.push('has-cs');if(!outside){cc[cm.k]++;if(cm.k==='plan'&&!ccLetters.includes(cm.letter)&&ccLetters.length<3)ccLetters.push(cm.letter);}}
+      const cdc=cxMap&&cxMap.get(key),cm=coCalMark(cdc,scope,cdc?dayState(key,dsx,cdc):null);
+      if(cm&&cm.k){cls.push('has-cs');if(!outside){cc[cm.k]++;if(cm.k==='plan'&&!ccLetters.includes(cm.letter)&&ccLetters.length<3)ccLetters.push(cm.letter);}}
       const cv=!outside&&vMap.has(key)?vMap.get(key):null;if(cv!==null)cls.push('has-v');
       const label=new Date(`${key}T12:00:00`).toLocaleDateString('en-SG',{day:'numeric',month:'long'})+(kinds.length?`, ${kinds.join(', ')}`:', no records')+(cv!==null?vAria(cv):'')+(cm?`, ${cm.aria}`:'');
-      cells.push(`<button type="button" class="${cls.join(' ')}" data-date="${key}" data-k="${kind}"${second?` data-k2="${second}"`:''}${cm?` data-cs="${cm.k}"`:''} style="--i:${i}" tabindex="${key===selected?'0':'-1'}" aria-label="${esc(label)}" aria-pressed="${key===selected?'true':'false'}"${key===today?' aria-current="date"':''} onclick="NXP.historySelect('${key}')"><b${d===1?' class="is-m1"':''}>${d===1?d+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]:d}</b><span class="nxp-cal-marks" aria-hidden="true">${historyMarkHTML(marks)}${coCalMarkHTML(cm)}</span>${cv!==null?`<span class="nxp-cal-v" aria-hidden="true">${esc(vText(cv))}</span>`:''}</button>`);
+      cells.push(`<button type="button" class="${cls.join(' ')}" data-date="${key}" data-k="${kind}"${second?` data-k2="${second}"`:''}${cm&&cm.k?` data-cs="${cm.k}"`:''} style="--i:${i}" tabindex="${key===selected?'0':'-1'}" aria-label="${esc(label)}" aria-pressed="${key===selected?'true':'false'}"${key===today?' aria-current="date"':''} onclick="NXP.historySelect('${key}')"><b${d===1?' class="is-m1"':''}>${d===1?d+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]:d}</b><span class="nxp-cal-marks" aria-hidden="true">${historyMarkHTML(marks)}${coCalMarkHTML(cm)}</span>${cv!==null?`<span class="nxp-cal-v" aria-hidden="true">${esc(vText(cv))}</span>`:''}</button>`);
     }
     /* Ascension — legend entries for the status marks, only for those this month actually has. */
-    const coLg=[['plan','Planned'],['missed','Not logged'],['excused','Excused'],['moved','Moved']].filter(([k])=>cc[k]).map(([k,w])=>`<span class="co-lg is-${k}">${k==='plan'?`<em aria-hidden="true">${esc(ccLetters.slice().sort().join(' '))}</em>`:coMark(k,'co-cm')}${w}<b>${cc[k]}</b></span>`).join('');
+    const coLg=[['plan','Planned'],['progress','In progress'],['partial','Partly logged'],['missed','Not logged'],['excused','Excused'],['moved','Moved']].filter(([k])=>cc[k]).map(([k,w])=>`<span class="co-lg is-${k}">${k==='plan'?`<em aria-hidden="true">${esc(ccLetters.slice().sort().join(' '))}</em>`:coMark(k,'co-cm')}${w}<b>${cc[k]}</b></span>`).join('');
     return `<section class="nxp-history-calendar vn-hist-calendar" id="vn-hist-calendar"><div class="nxp-cal-head" id="vn-hist-calhead"><h2 class="nxp-cal-month" aria-label="${esc(title)}"><span>${esc(monthName)}</span> <em>${yearNum}</em></h2><div class="nxp-cal-nav"><button type="button" aria-label="Previous month" onclick="NXP.historyShiftMonth(-1)">‹</button><button type="button" class="nxp-cal-today" aria-label="Jump to current month" onclick="NXP.historyThisMonth()">Today</button><button type="button" aria-label="Next month" onclick="NXP.historyShiftMonth(1)">›</button></div></div><div class="nxp-cal-weekdays" aria-hidden="true">${['M','T','W','T','F','S','S'].map(x=>`<span>${x}</span>`).join('')}</div><div class="nxp-cal-grid" id="vn-hist-grid" role="group" aria-label="${esc(title)}" onkeydown="NXP.historyKey(event)">${cells.join('')}</div><p class="nxp-cal-legend st-cal-stats" aria-label="This month">${scope.lift?`<span class="lift${counts.lift?'':' is-zero'}"><i></i>Lifting<b>${counts.lift}</b></span>`:''}${scope.cond?`<span class="cond${counts.cardio?'':' is-zero'}"><i></i>Cardio<b>${counts.cardio}</b></span>`:''}${scope.body?`<span class="body${counts.body?'':' is-zero'}"><i></i>Weigh-in<b>${counts.body}</b></span>`:''}${coLg}</p></section>`;
   }
   function historyLiftingBlock(date,logs) {
@@ -3193,7 +3308,10 @@ const NXP = (() => {
     if(scope.body&&r.bw)blocks.push(historyWeightBlock(r.bw,r.bwOthers));
     {const nt=typeof N.chartNotes==='function'?N.chartNotes()[date]:null;if(scope.body&&nt)blocks.push(historyNoteBlock(date,nt));}
     if(scope.lift&&r.logs.length){
-      parts.push(historyPlural(r.logs.length,'set'));
+      /* D105 — "sets" are working sets everywhere; warm-ups are counted apart, never as sets. */
+      const warm=r.logs.filter(x=>x&&x.setType==='warmup').length,work=r.logs.length-warm;
+      if(work)parts.push(historyPlural(work,'set'));
+      if(warm)parts.push(historyPlural(warm,'warm-up'));
       const exercises=new Set(r.logs.map(x=>x.exercise).filter(Boolean)).size;
       if(exercises)parts.push(historyPlural(exercises,'exercise'));
     }
@@ -3620,7 +3738,7 @@ const NXP = (() => {
   }
   bindSteppers();
   bindKeyboardDock();
-  return {shareProgress,shareToggle,shareSend,ask,finishScene,actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,useLast,coachDeck,weighReplay,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen};
+  return {shareProgress,shareToggle,shareSend,ask,finishScene,actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,useLast,coachDeck,weighReplay,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen,dayState};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;
