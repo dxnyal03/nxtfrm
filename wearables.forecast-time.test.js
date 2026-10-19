@@ -314,14 +314,15 @@ test("the chart draws no cone while paused; while aging the cone still reaches p
 test("the next whole kilogram is anchored at the origin and dropped once its day has passed", () => {
   const fresh = strip(view("2026-10-18").journeyHTML());
   assert.ok(fresh.indexOf("82 kg ~19 Oct · estimate") !== -1, fresh);
-  for (const d of ["2026-10-25", "2026-11-15"]) assert.strictEqual(/estimate/.test(strip(view(d).journeyHTML())), false, d);
+  // D107: the journey now names its "Now" figure "Estimated level", so the check looks for the milestone's own "· estimate" tag.
+  for (const d of ["2026-10-25", "2026-11-15"]) assert.strictEqual(/· estimate/.test(strip(view(d).journeyHTML())), false, d);
 });
 
 test("elapsed copy ends where Now is measured once the forecast is not fresh", () => {
   for (const d of VIEWS) {
     const j = strip(view(d).journeyHTML());
     assert.ok(j.indexOf("4.9 kg down in 11 weeks") !== -1, d + ": " + j.slice(0, 120));
-    assert.ok(j.indexOf("82.1 Now 18 Oct") !== -1, d);
+    assert.ok(j.indexOf("82.1 Estimated level 18 Oct") !== -1, d); // D107: "Now" is labelled "Estimated level"
   }
 });
 

@@ -86,7 +86,8 @@ const STRATA = (() => {
     svg.querySelectorAll(".vn-trend-line").forEach(l => l.setAttribute("stroke", "url(#st-tg)"));
     const seg = m.segments && m.segments[m.segments.length - 1], tail = seg && seg[seg.length - 1];
     if (tail && !m.forecast) {
-      const txt = Number(tail.avg).toFixed(2), w = 14 + txt.length * 6.6, px = Math.min(m.W - m.right - w, tail.x - w / 2);
+      /* D107: kilogram readouts at 1 dp; the tooltip keeps the finer figure. */
+      const txt = Number(tail.avg).toFixed(1), w = 14 + txt.length * 6.6, px = Math.min(m.W - m.right - w, tail.x - w / 2);
       svg.insertAdjacentHTML("beforeend", `<g class="st-pillg is-end"><rect x="${px.toFixed(1)}" y="${(tail.y - 30).toFixed(1)}" width="${w.toFixed(1)}" height="20" rx="10"/><text x="${(px + w / 2).toFixed(1)}" y="${(tail.y - 16).toFixed(1)}" text-anchor="middle">${txt}</text></g>`);
     }
     /* Labels are drawn in viewBox units, so a narrow phone shrinks them. Scale the small
@@ -361,7 +362,7 @@ const STRATA = (() => {
     }
     const nt = typeof NXT.chartNotes === "function" ? NXT.chartNotes()[p.date] : null;
     const did = [dayDid(p.date), nt ? NXT.noteLabel(nt.kind) + (nt.text ? ": " + nt.text : "") : ""].filter(Boolean).join(" · ");
-    tip.innerHTML = `${did ? `<span class="st-tip-ctx">${esc(did)}</span>` : ""}<b>${esc(shortDate(p.date))}</b><span>Reading <em>${Number(p.weight).toFixed(1)}</em></span>${p.avg !== null ? `<span>Trend <em>${Number(p.avg).toFixed(2)}</em></span>` : ""}${gap !== null && Math.abs(gap) >= 0.05 ? `<span class="st-tip-gap">${Math.abs(gap).toFixed(1)} kg ${gap < 0 ? "below" : "above"} trend</span>` : ""}`;
+    tip.innerHTML = `${did ? `<span class="st-tip-ctx">${esc(did)}</span>` : ""}<b>${esc(shortDate(p.date))}</b><span>Reading <em>${Number(p.weight).toFixed(1)}</em></span>${p.avg !== null ? `<span>Smoothed <em>${Number(p.avg).toFixed(2)}</em></span>` : ""}${gap !== null && Math.abs(gap) >= 0.05 ? `<span class="st-tip-gap">${Math.abs(gap).toFixed(1)} kg ${gap < 0 ? "below" : "above"} trend</span>` : ""}`;
     tip.style.left = Math.min(Math.max(r.left - wr.left + p.x * k, 58), wr.width - 58) + "px";
     tip.hidden = false;
     const hi = (p.ty !== null && p.ty !== undefined ? Math.min(p.y, p.ty) : p.y), lo = (p.ty !== null && p.ty !== undefined ? Math.max(p.y, p.ty) : p.y), h = tip.offsetHeight;
@@ -1898,7 +1899,7 @@ const STRATA = (() => {
       JR.at = null; JR.k = null;
       const b = JR.base;
       set("[data-st-jr-done]", b.done); set("[data-st-jr-sub]", b.sub); set("[data-st-jr-togo]", b.togo); set("[data-st-jr-togol]", b.togol);
-      set("[data-st-jr-nowv]", b.nowv); jrWord("Now", b.noww); if (when) when.textContent = b.when;
+      set("[data-st-jr-nowv]", b.nowv); jrWord(b.nowName || "Estimated level", b.noww); if (when) when.textContent = b.when;
       dot.style.left = jrPct(d, d.now) + "%"; trav.style.left = b.trav.left; trav.style.width = b.trav.width; trav.classList.toggle("is-back", b.trav.back);
       fut.hidden = true; today.hidden = true; if (back) back.hidden = true;
       sec.querySelectorAll(".st-jr-bead").forEach((x, i) => x.classList.toggle("is-on", !!b.beads[i]));
@@ -1936,7 +1937,7 @@ const STRATA = (() => {
     const q = sel => sec.querySelector(sel), tx = sel => { const el = q(sel); return el ? el.textContent : null; };
     const rail = q(".st-jr-rail"), trav = q(".vn-journey-travel");
     JR.base = { done: tx("[data-st-jr-done]"), sub: tx("[data-st-jr-sub]"), togo: tx("[data-st-jr-togo]"), togol: tx("[data-st-jr-togol]"), when: tx(".st-jr-when"),
-      nowv: tx("[data-st-jr-nowv]"), noww: tx("[data-st-jr-noww] i"), vt: rail.getAttribute("aria-valuetext"),
+      nowv: tx("[data-st-jr-nowv]"), noww: tx("[data-st-jr-noww] i"), nowName: (() => { const em = q("[data-st-jr-noww]"); return em && em.firstChild && em.firstChild.nodeType === 3 ? em.firstChild.nodeValue : null; })(), vt: rail.getAttribute("aria-valuetext"),
       trav: { left: trav.style.left, width: trav.style.width, back: trav.classList.contains("is-back") },
       beads: [...sec.querySelectorAll(".st-jr-bead")].map(b => b.classList.contains("is-on")) };
     const pick = x => {
@@ -2117,13 +2118,15 @@ const STRATA = (() => {
     const first = cs || rows[0].date;
     const conf = !!N.cfg().targetConfirmed, lo = typeof goalLow === "function" ? Number(goalLow()) : NaN, hi = typeof goalHigh === "function" ? Number(goalHigh()) : NaN;
     const nl = N.nowLevel(rows), now = nl ? nl.value : rows[rows.length - 1].weight;
+    /* D107: the story names its "now" as the Journey does: the estimated level, or the latest morning without one. */
+    const nowName = nl ? "estimated level" : "latest morning", nowDate = nl ? nl.date : rows[rows.length - 1].date;
     const days = Math.max(0, Math.round((N.dateMs(state.date) - N.dateMs(first)) / 864e5));
     /* D104: the kilograms down are measured where Now is; once the forecast is not fresh, "in N weeks" ends there. */
     const fv = N.forecastView(rows), upTo = Math.max(0, Math.round((N.dateMs(fv.asOfDate) - N.dateMs(first)) / 864e5));
     const since = upTo >= 14 ? Math.round(upTo / 7) + " weeks" : upTo + " " + N.plural(upTo, "day");
     const weighed = new Set(rows.filter(r => r.date >= first).map(r => r.date));
     const lv = N.levelSeries(rows).filter(q => q.date >= first);
-    return { N, rows, seed, first, conf, lo, hi, now, days, since, fv, weighed, lv, done: seed - now, goal: conf && Number.isFinite(lo) && Number.isFinite(hi) };
+    return { N, rows, seed, savedStart: startW !== null, nowName, nowDate, first, conf, lo, hi, now, days, since, fv, weighed, lv, done: seed - now, goal: conf && Number.isFinite(lo) && Number.isFinite(hi) };
   }
   function syBar(F, cls) {
     const max = Math.max(F.seed, F.now, F.goal ? F.hi : F.now) + .6, min = Math.min(F.goal ? F.lo : F.now, F.now, F.seed) - 1.2, span = Math.max(.8, max - min);
@@ -2134,7 +2137,7 @@ const STRATA = (() => {
   }
   function storyChapters(F) {
     const N = F.N, ch = [], dir = F.done >= .05 ? "down" : F.done <= -.05 ? "up" : "no change";
-    ch.push({ k: "start", eye: "Day one", num: F.seed.toFixed(1), unit: "kg", sub: `${syLong(F.first)}. The first morning of your cut.`,
+    ch.push({ k: "start", eye: "Day one", num: F.seed.toFixed(1), unit: "kg", sub: `${syLong(F.first)}. ${F.savedStart ? "Your saved start weight, the day your cut began." : "Your first morning reading."}`,
       vis: `<div class="st-sy-seed" aria-hidden="true"><i></i><i></i><i></i><b></b></div>${F.goal ? `<p class="st-sy-goal">Goal · ${F.lo}–${F.hi} kg</p>` : ""}` });
     const togo = F.goal ? (F.now > F.hi ? `${(F.now - F.hi).toFixed(1)} kg to your ${F.hi} kg goal.` : F.now >= F.lo ? "You are in your goal range." : "You are below your goal range.") : "";
     ch.push({ k: "down", eye: "So far", num: Math.abs(F.done).toFixed(1), unit: "kg " + (dir === "no change" ? "" : dir), sub: `In ${F.since}. ${togo}`.trim(), vis: syBar(F) });
@@ -2166,8 +2169,8 @@ const STRATA = (() => {
       const rows7 = Math.ceil(n / 7), per = rows7 > 20 ? 21 : rows7 > 10 ? 14 : 7, sz = per === 21 ? 8 : per === 14 ? 11 : rows7 > 8 ? 12 : 16, gp = per === 21 ? 4 : per === 14 ? 6 : rows7 > 8 ? 6 : 8;
       ch.push({ k: "morn", eye: "Your mornings", num: String(got), unit: "of " + total, sub: `days weighed since ${shortDate(F.first)}. Each one tightens the trend.`, vis: `<div class="st-sy-days" style="--c:${per};--s:${sz}px;--g:${gp}px" aria-hidden="true">${cells.join("")}</div>` }); }
     const v = F.fv, fw = NXT.forecastWords(v), share = '<button type="button" class="st-sy-share"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5.5 9.5H5a1.5 1.5 0 0 0-1.5 1.5v4.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V11A1.5 1.5 0 0 0 15 9.5h-.5"/></svg>Share your cut</button>';
-    if (!F.goal) ch.push({ k: "next", eye: "What's next", num: F.now.toFixed(1), unit: "kg now", sub: "Set a goal range in Settings to see where this is heading.", vis: share });
-    else if (F.now <= F.hi) ch.push({ k: "next", eye: "Where you are", num: F.now.toFixed(1), unit: "kg now", sub: F.now >= F.lo ? `Inside your ${F.lo}–${F.hi} kg goal range. A weight range alone does not measure leanness.` : `Below your ${F.lo}–${F.hi} kg goal range.`, vis: share });
+    if (!F.goal) ch.push({ k: "next", eye: "What's next", num: F.now.toFixed(1), unit: "kg, " + F.nowName, sub: `${shortDate(F.nowDate)}. Set a goal range in Settings to see where this is heading.`, vis: share });
+    else if (F.now <= F.hi) ch.push({ k: "next", eye: "Where you are", num: F.now.toFixed(1), unit: "kg, " + F.nowName, sub: F.now >= F.lo ? `Inside your ${F.lo}–${F.hi} kg goal range. A weight range alone does not measure leanness.` : `Below your ${F.lo}–${F.hi} kg goal range.`, vis: share });
     /* D104: the anchored arrival, counted from today and said "as of" the last reading once it is not fresh; a
        paused forecast keeps the reason-style chapter and names the last morning weigh-in instead of a date. */
     else if (v.showArrival) ch.push({ k: "next", eye: "What's next", num: "~" + v.weeksRemaining, unit: v.weeksRemaining === 1 ? "week" : "weeks", sub: `To ${F.hi} kg around ${shortDate(v.arrivalDate)}${fw.asOf ? ", " + fw.asOf : ""}, at your last 3 weeks' pace of ${sySigned(v.slopeKgWk)} kg/wk. An estimate, not a measurement.`, vis: share });
@@ -2293,7 +2296,7 @@ const STRATA = (() => {
         <h2 class="st-goal-t" id="st-goal-t">You’re in your goal range</h2>
         ${syBar(F, "is-goal")}
         <div class="st-goal-facts"><div><b data-st-num>${Math.abs(F.done).toFixed(1)}</b><span>kg ${F.done >= 0 ? "down" : "up"}</span></div><div><b data-st-num>${weeks}</b><span>${weeks === 1 ? "week" : "weeks"}</span></div><div><b data-st-num>${F.weighed.size}</b><span>mornings weighed</span></div></div>
-        <p class="st-goal-sub">Now ${F.now.toFixed(1)} kg, inside ${kgTxt(F.lo)}–${kgTxt(F.hi)} kg. A weight range alone does not measure leanness.</p>
+        <p class="st-goal-sub">${F.nowName.charAt(0).toUpperCase() + F.nowName.slice(1)} ${F.now.toFixed(1)} kg, inside ${kgTxt(F.lo)}–${kgTxt(F.hi)} kg. A weight range alone does not measure leanness.</p>
         <div class="st-goal-acts"><button type="button" class="st-goal-share">Share your cut</button><button type="button" class="st-goal-done">Done</button></div>
       </div>`;
     document.body.appendChild(el);

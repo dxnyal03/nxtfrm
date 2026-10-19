@@ -92,7 +92,10 @@ const NXP = (() => {
     const lastLift=[...new Set(work.map(row=>row.date))].sort().at(-1);
     const lastLiftRow=lastLift?work.find(row=>row.date===lastLift):null;
     const plateau=N.detectPlateau();
-    const trendEv=plateau.weeklyRate===null?(s.change===null?'—':N.signed(s.change)+' kg/wk'):N.signed(plateau.weeklyRate)+' kg/wk';
+    /* D107 — the chip is named for the number it prints: the rate over its real span ("4-week rate", "15-day
+       rate"), or, before there is one, the week-on-week change of the 7-day averages (a delta, 1 dp). */
+    const trendLab=plateau.weeklyRate!==null?N.rateSpan(plateau).label:s.change!==null?'Week on week':'Rate';
+    const trendEv=plateau.weeklyRate===null?(s.change===null?'—':N.signedFixed(s.change,1)+' kg'):N.signed(plateau.weeklyRate)+' kg/wk';
     const confEv=!plateau.confidence||plateau.confidence==='none'?'—':plateau.confidence;
     const toneClass=r.tone==='watch'?' vn-tone-watch':'';
     const support=r.message||r.reason||'';
@@ -185,7 +188,7 @@ const NXP = (() => {
             <div class="st-tile-head"><span class="st-cat">Decision</span><button type="button" class="st-link st-why" onclick="NXT.openReview()">Why<span aria-hidden="true">›</span></button></div>
             <h2 class="st-h3" id="vn-dec-h">${esc(r.title)}</h2>
             ${support?`<p class="st-body st-mt2">${esc(support)}</p>`:''}
-            ${decEvidenceHTML(trendEv,confEv,plateau)}
+            ${decEvidenceHTML(trendEv,confEv,plateau,trendLab)}
           </section>`;
     /* D103 — the morning in one pill under the greeting: a lit "Log morning weight" until this morning's
        reading (D7) is in, then the reading itself; a tap replays the weigh-in moment on the trend (D92).
@@ -677,7 +680,7 @@ const NXP = (() => {
   }
   /* Compact weight: the canonical 7-day trend and the engine's weekly rate.
      The chart itself lives on Progress. */
-  function decEvidenceHTML(trendEv,confEv,plateau) {
+  function decEvidenceHTML(trendEv,confEv,plateau,trendLab='Rate') {
     const rate=N.finite(plateau&&plateau.weeklyRate);
     const dir=rate===null?'flat':rate<-0.05?'down':rate>0.05?'up':'flat';
     /* D50 — the trend chip is a 28-day mini chart: the engine's trend line over an area,
@@ -704,22 +707,25 @@ const NXP = (() => {
     const arrow={down:'M12 5v13M6.5 12.5 12 18l5.5-5.5',up:'M12 19V6M6.5 11.5 12 6l5.5 5.5',flat:'M5 12h14'}[dir];
     const lvl={low:1,medium:2,high:3}[String(confEv).toLowerCase()]||0;
     const bars=lvl?`<span class="st-dec-bars" aria-hidden="true">${[1,2,3].map(i=>`<i class="${i<=lvl?'on':''}"></i>`).join('')}</span>`:'';
-    const label=`Open your weight trend. Trend ${trendEv}${tr.length>=4?`, ${tr[0].avg.toFixed(1)} to ${tr.at(-1).avg.toFixed(1)} kilograms over 28 days`:''}`;
+    const label=`Open your weight trend. ${trendLab} ${trendEv}${tr.length>=4?`; smoothed trend ${tr[0].avg.toFixed(1)} to ${tr.at(-1).avg.toFixed(1)} kilograms over the last 28 days`:''}`;
     return `<div class="st-dec-ev${plot?' has-plot':''}">
-      <button type="button" class="st-dec-chip st-dec-trend is-${dir}${plot?' st-dec-chart':''}" onclick="NXT.ui.view='overview';switchTab('weight')" aria-label="${esc(label)}"><span class="st-dec-top"><span class="st-dec-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${arrow}"/></svg></span><span class="st-dec-txt"><small>Trend${plot?' · 28 days':''}</small><b class="vn-num st-dec-val">${esc(trendEv)}</b></span>${range}</span>${plot}</button>
-      <button type="button" class="st-dec-chip st-dec-conf" onclick="NXT.openReview()" aria-label="Why this confidence"><span class="st-dec-txt"><small>Confidence</small><b>${esc(confEv)}</b></span>${bars}</button>
+      <button type="button" class="st-dec-chip st-dec-trend is-${dir}${plot?' st-dec-chart':''}" onclick="NXT.ui.view='overview';switchTab('weight')" aria-label="${esc(label)}"><span class="st-dec-top"><span class="st-dec-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${arrow}"/></svg></span><span class="st-dec-txt"><small>${esc(trendLab)}</small><b class="vn-num st-dec-val">${esc(trendEv)}</b></span>${range}</span>${plot}</button>
+      <button type="button" class="st-dec-chip st-dec-conf" onclick="NXT.openReview()" aria-label="Why this rate precision"><span class="st-dec-txt"><small>Rate precision</small><b>${esc(confEv)}</b></span>${bars}</button>
     </div>`;
   }
   function weightTileHTML() {
     const rows=N.weights();
-    if(!rows.length)return `<button type="button" class="st-tile st-mini" style="--c:var(--st-weight)" onclick="apx95OpenQuickWeight()"><span class="st-cat">Weight</span><span class="st-mini-v">—</span><span class="st-meta">Log a weigh-in</span></button>`;
+    /* Missing stays missing, but readings logged at other times are named rather than denied (D14). */
+    const other=rows.length?0:N.otherTimingCount();
+    if(!rows.length)return `<button type="button" class="st-tile st-mini" style="--c:var(--st-weight)" onclick="apx95OpenQuickWeight()"><span class="st-cat">Weight</span><span class="st-mini-v">—</span><span class="st-meta">${other?`No morning readings yet · ${other} other-time`:'Log a weigh-in'}</span></button>`;
+    /* D107 — the smoothed trend under its own name; without one yet, the latest morning reading under its own. */
     const s=N.trend(rows).filter(p=>p.avg!==null).at(-1);
     const v=s?s.avg:rows.at(-1).weight;
     const pl=N.detectPlateau(rows),rate=N.finite(pl&&pl.weeklyRate);
     return `<button type="button" class="st-tile st-mini" style="--c:var(--st-weight)" onclick="NXT.ui.view='overview';switchTab('weight')">
-      <span class="st-cat">Trend</span>
+      <span class="st-cat">${s?'Smoothed trend':'Latest morning'}</span>
       <span class="st-mini-v"><b class="st-odo st-odo-sm" data-st-odo="${v.toFixed(1)}">${v.toFixed(1)}</b><small>kg</small></span>
-      <span class="st-meta">${rate!==null&&pl.ok?(Math.abs(rate)<0.05?'Flat':`${N.signed(rate)}/wk`):'7-day trend'}</span>
+      <span class="st-meta">${s&&rate!==null&&pl.ok?(Math.abs(rate)<0.05?'Flat':`${N.signed(rate)}/wk`):N.shortDate(s?s.date:rows.at(-1).date)}</span>
     </button>`;
   }
   /* D20 comparison for any logged lifting day: best set per exercise against the
@@ -739,7 +745,9 @@ const NXP = (() => {
     return {up,same,down,compared,exercises:Object.keys(byEx).length};
   }
   function bodyTileHTML() {
-    const scans=bodyScanSource().filter(s=>s&&N.finite(s.weight)!==null);
+    /* "Latest" means the same scan here as on Progress and Settings: a newer scan without a
+       weight is still the latest, shown with the figures it has (stage-1 finding S4). */
+    const scans=bodyScanSource().filter(s=>s&&['bodyFat','fatMass','muscleMass','weight'].some(k=>N.finite(s[k])!==null));
     if(!scans.length)return '';
     const L=scans.at(-1),P=scans.at(-2)||null;
     /* Change pills read by metric, not by sign: less fat is good news, less muscle is
@@ -1181,7 +1189,7 @@ const NXP = (() => {
     const days=Math.max(0,Math.round((N.dateMs(to)-N.dateMs(first))/864e5));
     const trend=N.trend(rows).filter(p=>p.avg!==null&&p.date>=first&&p.date<=to).map(p=>({d:p.date,v:Number(p.avg)}));
     const liftDays=new Set(N.workRows().filter(r=>r.date>=first&&r.date<=to).map(r=>r.date)).size;
-    return {seed,cur,lo,hi,first,to,days,trend,liftDays,done:seed-cur,remain:Math.max(0,cur-hi)};
+    return {seed,cur,curName:nl?'Estimated level':'Latest morning',lo,hi,first,to,days,trend,liftDays,done:seed-cur,remain:Math.max(0,cur-hi)};
   }
   async function drawProgressCard(f,showKg){
     const W=1080,H=1350,cv=document.createElement('canvas');cv.width=W;cv.height=H;
@@ -1206,7 +1214,8 @@ const NXP = (() => {
     g.fillStyle=tg;g.font=F(250,250);track(-10);g.fillText(big,84,520);const bw=g.measureText(big).width;track(0);
     g.fillStyle='rgba(225,214,255,.86)';g.font=F(520,64);g.fillText('kg down',84+bw+22,520);
     g.fillStyle='rgba(214,204,240,.8)';g.font=F(480,38);
-    g.fillText(showKg?`${f.days} ${f.days===1?'day':'days'} · ${f.liftDays} lifting ${f.liftDays===1?'day':'days'} · on the morning trend`:'on the morning trend',96,592);
+    /* D107: the headline is start minus the estimated level (the Journey's figure), and says so. */
+    g.fillText(showKg?`${f.days} ${f.days===1?'day':'days'} · ${f.liftDays} lifting ${f.liftDays===1?'day':'days'} · to the ${f.curName.toLowerCase()}`:'from your morning weigh-ins',96,592);
     /* the trend line since the cut began */
     const X0=96,X1=984,Y0=690,Y1=1010,pts=f.trend;
     if(pts.length>=2){
@@ -1222,10 +1231,11 @@ const NXP = (() => {
       g.fillStyle='rgba(196,181,253,.28)';g.beginPath();g.arc(ex,ey,30,0,Math.PI*2);g.fill();
       g.save();g.shadowColor='rgba(255,255,255,.95)';g.shadowBlur=22;g.fillStyle='#fff';g.beginPath();g.arc(ex,ey,12,0,Math.PI*2);g.fill();g.restore();
       /* Only the end is labelled: the line starts at the first trend value, which is not the saved start weight. */
-      if(showKg){g.font=F(560,34);g.fillStyle='rgba(225,214,255,.9)';g.textAlign='right';g.fillText(`${e.v.toFixed(1)} kg`,X1,Math.max(Y0-22,ey-46));g.textAlign='left';}
+      if(showKg){g.font=F(560,34);g.fillStyle='rgba(225,214,255,.9)';g.textAlign='right';/* the longer named label sits on the side of the end the line does not come from (below it on a descent) */
+        g.fillText(`Smoothed trend ${e.v.toFixed(1)} kg`,X1,pts[0].v>e.v?Math.min(Y1+40,ey+56):Math.max(Y0-22,ey-46));g.textAlign='left';}
     }
     /* three facts along the bottom */
-    const cols=showKg?[[f.seed.toFixed(1)+' kg','Start'],[f.cur.toFixed(1)+' kg',f.to===state.date?'Trend now':'Trend · '+N.shortDate(f.to)],[f.remain>0?f.remain.toFixed(1)+' kg':'In range',f.remain>0?'To goal range':'Goal range']]
+    const cols=showKg?[[f.seed.toFixed(1)+' kg','Start'],[f.cur.toFixed(1)+' kg',f.to===state.date?f.curName:(f.curName==='Estimated level'?'Estimated':f.curName)+' · '+N.shortDate(f.to)],[f.remain>0?f.remain.toFixed(1)+' kg':'In range',f.remain>0?'To goal range':'Goal range']]
       :[[String(f.liftDays),f.liftDays===1?'Lifting day':'Lifting days'],[String(f.days),f.days===1?'Day':'Days'],[f.remain>0?f.remain.toFixed(1)+' kg':'In range',f.remain>0?'To goal range':'Goal range']];
     g.fillStyle='rgba(255,255,255,.05)';const rr=(x,y,w,h,r)=>{g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();};
     rr(72,1080,936,180,44);g.fill();g.strokeStyle='rgba(255,255,255,.09)';g.lineWidth=2;g.stroke();
@@ -2216,7 +2226,8 @@ const NXP = (() => {
     const tabs=`<div class="n99-progress-tabs nxp-progress-tabs vn-progress-tabs" role="group" aria-label="Progress view">${[['overview','Weight'],['training','Training'],['strength','Performance','Lifts'],['body','Body']].map(([key,title,short])=>`<button type="button" class="${v===key?'active':''}" aria-pressed="${v===key}" aria-label="${title}" onclick="NXT.setView('${key}')">${short?`<span class="st-tab-l">${title}</span><span class="st-tab-s" aria-hidden="true">${short}</span>`:title}</button>`).join('')}</div>`;
     const chrome=`<header class="nxp-heading nxp-progress-chrome vn-progress-chrome"><div><h1>Progress</h1><p>${esc(period)}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>`;
     if(v==='body'){
-      const waist=N.cleanRows(N.cfg().waist,'cm'),scans=bodyScanSource();
+      /* D106 — waist rows stay in storage but are not shown while the waist feature is off (D55). */
+      const waist=N.features.waist?N.cleanRows(N.cfg().waist,'cm'):[],scans=bodyScanSource();
       document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-body"><header class="nxp-heading nxp-progress-chrome"><div><h1>Progress</h1><p>${esc(bodyTitle(waist,scans))}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${bodySummary(waist,scans)}${compMapHTML(scans)}${bodyView(waist,scans)}</div>`;
       return;
     }
@@ -2241,7 +2252,7 @@ const NXP = (() => {
     }
     /* Phase 2C — Weight owns its layout inside chartHTML (trajectory + journey).
        TDEE and weigh-in history are demoted below, not deleted. */
-    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${N.chartHTML().replace('<div class="vn-mhead"',weightHighlightsHTML()+slowWeekHTML()+'<div class="vn-mhead"')}${N.features&&N.features.calories?`<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details>`:''}<button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${(n=>n+" "+N.plural(n,"reading"))(N.weights().length)}</span></span><span class="vn-chev">›</span></button></div>`;
+    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${N.chartHTML().replace('<div class="vn-mhead"',weightHighlightsHTML()+slowWeekHTML()+'<div class="vn-mhead"')}${N.features&&N.features.calories?`<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details>`:''}<button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${(n=>n+" "+N.plural(n,n===0?"morning reading":"reading"))(N.weights().length)}${(o=>o?` · ${o} other-time`:'')(N.otherTimingCount())}</span></span><span class="vn-chev">›</span></button></div>`;
   }
   /* Engine vocabulary only (I12). The word is the status; colour and shape follow it. */
   const PERF_NOTE='Estimated 1RM is a comparison aid, not a tested maximum or proof of muscle retention. Technique, effort and equipment setup affect it.';
@@ -2590,7 +2601,7 @@ const NXP = (() => {
     if(bodyScanSource().length)return '';
     return `<section class="nxp-progress-body-summary"><span class="nxp-caption">Body</span>`
       +`<strong>Nothing measured yet</strong>`
-      +`<p>Waist and Evo scans are optional. Scale weight stays on the Weight tab; nothing here is estimated.</p></section>`;
+      +`<p>${N.features.waist?'Waist and Evo scans are':'Evo scans are'} optional. Scale weight stays on the Weight tab; nothing here is estimated.</p></section>`;
   }
   /* Detail is the shared scan page. The capture form is not: that stays on
      Settings even if a form was left open there. */
@@ -2917,7 +2928,10 @@ const NXP = (() => {
     if(view==='routine'){page.classList.add('nxp-settings-page');routineView();return;}
     if(view!=='hub'){base.more();subviewChrome();return;}
     const lifts=Object.values(settings.weeklyPlan||{}).filter(t=>!['Rest','Zone2','Floorball'].includes(t)).length;
-    const waist=N.cleanRows(c.waist,'cm').length;
+    /* D106 — the row counts what its page shows: the scans (the same evoOrdered() list as the scan
+       screens), and waist entries only while the waist feature is on (D55). */
+    const scanList=bodyScanSource(),waist=N.features.waist?N.cleanRows(c.waist,'cm').length:0,lastScan=scanList.at(-1);
+    const bodyValue=scanList.length?scanList.length+(scanList.length===1?' scan':' scans')+(lastScan&&lastScan.date?' · latest '+N.shortDate(lastScan.date):''):waist?waist+(waist===1?' waist entry':' waist entries'):'None yet';
     const p=pref(),cloud=cloudSignal();
     const look=[p.text==='large'?'Larger text':'Standard text',p.motion==='reduced'?'Reduced motion':''].filter(Boolean).join(' · ');
     page.innerHTML=shell(`<h1 class="vn-set-title">Settings</h1>
@@ -2931,7 +2945,7 @@ const NXP = (() => {
         +setRow('Appearance',look,"NXT.more('appearance')",'Text size and motion')
         +(N.features.reminders?setRow('Reminders',state.notifs?.enabled?'On':'Off',"NXT.more('notifications')",'Weigh-in, cardio and backup prompts'):''))}
       ${setGroup('Body',
-        setRow('Body & scans',waist?waist+(waist===1?' waist entry':' waist entries'):'None yet',"NXT.more('body')",'Evo scans and measurements'))}
+        setRow('Body & scans',bodyValue,"NXT.more('body')",N.features.waist?'Evo scans and measurements'+(scanList.length&&waist?' · '+waist+(waist===1?' waist entry':' waist entries'):''):'Evo scans'))}
       ${setGroup('Data',
         setRow('Cloud & sync',cloud.word,"NXT.more('data')",cloud.sub,cloud.tone)
         +(()=>{const st=storageStatus();return st?setRow('Storage',st.used,"NXT.more('data')",st.sub,st.tone):'';})()
@@ -3287,7 +3301,7 @@ const NXP = (() => {
       const prev=mornings.at(-1),pt=N.trend(N.weights()).find(p=>p.date===bw.date);
       const w=Number(bw.weight),bits=[];
       if(prev){const d=w-Number(prev.weight),ago=Math.round((N.dateMs(bw.date)-N.dateMs(prev.date))/864e5);bits.push(`<span class="st-hw-c ${d<-0.04?'is-dn':d>0.04?'is-up':''}"><i aria-hidden="true">${d<-0.04?'↓':d>0.04?'↑':'→'}</i>${Math.abs(d).toFixed(1)} kg<small> vs ${ago===1?'yesterday':N.shortDate(prev.date)}</small></span>`);}
-      if(pt&&pt.avg!==null){const g=w-pt.avg;bits.push(`<span class="st-hw-t">Trend <b class="vn-num">${pt.avg.toFixed(2)}</b><small> · ${Math.abs(g)<0.05?'on trend':Math.abs(g).toFixed(1)+' kg '+(g<0?'below':'above')}</small></span>`);}
+      if(pt&&pt.avg!==null){const g=w-pt.avg;bits.push(`<span class="st-hw-t">Smoothed trend <b class="vn-num">${pt.avg.toFixed(1)}</b><small> · ${Math.abs(g)<0.05?'on trend':Math.abs(g).toFixed(1)+' kg '+(g<0?'below':'above')}</small></span>`);}
       if(bits.length)ctx=`<p class="st-hw">${bits.join('')}</p>`;
     }
     const more=(others||[]).map(o=>`<p class="st-hw-o"><b class="vn-num">${esc(historyNum(o.weight))} kg</b><span>${esc(o.timeOfDay||'Weigh-in')}</span></p>`).join('');
@@ -3742,8 +3756,9 @@ const NXP = (() => {
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;
-  NXT.selectPoint=function(index){
-    orig(index);
+  /* F8: opts pass through, so {clear:true} (Escape, replay end, Back to latest) clears the selection. */
+  NXT.selectPoint=function(index,opts){
+    orig(index,opts);
     /* 2C metric header uses .vn-metric-v > em; keep that shape if present. */
     const el=document.getElementById('n99-chart-weight');
     const p=NXT.ui.chart?.points?.[index];

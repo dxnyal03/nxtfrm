@@ -883,10 +883,11 @@ Object.assign(NXT, (() => {
     if (!watch && !flat) return [];
     const weeks = flat && pl.plateauDays ? Math.round(pl.plateauDays / 7) : null;
     const evidence = [{label: "Decision", value: r.title, date: ctx.weight.lastMorningDate}];
-    if (ctx.weight.confidence) evidence.push({label: "Confidence", value: ctx.weight.confidence});
+    /* D107: detectPlateau's confidence is the precision of the rate, and is named that (Evidence and Today agree). */
+    if (ctx.weight.confidence) evidence.push({label: "Rate precision", value: ctx.weight.confidence});
     if (weeks) evidence.push({label: "Plateau", value: "about " + count(weeks, "week")});
     const rate = pl && pl.ok && pl.weeklyRate !== null
-      ? `Four-week trend ${pl.weeklyRate > 0 ? "+" : ""}${pl.weeklyRate.toFixed(2)} kg/wk from ${pl.n} morning weigh-ins over ${pl.spanDays} days`
+      ? `${(s => s.charAt(0).toUpperCase() + s.slice(1))(N.rateSpan(pl).label)} ${N.signedFixed(pl.weeklyRate, 2)} kg/wk from ${pl.n} morning weigh-ins over ${pl.spanDays} days`
       : `${ctx.weight.trend.current.n} morning readings this week and ${ctx.weight.trend.previous.n} the week before`;
     return [insight({
       id: "weight.review", domain: "weight", severity: watch ? "watch" : "info",
@@ -894,8 +895,8 @@ Object.assign(NXT, (() => {
       body: watch ? (r.reason || r.message || "") : (pl.reason || r.reason || ""),
       evidence,
       why: {
-        noticed: watch ? `The weight decision reads “${r.title}”.` : `The four-week trend is level${weeks ? ` (about ${count(weeks, "week")})` : ""}.`,
-        evidence: `${rate}${ctx.weight.confidence ? `; confidence ${ctx.weight.confidence}` : ""}.`,
+        noticed: watch ? `The weight decision reads “${r.title}”.` : `The ${N.rateSpan(pl).label} is level${weeks ? ` (about ${count(weeks, "week")})` : ""}.`,
+        evidence: `${rate}${ctx.weight.confidence ? `; rate precision ${ctx.weight.confidence}` : ""}.`,
         matters: r.message || "Morning weigh-ins decide the trend.",
         canDo: `${r.action ? r.action + ". " : ""}Nothing changes automatically.`
       },
