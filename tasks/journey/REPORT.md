@@ -125,7 +125,8 @@ owner's screenshot). `RELEASE` is 163; shipping this needs 164.
 
 Owner: "using the ios sim, now go through each of the pages and the whole nxtfrm, upgrade it and enhance the app
 experience", then "tab switch animation not so aggressive", then "think of a more sleek way to do the Today page",
-"be creative, think like a senior app designer", "match the design direction of NXTFRM". Same branch and PR.
+"be creative, think like a senior app designer", "match the design direction of NXTFRM". Same branch and PR
+(commit `c8b9d5f`).
 
 **Today (D103).** It was about 2,560 px at 320 pt, roughly three screens: the training card, three full coach cards,
 the minis, a Decision pushed below them, the scan tile and a Quick actions row, with "Full Body A · 6 of 15" said four
