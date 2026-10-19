@@ -52,6 +52,21 @@ const NXT = (() => {
     return c;
   }
   function finite(v) { return v!==""&&v!==null&&v!==undefined&&Number.isFinite(Number(v))?Number(v):null; }
+  /* D100 (proposed; the owner asked for notes on the chart, 2026-10-19) — a holiday, a sick day, a refeed, or
+     anything else worth seeing beside the line. One per day in cutSupport.chartNotes as {kind, text, ts}; the
+     object exists only once a note is saved. Context only: no calculation reads it. */
+  const NOTE_KINDS=["holiday","sick","refeed","other"];
+  function chartNotes() {
+    const raw=settings&&settings.cutSupport&&settings.cutSupport.chartNotes,out={};
+    if(!raw||typeof raw!=="object"||Array.isArray(raw))return out;
+    for(const date of Object.keys(raw)) {
+      const n=raw[date];
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date+"T12:00:00Z"))||!n||typeof n!=="object"||Array.isArray(n))continue;
+      out[date]={kind:NOTE_KINDS.includes(n.kind)?n.kind:"other",text:typeof n.text==="string"?n.text.replace(/\s+/g," ").trim().slice(0,80):"",ts:Number.isFinite(Number(n.ts))?Number(n.ts):0};
+    }
+    return out;
+  }
+  function noteLabel(kind) { return {holiday:"Holiday",sick:"Sick",refeed:"Refeed",other:"Note"}[kind]||"Note"; }
   function dateMs(d) {
     if(!/^\d{4}-\d{2}-\d{2}$/.test(String(d)))return NaN;
     const ms=Date.parse(d+"T12:00:00Z");
@@ -239,6 +254,46 @@ const NXT = (() => {
       "Your readings vary too much over four weeks to separate a plateau from normal fluctuation. Keep logging.";
     return {...head,ok:true,plateau:w.status==="flat",status:w.status,weeklyRate:w.weeklyRate,
       lower:w.lower,upper:w.upper,n:w.n,windowDays:PLATEAU_WINDOW_DAYS,spanDays:w.span,plateauDays,confidence,reason};
+  }
+  /* D97 (proposed; the owner asked for "Now" to stop lagging, 2026-10-19) — where your weight is now.
+     At each trend-ready reading: the level of the least-squares line through the trend-ready morning
+     readings of the 21 days ending there (forecastGoal's own window and fit), read at that day, once the
+     window holds FORECAST_TRUST_POINTS readings; until then, the smoothed trend. The trend line itself
+     (ewmaTrend) is unchanged; it trails a moving weight by about ten days, which this does not. At the
+     last reading the value is forecastGoal's fittedLevel whenever the forecast computes one. */
+  function levelSeries(rows=weights()) {
+    const series=ewmaTrend(rows).filter(r=>r.trendReady),out=[];
+    let lo=0;
+    for(let i=0;i<series.length;i++) {
+      const d=series[i].date,start=dateAdd(d,1-FORECAST_WINDOW_DAYS);
+      while(lo<i&&series[lo].date<start)lo++;
+      const win=series.slice(lo,i+1);
+      let value=series[i].avg,source="trend";
+      if(win.length>=FORECAST_TRUST_POINTS) {
+        const fit=lsFit(win.map(r=>({x:(dateMs(r.date)-dateMs(start))/DAY,y:r.weight})));
+        if(fit.sxx>0&&Number.isFinite(fit.slope)&&Number.isFinite(fit.intercept)){value=fit.intercept+fit.slope*((dateMs(d)-dateMs(start))/DAY);source="line";}
+      }
+      out.push({date:d,value,source,trend:series[i].avg,weight:series[i].weight});
+    }
+    return out;
+  }
+  function nowLevel(rows=weights()) { const s=levelSeries(rows); return s.length?s[s.length-1]:null; }
+  /* D96 — the four-week rate across the cut: plateauWindow (the rate and its 95% range) read with its
+     end moved back one day at a time. Same fit, same window, same thresholds. ref is the smoothed trend at
+     that day, the body weight review() divides by for the 1% line (D37). Days without a window are skipped. */
+  function rateSeries(rows=weights(),from=null,to=state.date) {
+    const first=rows.length?rows.reduce((m,r)=>r.date<m?r.date:m,rows[0].date):null;
+    let d=from&&Number.isFinite(dateMs(from))?from:first;
+    if(!d||!Number.isFinite(dateMs(to)))return [];
+    const tr=ewmaTrend(rows).filter(r=>r.trendReady),out=[];
+    let k=-1,guard=0;
+    for(;d<=to&&guard<800;d=dateAdd(d,1),guard++) {
+      while(k+1<tr.length&&tr[k+1].date<=d)k++;
+      const w=plateauWindow(rows,d,PLATEAU_WINDOW_DAYS);
+      if(!w||k<0)continue;
+      out.push({date:d,weeklyRate:w.weeklyRate,lower:w.lower,upper:w.upper,status:w.status,ref:tr[k].avg});
+    }
+    return out;
   }
   function trendStats(rows=weights()) {
     const current=windowStats(rows),previous=windowStats(rows,dateAdd(state.date,-7)),earlier=windowStats(rows,dateAdd(state.date,-14));
@@ -959,7 +1014,7 @@ const NXT = (() => {
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard(true)}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' '+plural(s.current.n,'weigh-in'))}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' '+plural(s.previous.n,'weigh-in'))}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any change to your plan stays your choice.</p><div class="n99-stack">${CALORIES_ENABLED?button('Review calorie guide','NXT.openCalories()',true):''}${FEATURES.checkin?button('Update recovery check-in','apx96OpenReadiness()',true):''}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,features:FEATURES,pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,plural,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,features:FEATURES,flatKgWeek:PLATEAU_FLAT_KG_WEEK,levelSeries,nowLevel,rateSeries,chartNotes,noteLabel,noteKinds:NOTE_KINDS.slice(),pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,plural,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
@@ -1147,14 +1202,23 @@ Object.assign(NXT, (()=>{
     return 'Direction still settling';
   }
   /* D3 — long-term goal as a separate non-time-series rail: start → current → target. */
-  function journeyHTML() {
+  /* Cut journey and Evidence (proposed D95; the owner approved the direction on 2026-10-19). Presentation
+     only: every figure is the engine's own — the start weight, the trend now (plateau.lastAvg), the goal
+     range, the four-week rate and its 95% range (detectPlateau), the D37 1%-of-body-weight line (review()),
+     and the goal forecast (forecastGoal; its date is the D28 formula). What changes: the projection names
+     its date and both of its inputs (where the last three weeks put you today, and their pace), so the
+     weeks add up on the card; the rate leads with its share of body weight and the word review() already
+     uses; confidence says what it measures; a plateau only takes a card when there is one. */
+  function journeyHTML(forecastRead) {
     if(!N.cfg().targetConfirmed)return '';
     const rows=N.weights();
     const startW=N.finite(typeof START_WEIGHT!=='undefined'?START_WEIGHT:null);
     const seed=startW!==null?startW:(rows[0]?rows[0].weight:null);
     const lo=goalLow(),hi=goalHigh();
-    const plateau=N.detectPlateau(rows);
-    const cur=N.finite(plateau.lastAvg)!==null?plateau.lastAvg:(rows.at(-1)?rows.at(-1).weight:null);
+    /* "Now" is where your weight is today (D97): the line through the last three weeks of mornings,
+       or the smoothed trend while there are too few readings for a line. */
+    const nl=N.nowLevel(rows);
+    const cur=nl?nl.value:(rows.at(-1)?rows.at(-1).weight:null);
     if(seed===null||cur===null||!Number.isFinite(lo)||!Number.isFinite(hi))return '';
     const max=Math.max(seed,cur,hi)+0.6,min=Math.min(lo,cur)-1.2,span=Math.max(0.8,max-min);
     const pct=v=>Math.max(0,Math.min(100,((max-v)/span)*100));
@@ -1162,63 +1226,146 @@ Object.assign(NXT, (()=>{
     const cs=typeof settings!=='undefined'&&settings&&Number.isFinite(N.dateMs(settings.cutStart))&&settings.cutStart<=state.date?settings.cutStart:null;
     const first=cs||rows[0]?.date;
     const elapsed=first?Math.round((N.dateMs(state.date)-N.dateMs(first))/86400000):0;
+    const sinceTxt=elapsed>=14?`${Math.round(elapsed/7)} weeks`:`${elapsed} ${N.plural(elapsed,'day')}`;
+    const dir=done>=.05?'down':done<=-.05?'up':'no change';
+    const f=forecastRead||N.forecastGoal(rows);
+    const arrive=remain>0&&f&&f.ok&&N.finite(f.weeks)!==null&&f.weeks>0?N.shortDate(N.dateAdd(state.date,f.weeks*7)):null;
     const leftTrav=Math.min(pct(seed),pct(cur)),widthTrav=Math.abs(pct(cur)-pct(seed));
     const leftBand=Math.min(pct(lo),pct(hi)),widthBand=Math.abs(pct(lo)-pct(hi));
-    return `<section class="vn-journey" aria-label="Cut journey">
+    /* A net gain is ground to make up: drawn in the review hue, and the road ahead starts where it ends. */
+    const back=done<=-.05,aheadFrom=back?pct(seed):pct(cur),aheadW=remain>0?Math.max(0,pct(hi)-aheadFrom):0;
+    /* D96 · Milestones. Every figure is read off the same level series as "Now": the first day it was at
+       or below a weight. Beads mark each whole kilogram between the start and the goal (every 2 or 5 kg on a
+       long road); a bead is lit once it has been reached. */
+    const lv=N.levelSeries(rows).filter(q=>(!first||q.date>=first)&&q.date<=state.date);
+    const reached=k=>{const q=lv.find(x=>x.value<=k);return q?q.date:null;};
+    const beads=[];
+    {
+      const topK=Math.floor(seed-1e-6),n=topK-Math.floor(hi)+0;
+      const step=n>48?5:n>24?2:1;
+      for(let k=topK;k>hi;k--){if(k%step)continue;beads.push({k,date:reached(k)});}
+    }
+    const ms=[];
+    if(seed-1>hi){const d=reached(seed-1);if(d)ms.push({d,t:'First kg down'});}
+    if(seed*.95>hi){const d=reached(seed*.95);if(d)ms.push({d,t:'5% of your start'});}
+    {const d=reached((seed+hi)/2);if(d)ms.push({d,t:'Halfway'});}
+    const inCut=rows.filter(r=>(!first||r.date>=first)&&r.date<=state.date);
+    const low=inCut.length>=5?inCut.reduce((m,r)=>Number(r.weight)<Number(m.weight)?r:m):null;
+    if(low)ms.push({d:low.date,t:`Lowest weigh-in ${Number(low.weight).toFixed(1)}`,low:true});
+    ms.sort((x,y)=>x.d.localeCompare(y.d));
+    /* The next whole kilogram, at the projection's own pace from where you are now: an estimate, drawn dashed (I11). */
+    const pace=f&&f.ok&&N.finite(f.slope)!==null&&f.slope<0?f.slope:null;
+    let next=null;
+    if(pace&&remain>0){const k=Math.ceil(cur-1e-6)-1;if(k>=hi){next={k,d:N.dateAdd(state.date,Math.max(1,Math.round((cur-k)/-pace)))};}}
+    const play='<button type="button" class="st-share-b is-icon st-jr-play" aria-label="Play your cut" data-st-story><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 4.6v10.8L15.2 10z" fill="currentColor" stroke="none"/></svg></button>';
+    const share='<button type="button" class="st-share-b is-icon" aria-label="Share your cut" onclick="window.NXP&&NXP.shareProgress&&NXP.shareProgress()"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5.5 9.5H5a1.5 1.5 0 0 0-1.5 1.5v4.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V11A1.5 1.5 0 0 0 15 9.5h-.5"/></svg></button>';
+    const hiTxt=Number.isInteger(hi)?String(hi):hi.toFixed(1);
+    const nowWord=N.shortDate(nl?nl.date:state.date);
+    /* The legend reads in rail order, so after a net gain "Now" comes before "Start". */
+    const startLab=`<span><b class="vn-num">${seed.toFixed(1)}</b>Start${first?`<i>${esc(N.shortDate(first))}</i>`:''}</span>`;
+    const nowLab=`<span class="is-now"><b class="vn-num" data-st-jr-nowv>${cur.toFixed(1)}</b><em data-st-jr-noww>Now<i>${esc(nowWord)}</i></em></span>`;
+    const days=lv.length?Math.max(0,Math.round((N.dateMs(state.date)-N.dateMs(lv[0].date))/864e5)):0;
+    const canRewind=lv.length>=3;
+    const payload={seed:+seed.toFixed(2),first:first||null,lo,hi,max:+max.toFixed(3),span:+span.toFixed(3),today:state.date,now:+cur.toFixed(2),nowWord,
+      pts:lv.map(q=>[q.date,+q.value.toFixed(2)])};
+    const sum=`Start ${seed.toFixed(1)} kilograms${first?' on '+N.shortDate(first):''}, now ${cur.toFixed(1)}, goal ${lo} to ${hi}${arrive?', projected around '+arrive:''}.`;
+    return `<section class="vn-journey st-jr" aria-label="Cut journey"${canRewind?` data-st-jr="${esc(JSON.stringify(payload))}"`:''}>
       <div class="vn-sect-head"><p class="vn-h-sect">Cut journey</p>
-        <span class="vn-tiny">${first?esc(N.shortDate(first)):'Start'} → now</span></div>
-      <div class="vn-journey-metrics">
-        <div><span class="vn-metric-l">Down</span><div class="vn-metric-v vn-num">${done.toFixed(1)}<em>kg</em></div></div>
-        <div class="vn-journey-remain"><span class="vn-metric-l">To goal range</span>
-          <div class="vn-h-sub vn-num">${remain.toFixed(1)} kg</div></div>
+        <span class="vn-tiny st-jr-when">${first?esc(N.shortDate(first)):'Start'} → now</span>${lv.length>=7?play:''}${share}</div>
+      <div class="st-jr-hero">
+        <div><div class="st-jr-big vn-num"><span data-st-jr-done data-st-num>${Math.abs(done).toFixed(1)}</span><small>kg</small></div><p class="st-jr-sub" data-st-jr-sub>${dir}${first&&elapsed>0?` in ${esc(sinceTxt)}`:''}</p></div>
+        <div class="st-jr-togo">${remain>0?`<b class="vn-num"><span data-st-jr-togo data-st-num>${remain.toFixed(1)}</span> kg</b><span data-st-jr-togol>to your ${esc(hiTxt)} kg goal</span>`:cur>=lo?'<b>In range</b><span>your goal range</span>':`<b class="vn-num">${(lo-cur).toFixed(1)} kg</b><span>below your goal range</span>`}</div>
       </div>
-      <div class="vn-journey-rail" role="img" aria-label="Start ${seed.toFixed(1)} kilograms, now ${cur.toFixed(1)}, goal ${lo} to ${hi}">
+      <div class="vn-journey-rail st-jr-rail" ${canRewind?`role="slider" tabindex="0" aria-label="Rewind your cut" aria-valuemin="0" aria-valuemax="${days}" aria-valuenow="${days}" aria-valuetext="${esc(`Today: ${cur.toFixed(1)} kilograms, ${Math.abs(done).toFixed(1)} ${dir}`)}" aria-describedby="st-jr-sum"`:`role="img" aria-label="${esc(sum)}"`}>
         <div class="vn-journey-track"></div>
         <div class="vn-journey-band" style="left:${leftBand}%;width:${Math.max(2,widthBand)}%"></div>
-        <div class="vn-journey-travel" style="left:${leftTrav}%;width:${Math.max(0,widthTrav)}%"></div>
+        <div class="vn-journey-travel${back?' is-back':''}" style="left:${leftTrav}%;width:${Math.max(0,widthTrav)}%"></div>
+        <div class="st-jr-fut" hidden></div>
+        ${aheadW>0&&!beads.some(x=>!x.date)?`<div class="st-jr-ahead" style="left:${aheadFrom}%;width:${aheadW}%"></div>`:''}
+        ${beads.map(x=>`<i class="st-jr-bead${x.date?' is-on':''}" style="left:${pct(x.k)}%" data-k="${x.k}"></i>`).join('')}
+        <i class="st-jr-today" hidden style="left:${pct(cur)}%"></i>
         <div class="vn-journey-now" style="left:${pct(cur)}%"></div>
       </div>
-      <div class="vn-journey-labels">
-        <span class="vn-tiny">Start ${seed.toFixed(1)}</span>
-        <span class="vn-tiny vn-journey-now-l">Now ${cur.toFixed(1)}</span>
-        <span class="vn-tiny">Goal ${lo}–${hi}</span>
+      ${canRewind?`<p class="st-sr" id="st-jr-sum">${esc(sum)} Drag along the bar, or use the arrow keys, to rewind to an earlier day.</p>`:''}
+      <div class="st-jr-labs" aria-hidden="true">
+        ${back?nowLab+startLab:startLab+nowLab}
+        <span class="is-goal"><b class="vn-num">${lo}–${hi}</b>Goal${arrive?`<i>~${esc(arrive)}</i>`:''}</span>
       </div>
-      <p class="vn-tiny vn-mt3">Elapsed ${elapsed} ${N.plural(elapsed,"day")}. A weight range alone does not measure leanness.</p>
+      ${ms.length||next?`<div class="st-jr-ms"><p class="st-jr-mh">Milestones</p><ul>${ms.map(m=>`<li><button type="button" class="st-jr-mc${m.low?' is-low':''}"${canRewind?` data-st-jr-go="${m.d}"`:''}><i aria-hidden="true"></i>${esc(m.t)} <em>${esc(N.shortDate(m.d))}</em></button></li>`).join('')}${next?`<li><span class="st-jr-mc is-est"><i aria-hidden="true"></i>${next.k} kg <em>~${esc(N.shortDate(next.d))} · estimate</em></span></li>`:''}</ul></div>`:''}
+      ${canRewind?'<div class="st-jr-backrow"><button type="button" class="st-jr-back" hidden>Back to today</button></div>':''}
     </section>`;
   }
+  /* D97: what "Now" is, said once, in the fold that explains the numbers. */
+  function nowNote() {
+    if(!N.cfg().targetConfirmed)return '';
+    const nl=N.nowLevel();
+    return nl&&nl.source==='line'?'<p class="vn-tiny vn-mt3">The Cut journey’s “Now” is where the line through your last three weeks of mornings puts you. The chart’s trend line is smoother and runs about ten days behind a moving weight.</p>':'';
+  }
   function evidenceHTML(plateau,forecastRead) {
-    const rate=N.finite(plateau&&plateau.weeklyRate);
-    const rateTxt=rate===null?'—':`${signed(rate)} kg`;
-    const band=rate!==null&&N.finite(plateau.lower)!==null&&N.finite(plateau.upper)!==null
-      ?`28-day window · 95% range ${signed(plateau.upper)} to ${signed(plateau.lower)}`:'28-day window';
-    let plateauStatus='—',plateauTone='is-neutral';
-    if(plateau&&plateau.ok){
-      if(plateau.status==='flat'&&plateau.plateau){plateauStatus=`${plateau.plateauDays} days`;plateauTone='is-watch';}
-      else if(plateau.status==='losing'){plateauStatus='None';plateauTone='is-ok';}
-      else if(plateau.status==='gaining'){plateauStatus='Gaining';plateauTone='is-watch';}
-      else {plateauStatus='Settling';plateauTone='is-neutral';}
+    const rate=N.finite(plateau&&plateau.weeklyRate),ref=N.finite(plateau&&plateau.lastAvg);
+    const ok=!!(plateau&&plateau.ok)&&rate!==null;
+    /* The D37 reading, exactly as review() takes it: the four-week rate over the trend now. */
+    const pct=ok&&ref?rate/ref*100:null;
+    let word='',tone='is-neutral';
+    if(ok){
+      if(pct!==null&&pct<-1){word='Losing quickly';tone='is-watch';}
+      else if(rate<-N.flatKgWeek){word='Cutting steadily';tone='is-ok';}
+      else if(plateau.status==='gaining'){word='Trending up';tone='is-watch';}
+      else if(plateau.plateau){word='Flat';tone='is-watch';}
+      else {word='Settling';tone='is-neutral';}
     }
-    /* A horizon only means something against a goal the lifter confirmed (same gate as the chart and Today). */
-    const proj=N.cfg().targetConfirmed&&forecastRead&&forecastRead.ok&&forecastRead.weeks!==null
-      ?`${forecastRead.weeks} wk <span class="vn-ink-3">(${forecastRead.lowWeeks}–${forecastRead.highWeeks})</span>`
-      :(N.cfg().targetConfirmed?'Unavailable':'Set a goal');
-    const conf=plateau&&plateau.confidence&&plateau.confidence!=='none'
-      ?plateau.confidence.charAt(0).toUpperCase()+plateau.confidence.slice(1):'—';
-    return `<section class="vn-evidence">
+    const sgn=v=>{const r=Math.round(v*100)/100;return `${r<0?'−':r>0?'+':''}${Math.abs(r).toFixed(2)}`;};
+    const rateV=rate===null?'—':sgn(rate);
+    const band=ok&&N.finite(plateau.lower)!==null&&N.finite(plateau.upper)!==null?{lo:plateau.lower,hi:plateau.upper,half:(plateau.upper-plateau.lower)/2}:null;
+    /* A gauge of the loss rate as a share of body weight: flat band, steady, the 1% line, fast. */
+    let gauge='';
+    if(ok&&pct!==null&&ref&&rate<N.flatKgWeek&&plateau.status!=='gaining'){
+      const axis=Math.max(2,Math.min(4,Math.abs(pct)+.3)),flat=N.flatKgWeek/ref*100;
+      const w=v=>(Math.max(0,Math.min(axis,v))/axis*100).toFixed(2);
+      /* D96 · What-if pace: drag the marker to try another pace. Plain arithmetic from where you are now to the
+         top of the goal range, shown as a what-if and dropped when you let go; nothing is stored or forecast. */
+      const nl=N.nowLevel(),nowV=nl?nl.value:null,canWhat=N.cfg().targetConfirmed&&nowV!==null&&nowV>goalHigh()+.05;
+      const gl=`${rate<0?'Losing':'Gaining'} ${Math.abs(pct).toFixed(1)} percent of body weight a week; the 1 percent line is where losing quickly starts`;
+      const wdata={axis:+axis.toFixed(3),ref:+ref.toFixed(3),flat:+flat.toFixed(4),now:nowV===null?null:+nowV.toFixed(3),hi:goalHigh(),rate:+rate.toFixed(3),today:state.date};
+      gauge=`<div class="st-ev-g${canWhat?' is-what':''}" ${canWhat?`role="slider" tabindex="0" aria-label="What-if pace" aria-valuemin="0" aria-valuemax="${(axis*ref/100).toFixed(2)}" aria-valuenow="${Math.max(0,-rate).toFixed(2)}" aria-valuetext="${esc(`Your 4-week rate, ${Math.abs(rate).toFixed(2)} kilograms a week. Arrow keys try another pace.`)}" data-st-ev="${esc(JSON.stringify(wdata))}"`:`role="img" aria-label="${esc(gl)}"`}><div class="st-ev-z"><i class="z-flat" style="width:${w(flat)}%"></i><i class="z-steady" style="width:${(w(1)-w(flat)).toFixed(2)}%"></i><i class="z-fast" style="flex:1"></i></div><i class="st-ev-mk" style="left:${w(Math.max(0,-pct))}%"></i>${canWhat?'<i class="st-ev-trail" hidden></i><i class="st-ev-gk" hidden></i><span class="st-ev-gkl" hidden></span>':''}<div class="st-ev-zl" aria-hidden="true"><span>Flat</span>${axis<=2.2?`<span class="is-mid is-steady" style="left:${w((flat+1)/2)}%">Steady</span>`:''}<span class="is-mid" style="left:${w(1)}%">1% line</span><span>Fast</span></div></div>${canWhat?'<p class="st-ev-hint" aria-hidden="true">Drag the marker to try another pace</p><div class="st-ev-wi" hidden><p>What if</p><b></b><span></span></div>':''}`;
+    }
+    const plateauLine=!ok?esc((plateau&&plateau.reason)||''):plateau.plateau?'':plateau.status==='losing'?'No plateau: still trending down.':esc(plateau.reason||'');
+    const plateauTile=ok&&plateau.plateau?`<div class="st-ev-t is-wide is-watch"><p>Plateau</p><b>${esc(String(plateau.plateauDays))} days</b><span>${esc(plateau.reason||'')}</span></div>`:'';
+    /* Projection: the D28 date and the pace it runs at, so it adds up beside the four-week rate. */
+    let proj;
+    if(!N.cfg().targetConfirmed)proj=`<b>Set a goal</b><span>A projection needs a confirmed goal range.</span>`;
+    else if(forecastRead&&forecastRead.ok&&N.finite(forecastRead.weeks)!==null){
+      if(forecastRead.weeks===0){
+        const la=N.finite(forecastRead.lastAvg),under=la!==null&&la<goalLow();
+        proj=under?`<b>Below goal</b><span>The trend is under your goal range.</span>`:`<b>At goal</b><span>The trend is in your goal range.</span>`;
+      }
+      else{
+        const d=N.shortDate(N.dateAdd(state.date,forecastRead.weeks*7)),pace=N.finite(forecastRead.slope)!==null?forecastRead.slope*7:null;
+        const range=forecastRead.lowWeeks!==forecastRead.weeks||forecastRead.highWeeks!==forecastRead.weeks?` <small>(${forecastRead.lowWeeks}–${forecastRead.highWeeks})</small>`:'';
+        /* The forecast starts where the line through the last three weeks sits today (fittedLevel), which
+           runs ahead of the trend figure; naming both inputs lets the weeks add up on the card. */
+        const lvl=N.finite(forecastRead.fittedLevel),nl=N.nowLevel(),same=lvl!==null&&nl&&Math.abs(nl.value-lvl)<.05;
+        const basis=pace===null?"At your last 3 weeks' pace":same?`From ${lvl.toFixed(1)} kg now, at your last 3 weeks' pace of ${sgn(pace)} kg/wk`:lvl!==null?`Your last 3 weeks: ${lvl.toFixed(1)} kg today, ${sgn(pace)} kg/wk`:`At your last 3 weeks' pace, ${sgn(pace)} kg/wk`;
+        proj=`<b class="vn-num">~<span data-st-num>${forecastRead.weeks}</span> wk${range}</b><em>around ${esc(d)}</em><span>${basis}. An estimate, not a measurement.</span>`;
+      }
+    } else proj=`<b>Unavailable</b><span>${esc((forecastRead&&forecastRead.reason)||'Not enough recent weigh-ins for a projection.')}</span>`;
+    const conf=plateau&&plateau.confidence&&plateau.confidence!=='none'?plateau.confidence:null;
+    const steps=conf==='high'?3:conf==='medium'?2:conf==='low'?1:0;
+    const confTxt=band?`The 4-week rate is known to within ±${band.half.toFixed(2)} kg a week.${conf==='high'?'':' More mornings and steadier readings tighten it.'}`:'How tightly the 4-week rate is known, from your morning readings.';
+    return `<section class="vn-evidence st-ev">
       <p class="vn-h-sect">Evidence</p>
-      <div class="vn-rows">
-        <div class="vn-row"><span class="vn-row-l"><span class="vn-row-t">Weekly rate</span>
-          <span class="vn-row-s">${esc(band)}</span></span>
-          <span class="vn-row-v vn-num">${rateTxt}</span></div>
-        <div class="vn-row"><span class="vn-row-l"><span class="vn-row-t">Plateau</span>
-          <span class="vn-row-s">${esc(plateau&&plateau.reason||'')}</span></span>
-          <span class="vn-row-v"><span class="vn-status ${plateauTone}"><i></i>${esc(plateauStatus)}</span></span></div>
-        <div class="vn-row"><span class="vn-row-l"><span class="vn-row-t">Projection</span>
-          <span class="vn-row-s">Model estimate, not a measurement</span></span>
-          <span class="vn-row-v vn-num">${proj}</span></div>
-        <div class="vn-row"><span class="vn-row-l"><span class="vn-row-t">Confidence</span>
-          <span class="vn-row-s">Reading coverage and consistency</span></span>
-          <span class="vn-row-v">${esc(conf)}</span></div>
+      <div class="st-ev-rate ${tone}">
+        <div class="st-ev-rt"><p>4-week rate</p>${word?`<span class="st-ev-pill ${tone}"><i aria-hidden="true"></i>${esc(word)}</span>`:''}</div>
+        <div class="st-ev-rv vn-num"><span data-st-num>${rateV}</span>${rate===null?'':'<small> kg/wk</small>'}</div>
+        ${pct!==null?`<p class="st-ev-pct">${pct>0?'+':''}${Math.abs(pct).toFixed(1)}% of body weight a week</p>`:''}
+        ${gauge}
+        ${band||plateauLine?`<p class="st-ev-note">${band?`Likely between ${Math.abs(band.hi)<=Math.abs(band.lo)?`${sgn(band.hi)} and ${sgn(band.lo)}`:`${sgn(band.lo)} and ${sgn(band.hi)}`} kg/wk. `:''}${plateauLine}</p>`:''}
+      </div>
+      ${rateTrendHTML(sgn)}
+      ${plateauTile}
+      <div class="st-ev-two">
+        <div class="st-ev-t"><p>Projection</p>${proj}</div>
+        <div class="st-ev-t"><p>Confidence</p><b>${conf?esc(conf.charAt(0).toUpperCase()+conf.slice(1)):'—'}</b>${steps?`<div class="st-ev-meter" aria-hidden="true">${[1,2,3].map(k=>`<i${k<=steps?' class="on"':''} style="--k:${k}"></i>`).join('')}</div>`:''}<span>${esc(confTxt)}</span></div>
       </div>
     </section>`;
   }
@@ -1244,7 +1391,7 @@ Object.assign(NXT, (()=>{
         <div class="vn-chart-empty n99-chart-empty"><div class="n99-empty-number">—<small> kg</small></div>
           <h3>${emptyTitle}</h3><p>${emptyBody}</p>${N.button('+ Log weight','apx95OpenQuickWeight()')}</div>
         ${journeyHTML()}
-        <details class="vn-more-block"><summary>Why NXTFRM says this</summary>${N.diagnosisCard()}</details>
+        <details class="vn-more-block"><summary>Why NXTFRM says this</summary>${N.diagnosisCard()}${nowNote()}${N.cfg().targetConfirmed?'<p class="vn-tiny vn-mt3">A weight range alone does not measure leanness.</p>':''}</details>
       </section>`;
     }
     const {points,post,postByDate,segments,ticks,y,bands,forecast,anchor,plateau,forecastRead,canForecast,futureDays,todayX,low,high}=model;
@@ -1253,7 +1400,6 @@ Object.assign(NXT, (()=>{
     const p=points[idx],baseline=H-bottom,isLatest=!N.ui.selected||N.ui.selected===points.at(-1).date;
     const px=v=>v.toFixed(2);
     const headline=trajectoryHeadline(plateau);
-    const readLine=trendReadText(N.cfg().targetConfirmed?forecastRead:{ok:false,reason:''},plateau);
     /* D58: thin from the top tick down, so the kept ticks stay evenly spaced (it used to keep the top
        tick as well as every other one, which could leave two labels one step apart). */
     const narrowTicks=ticks.length>5?ticks.filter((_,i)=>(ticks.length-1-i)%2===0):ticks;
@@ -1309,12 +1455,11 @@ Object.assign(NXT, (()=>{
     return `<section class="vn-weight n99-chart" id="vn-weight">
       <div class="vn-read">
         <h2 class="vn-h-sub" id="vn-traj-headline">${esc(headline)}</h2>
-        <p class="vn-meta vn-mt2" id="vn-traj-read">${esc(readLine||(plateau.reason||''))}</p>
       </div>
       <div class="vn-mhead" id="vn-mhead" aria-live="polite">
         <div class="vn-mhead-row">
           <div class="vn-mhead-cell">
-            <span class="vn-metric-l" id="n99-chart-date">${esc(dateLabel)}</span>
+            <div class="st-mh-l"><span class="vn-metric-l" id="n99-chart-date">${esc(dateLabel)}</span>${noteChipHTML(p.date)}</div>
             <div class="vn-metric-v vn-num" id="n99-chart-weight">${p.weight.toFixed(1)}<em>kg</em></div>
             <small class="vn-tiny" id="n99-chart-timing">${esc(pointTiming(p))}</small>
           </div>
@@ -1345,7 +1490,7 @@ Object.assign(NXT, (()=>{
           </defs>
           ${narrowTicks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}" pointer-events="none"/><text class="vn-ytick" x="${left-7}" y="${px(t.y+3.8)}" text-anchor="end" fill="${CHART.axisText}" font-size="11" pointer-events="none">${Number(t.value.toFixed(1))}</text>`).join('')}<text class="vn-yunit" x="${left-7}" y="${px(Math.max(11,Math.min(...narrowTicks.map(k=>k.y))-11))}" text-anchor="end" fill="${CHART.axisText}" font-size="10" pointer-events="none">kg</text>
           <g clip-path="url(#vn-chart-clip)" pointer-events="none">
-            ${today}${cone}${bandFill}${trendPaths}${forecastLine}${postSeries}
+            ${today}${cone}${bandFill}${noteFlags(points,top,baseline)}${trendPaths}${forecastLine}${postSeries}
             ${points.map(pt=>`<circle class="vn-raw-dot" cx="${pt.x}" cy="${pt.y}" r="${dense?1.7:points.length>45?2.2:2.8}" fill="${CHART.raw}" fill-opacity="${dense?.5:points.length>45?.7:.85}"/>`).join('')}
             <line id="n99-chart-cursor" x1="${p.x}" x2="${p.x}" y1="${top}" y2="${baseline}" stroke="${CHART.cursor}" stroke-opacity=".38" stroke-dasharray="3 4"/>
             <circle id="st-chart-halo" class="st-halo" cx="${p.x}" cy="${p.y}" r="11" fill="${CHART.ink}"/>
@@ -1361,14 +1506,68 @@ Object.assign(NXT, (()=>{
         <span><i class="vn-key-raw raw"></i>Morning</span>
         ${N.ui.showPost?'<span><i class="vn-key-post post"></i>Post-workout</span>':''}
         ${forecast?'<span><i class="vn-key-proj dash"></i>Projection</span>':''}
+        ${noteFlags(points,top,baseline)?'<span><i class="st-key-note"></i>Note</span>':''}
       </div>
       ${rangeRead}
       <details class="st-csum-d"><summary>How to read this chart</summary><p class="vn-tiny" id="vn-csum">${esc(summary)}</p></details>
       <div class="vn-togs">${togPost}${togProj}</div>
-      ${journeyHTML()}
+      ${journeyHTML(forecastRead)}
       ${evidenceHTML(plateau,forecastRead)}
-      <details class="vn-more-block"><summary>Why NXTFRM says this</summary>${N.diagnosisCard()}${N.reviewCard()}</details>
+      <details class="vn-more-block"><summary>Why NXTFRM says this</summary>${N.diagnosisCard()}${N.reviewCard()}${nowNote()}${N.cfg().targetConfirmed?'<p class="vn-tiny vn-mt3">A weight range alone does not measure leanness.</p>':''}</details>
       <input type="hidden" id="n99-chart-slider" value="${idx}" aria-hidden="true">
+    </section>`;
+  }
+  /* Defined after chartHTML on purpose: the release gate reads chartModel…chartHTML as the weight chart's
+     model, and this separate chart has its own axes. */
+  /* D96 · Rate across your cut: rateSeries() (the four-week rate read on every day of the cut) against
+     review()'s own lines, the flat band and the 1% line (D37), which moves with body weight. One question:
+     is the cut speeding up or slowing down? The sentence under it names the zone you are in and since when. */
+  function rateTrendHTML(sgn) {
+    const rows=N.weights();
+    const cs=typeof settings!=='undefined'&&settings&&Number.isFinite(N.dateMs(settings.cutStart))&&settings.cutStart<=state.date?settings.cutStart:null;
+    const rs=N.rateSeries(rows,cs||null);
+    if(rs.length<5)return '';
+    const W=338,H=136,P={l:4,r:64,t:8,b:8},flat=N.flatKgWeek;
+    const one=q=>-q.ref/100;
+    const hiV=Math.max(.3,Math.max(...rs.map(q=>q.weeklyRate))+.12),loV=Math.min(-.3,Math.min(...rs.flatMap(q=>[q.weeklyRate,one(q)]))-.15);
+    const t0=N.dateMs(rs[0].date),t1=N.dateMs(rs[rs.length-1].date),dt=Math.max(864e5,t1-t0);
+    const X=d=>P.l+(N.dateMs(d)-t0)/dt*(W-P.l-P.r),Y=v=>P.t+(hiV-v)/(hiV-loV)*(H-P.t-P.b);
+    const f1=n=>n.toFixed(1),xL=X(rs[0].date),xR=X(rs[rs.length-1].date),yB=H-P.b;
+    const onePts=rs.map(q=>`${f1(X(q.date))},${f1(Y(one(q)))}`);
+    const steady=`M${f1(xL)},${f1(Y(-flat))} L${f1(xR)},${f1(Y(-flat))} L${onePts.slice().reverse().join(' L')} Z`;
+    const fast=`M${onePts.join(' L')} L${f1(xR)},${f1(yB)} L${f1(xL)},${f1(yB)} Z`;
+    const line=smoothPath(rs.map(q=>({x:X(q.date),y:Y(q.weeklyRate)})));
+    const zone=q=>q.weeklyRate<one(q)?'fast':q.weeklyRate< -flat?'steady':q.weeklyRate<=flat?'flat':'up';
+    const last=rs[rs.length-1],z=zone(last);
+    let i=rs.length-1;while(i>0&&zone(rs[i-1])===z)i--;
+    const zTxt={fast:'Beyond the 1% line',steady:'In the steady zone',flat:'Inside the flat band',up:'Above zero'}[z];
+    const ago=rs.find(q=>q.date===N.dateAdd(last.date,-28));
+    const note=`${zTxt} ${i===0?`at every point since ${N.shortDate(rs[0].date)}`:`since ${N.shortDate(rs[i].date)}`}.${ago?` Four weeks ago it was ${sgn(ago.weeklyRate)} kg/wk.`:''}`;
+    /* Zone names sit in the right margin as text (they keep their size at any width), each at the middle of
+       its band on the latest day; one that would touch a neighbour is left out. The 1% line keeps its label. */
+    const yOne=Y(one(last)),labs=[{t:'1% line',y:yOne-8,c:'is-one'}];
+    const cand=[{t:'Steady',y:(Y(-flat)+yOne)/2},{t:'Fast',y:(yOne+yB)/2},{t:'Flat',y:(Y(flat)+Y(-flat))/2},{t:'Up',y:(P.t+Y(flat))/2}];
+    for(const c of cand){if(c.y<P.t+6||c.y>yB-4)continue;if(labs.every(l=>Math.abs(l.y-c.y)>=19))labs.push(c);}
+    const mid=rs[Math.floor(rs.length/2)];
+    const data={x0:+xL.toFixed(2),x1:+xR.toFixed(2),d0:rs[0].date,d1:last.date,pts:rs.map(q=>[q.date,+Y(q.weeklyRate).toFixed(1)])};
+    const label=`Four-week rate from ${N.shortDate(rs[0].date)} to ${N.shortDate(last.date)}, now ${sgn(last.weeklyRate)} kilograms a week. ${note}`;
+    return `<section class="st-ev-t is-wide st-rax">
+      <div class="st-rax-h"><p>Rate across your cut</p><span>4-week rate, kg/wk</span></div>
+      <div class="st-rax-plot">
+      <svg class="st-rax-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}" data-st-rax="${esc(JSON.stringify(data))}">
+        ${hiV>flat?`<rect class="z-up" x="${f1(xL)}" y="${P.t}" width="${f1(xR-xL)}" height="${f1(Math.max(0,Y(flat)-P.t))}"/>`:''}
+        <rect class="z-flat" x="${f1(xL)}" y="${f1(Y(flat))}" width="${f1(xR-xL)}" height="${f1(Y(-flat)-Y(flat))}"/>
+        <path class="z-steady" d="${steady}"/><path class="z-fast" d="${fast}"/>
+        <polyline class="z-one" points="${onePts.join(' ')}"/>
+        <line class="z-zero" x1="${f1(xL)}" x2="${f1(xR)}" y1="${f1(Y(0))}" y2="${f1(Y(0))}"/>
+        <path class="st-rax-line" d="${line}" pathLength="1"/>
+        <g class="st-rax-cur" visibility="hidden"><line y1="${P.t}" y2="${f1(yB)}"/><circle r="4.5"/></g>
+        <circle class="st-rax-dot" cx="${f1(xR)}" cy="${f1(Y(last.weeklyRate))}" r="5"/><circle class="st-rax-halo" cx="${f1(xR)}" cy="${f1(Y(last.weeklyRate))}" r="11"/>
+      </svg>
+      ${labs.map(l=>`<span class="st-rax-zl ${l.c||''}" aria-hidden="true" style="top:${(l.y/H*100).toFixed(2)}%">${l.t}</span>`).join('')}
+      </div>
+      <div class="st-rax-xl" aria-hidden="true" style="padding:0 ${(P.r/W*100).toFixed(2)}% 0 ${(P.l/W*100).toFixed(2)}%"><span>${esc(N.shortDate(rs[0].date))}</span>${rs.length>=14?`<span>${esc(N.shortDate(mid.date))}</span>`:''}<span>${esc(N.shortDate(last.date))}</span></div>
+      <span>${esc(note)}</span>
     </section>`;
   }
   function selectPoint(index, opts) {
@@ -1439,6 +1638,44 @@ Object.assign(NXT, (()=>{
   function openWaist(date=state.date) {
     const row=N.cfg().waist.find(r=>r.date===date);
     N.modal(row?'Edit waist measurement':'Log waist',`<form onsubmit="event.preventDefault();NXT.saveWaist('${date}')"><label>Date<input id="n99-waist-date" type="date" max="${state.date}" required value="${date}"></label><label>Waist · cm<input id="n99-waist" type="number" inputmode="decimal" min="30" max="250" step="0.1" required value="${row?row.cm:''}"></label><p class="n99-small">Use the same position each time, with the tape level and without pulling it tight.</p><button class="n99-button" type="submit">Save measurement</button>${row?N.button('Delete measurement',`NXT.deleteWaist('${date}')`,true):''}</form>`);
+  }
+  /* D100 · The chart header's note chip for the shown day, and a faint flag on the plot for each note in range
+     (one colour for every kind: the kind is a word in the chip and the tooltip, never a colour, I6). */
+  function noteChipHTML(date) {
+    const n=N.chartNotes()[date];
+    const label=n?`Note on ${N.shortDate(date)}: ${N.noteLabel(n.kind)}${n.text?', '+n.text:''}. Edit`:`Add a note for ${N.shortDate(date)}`;
+    return `<button type="button" class="st-note-chip${n?' has-note':''}" id="st-note-chip" data-date="${date}" onclick="NXT.openNote(this.dataset.date)" aria-label="${esc(label)}">${n?`<i aria-hidden="true"></i><span>${esc(N.noteLabel(n.kind))}${n.text?' · '+esc(n.text):''}</span>`:'<span>+ Note</span>'}</button>`;
+  }
+  function noteFlags(points,top,baseline) {
+    if(!points||points.length<2)return '';
+    const notes=N.chartNotes(),a=points[0],b=points[points.length-1],t0=N.dateMs(a.date),t1=N.dateMs(b.date);
+    return Object.keys(notes).filter(d=>d>=a.date&&d<=b.date).sort().map(d=>{
+      const x=(a.x+(N.dateMs(d)-t0)/Math.max(1,t1-t0)*(b.x-a.x)).toFixed(1);
+      return `<g class="st-nflag"><line x1="${x}" x2="${x}" y1="${top+12}" y2="${baseline}"/><path d="M${x} ${top+1} l5 5 -5 5 -5 -5z"/></g>`;
+    }).join('');
+  }
+  /* D100 · Notes on the chart: one sheet to add, change or remove a day's note. */
+  function openNote(date) {
+    if(!Number.isFinite(N.dateMs(date))||date>state.date)date=state.date;
+    const n=N.chartNotes()[date],kind=n?n.kind:'holiday';
+    const kinds=N.noteKinds.map(k=>`<label class="st-note-k"><input type="radio" name="st-note-kind" value="${k}"${k===kind?' checked':''}><span>${N.noteLabel(k)==='Note'?'Other':N.noteLabel(k)}</span></label>`).join('');
+    N.modal(n?'Edit note':'Add a note',`<form class="st-note-f" onsubmit="event.preventDefault();NXT.saveNote('${date}')"><p class="n99-small">${esc(N.shortDate(date))}. Shown on the weight chart as context; nothing is calculated from it.</p><fieldset class="st-note-ks"><legend class="st-sr">What kind of day</legend>${kinds}</fieldset><label>Note <span class="n99-small">optional</span><input id="st-note-text" type="text" maxlength="80" autocomplete="off" enterkeyhint="done" value="${esc(n?n.text:'')}" placeholder="For example, trip to KL"></label><button class="n99-button" type="submit">Save note</button>${n?N.button('Remove note',`NXT.removeNote('${date}')`,true):''}</form>`);
+  }
+  function saveNote(date) {
+    if(!Number.isFinite(N.dateMs(date))||date>state.date)return toast('Notes are for days up to today.');
+    const pick=document.querySelector('input[name="st-note-kind"]:checked'),kind=pick&&N.noteKinds.includes(pick.value)?pick.value:'other';
+    const text=String(val('st-note-text')||'').replace(/\s+/g,' ').trim().slice(0,80);
+    const c=N.cfg();
+    if(!c.chartNotes||typeof c.chartNotes!=='object'||Array.isArray(c.chartNotes))c.chartNotes={};
+    c.chartNotes[date]={kind,text,ts:Date.now()};
+    N.commit('Note saved');
+  }
+  async function removeNote(date) {
+    const ok=typeof NXP==='object'&&NXP.ask?await NXP.ask({title:'Remove this note?',body:`${N.shortDate(date)}. Your weigh-ins are not affected.`,ok:'Remove',danger:true}):confirm('Remove this note?');
+    if(!ok)return;
+    const c=N.cfg();
+    if(c.chartNotes&&c.chartNotes[date]){delete c.chartNotes[date];N.commit('Note removed');}
+    else if(typeof closeModal==='function')closeModal();
   }
   function saveWaist(original) {
     const date=val('n99-waist-date'),cm=N.finite(val('n99-waist'));
@@ -1530,7 +1767,7 @@ Object.assign(NXT, (()=>{
     if(!(await ask))return;
     state.bws=state.bws.filter(x=>x!==r);N.commit('Weigh-in deleted');
   }
-  return {signed,smoothPath,trendReadText,chartModel,chartHTML,journeyHTML,selectPoint,scrub,chartKey,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
+  return {signed,smoothPath,trendReadText,chartModel,chartHTML,journeyHTML,selectPoint,scrub,chartKey,openNote,saveNote,removeNote,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
 })());
 
 Object.assign(NXT, (()=>{

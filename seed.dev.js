@@ -479,4 +479,26 @@
   };
 
   seed();
+
+  /* ?demo=goal (localhost and previews only): shows the goal-reached moment (D99) on test data. The goal range
+     is set in memory just long enough for the latest reading to be the first that brings "Now" (D97) inside it,
+     the moment is drawn, and the range goes straight back. Nothing is written. */
+  if (/(?:^|[?&])demo=goal(?:&|$)/.test(location.search)) {
+    const tryDemo = function (n) {
+      const ready = typeof NXT === 'object' && typeof NXT.levelSeries === 'function' && typeof STRATA === 'object' && STRATA && STRATA.goalMoment;
+      if (!ready) { if (n < 60) setTimeout(function () { tryDemo(n + 1); }, 250); return; }
+      const lv = NXT.levelSeries();
+      if (lv.length < 3) return;
+      const last = lv[lv.length - 1].value, prev = lv[lv.length - 2].value;
+      if (!(prev > last)) return;
+      const keep = { lo: TARGET_LOW, hi: TARGET_HIGH, sLo: settings.targetLow, sHi: settings.targetHigh, conf: NXT.cfg().targetConfirmed };
+      let hi = Math.floor((last + prev) / 2 * 10) / 10;
+      if (!(hi >= last && hi < prev)) hi = Math.round((last + prev) / 2 * 100) / 100;
+      TARGET_HIGH = hi; TARGET_LOW = Math.round((hi - 2) * 10) / 10;
+      settings.targetHigh = TARGET_HIGH; settings.targetLow = TARGET_LOW; NXT.cfg().targetConfirmed = true;
+      try { STRATA.goalMoment(); }
+      finally { TARGET_LOW = keep.lo; TARGET_HIGH = keep.hi; settings.targetLow = keep.sLo; settings.targetHigh = keep.sHi; NXT.cfg().targetConfirmed = keep.conf; }
+    };
+    setTimeout(function () { tryDemo(0); }, 1200);
+  }
 })();

@@ -171,8 +171,6 @@ const STRATA = (() => {
       }
       if (clip) clip.insertAdjacentHTML("beforeend", `<line id="st-stem" class="st-stem" y1="0" y2="0" x1="0" x2="0" visibility="hidden"/>`);
     }
-    const read = page.querySelector("#vn-traj-read");
-    if (read && /^no plateau detected\.?$/i.test(read.textContent.trim())) read.hidden = true;
     const wrapEl = page.querySelector("#vn-chart-wrap");
     if (wrapEl && !wrapEl.querySelector(".st-tip")) { wrapEl.style.position = "relative"; wrapEl.insertAdjacentHTML("beforeend", `<div class="st-tip" hidden></div>`); }
   }
@@ -214,7 +212,7 @@ const STRATA = (() => {
         const attrs = x => `class="st-wk wx-it${x.w.part ? " is-now" : ""}" data-a="${x.w.st}" data-b="${x.w.end}" aria-label="${esc(`${x.w.part ? "This week so far" : "Week of " + shortDate(x.w.st)}: average ${x.w.avg.toFixed(1)} kilograms${x.d === null ? "" : x.dir === "flat" ? ", unchanged" : `, ${x.dir} ${Math.abs(x.d).toFixed(1)} on the week before`}, ${x.w.n} of ${x.so} mornings weighed`)}"`;
         if (style === "ledger") {
           host.className = "st-weeks wx-ledger" + (entering && !reduced() ? " is-draw" : "");
-          host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Morning average, Mon–Sun</small></div><ol class="st-wk-l">${meta.map((x, k) => `<li ${attrs(x)} style="--i:${k}"><span class="wx-d">${esc(x.name)}${x.w.part ? `<small>${7 - x.so} ${7 - x.so === 1 ? "day" : "days"} to go</small>` : ""}</span><b class="wx-v">${x.w.avg.toFixed(1)}<em>kg</em></b>${chip(x)}<span class="wx-dots" aria-hidden="true">${x.days.map(c => `<i class="is-${c}"></i>`).join("")}</span></li>`).join("")}</ol>`;
+          host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Morning average, Mon–Sun</small></div><ol class="st-wk-l">${meta.map((x, k) => `<li ${attrs(x)} style="--i:${k}"><span class="wx-d">${esc(x.name)}${x.w.part ? `<small>${7 - x.so} ${7 - x.so === 1 ? "day" : "days"} to go</small>` : ""}</span><b class="wx-v">${x.w.avg.toFixed(1)}<em>kg</em></b>${chip(x)}<span class="wx-dots" aria-hidden="true">${x.days.map((c, j) => `<i class="is-${c}" style="--j:${j}"></i>`).join("")}</span></li>`).join("")}</ol>`;
         }
       }
     }
@@ -301,7 +299,8 @@ const STRATA = (() => {
       if (gap !== null && p.ty !== null && p.ty !== undefined && Math.abs(p.y - p.ty) > 3) { stem.setAttribute("x1", p.x); stem.setAttribute("x2", p.x); stem.setAttribute("y1", p.y); stem.setAttribute("y2", p.ty); stem.setAttribute("visibility", "visible"); }
       else stem.setAttribute("visibility", "hidden");
     }
-    const did = dayDid(p.date);
+    const nt = typeof NXT.chartNotes === "function" ? NXT.chartNotes()[p.date] : null;
+    const did = [dayDid(p.date), nt ? NXT.noteLabel(nt.kind) + (nt.text ? ": " + nt.text : "") : ""].filter(Boolean).join(" · ");
     tip.innerHTML = `${did ? `<span class="st-tip-ctx">${esc(did)}</span>` : ""}<b>${esc(shortDate(p.date))}</b><span>Reading <em>${Number(p.weight).toFixed(1)}</em></span>${p.avg !== null ? `<span>Trend <em>${Number(p.avg).toFixed(2)}</em></span>` : ""}${gap !== null && Math.abs(gap) >= 0.05 ? `<span class="st-tip-gap">${Math.abs(gap).toFixed(1)} kg ${gap < 0 ? "below" : "above"} trend</span>` : ""}`;
     tip.style.left = Math.min(Math.max(r.left - wr.left + p.x * k, 58), wr.width - 58) + "px";
     tip.hidden = false;
@@ -646,7 +645,7 @@ const STRATA = (() => {
       io.unobserve(e.target);
       const el = e.target;
       if (el.hasAttribute("data-st-view")) { el.classList.add("is-in", "st-play"); rollDec(el); }
-      if (el.classList.contains("st-rv")) el.classList.add("st-rv-in");
+      if (el.classList.contains("st-rv")) { el.classList.add("st-rv-in"); revealNums(el); }
     }
   }, { threshold: 0.28, rootMargin: "0px 0px -6% 0px" }) : null;
   function rollDec(root) {
@@ -1550,7 +1549,7 @@ const STRATA = (() => {
     const L = {
       home: [["Log weight", () => apx95OpenQuickWeight()], ["Log cardio", () => showCardioSheet()]],
       train: [lift ? [s ? "Resume " + sessionName : "Start " + sessionName, () => NXP.enterTrain()] : null, ["Change today's session", () => showSessionSheet()], ["Log cardio", () => showCardioSheet()]],
-      weight: [["Weight", view("overview")], ["Training", view("training")], ["Lifts", view("strength")], ["Body", view("body")], ["Log weight", () => apx95OpenQuickWeight()], ["Share your cut", () => NXP.shareProgress && NXP.shareProgress()]],
+      weight: [["Weight", view("overview")], ["Training", view("training")], ["Lifts", view("strength")], ["Body", view("body")], ["Log weight", () => apx95OpenQuickWeight()], ["Play your cut", () => story()], ["Share your cut", () => NXP.shareProgress && NXP.shareProgress()]],
       history: [["Your sky", () => observatory()], ["Today", go("history", () => NXP.historySelect && NXP.historySelect(localToday()))], ["Lifting days", hist("strength")], ["Weigh-ins", hist("body")], ["Cardio", hist("conditioning")]],
       more: [["Training plan", () => NXT.more("training")], ["Data & sync", () => NXT.more("data")], ["Appearance", () => NXT.more("appearance")]]
     };
@@ -1650,7 +1649,7 @@ const STRATA = (() => {
   }
   function bindPull() {
     let y0 = null, x0 = 0, pulling = false, px = 0, armed = false;
-    const blocked = t => !t || !t.closest || !!t.closest("#modalRoot,input,textarea,select,#vn-chart-wrap,.st-gl,.st-fin,.st-ask,.st-dk,.vn-week,[data-rail],.nxp-cal-grid,.tabs,#stTop,.st-shr");
+    const blocked = t => !t || !t.closest || !!t.closest("#modalRoot,input,textarea,select,#vn-chart-wrap,.st-jr-rail,.st-ev-g,.st-story,.st-goal,.st-gl,.st-fin,.st-ask,.st-dk,.vn-week,[data-rail],.nxp-cal-grid,.tabs,#stTop,.st-shr");
     document.addEventListener("touchstart", e => {
       y0 = null;
       if (e.touches.length !== 1 || (window.scrollY || 0) > 0 || blocked(e.target)) return;
@@ -1683,6 +1682,7 @@ const STRATA = (() => {
 
   function hydrate(page) {
     if (!page) return;
+    if (page.id === "homePage") setTimeout(goalCheck, 1400);
     const tab = (typeof state === "object" && state && state.tab) || "home";
     const entering = state0.lastTab !== tab;
     state0.lastTab = tab;
@@ -1702,14 +1702,10 @@ const STRATA = (() => {
     bindProgressReplay(page);
     if (page.id === "weightPage") {
       dressChartHead();
-      const jh = page.querySelector(".vn-journey .vn-sect-head");
-      if (jh && !jh.querySelector(".st-share-b") && typeof NXP === "object" && NXP.shareProgress) {
-        const b = document.createElement("button");
-        b.type = "button"; b.className = "st-share-b";
-        b.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5.5 9.5H5a1.5 1.5 0 0 0-1.5 1.5v4.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V11A1.5 1.5 0 0 0 15 9.5h-.5"/></svg>Share';
-        b.addEventListener("click", () => NXP.shareProgress());
-        jh.appendChild(b);
-      }
+      /* D85's Share button is part of the Cut journey markup now (D95), so nothing is injected here. */
+      bindJourney(page);
+      bindEvidence(page);
+      setTimeout(goalCheck, 900);
     }
     resumeRest();
     resumeExercise(page);
@@ -1734,7 +1730,7 @@ const STRATA = (() => {
     bindSheets();
     if (typeof NXT === "object" && typeof NXT.selectPoint === "function" && !NXT.selectPoint.__strata) {
       const sp = NXT.selectPoint;
-      NXT.selectPoint = function (index, opts) { const o = sp.apply(this, arguments); try { progressTip(index, opts); weeksSync(index); if (index !== lastScrub && !(opts && opts.clear)) { if (lastScrub !== -1) haptic("tick"); lastScrub = index; } } catch (e) {} return o; };
+      NXT.selectPoint = function (index, opts) { const o = sp.apply(this, arguments); try { progressTip(index, opts); weeksSync(index); weeksReplay(index); jrFromChart(index, opts); noteChipSync(index); if (index !== lastScrub && !(opts && opts.clear)) { if (lastScrub !== -1 && !JR.dragging) haptic("tick"); lastScrub = index; } } catch (e) {} return o; };
       NXT.selectPoint.__strata = true;
     }
     bindCalSwipe();
@@ -1775,7 +1771,451 @@ const STRATA = (() => {
     });
     document.documentElement.classList.add("st-on");
   }
-  return { observatory, closeObservatory, hydrate, install, odoSet, stopReplay, sky, haptic, glance: () => { glTouch = 0; showGlance(); }, tiltState, allowTilt, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
+
+  /* ---- D96 · Cut journey and Evidence, interactive -------------------------------------------------------
+     One time cursor for the Weight view. The chart's selection (scrub, replay, a week row) rewinds the Cut
+     journey to that day; dragging the journey's bar, its arrow keys or a milestone move the chart's selection
+     when that day is on the chart. Every figure is the journey's own level series (D97) shipped in
+     data-st-jr: nothing here goes beyond a lookup, a difference and a position on the bar. */
+  const JR = { sec: null, d: null, at: null, base: null, k: null, dragging: false };
+  function jrParse(sec) { try { return JSON.parse(sec.getAttribute("data-st-jr")); } catch (e) { return null; } }
+  function jrAt(d, date) { let v = null, w = null; for (const q of d.pts) { if (q[0] > date) break; v = q[1]; w = q[0]; } return v === null ? null : { v, date: w }; }
+  function jrFirstAt(d, kg) { for (const q of d.pts) if (q[1] <= kg) return q[0]; return null; }
+  function jrPct(d, v) { return Math.max(0, Math.min(100, (d.max - v) / d.span * 100)); }
+  function jrGo(date) {
+    const m = NXT.ui && NXT.ui.chart;
+    if (m && m.points && m.points.length) {
+      if (date === null) { NXT.selectPoint(m.points.length - 1, { clear: true }); return; }
+      const i = m.points.findIndex(p => p.date === date);
+      if (i >= 0) { NXT.selectPoint(i); return; }
+    }
+    jrShow(date);
+  }
+  function jrFromChart(index, opts) {
+    if (!JR.sec || !JR.sec.isConnected) return;
+    const m = NXT.ui.chart, p = m && m.points && m.points[index];
+    if (!p) return;
+    jrShow((opts && opts.clear) || index === m.points.length - 1 ? null : p.date);
+  }
+  function stopCount(el) { if (el) el.dataset.stTok = String(Math.random()); }
+  function jrWord(word, date) {
+    const em = JR.sec && JR.sec.querySelector("[data-st-jr-noww]"); if (!em) return;
+    const i = em.querySelector("i"); if (em.firstChild && em.firstChild.nodeType === 3) em.firstChild.nodeValue = word; if (i) i.textContent = date || "";
+  }
+  function jrShow(date) {
+    const sec = JR.sec, d = JR.d;
+    if (!sec || !d || !sec.isConnected) return;
+    const q = sel => sec.querySelector(sel);
+    const set = (sel, t) => { const el = q(sel); if (el && t != null) { stopCount(el); el.textContent = t; } };
+    const rail = q(".st-jr-rail"), dot = q(".vn-journey-now"), trav = q(".vn-journey-travel"), fut = q(".st-jr-fut"), today = q(".st-jr-today"), back = q(".st-jr-back"), when = q(".st-jr-when");
+    const L = date ? jrAt(d, date) : null, last = d.pts[d.pts.length - 1][0];
+    const isToday = !L || L.date >= last;
+    sec.classList.toggle("is-rewind", !isToday);
+    rtCursor(isToday ? null : L.date);
+    if (isToday) {
+      JR.at = null; JR.k = null;
+      const b = JR.base;
+      set("[data-st-jr-done]", b.done); set("[data-st-jr-sub]", b.sub); set("[data-st-jr-togo]", b.togo); set("[data-st-jr-togol]", b.togol);
+      set("[data-st-jr-nowv]", b.nowv); jrWord("Now", b.noww); if (when) when.textContent = b.when;
+      dot.style.left = jrPct(d, d.now) + "%"; trav.style.left = b.trav.left; trav.style.width = b.trav.width; trav.classList.toggle("is-back", b.trav.back);
+      fut.hidden = true; today.hidden = true; if (back) back.hidden = true;
+      sec.querySelectorAll(".st-jr-bead").forEach((x, i) => x.classList.toggle("is-on", !!b.beads[i]));
+      rail.setAttribute("aria-valuenow", rail.getAttribute("aria-valuemax")); rail.setAttribute("aria-valuetext", b.vt);
+      return;
+    }
+    JR.at = L.date;
+    const v = L.v, done = d.seed - v, togo = v - d.hi, ds = shortDate(L.date);
+    const k = Math.floor(v);
+    if (JR.k !== null && k !== JR.k && JR.dragging) haptic("tick");
+    JR.k = k;
+    set("[data-st-jr-done]", Math.abs(done).toFixed(1));
+    set("[data-st-jr-sub]", `${done >= .05 ? "down" : done <= -.05 ? "up" : "no change"} by ${ds}`);
+    if (q("[data-st-jr-togo]")) { set("[data-st-jr-togo]", Math.max(0, togo).toFixed(1)); set("[data-st-jr-togol]", togo > 0 ? "to go that day" : "in your range that day"); }
+    set("[data-st-jr-nowv]", v.toFixed(1)); jrWord("Then", ds);
+    if (when) when.textContent = (d.first ? shortDate(d.first) : shortDate(d.pts[0][0])) + " \u2192 " + ds;
+    const pv = jrPct(d, v), ps = jrPct(d, d.seed), pn = jrPct(d, d.now);
+    dot.style.left = pv + "%";
+    trav.classList.toggle("is-back", v > d.seed + .05);
+    trav.style.left = Math.min(ps, pv) + "%"; trav.style.width = Math.abs(pv - ps) + "%";
+    fut.hidden = false; fut.style.left = Math.min(pv, pn) + "%"; fut.style.width = Math.abs(pn - pv) + "%";
+    today.hidden = false; today.style.left = pn + "%";
+    if (back) back.hidden = false;
+    sec.querySelectorAll(".st-jr-bead").forEach(x => { const r = jrFirstAt(d, Number(x.dataset.k)); x.classList.toggle("is-on", !!r && r <= L.date); });
+    rail.setAttribute("aria-valuenow", String(Math.max(0, Math.round((NXT.dateMs(L.date) - NXT.dateMs(d.pts[0][0])) / 864e5))));
+    rail.setAttribute("aria-valuetext", `${ds}: ${v.toFixed(1)} kilograms, ${Math.abs(done).toFixed(1)} ${done >= 0 ? "down" : "up"}`);
+  }
+  function bindJourney(page) {
+    const sec = page.querySelector(".st-jr[data-st-jr]");
+    JR.sec = null; JR.d = null; JR.at = null; JR.k = null;
+    if (!sec) return;
+    const d = jrParse(sec);
+    if (!d || !Array.isArray(d.pts) || d.pts.length < 3) return;
+    JR.sec = sec; JR.d = d;
+    const q = sel => sec.querySelector(sel), tx = sel => { const el = q(sel); return el ? el.textContent : null; };
+    const rail = q(".st-jr-rail"), trav = q(".vn-journey-travel");
+    JR.base = { done: tx("[data-st-jr-done]"), sub: tx("[data-st-jr-sub]"), togo: tx("[data-st-jr-togo]"), togol: tx("[data-st-jr-togol]"), when: tx(".st-jr-when"),
+      nowv: tx("[data-st-jr-nowv]"), noww: tx("[data-st-jr-noww] i"), vt: rail.getAttribute("aria-valuetext"),
+      trav: { left: trav.style.left, width: trav.style.width, back: trav.classList.contains("is-back") },
+      beads: [...sec.querySelectorAll(".st-jr-bead")].map(b => b.classList.contains("is-on")) };
+    const pick = x => {
+      const r = rail.getBoundingClientRect(), kg = d.max - Math.max(0, Math.min(1, (x - r.left) / r.width)) * d.span;
+      if (kg >= d.seed) return d.pts[0][0];
+      if (kg <= d.now) return null;
+      return jrFirstAt(d, kg);
+    };
+    let drag = false;
+    rail.addEventListener("pointerdown", e => { if (e.button > 0) return; drag = true; JR.dragging = true; try { rail.setPointerCapture(e.pointerId); } catch (_) {} sec.classList.add("is-drag"); jrGo(pick(e.clientX)); });
+    rail.addEventListener("pointermove", e => { if (drag) jrGo(pick(e.clientX)); });
+    const end = () => { drag = false; JR.dragging = false; sec.classList.remove("is-drag"); };
+    rail.addEventListener("pointerup", end); rail.addEventListener("pointercancel", end);
+    rail.addEventListener("keydown", e => {
+      const n = d.pts.length, ix = JR.at ? Math.max(0, d.pts.findIndex(p => p[0] === JR.at)) : n - 1;
+      const near = t => { const j = d.pts.findIndex(p => p[0] >= t); return j < 0 ? n - 1 : j; };
+      let to;
+      if (e.key === "ArrowLeft" || e.key === "ArrowDown") to = Math.max(0, ix - 1);
+      else if (e.key === "ArrowRight" || e.key === "ArrowUp") to = Math.min(n - 1, ix + 1);
+      else if (e.key === "PageUp") to = Math.max(0, near(NXT.dateAdd(d.pts[ix][0], -7)));
+      else if (e.key === "PageDown") to = near(NXT.dateAdd(d.pts[ix][0], 7));
+      else if (e.key === "Home") to = 0;
+      else if (e.key === "End" || (e.key === "Escape" && JR.at)) to = n - 1;
+      else return;
+      e.preventDefault();
+      jrGo(to >= n - 1 ? null : d.pts[to][0]);
+    });
+    sec.querySelectorAll("[data-st-jr-go]").forEach(b => b.addEventListener("click", () => jrGo(b.getAttribute("data-st-jr-go"))));
+    const back = q(".st-jr-back");
+    if (back) back.addEventListener("click", () => { jrGo(null); rail.focus({ preventScroll: true }); });
+    const play = sec.querySelector("[data-st-story]");
+    if (play) play.addEventListener("click", story);
+    const m = NXT.ui && NXT.ui.chart, sel = NXT.ui && NXT.ui.selected;
+    if (sel && m && m.points && m.points.length && sel !== m.points[m.points.length - 1].date) jrShow(sel);
+  }
+  /* The rate chart's cursor follows the same day. */
+  function rtCursor(date) {
+    const svg = document.querySelector("#weightPage .st-rax-svg"), g = svg && svg.querySelector(".st-rax-cur");
+    if (!g) return;
+    let d; try { d = JSON.parse(svg.getAttribute("data-st-rax")); } catch (e) { return; }
+    let pt = null;
+    if (date && date >= d.d0 && date < d.d1) for (const p of d.pts) { if (p[0] > date) break; pt = p; }
+    if (!pt) { g.setAttribute("visibility", "hidden"); return; }
+    const t0 = NXT.dateMs(d.d0), t1 = NXT.dateMs(d.d1), x = (d.x0 + (NXT.dateMs(pt[0]) - t0) / Math.max(864e5, t1 - t0) * (d.x1 - d.x0)).toFixed(1);
+    const ln = g.querySelector("line"), c = g.querySelector("circle");
+    ln.setAttribute("x1", x); ln.setAttribute("x2", x); c.setAttribute("cx", x); c.setAttribute("cy", String(pt[1]));
+    g.setAttribute("visibility", "visible");
+  }
+  /* D100 · The note chip follows the day the chart shows. */
+  function noteChipSync(index) {
+    const chip = document.getElementById("st-note-chip"), m = NXT.ui && NXT.ui.chart, p = m && m.points && m.points[index];
+    if (!chip || !p || typeof NXT.chartNotes !== "function") return;
+    const n = NXT.chartNotes()[p.date];
+    chip.dataset.date = p.date;
+    chip.classList.toggle("has-note", !!n);
+    chip.innerHTML = n ? `<i aria-hidden="true"></i><span>${esc(NXT.noteLabel(n.kind))}${n.text ? " · " + esc(n.text) : ""}</span>` : "<span>+ Note</span>";
+    chip.setAttribute("aria-label", n ? `Note on ${shortDate(p.date)}: ${NXT.noteLabel(n.kind)}${n.text ? ", " + n.text : ""}. Edit` : `Add a note for ${shortDate(p.date)}`);
+  }
+  /* Replay fills the week list as it goes: weeks after the replayed day wait their turn. */
+  function weeksReplay(index) {
+    const host = document.querySelector(".st-weeks"), m = NXT.ui && NXT.ui.chart, p = m && m.points && m.points[index];
+    if (!host) return;
+    const on = !!(state0.replay && p);
+    host.classList.toggle("is-replay", on);
+    host.querySelectorAll(".st-wk").forEach(r => r.classList.toggle("is-ahead", on && r.dataset.a > p.date));
+  }
+  /* Numbers count up once, as their card scrolls in after a tab change. A rewind cancels a count in flight. */
+  function countNum(el) {
+    if (reduced() || !el || el.dataset.stCounted) return;
+    const txt = el.textContent.trim(), m = /^([+−-]?)(\d+(?:\.\d+)?)$/.exec(txt);
+    if (!m) return;
+    el.dataset.stCounted = "1";
+    const tok = String(Math.random()); el.dataset.stTok = tok;
+    const sign = m[1], target = parseFloat(m[2]), dp = (m[2].split(".")[1] || "").length, t0 = performance.now(), dur = 950;
+    const step = now => {
+      if (!el.isConnected || el.dataset.stTok !== tok) return;
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 4);
+      el.textContent = k < 1 ? sign + (target * e).toFixed(dp) : txt;
+      if (k < 1) requestAnimationFrame(step);
+    };
+    el.textContent = sign + (0).toFixed(dp);
+    requestAnimationFrame(step);
+  }
+  function revealNums(el) { if (el && el.querySelectorAll) el.querySelectorAll("[data-st-num]").forEach(countNum); }
+  /* What-if pace (D96): drag the marker, or use the arrow keys, to try another pace. Plain arithmetic from
+     where you are now to the top of the goal range; it springs back when you let go and is never stored. */
+  function bindEvidence(page) {
+    const g = page.querySelector(".st-ev-g.is-what");
+    if (!g) return;
+    let d; try { d = JSON.parse(g.getAttribute("data-st-ev")); } catch (e) { return; }
+    if (!d || !(d.now > d.hi) || !(d.ref > 0)) return;
+    const sec = g.closest(".st-ev"), knob = g.querySelector(".st-ev-gk"), lab = g.querySelector(".st-ev-gkl"), trail = g.querySelector(".st-ev-trail"), z = g.querySelector(".st-ev-z");
+    const wi = sec.querySelector(".st-ev-wi"), hint = sec.querySelector(".st-ev-hint");
+    if (!knob || !lab || !trail || !z || !wi) return;
+    const mkPct = Math.min(d.axis, Math.max(0, -d.rate) / d.ref * 100), mkAt = mkPct / d.axis * 100;
+    const base = { vt: g.getAttribute("aria-valuetext"), now: g.getAttribute("aria-valuenow") };
+    const hiTxt = Number.isInteger(d.hi) ? String(d.hi) : Number(d.hi).toFixed(1), flatKg = d.flat / 100 * d.ref;
+    let cur = null, drag = false, t = 0, lastStep = null;
+    function show(p) {
+      clearTimeout(t);
+      p = Math.max(0, Math.min(d.axis, p)); cur = p;
+      const kg = p / 100 * d.ref, at = p / d.axis * 100;
+      g.classList.remove("is-back"); sec.classList.add("is-whatif");
+      knob.hidden = false; lab.hidden = false; trail.hidden = false; wi.hidden = false; wi.classList.remove("is-out"); if (hint) hint.hidden = true;
+      knob.style.left = at + "%"; lab.style.left = Math.max(10, Math.min(90, at)) + "%";
+      trail.style.left = Math.min(at, mkAt) + "%"; trail.style.width = Math.abs(mkAt - at) + "%";
+      lab.textContent = "−" + kg.toFixed(2) + " kg/wk";
+      const b = wi.querySelector("b"), sp = wi.querySelector("span");
+      let vt;
+      if (kg <= flatKg) {
+        b.textContent = "No arrival at this pace";
+        sp.textContent = `Under ${flatKg.toFixed(2)} kg a week the trend reads as flat. A what-if, not a forecast.`;
+        vt = `What if ${kg.toFixed(2)} kilograms a week: no arrival, the trend reads as flat`;
+      } else {
+        const weeks = (d.now - d.hi) / kg, date = NXT.dateAdd(d.today, Math.max(1, Math.round(weeks * 7))), wk = Math.max(1, Math.round(weeks));
+        b.textContent = `${hiTxt} kg around ${shortDate(date)}`;
+        sp.textContent = `About ${wk} ${wk === 1 ? "week" : "weeks"} at −${kg.toFixed(2)} kg/wk from ${Number(d.now).toFixed(1)} kg now${p > 1 ? ", past the 1% line" : ""}. A what-if, not a forecast.`;
+        vt = `What if ${kg.toFixed(2)} kilograms a week: ${hiTxt} kilograms around ${shortDate(date)}`;
+      }
+      g.setAttribute("aria-valuenow", kg.toFixed(2)); g.setAttribute("aria-valuetext", vt);
+      const step = Math.round(kg * 10);
+      if (drag && lastStep !== null && step !== lastStep) haptic("tick");
+      lastStep = step;
+    }
+    function reset(delay) {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        if (cur === null) return;
+        cur = null; lastStep = null;
+        g.classList.add("is-back"); knob.style.left = mkAt + "%"; lab.hidden = true; trail.hidden = true; wi.classList.add("is-out");
+        g.setAttribute("aria-valuetext", base.vt); g.setAttribute("aria-valuenow", base.now);
+        t = setTimeout(() => { knob.hidden = true; wi.hidden = true; wi.classList.remove("is-out"); g.classList.remove("is-back"); sec.classList.remove("is-whatif"); if (hint) hint.hidden = false; }, reduced() ? 0 : 520);
+      }, delay);
+    }
+    const fromX = x => { const r = z.getBoundingClientRect(); return Math.max(0, Math.min(1, (x - r.left) / r.width)) * d.axis; };
+    g.addEventListener("pointerdown", e => { if (e.button > 0) return; drag = true; g.classList.add("is-drag"); try { g.setPointerCapture(e.pointerId); } catch (_) {} show(fromX(e.clientX)); });
+    g.addEventListener("pointermove", e => { if (drag) show(fromX(e.clientX)); });
+    const up = () => { if (!drag) return; drag = false; g.classList.remove("is-drag"); reset(1800); };
+    g.addEventListener("pointerup", up); g.addEventListener("pointercancel", up);
+    g.addEventListener("keydown", e => {
+      const stepPct = 0.05 / d.ref * 100;
+      let p = cur === null ? mkPct : cur;
+      if (e.key === "ArrowRight" || e.key === "ArrowUp") p += stepPct;
+      else if (e.key === "ArrowLeft" || e.key === "ArrowDown") p -= stepPct;
+      else if (e.key === "Escape" && cur !== null) { e.preventDefault(); reset(0); return; }
+      else return;
+      e.preventDefault(); show(p);
+    });
+    g.addEventListener("blur", () => { if (cur !== null) reset(700); });
+  }
+
+  /* ---- D99 · Play your cut ---------------------------------------------------------------------------------
+     A full-screen story of the cut so far, tapped through like a year in review: the start, the kilograms down,
+     the fastest week, the lifts, the mornings weighed and where it is heading, ending on the share card (D85).
+     Every figure is the engine's: the Cut journey's start and Now (D97), Mon–Sun morning averages with at least
+     three readings (the Week by week rule), strengthItems() and its words (I12), the weigh-ins themselves and
+     forecastGoal(). Nothing is stored. Under reduced motion nothing moves and nothing advances by itself. */
+  const SYD = 6500;
+  let SY = null;
+  const syLong = d => { try { return new Date(d + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }); } catch (e) { return shortDate(d); } };
+  const kgTxt = v => Number.isInteger(v) ? String(v) : (Math.round(v * 10) / 10).toFixed(1);
+  const sySigned = v => { const r = Math.round(v * 100) / 100; return (r < 0 ? "−" : r > 0 ? "+" : "") + Math.abs(r).toFixed(2); };
+  function cutFacts() {
+    if (typeof NXT !== "object" || typeof NXT.weights !== "function") return null;
+    const N = NXT, rows = N.weights().filter(r => r.date <= state.date);
+    if (rows.length < 5) return null;
+    const startW = N.finite(typeof START_WEIGHT !== "undefined" ? START_WEIGHT : null);
+    const seed = startW !== null ? startW : rows[0].weight;
+    const cs = typeof settings === "object" && settings && Number.isFinite(N.dateMs(settings.cutStart)) && settings.cutStart <= state.date ? settings.cutStart : null;
+    const first = cs || rows[0].date;
+    const conf = !!N.cfg().targetConfirmed, lo = typeof goalLow === "function" ? Number(goalLow()) : NaN, hi = typeof goalHigh === "function" ? Number(goalHigh()) : NaN;
+    const nl = N.nowLevel(rows), now = nl ? nl.value : rows[rows.length - 1].weight;
+    const days = Math.max(0, Math.round((N.dateMs(state.date) - N.dateMs(first)) / 864e5));
+    const since = days >= 14 ? Math.round(days / 7) + " weeks" : days + " " + N.plural(days, "day");
+    const weighed = new Set(rows.filter(r => r.date >= first).map(r => r.date));
+    const lv = N.levelSeries(rows).filter(q => q.date >= first);
+    return { N, rows, seed, first, conf, lo, hi, now, days, since, weighed, lv, done: seed - now, goal: conf && Number.isFinite(lo) && Number.isFinite(hi) };
+  }
+  function syBar(F, cls) {
+    const max = Math.max(F.seed, F.now, F.goal ? F.hi : F.now) + .6, min = Math.min(F.goal ? F.lo : F.now, F.now, F.seed) - 1.2, span = Math.max(.8, max - min);
+    const pc = v => Math.max(0, Math.min(100, (max - v) / span * 100));
+    const a = pc(F.seed), b = pc(F.now), beads = [];
+    for (let k = Math.floor(F.seed - 1e-6); k > (F.goal ? F.hi : Math.floor(F.now) - 1); k--) beads.push(`<i class="st-sy-bd${k >= F.now ? " is-on" : ""}" style="left:${pc(k).toFixed(2)}%;--d:${(Math.max(0, pc(k) - a) / Math.max(1, b - a)).toFixed(3)}"></i>`);
+    return `<div class="st-sy-bar ${cls || ""}" aria-hidden="true"><i class="st-sy-tr"></i>${F.goal ? `<i class="st-sy-gl" style="left:${Math.min(pc(F.lo), pc(F.hi)).toFixed(2)}%;width:${Math.abs(pc(F.lo) - pc(F.hi)).toFixed(2)}%"></i>` : ""}<i class="st-sy-fl" style="left:${Math.min(a, b).toFixed(2)}%;width:${Math.abs(b - a).toFixed(2)}%"></i>${beads.join("")}<i class="st-sy-nw" style="left:${b.toFixed(2)}%;--x0:${a.toFixed(2)}%"></i></div>`;
+  }
+  function storyChapters(F) {
+    const N = F.N, ch = [], dir = F.done >= .05 ? "down" : F.done <= -.05 ? "up" : "no change";
+    ch.push({ k: "start", eye: "Day one", num: F.seed.toFixed(1), unit: "kg", sub: `${syLong(F.first)}. The first morning of your cut.`,
+      vis: `<div class="st-sy-seed" aria-hidden="true"><i></i><i></i><i></i><b></b></div>${F.goal ? `<p class="st-sy-goal">Goal · ${F.lo}–${F.hi} kg</p>` : ""}` });
+    const togo = F.goal ? (F.now > F.hi ? `${(F.now - F.hi).toFixed(1)} kg to your ${F.hi} kg goal.` : F.now >= F.lo ? "You are in your goal range." : "You are below your goal range.") : "";
+    ch.push({ k: "down", eye: "So far", num: Math.abs(F.done).toFixed(1), unit: "kg " + (dir === "no change" ? "" : dir), sub: `In ${F.since}. ${togo}`.trim(), vis: syBar(F) });
+    const wk = [];
+    for (let ws = N.weekStart(F.first); N.dateAdd(ws, 6) < state.date; ws = N.dateAdd(ws, 7)) { const w = N.windowStats(F.rows, N.dateAdd(ws, 6), 7); wk.push({ ws, avg: w.n >= 3 ? w.avg : null }); }
+    let best = null;
+    for (let i = 1; i < wk.length; i++) if (wk[i].avg !== null && wk[i - 1].avg !== null) { const drop = wk[i - 1].avg - wk[i].avg; if (!best || drop > best.drop) best = { i, drop }; }
+    if (best && best.drop >= .1) {
+      const pts = wk.map((w, i) => ({ ...w, i })).filter(w => w.avg !== null), lo = Math.min(...pts.map(w => w.avg)), hi = Math.max(...pts.map(w => w.avg));
+      const Wd = 340, Hd = 200, x = i => 12 + i * ((Wd - 24) / Math.max(1, wk.length)), y = v => 16 + (hi - v) / Math.max(.4, hi - lo) * (Hd - 40);
+      let d = "", prev = null;
+      for (const w of pts) { const x0 = x(w.i), x1 = x(w.i + 1), yy = y(w.avg); d += prev === null ? `M${x0.toFixed(1)},${yy.toFixed(1)}` : (prev.i === w.i - 1 ? ` V${yy.toFixed(1)}` : ` M${x0.toFixed(1)},${yy.toFixed(1)}`); d += ` H${x1.toFixed(1)}`; prev = w; }
+      const b0 = wk[best.i - 1], b1 = wk[best.i], bx = x(best.i);
+      const labs = wk.map((w, i) => (i === 0 || i === wk.length - 1 || i === best.i) ? `<text x="${((x(i) + x(i + 1)) / 2).toFixed(1)}" y="${Hd - 4}" text-anchor="middle"${i === best.i ? ' class="is-on"' : ""}>${esc(shortDate(w.ws))}</text>` : "").join("");
+      ch.push({ k: "fast", eye: "The fastest week", num: "−" + best.drop.toFixed(1), unit: "kg", sub: `Week of ${shortDate(b1.ws)}. Your biggest drop in a single week, by morning average.`,
+        vis: `<svg class="st-sy-stairs" viewBox="0 0 ${Wd} ${Hd}" aria-hidden="true"><rect class="beam" x="${bx.toFixed(1)}" y="0" width="${(x(best.i + 1) - bx).toFixed(1)}" height="${Hd - 18}"/><path class="st" d="${d}" pathLength="1"/><path class="hl" d="M${bx.toFixed(1)},${y(b0.avg).toFixed(1)} V${y(b1.avg).toFixed(1)} H${x(best.i + 1).toFixed(1)}"/><circle cx="${x(best.i + 1).toFixed(1)}" cy="${y(b1.avg).toFixed(1)}" r="6"/>${labs}</svg>` });
+    }
+    const items = N.strengthItems(), fresh = items.filter(it => it.delta !== null), imp = fresh.filter(it => it.status === "Improving").sort((a, b) => b.delta - a.delta), hold = fresh.filter(it => it.status === "Holding steady").length;
+    if (fresh.length) {
+      const top = imp.slice(0, 3), mx = Math.max(1, ...top.map(it => it.delta));
+      ch.push({ k: "lifts", eye: "Your lifts", num: String(imp.length), unit: imp.length === 1 ? "improving" : "improving", sub: `Of ${fresh.length} ${N.plural(fresh.length, "lift")} with four recent sessions${hold ? `, ${hold} holding steady` : ""}. The app's own read, not a tested maximum.`,
+        vis: top.length ? `<ol class="st-sy-lifts">${top.map((it, i) => `<li style="--k:${i}"><span>${esc(it.name)}</span><i style="--w:${(it.delta / mx * 100).toFixed(1)}%"></i><b>+${it.delta.toFixed(1)}%</b></li>`).join("")}</ol>` : "" });
+    }
+    const total = F.days + 1, got = F.weighed.size;
+    { const cells = [], lead = (new Date(F.first + "T12:00:00").getDay() + 6) % 7, n = total + lead, step = Math.min(28, 1400 / Math.max(1, n));
+      for (let i = 0; i < lead; i++) cells.push('<i class="is-pad"></i>');
+      for (let i = 0; i < total; i++) { const d = NXT.dateAdd(F.first, i); cells.push(`<i class="${F.weighed.has(d) ? "is-y" : ""}" style="--t:${Math.round((i + lead) * step)}ms"></i>`); }
+      /* A long cut folds two or three weeks into a row and shrinks the dots, so the grid never outgrows the screen. */
+      const rows7 = Math.ceil(n / 7), per = rows7 > 20 ? 21 : rows7 > 10 ? 14 : 7, sz = per === 21 ? 8 : per === 14 ? 11 : rows7 > 8 ? 12 : 16, gp = per === 21 ? 4 : per === 14 ? 6 : rows7 > 8 ? 6 : 8;
+      ch.push({ k: "morn", eye: "Your mornings", num: String(got), unit: "of " + total, sub: `days weighed since ${shortDate(F.first)}. Each one tightens the trend.`, vis: `<div class="st-sy-days" style="--c:${per};--s:${sz}px;--g:${gp}px" aria-hidden="true">${cells.join("")}</div>` }); }
+    const f = NXT.forecastGoal(F.rows), share = '<button type="button" class="st-sy-share"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5.5 9.5H5a1.5 1.5 0 0 0-1.5 1.5v4.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V11A1.5 1.5 0 0 0 15 9.5h-.5"/></svg>Share your cut</button>';
+    if (!F.goal) ch.push({ k: "next", eye: "What's next", num: F.now.toFixed(1), unit: "kg now", sub: "Set a goal range in Settings to see where this is heading.", vis: share });
+    else if (F.now <= F.hi) ch.push({ k: "next", eye: "Where you are", num: F.now.toFixed(1), unit: "kg now", sub: F.now >= F.lo ? `Inside your ${F.lo}–${F.hi} kg goal range. A weight range alone does not measure leanness.` : `Below your ${F.lo}–${F.hi} kg goal range.`, vis: share });
+    else if (f.ok && f.weeks > 0) ch.push({ k: "next", eye: "What's next", num: "~" + f.weeks, unit: f.weeks === 1 ? "week" : "weeks", sub: `To ${F.hi} kg around ${shortDate(NXT.dateAdd(state.date, f.weeks * 7))}, at your last 3 weeks' pace of ${sySigned(f.slope * 7)} kg/wk. An estimate, not a measurement.`, vis: share });
+    else ch.push({ k: "next", eye: "What's next", num: (F.now - F.hi).toFixed(1), unit: "kg to go", sub: (f.reason || "Keep weighing in.").replace(/([^.])$/, "$1."), vis: share });
+    return ch;
+  }
+  function story() {
+    if (SY || document.querySelector(".st-story")) return;
+    const F = cutFacts(); if (!F) { toast("A few more weigh-ins first: the story needs at least five."); return; }
+    const ch = storyChapters(F);
+    const el = document.createElement("div");
+    el.className = "st-story"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", `Your cut, in ${ch.length} parts`);
+    el.innerHTML = `<div class="st-sy-bg" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="st-sy-top"><div class="st-sy-segs" aria-hidden="true">${ch.map(() => "<i><b></b></i>").join("")}</div>
+        <div class="st-sy-row"><span class="st-sy-n">Your cut · <b>1</b> of ${ch.length}</span><button type="button" class="st-sy-x" aria-label="Close the story"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15"/></svg></button></div></div>
+      <div class="st-sy-stage" aria-live="polite"></div>
+      <div class="st-sy-foot"><button type="button" class="st-sy-prev" aria-label="Previous part"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg></button><span class="st-sy-hint">${reduced() ? "Tap the sides to move" : "Tap for next · hold to pause"}</span><button type="button" class="st-sy-next" aria-label="Next part"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5"/></svg></button></div>`;
+    document.body.appendChild(el);
+    document.documentElement.classList.add("st-story-open");
+    SY = { el, ch, i: -1, acc: 0, last: 0, paused: false, raf: 0, back: document.activeElement, held: false };
+    const stage = el.querySelector(".st-sy-stage");
+    let down = null, holdT = 0;
+    stage.addEventListener("pointerdown", e => { if (e.target.closest("button")) return; down = { x: e.clientX, y: e.clientY, t: performance.now() }; clearTimeout(holdT); holdT = setTimeout(() => { if (SY) { SY.held = true; SY.paused = true; el.classList.add("is-held"); } }, 230); });
+    stage.addEventListener("pointerup", e => {
+      clearTimeout(holdT);
+      if (!down || !SY) return;
+      const dx = e.clientX - down.x, dy = e.clientY - down.y; down = null;
+      if (SY.held) { SY.held = false; SY.paused = false; el.classList.remove("is-held"); return; }
+      if (dy > 90 && Math.abs(dx) < 70) { storyClose(); return; }
+      if (e.target.closest("button")) return;
+      (e.clientX < window.innerWidth * .32 ? syGo(SY.i - 1) : syGo(SY.i + 1));
+    });
+    stage.addEventListener("pointercancel", () => { clearTimeout(holdT); down = null; if (SY && SY.held) { SY.held = false; SY.paused = false; el.classList.remove("is-held"); } });
+    el.querySelector(".st-sy-x").addEventListener("click", storyClose);
+    el.querySelector(".st-sy-prev").addEventListener("click", () => syGo(SY.i - 1));
+    el.querySelector(".st-sy-next").addEventListener("click", () => syGo(SY.i + 1));
+    SY.key = e => {
+      if (!SY) return;
+      if (e.key === "Escape") { e.preventDefault(); storyClose(); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); syGo(SY.i + 1); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); syGo(SY.i - 1); }
+      else if (e.key === " " && !e.target.closest("button")) { e.preventDefault(); SY.paused = !SY.paused; el.classList.toggle("is-held", SY.paused); }
+      else if (e.key === "Tab") { const f = [...el.querySelectorAll("button")].filter(b => !b.disabled && b.offsetParent !== null); if (!f.length) return; const a = f.indexOf(document.activeElement); if (e.shiftKey && a <= 0) { e.preventDefault(); f[f.length - 1].focus(); } else if (!e.shiftKey && (a === f.length - 1 || a < 0)) { e.preventDefault(); f[0].focus(); } }
+    };
+    /* On the document, not the overlay: after a tap the focus can sit on the page body. */
+    document.addEventListener("keydown", SY.key, true);
+    document.addEventListener("visibilitychange", syVis);
+    syGo(0);
+    el.querySelector(".st-sy-x").focus({ preventScroll: true });
+    haptic("tick");
+    if (!reduced()) { SY.last = performance.now(); SY.raf = requestAnimationFrame(syTick); }
+  }
+  function syVis() { if (SY && document.hidden) SY.paused = true; else if (SY && !SY.held) SY.paused = false; }
+  function syTick(now) {
+    if (!SY) return;
+    const dt = Math.min(100, now - SY.last); SY.last = now;
+    const lastCh = SY.i >= SY.ch.length - 1;
+    if (!SY.paused && !lastCh) SY.acc += dt;
+    const seg = SY.el.querySelectorAll(".st-sy-segs b")[SY.i];
+    if (seg) seg.style.transform = `scaleX(${lastCh ? 1 : Math.min(1, SY.acc / SYD)})`;
+    if (!lastCh && SY.acc >= SYD) syGo(SY.i + 1);
+    SY.raf = requestAnimationFrame(syTick);
+  }
+  function syGo(i) {
+    if (!SY) return;
+    if (i < 0) i = 0;
+    if (i >= SY.ch.length) { storyClose(); return; }
+    if (i === SY.i) return;
+    SY.i = i; SY.acc = 0;
+    const c = SY.ch[i], el = SY.el;
+    el.setAttribute("data-ch", c.k);
+    el.querySelectorAll(".st-sy-segs b").forEach((b, k) => { b.style.transform = `scaleX(${k < i ? 1 : k === i && reduced() ? 1 : 0})`; });
+    el.querySelector(".st-sy-n b").textContent = String(i + 1);
+    el.querySelector(".st-sy-prev").disabled = i === 0;
+    const stage = el.querySelector(".st-sy-stage");
+    stage.innerHTML = `<div class="st-sy-ch is-${c.k}"><p class="st-sy-eye">${esc(c.eye)}</p><div class="st-sy-mega"><span data-st-num>${esc(c.num)}</span>${c.unit ? `<small>${esc(c.unit)}</small>` : ""}</div><p class="st-sy-sub">${esc(c.sub)}</p><div class="st-sy-vis">${c.vis || ""}</div></div>`;
+    const node = stage.firstElementChild;
+    const sh = node.querySelector(".st-sy-share");
+    if (sh) sh.addEventListener("click", () => { storyClose(); setTimeout(() => { if (typeof NXP === "object" && NXP.shareProgress) NXP.shareProgress(); }, 60); });
+    if (!reduced()) { requestAnimationFrame(() => { node.classList.add("is-in"); countNum(node.querySelector("[data-st-num]")); }); }
+    else node.classList.add("is-in", "is-still");
+  }
+  function storyClose() {
+    if (!SY) return;
+    cancelAnimationFrame(SY.raf);
+    document.removeEventListener("visibilitychange", syVis);
+    document.removeEventListener("keydown", SY.key, true);
+    const el = SY.el, back = SY.back; SY = null;
+    document.documentElement.classList.remove("st-story-open");
+    if (reduced()) el.remove(); else { el.classList.add("is-out"); setTimeout(() => el.remove(), 320); }
+    if (back && back.focus && back.isConnected) back.focus({ preventScroll: true });
+  }
+
+  /* ---- D99 · Goal reached -------------------------------------------------------------------------------------
+     On the day the Cut journey's Now (D97) first enters the goal range, one full-screen moment: the road filled,
+     the facts of the cut, the share card. Read from the level series, shown once per app session, nothing stored. */
+  let goalShown = false, goalTries = 0;
+  function goalDue() {
+    if (goalShown) return false;
+    const F = cutFacts();
+    if (!F || !F.goal || F.lv.length < 3) return false;
+    const last = F.lv[F.lv.length - 1];
+    if (!(last.value <= F.hi) || last.date < NXT.dateAdd(state.date, -1)) return false;
+    return F.lv.slice(0, -1).every(q => q.value > F.hi);
+  }
+  function goalCheck() {
+    if (!goalDue()) return;
+    if (document.querySelector(".st-story,.st-goal,.st-wm,.st-fin,.st-ask,.st-obs,#modalRoot .modal")) { if (goalTries++ < 8) setTimeout(goalCheck, 2500); return; }
+    goalMoment();
+  }
+  function goalMoment() {
+    if (document.querySelector(".st-goal")) return;
+    const F = cutFacts(); if (!F || !F.goal || !(F.now <= F.hi + 1e-9)) return;
+    goalShown = true;
+    const weeks = Math.max(1, Math.round(F.days / 7));
+    const el = document.createElement("div");
+    el.className = "st-goal"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "st-goal-t");
+    const sparks = reduced() ? "" : Array.from({ length: 18 }, (_, i) => `<i style="--a:${(i * 20).toFixed(0)}deg;--t:${(i % 6) * 90}ms"></i>`).join("");
+    el.innerHTML = `<div class="st-sy-bg" aria-hidden="true"><i></i><i></i><i></i></div><div class="st-goal-sp" aria-hidden="true">${sparks}</div>
+      <div class="st-goal-in">
+        <p class="st-goal-eye">Goal range reached</p>
+        <h2 class="st-goal-t" id="st-goal-t">You’re in your goal range</h2>
+        ${syBar(F, "is-goal")}
+        <div class="st-goal-facts"><div><b data-st-num>${Math.abs(F.done).toFixed(1)}</b><span>kg ${F.done >= 0 ? "down" : "up"}</span></div><div><b data-st-num>${weeks}</b><span>${weeks === 1 ? "week" : "weeks"}</span></div><div><b data-st-num>${F.weighed.size}</b><span>mornings weighed</span></div></div>
+        <p class="st-goal-sub">Now ${F.now.toFixed(1)} kg, inside ${kgTxt(F.lo)}–${kgTxt(F.hi)} kg. A weight range alone does not measure leanness.</p>
+        <div class="st-goal-acts"><button type="button" class="st-goal-share">Share your cut</button><button type="button" class="st-goal-done">Done</button></div>
+      </div>`;
+    document.body.appendChild(el);
+    document.documentElement.classList.add("st-story-open");
+    const back = document.activeElement;
+    let key = null;
+    const close = () => { document.removeEventListener("keydown", key, true); document.documentElement.classList.remove("st-story-open"); if (reduced()) el.remove(); else { el.classList.add("is-out"); setTimeout(() => el.remove(), 320); } if (back && back.focus && back.isConnected) back.focus({ preventScroll: true }); };
+    el.querySelector(".st-goal-done").addEventListener("click", close);
+    el.querySelector(".st-goal-share").addEventListener("click", () => { close(); setTimeout(() => { if (typeof NXP === "object" && NXP.shareProgress) NXP.shareProgress(); }, 60); });
+    key = e => { if (!el.isConnected) return; if (e.key === "Escape") { e.preventDefault(); close(); } else if (e.key === "Tab") { const f = [...el.querySelectorAll("button")]; const a = f.indexOf(document.activeElement); if (e.shiftKey && a <= 0) { e.preventDefault(); f[f.length - 1].focus(); } else if (!e.shiftKey && (a === f.length - 1 || a < 0)) { e.preventDefault(); f[0].focus(); } } };
+    document.addEventListener("keydown", key, true);
+    el.querySelector(".st-goal-done").focus({ preventScroll: true });
+    haptic("success");
+    if (!reduced()) requestAnimationFrame(() => { el.classList.add("is-in"); el.querySelectorAll("[data-st-num]").forEach(countNum); });
+    else el.classList.add("is-in", "is-still");
+  }
+  return { observatory, closeObservatory, hydrate, install, odoSet, stopReplay, sky, haptic, story, storyClose, goalMoment, goalCheck, glance: () => { glTouch = 0; showGlance(); }, tiltState, allowTilt, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
 })();
 STRATA.install();
 if (typeof NXT === "object" && NXT && typeof NXT.repaint === "function" && document.readyState !== "loading") {

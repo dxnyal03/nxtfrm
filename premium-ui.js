@@ -1033,7 +1033,8 @@ const NXP = (() => {
     if(!N.cfg().targetConfirmed)return null;
     const rows=N.weights(),startW=N.finite(typeof START_WEIGHT!=='undefined'?START_WEIGHT:null);
     const seed=startW!==null?startW:(rows[0]?rows[0].weight:null);
-    const pl=N.detectPlateau(rows),cur=N.finite(pl.lastAvg)!==null?pl.lastAvg:(rows.at(-1)?rows.at(-1).weight:null);
+    /* The Cut journey's own "Now" (D97), so the card and the journey never disagree. */
+    const nl=N.nowLevel?N.nowLevel(rows):null,cur=nl?nl.value:(rows.at(-1)?rows.at(-1).weight:null);
     const lo=typeof goalLow==='function'?Number(goalLow()):NaN,hi=typeof goalHigh==='function'?Number(goalHigh()):NaN;
     if(seed===null||cur===null||!Number.isFinite(hi))return null;
     const cs=typeof settings!=='undefined'&&settings&&Number.isFinite(N.dateMs(settings.cutStart))&&settings.cutStart<=state.date?settings.cutStart:null;
@@ -2037,19 +2038,6 @@ const NXP = (() => {
     if(down>=2)out.push({k:'down',t:`${down} weeks of falling averages in a row`});
     return out;
   }
-  /* "Down so far": the same facts the Cut journey card uses (start weight, current
-     trend, goal range), brought to the top. Only when a goal is confirmed. */
-  function downSoFarHTML(){
-    if(!N.cfg().targetConfirmed)return '';
-    const rows=N.weights(),start=N.finite(typeof START_WEIGHT!=='undefined'?START_WEIGHT:null);
-    const seed=start!==null?start:(rows[0]?rows[0].weight:null);
-    const pl=N.detectPlateau(rows),cur=N.finite(pl.lastAvg)!==null?pl.lastAvg:(rows.at(-1)?rows.at(-1).weight:null);
-    const hi=typeof goalHigh==='function'?Number(goalHigh()):NaN;
-    if(seed===null||cur===null||!Number.isFinite(hi))return '';
-    const done=seed-cur,remain=Math.max(0,cur-hi);
-    if(done<=0)return '';
-    return `<p class="st-down"><b class="vn-num">${done.toFixed(1)} kg</b> down${remain>0?` · <b class="vn-num">${remain.toFixed(1)} kg</b> to your goal range`:' · in your goal range'}</p>`;
-  }
   function weeklyAvgs(){
     const rows=N.weights().filter(r=>r.date<=state.date&&Number.isFinite(Number(r.weight)));
     const by=new Map();
@@ -2111,7 +2099,7 @@ const NXP = (() => {
     }
     /* Phase 2C — Weight owns its layout inside chartHTML (trajectory + journey).
        TDEE and weigh-in history are demoted below, not deleted. */
-    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${withGoalDate(N.chartHTML()).replace('<div class="vn-mhead"',downSoFarHTML()+weightHighlightsHTML()+slowWeekHTML()+'<div class="vn-mhead"')}${N.features&&N.features.calories?`<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details>`:''}<button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${(n=>n+" "+N.plural(n,"reading"))(N.weights().length)}</span></span><span class="vn-chev">›</span></button></div>`;
+    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${withGoalDate(N.chartHTML()).replace('<div class="vn-mhead"',weightHighlightsHTML()+slowWeekHTML()+'<div class="vn-mhead"')}${N.features&&N.features.calories?`<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details>`:''}<button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${(n=>n+" "+N.plural(n,"reading"))(N.weights().length)}</span></span><span class="vn-chev">›</span></button></div>`;
   }
   /* Engine vocabulary only (I12). The word is the status; colour and shape follow it. */
   const PERF_NOTE='Estimated 1RM is a comparison aid, not a tested maximum or proof of muscle retention. Technique, effort and equipment setup affect it.';
@@ -2235,10 +2223,42 @@ const NXP = (() => {
   function performanceSummary(items) {
     return `<header class="vn-perf-lead"><p class="vn-perf-intro">${esc(performanceIntro(items))}</p></header>`;
   }
+  /* D99 · Your lifts since the cut started. Each lift's session value from the engine (the estimated 1RM of its
+     best set, a comparison aid) at the cut start against its latest session, same exercise and gym: the last
+     session on or before the cut start, or the first one after it. One question only, so no status words here:
+     those answer "the last four sessions" in the list below (I12). Nothing here is a score. Lifts with only older
+     history, or a single session, are left out; past seven lifts the middle folds behind "Show all". */
+  function strengthSinceHTML(items) {
+    const rows0=N.weights(),cs=settings&&Number.isFinite(N.dateMs(settings.cutStart))&&settings.cutStart<=state.date?settings.cutStart:(rows0[0]&&rows0[0].date);
+    if(!cs)return '';
+    const gyms=new Set(items.map(x=>x.gym));
+    const rows=items.filter(x=>x.status!=='Older history'&&Array.isArray(x.history)&&x.history.length>=2).map(x=>{
+      const h=x.history;let b=null;
+      for(const s of h){if(s.date<=cs)b=s;else break;}
+      if(!b)b=h.find(s=>s.date>cs);
+      const l=h[h.length-1];
+      if(!b||!l||b===l||!(b.value>0))return null;
+      return {name:x.name,gym:x.gym,status:x.status,pct:(l.value/b.value-1)*100,from:b.date};
+    }).filter(Boolean).sort((a,b)=>b.pct-a.pct);
+    if(rows.length<2)return '';
+    const mx=Math.max(4,...rows.map(r=>Math.abs(r.pct))),up=rows.filter(r=>r.pct>=.5).length,down=rows.filter(r=>r.pct<=-.5).length;
+    const sum=`<b>${up} of ${rows.length}</b> ${N.plural(rows.length,'lift')} up since ${esc(N.shortDate(cs))}${down?`, ${down} down`:''}.`;
+    return `<section class="st-since" aria-label="Your lifts since the cut started">
+      <div class="st-since-h"><h2>Since your cut started</h2><span>${esc(N.shortDate(cs))} → now</span></div>
+      <p class="st-since-sum">${sum}</p>
+      <ol class="st-since-l">${rows.map((r,i)=>{const fold=rows.length>7&&i>=3&&i<rows.length-3,flat=Math.abs(r.pct)<.05,v=`${flat?'':r.pct>0?'+':'−'}${Math.abs(r.pct).toFixed(1)}%`;
+        return `<li class="${fold?'is-more':''}" style="--i:${i}">
+        <span class="st-since-n"><span class="nm">${esc(r.name)}</span>${gyms.size>1?`<small>${esc(r.gym)}</small>`:''}</span>
+        <span class="st-since-bar${r.pct<0?' is-neg':''}" aria-hidden="true"><i style="--w:${(Math.abs(r.pct)/mx*50).toFixed(2)}%"></i></span>
+        <b class="vn-num">${v}</b></li>`;}).join('')}</ol>
+      ${rows.length>7?`<button type="button" class="st-since-more" aria-expanded="false" onclick="const s=this.closest('.st-since'),o=s.classList.toggle('is-open');this.setAttribute('aria-expanded',String(o));this.textContent=o?'Show fewer':'Show all ${rows.length}'">Show all ${rows.length}</button>`:''}
+      <p class="st-since-note">Estimated 1RM of the best set: first session of your cut against the latest, same gym.</p>
+    </section>`;
+  }
   function performanceView(items) {
     const note=`<p class="vn-perf-note">${esc(PERF_NOTE)}</p>`;
     if(!items.length)return `<section class="vn-perf">${performanceSummary(items)}${note}</section>`;
-    return `<section class="vn-perf" aria-label="Exercise comparisons">${performanceSummary(items)}<ol class="vn-perf-rows">${items.map(performanceRow).join('')}</ol>${note}</section>`;
+    return `<section class="vn-perf" aria-label="Exercise comparisons">${performanceSummary(items)}${strengthSinceHTML(items)}<ol class="vn-perf-rows">${items.map(performanceRow).join('')}</ol>${note}</section>`;
   }
   /* ---- Progress › Training: the activity ledger (NXTFRM 2.0) ---------------
      Every figure is N.activityWeeks() / N.activitySummary(): counts and sums

@@ -488,7 +488,10 @@ test("chart: the distant goal is not a chart reference line (D3)", function () {
   assert.strictEqual(m.forecast, null, "forecast off by default");
   const journey = N.journeyHTML();
   assert.ok(journey.indexOf("Cut journey") !== -1, "Journey section exists");
-  assert.ok(/Goal\s*80/.test(journey), "Journey shows the goal range");
+  /* D95 sets each rail label as the figure over its word ("80–82" over "Goal"), where it used to read
+     "Goal 80–82"; the check now reads the label text in that order and asks for the whole range. */
+  const journeyText = journey.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  assert.ok(/80–82 Goal/.test(journeyText), "Journey shows the goal range");
 });
 
 test("chart: one calibrated y-axis, with ticks and no second scale", function () {
