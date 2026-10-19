@@ -2223,10 +2223,42 @@ const NXP = (() => {
   function performanceSummary(items) {
     return `<header class="vn-perf-lead"><p class="vn-perf-intro">${esc(performanceIntro(items))}</p></header>`;
   }
+  /* D99 · Your lifts since the cut started. Each lift's session value from the engine (the estimated 1RM of its
+     best set, a comparison aid) at the cut start against its latest session, same exercise and gym: the last
+     session on or before the cut start, or the first one after it. One question only, so no status words here:
+     those answer "the last four sessions" in the list below (I12). Nothing here is a score. Lifts with only older
+     history, or a single session, are left out; past seven lifts the middle folds behind "Show all". */
+  function strengthSinceHTML(items) {
+    const rows0=N.weights(),cs=settings&&Number.isFinite(N.dateMs(settings.cutStart))&&settings.cutStart<=state.date?settings.cutStart:(rows0[0]&&rows0[0].date);
+    if(!cs)return '';
+    const gyms=new Set(items.map(x=>x.gym));
+    const rows=items.filter(x=>x.status!=='Older history'&&Array.isArray(x.history)&&x.history.length>=2).map(x=>{
+      const h=x.history;let b=null;
+      for(const s of h){if(s.date<=cs)b=s;else break;}
+      if(!b)b=h.find(s=>s.date>cs);
+      const l=h[h.length-1];
+      if(!b||!l||b===l||!(b.value>0))return null;
+      return {name:x.name,gym:x.gym,status:x.status,pct:(l.value/b.value-1)*100,from:b.date};
+    }).filter(Boolean).sort((a,b)=>b.pct-a.pct);
+    if(rows.length<2)return '';
+    const mx=Math.max(4,...rows.map(r=>Math.abs(r.pct))),up=rows.filter(r=>r.pct>=.5).length,down=rows.filter(r=>r.pct<=-.5).length;
+    const sum=`<b>${up} of ${rows.length}</b> ${N.plural(rows.length,'lift')} up since ${esc(N.shortDate(cs))}${down?`, ${down} down`:''}.`;
+    return `<section class="st-since" aria-label="Your lifts since the cut started">
+      <div class="st-since-h"><h2>Since your cut started</h2><span>${esc(N.shortDate(cs))} → now</span></div>
+      <p class="st-since-sum">${sum}</p>
+      <ol class="st-since-l">${rows.map((r,i)=>{const fold=rows.length>7&&i>=3&&i<rows.length-3,flat=Math.abs(r.pct)<.05,v=`${flat?'':r.pct>0?'+':'−'}${Math.abs(r.pct).toFixed(1)}%`;
+        return `<li class="${fold?'is-more':''}" style="--i:${i}">
+        <span class="st-since-n"><span class="nm">${esc(r.name)}</span>${gyms.size>1?`<small>${esc(r.gym)}</small>`:''}</span>
+        <span class="st-since-bar${r.pct<0?' is-neg':''}" aria-hidden="true"><i style="--w:${(Math.abs(r.pct)/mx*50).toFixed(2)}%"></i></span>
+        <b class="vn-num">${v}</b></li>`;}).join('')}</ol>
+      ${rows.length>7?`<button type="button" class="st-since-more" aria-expanded="false" onclick="const s=this.closest('.st-since'),o=s.classList.toggle('is-open');this.setAttribute('aria-expanded',String(o));this.textContent=o?'Show fewer':'Show all ${rows.length}'">Show all ${rows.length}</button>`:''}
+      <p class="st-since-note">Estimated 1RM of the best set: first session of your cut against the latest, same gym.</p>
+    </section>`;
+  }
   function performanceView(items) {
     const note=`<p class="vn-perf-note">${esc(PERF_NOTE)}</p>`;
     if(!items.length)return `<section class="vn-perf">${performanceSummary(items)}${note}</section>`;
-    return `<section class="vn-perf" aria-label="Exercise comparisons">${performanceSummary(items)}<ol class="vn-perf-rows">${items.map(performanceRow).join('')}</ol>${note}</section>`;
+    return `<section class="vn-perf" aria-label="Exercise comparisons">${performanceSummary(items)}${strengthSinceHTML(items)}<ol class="vn-perf-rows">${items.map(performanceRow).join('')}</ol>${note}</section>`;
   }
   /* ---- Progress › Training: the activity ledger (NXTFRM 2.0) ---------------
      Every figure is N.activityWeeks() / N.activitySummary(): counts and sums

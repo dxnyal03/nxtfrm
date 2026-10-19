@@ -1548,7 +1548,7 @@ const STRATA = (() => {
     const L = {
       home: [["Log weight", () => apx95OpenQuickWeight()], ["Log cardio", () => showCardioSheet()]],
       train: [lift ? [s ? "Resume " + sessionName : "Start " + sessionName, () => NXP.enterTrain()] : null, ["Change today's session", () => showSessionSheet()], ["Log cardio", () => showCardioSheet()]],
-      weight: [["Weight", view("overview")], ["Training", view("training")], ["Lifts", view("strength")], ["Body", view("body")], ["Log weight", () => apx95OpenQuickWeight()], ["Share your cut", () => NXP.shareProgress && NXP.shareProgress()]],
+      weight: [["Weight", view("overview")], ["Training", view("training")], ["Lifts", view("strength")], ["Body", view("body")], ["Log weight", () => apx95OpenQuickWeight()], ["Play your cut", () => story()], ["Share your cut", () => NXP.shareProgress && NXP.shareProgress()]],
       history: [["Your sky", () => observatory()], ["Today", go("history", () => NXP.historySelect && NXP.historySelect(localToday()))], ["Lifting days", hist("strength")], ["Weigh-ins", hist("body")], ["Cardio", hist("conditioning")]],
       more: [["Training plan", () => NXT.more("training")], ["Data & sync", () => NXT.more("data")], ["Appearance", () => NXT.more("appearance")]]
     };
@@ -1681,6 +1681,7 @@ const STRATA = (() => {
 
   function hydrate(page) {
     if (!page) return;
+    if (page.id === "homePage") setTimeout(goalCheck, 1400);
     const tab = (typeof state === "object" && state && state.tab) || "home";
     const entering = state0.lastTab !== tab;
     state0.lastTab = tab;
@@ -1703,6 +1704,7 @@ const STRATA = (() => {
       /* D85's Share button is part of the Cut journey markup now (D95), so nothing is injected here. */
       bindJourney(page);
       bindEvidence(page);
+      setTimeout(goalCheck, 900);
     }
     resumeRest();
     resumeExercise(page);
@@ -1882,6 +1884,8 @@ const STRATA = (() => {
     sec.querySelectorAll("[data-st-jr-go]").forEach(b => b.addEventListener("click", () => jrGo(b.getAttribute("data-st-jr-go"))));
     const back = q(".st-jr-back");
     if (back) back.addEventListener("click", () => { jrGo(null); rail.focus({ preventScroll: true }); });
+    const play = sec.querySelector("[data-st-story]");
+    if (play) play.addEventListener("click", story);
     const m = NXT.ui && NXT.ui.chart, sel = NXT.ui && NXT.ui.selected;
     if (sel && m && m.points && m.points.length && sel !== m.points[m.points.length - 1].date) jrShow(sel);
   }
@@ -1990,7 +1994,217 @@ const STRATA = (() => {
     });
     g.addEventListener("blur", () => { if (cur !== null) reset(700); });
   }
-  return { observatory, closeObservatory, hydrate, install, odoSet, stopReplay, sky, haptic, glance: () => { glTouch = 0; showGlance(); }, tiltState, allowTilt, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
+
+  /* ---- D99 · Play your cut ---------------------------------------------------------------------------------
+     A full-screen story of the cut so far, tapped through like a year in review: the start, the kilograms down,
+     the fastest week, the lifts, the mornings weighed and where it is heading, ending on the share card (D85).
+     Every figure is the engine's: the Cut journey's start and Now (D97), Mon–Sun morning averages with at least
+     three readings (the Week by week rule), strengthItems() and its words (I12), the weigh-ins themselves and
+     forecastGoal(). Nothing is stored. Under reduced motion nothing moves and nothing advances by itself. */
+  const SYD = 6500;
+  let SY = null;
+  const syLong = d => { try { return new Date(d + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }); } catch (e) { return shortDate(d); } };
+  const kgTxt = v => Number.isInteger(v) ? String(v) : (Math.round(v * 10) / 10).toFixed(1);
+  const sySigned = v => { const r = Math.round(v * 100) / 100; return (r < 0 ? "−" : r > 0 ? "+" : "") + Math.abs(r).toFixed(2); };
+  function cutFacts() {
+    if (typeof NXT !== "object" || typeof NXT.weights !== "function") return null;
+    const N = NXT, rows = N.weights().filter(r => r.date <= state.date);
+    if (rows.length < 5) return null;
+    const startW = N.finite(typeof START_WEIGHT !== "undefined" ? START_WEIGHT : null);
+    const seed = startW !== null ? startW : rows[0].weight;
+    const cs = typeof settings === "object" && settings && Number.isFinite(N.dateMs(settings.cutStart)) && settings.cutStart <= state.date ? settings.cutStart : null;
+    const first = cs || rows[0].date;
+    const conf = !!N.cfg().targetConfirmed, lo = typeof goalLow === "function" ? Number(goalLow()) : NaN, hi = typeof goalHigh === "function" ? Number(goalHigh()) : NaN;
+    const nl = N.nowLevel(rows), now = nl ? nl.value : rows[rows.length - 1].weight;
+    const days = Math.max(0, Math.round((N.dateMs(state.date) - N.dateMs(first)) / 864e5));
+    const since = days >= 14 ? Math.round(days / 7) + " weeks" : days + " " + N.plural(days, "day");
+    const weighed = new Set(rows.filter(r => r.date >= first).map(r => r.date));
+    const lv = N.levelSeries(rows).filter(q => q.date >= first);
+    return { N, rows, seed, first, conf, lo, hi, now, days, since, weighed, lv, done: seed - now, goal: conf && Number.isFinite(lo) && Number.isFinite(hi) };
+  }
+  function syBar(F, cls) {
+    const max = Math.max(F.seed, F.now, F.goal ? F.hi : F.now) + .6, min = Math.min(F.goal ? F.lo : F.now, F.now, F.seed) - 1.2, span = Math.max(.8, max - min);
+    const pc = v => Math.max(0, Math.min(100, (max - v) / span * 100));
+    const a = pc(F.seed), b = pc(F.now), beads = [];
+    for (let k = Math.floor(F.seed - 1e-6); k > (F.goal ? F.hi : Math.floor(F.now) - 1); k--) beads.push(`<i class="st-sy-bd${k >= F.now ? " is-on" : ""}" style="left:${pc(k).toFixed(2)}%;--d:${(Math.max(0, pc(k) - a) / Math.max(1, b - a)).toFixed(3)}"></i>`);
+    return `<div class="st-sy-bar ${cls || ""}" aria-hidden="true"><i class="st-sy-tr"></i>${F.goal ? `<i class="st-sy-gl" style="left:${Math.min(pc(F.lo), pc(F.hi)).toFixed(2)}%;width:${Math.abs(pc(F.lo) - pc(F.hi)).toFixed(2)}%"></i>` : ""}<i class="st-sy-fl" style="left:${Math.min(a, b).toFixed(2)}%;width:${Math.abs(b - a).toFixed(2)}%"></i>${beads.join("")}<i class="st-sy-nw" style="left:${b.toFixed(2)}%;--x0:${a.toFixed(2)}%"></i></div>`;
+  }
+  function storyChapters(F) {
+    const N = F.N, ch = [], dir = F.done >= .05 ? "down" : F.done <= -.05 ? "up" : "no change";
+    ch.push({ k: "start", eye: "Day one", num: F.seed.toFixed(1), unit: "kg", sub: `${syLong(F.first)}. The first morning of your cut.`,
+      vis: `<div class="st-sy-seed" aria-hidden="true"><i></i><i></i><i></i><b></b></div>${F.goal ? `<p class="st-sy-goal">Goal · ${F.lo}–${F.hi} kg</p>` : ""}` });
+    const togo = F.goal ? (F.now > F.hi ? `${(F.now - F.hi).toFixed(1)} kg to your ${F.hi} kg goal.` : F.now >= F.lo ? "You are in your goal range." : "You are below your goal range.") : "";
+    ch.push({ k: "down", eye: "So far", num: Math.abs(F.done).toFixed(1), unit: "kg " + (dir === "no change" ? "" : dir), sub: `In ${F.since}. ${togo}`.trim(), vis: syBar(F) });
+    const wk = [];
+    for (let ws = N.weekStart(F.first); N.dateAdd(ws, 6) < state.date; ws = N.dateAdd(ws, 7)) { const w = N.windowStats(F.rows, N.dateAdd(ws, 6), 7); wk.push({ ws, avg: w.n >= 3 ? w.avg : null }); }
+    let best = null;
+    for (let i = 1; i < wk.length; i++) if (wk[i].avg !== null && wk[i - 1].avg !== null) { const drop = wk[i - 1].avg - wk[i].avg; if (!best || drop > best.drop) best = { i, drop }; }
+    if (best && best.drop >= .1) {
+      const pts = wk.map((w, i) => ({ ...w, i })).filter(w => w.avg !== null), lo = Math.min(...pts.map(w => w.avg)), hi = Math.max(...pts.map(w => w.avg));
+      const Wd = 340, Hd = 200, x = i => 12 + i * ((Wd - 24) / Math.max(1, wk.length)), y = v => 16 + (hi - v) / Math.max(.4, hi - lo) * (Hd - 40);
+      let d = "", prev = null;
+      for (const w of pts) { const x0 = x(w.i), x1 = x(w.i + 1), yy = y(w.avg); d += prev === null ? `M${x0.toFixed(1)},${yy.toFixed(1)}` : (prev.i === w.i - 1 ? ` V${yy.toFixed(1)}` : ` M${x0.toFixed(1)},${yy.toFixed(1)}`); d += ` H${x1.toFixed(1)}`; prev = w; }
+      const b0 = wk[best.i - 1], b1 = wk[best.i], bx = x(best.i);
+      const labs = wk.map((w, i) => (i === 0 || i === wk.length - 1 || i === best.i) ? `<text x="${((x(i) + x(i + 1)) / 2).toFixed(1)}" y="${Hd - 4}" text-anchor="middle"${i === best.i ? ' class="is-on"' : ""}>${esc(shortDate(w.ws))}</text>` : "").join("");
+      ch.push({ k: "fast", eye: "The fastest week", num: "−" + best.drop.toFixed(1), unit: "kg", sub: `Week of ${shortDate(b1.ws)}. Your biggest drop in a single week, by morning average.`,
+        vis: `<svg class="st-sy-stairs" viewBox="0 0 ${Wd} ${Hd}" aria-hidden="true"><rect class="beam" x="${bx.toFixed(1)}" y="0" width="${(x(best.i + 1) - bx).toFixed(1)}" height="${Hd - 18}"/><path class="st" d="${d}" pathLength="1"/><path class="hl" d="M${bx.toFixed(1)},${y(b0.avg).toFixed(1)} V${y(b1.avg).toFixed(1)} H${x(best.i + 1).toFixed(1)}"/><circle cx="${x(best.i + 1).toFixed(1)}" cy="${y(b1.avg).toFixed(1)}" r="6"/>${labs}</svg>` });
+    }
+    const items = N.strengthItems(), fresh = items.filter(it => it.delta !== null), imp = fresh.filter(it => it.status === "Improving").sort((a, b) => b.delta - a.delta), hold = fresh.filter(it => it.status === "Holding steady").length;
+    if (fresh.length) {
+      const top = imp.slice(0, 3), mx = Math.max(1, ...top.map(it => it.delta));
+      ch.push({ k: "lifts", eye: "Your lifts", num: String(imp.length), unit: imp.length === 1 ? "improving" : "improving", sub: `Of ${fresh.length} ${N.plural(fresh.length, "lift")} with four recent sessions${hold ? `, ${hold} holding steady` : ""}. The app's own read, not a tested maximum.`,
+        vis: top.length ? `<ol class="st-sy-lifts">${top.map((it, i) => `<li style="--k:${i}"><span>${esc(it.name)}</span><i style="--w:${(it.delta / mx * 100).toFixed(1)}%"></i><b>+${it.delta.toFixed(1)}%</b></li>`).join("")}</ol>` : "" });
+    }
+    const total = F.days + 1, got = F.weighed.size;
+    { const cells = [], lead = (new Date(F.first + "T12:00:00").getDay() + 6) % 7, n = total + lead, step = Math.min(28, 1400 / Math.max(1, n));
+      for (let i = 0; i < lead; i++) cells.push('<i class="is-pad"></i>');
+      for (let i = 0; i < total; i++) { const d = NXT.dateAdd(F.first, i); cells.push(`<i class="${F.weighed.has(d) ? "is-y" : ""}" style="--t:${Math.round((i + lead) * step)}ms"></i>`); }
+      /* A long cut folds two or three weeks into a row and shrinks the dots, so the grid never outgrows the screen. */
+      const rows7 = Math.ceil(n / 7), per = rows7 > 20 ? 21 : rows7 > 10 ? 14 : 7, sz = per === 21 ? 8 : per === 14 ? 11 : rows7 > 8 ? 12 : 16, gp = per === 21 ? 4 : per === 14 ? 6 : rows7 > 8 ? 6 : 8;
+      ch.push({ k: "morn", eye: "Your mornings", num: String(got), unit: "of " + total, sub: `days weighed since ${shortDate(F.first)}. Each one tightens the trend.`, vis: `<div class="st-sy-days" style="--c:${per};--s:${sz}px;--g:${gp}px" aria-hidden="true">${cells.join("")}</div>` }); }
+    const f = NXT.forecastGoal(F.rows), share = '<button type="button" class="st-sy-share"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5.5 9.5H5a1.5 1.5 0 0 0-1.5 1.5v4.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V11A1.5 1.5 0 0 0 15 9.5h-.5"/></svg>Share your cut</button>';
+    if (!F.goal) ch.push({ k: "next", eye: "What's next", num: F.now.toFixed(1), unit: "kg now", sub: "Set a goal range in Settings to see where this is heading.", vis: share });
+    else if (F.now <= F.hi) ch.push({ k: "next", eye: "Where you are", num: F.now.toFixed(1), unit: "kg now", sub: F.now >= F.lo ? `Inside your ${F.lo}–${F.hi} kg goal range. A weight range alone does not measure leanness.` : `Below your ${F.lo}–${F.hi} kg goal range.`, vis: share });
+    else if (f.ok && f.weeks > 0) ch.push({ k: "next", eye: "What's next", num: "~" + f.weeks, unit: f.weeks === 1 ? "week" : "weeks", sub: `To ${F.hi} kg around ${shortDate(NXT.dateAdd(state.date, f.weeks * 7))}, at your last 3 weeks' pace of ${sySigned(f.slope * 7)} kg/wk. An estimate, not a measurement.`, vis: share });
+    else ch.push({ k: "next", eye: "What's next", num: (F.now - F.hi).toFixed(1), unit: "kg to go", sub: (f.reason || "Keep weighing in.").replace(/([^.])$/, "$1."), vis: share });
+    return ch;
+  }
+  function story() {
+    if (SY || document.querySelector(".st-story")) return;
+    const F = cutFacts(); if (!F) { toast("A few more weigh-ins first: the story needs at least five."); return; }
+    const ch = storyChapters(F);
+    const el = document.createElement("div");
+    el.className = "st-story"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", `Your cut, in ${ch.length} parts`);
+    el.innerHTML = `<div class="st-sy-bg" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="st-sy-top"><div class="st-sy-segs" aria-hidden="true">${ch.map(() => "<i><b></b></i>").join("")}</div>
+        <div class="st-sy-row"><span class="st-sy-n">Your cut · <b>1</b> of ${ch.length}</span><button type="button" class="st-sy-x" aria-label="Close the story"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15"/></svg></button></div></div>
+      <div class="st-sy-stage" aria-live="polite"></div>
+      <div class="st-sy-foot"><button type="button" class="st-sy-prev" aria-label="Previous part"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg></button><span class="st-sy-hint">${reduced() ? "Tap the sides to move" : "Tap for next · hold to pause"}</span><button type="button" class="st-sy-next" aria-label="Next part"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5"/></svg></button></div>`;
+    document.body.appendChild(el);
+    document.documentElement.classList.add("st-story-open");
+    SY = { el, ch, i: -1, acc: 0, last: 0, paused: false, raf: 0, back: document.activeElement, held: false };
+    const stage = el.querySelector(".st-sy-stage");
+    let down = null, holdT = 0;
+    stage.addEventListener("pointerdown", e => { if (e.target.closest("button")) return; down = { x: e.clientX, y: e.clientY, t: performance.now() }; clearTimeout(holdT); holdT = setTimeout(() => { if (SY) { SY.held = true; SY.paused = true; el.classList.add("is-held"); } }, 230); });
+    stage.addEventListener("pointerup", e => {
+      clearTimeout(holdT);
+      if (!down || !SY) return;
+      const dx = e.clientX - down.x, dy = e.clientY - down.y; down = null;
+      if (SY.held) { SY.held = false; SY.paused = false; el.classList.remove("is-held"); return; }
+      if (dy > 90 && Math.abs(dx) < 70) { storyClose(); return; }
+      if (e.target.closest("button")) return;
+      (e.clientX < window.innerWidth * .32 ? syGo(SY.i - 1) : syGo(SY.i + 1));
+    });
+    stage.addEventListener("pointercancel", () => { clearTimeout(holdT); down = null; if (SY && SY.held) { SY.held = false; SY.paused = false; el.classList.remove("is-held"); } });
+    el.querySelector(".st-sy-x").addEventListener("click", storyClose);
+    el.querySelector(".st-sy-prev").addEventListener("click", () => syGo(SY.i - 1));
+    el.querySelector(".st-sy-next").addEventListener("click", () => syGo(SY.i + 1));
+    SY.key = e => {
+      if (!SY) return;
+      if (e.key === "Escape") { e.preventDefault(); storyClose(); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); syGo(SY.i + 1); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); syGo(SY.i - 1); }
+      else if (e.key === " " && !e.target.closest("button")) { e.preventDefault(); SY.paused = !SY.paused; el.classList.toggle("is-held", SY.paused); }
+      else if (e.key === "Tab") { const f = [...el.querySelectorAll("button")].filter(b => !b.disabled && b.offsetParent !== null); if (!f.length) return; const a = f.indexOf(document.activeElement); if (e.shiftKey && a <= 0) { e.preventDefault(); f[f.length - 1].focus(); } else if (!e.shiftKey && (a === f.length - 1 || a < 0)) { e.preventDefault(); f[0].focus(); } }
+    };
+    /* On the document, not the overlay: after a tap the focus can sit on the page body. */
+    document.addEventListener("keydown", SY.key, true);
+    document.addEventListener("visibilitychange", syVis);
+    syGo(0);
+    el.querySelector(".st-sy-x").focus({ preventScroll: true });
+    haptic("tick");
+    if (!reduced()) { SY.last = performance.now(); SY.raf = requestAnimationFrame(syTick); }
+  }
+  function syVis() { if (SY && document.hidden) SY.paused = true; else if (SY && !SY.held) SY.paused = false; }
+  function syTick(now) {
+    if (!SY) return;
+    const dt = Math.min(100, now - SY.last); SY.last = now;
+    const lastCh = SY.i >= SY.ch.length - 1;
+    if (!SY.paused && !lastCh) SY.acc += dt;
+    const seg = SY.el.querySelectorAll(".st-sy-segs b")[SY.i];
+    if (seg) seg.style.transform = `scaleX(${lastCh ? 1 : Math.min(1, SY.acc / SYD)})`;
+    if (!lastCh && SY.acc >= SYD) syGo(SY.i + 1);
+    SY.raf = requestAnimationFrame(syTick);
+  }
+  function syGo(i) {
+    if (!SY) return;
+    if (i < 0) i = 0;
+    if (i >= SY.ch.length) { storyClose(); return; }
+    if (i === SY.i) return;
+    SY.i = i; SY.acc = 0;
+    const c = SY.ch[i], el = SY.el;
+    el.setAttribute("data-ch", c.k);
+    el.querySelectorAll(".st-sy-segs b").forEach((b, k) => { b.style.transform = `scaleX(${k < i ? 1 : k === i && reduced() ? 1 : 0})`; });
+    el.querySelector(".st-sy-n b").textContent = String(i + 1);
+    el.querySelector(".st-sy-prev").disabled = i === 0;
+    const stage = el.querySelector(".st-sy-stage");
+    stage.innerHTML = `<div class="st-sy-ch is-${c.k}"><p class="st-sy-eye">${esc(c.eye)}</p><div class="st-sy-mega"><span data-st-num>${esc(c.num)}</span>${c.unit ? `<small>${esc(c.unit)}</small>` : ""}</div><p class="st-sy-sub">${esc(c.sub)}</p><div class="st-sy-vis">${c.vis || ""}</div></div>`;
+    const node = stage.firstElementChild;
+    const sh = node.querySelector(".st-sy-share");
+    if (sh) sh.addEventListener("click", () => { storyClose(); setTimeout(() => { if (typeof NXP === "object" && NXP.shareProgress) NXP.shareProgress(); }, 60); });
+    if (!reduced()) { requestAnimationFrame(() => { node.classList.add("is-in"); countNum(node.querySelector("[data-st-num]")); }); }
+    else node.classList.add("is-in", "is-still");
+  }
+  function storyClose() {
+    if (!SY) return;
+    cancelAnimationFrame(SY.raf);
+    document.removeEventListener("visibilitychange", syVis);
+    document.removeEventListener("keydown", SY.key, true);
+    const el = SY.el, back = SY.back; SY = null;
+    document.documentElement.classList.remove("st-story-open");
+    if (reduced()) el.remove(); else { el.classList.add("is-out"); setTimeout(() => el.remove(), 320); }
+    if (back && back.focus && back.isConnected) back.focus({ preventScroll: true });
+  }
+
+  /* ---- D99 · Goal reached -------------------------------------------------------------------------------------
+     On the day the Cut journey's Now (D97) first enters the goal range, one full-screen moment: the road filled,
+     the facts of the cut, the share card. Read from the level series, shown once per app session, nothing stored. */
+  let goalShown = false, goalTries = 0;
+  function goalDue() {
+    if (goalShown) return false;
+    const F = cutFacts();
+    if (!F || !F.goal || F.lv.length < 3) return false;
+    const last = F.lv[F.lv.length - 1];
+    if (!(last.value <= F.hi) || last.date < NXT.dateAdd(state.date, -1)) return false;
+    return F.lv.slice(0, -1).every(q => q.value > F.hi);
+  }
+  function goalCheck() {
+    if (!goalDue()) return;
+    if (document.querySelector(".st-story,.st-goal,.st-wm,.st-fin,.st-ask,.st-obs,#modalRoot .modal")) { if (goalTries++ < 8) setTimeout(goalCheck, 2500); return; }
+    goalMoment();
+  }
+  function goalMoment() {
+    if (document.querySelector(".st-goal")) return;
+    const F = cutFacts(); if (!F || !F.goal || !(F.now <= F.hi + 1e-9)) return;
+    goalShown = true;
+    const weeks = Math.max(1, Math.round(F.days / 7));
+    const el = document.createElement("div");
+    el.className = "st-goal"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "st-goal-t");
+    const sparks = reduced() ? "" : Array.from({ length: 18 }, (_, i) => `<i style="--a:${(i * 20).toFixed(0)}deg;--t:${(i % 6) * 90}ms"></i>`).join("");
+    el.innerHTML = `<div class="st-sy-bg" aria-hidden="true"><i></i><i></i><i></i></div><div class="st-goal-sp" aria-hidden="true">${sparks}</div>
+      <div class="st-goal-in">
+        <p class="st-goal-eye">Goal range reached</p>
+        <h2 class="st-goal-t" id="st-goal-t">You’re in your goal range</h2>
+        ${syBar(F, "is-goal")}
+        <div class="st-goal-facts"><div><b data-st-num>${Math.abs(F.done).toFixed(1)}</b><span>kg ${F.done >= 0 ? "down" : "up"}</span></div><div><b data-st-num>${weeks}</b><span>${weeks === 1 ? "week" : "weeks"}</span></div><div><b data-st-num>${F.weighed.size}</b><span>mornings weighed</span></div></div>
+        <p class="st-goal-sub">Now ${F.now.toFixed(1)} kg, inside ${kgTxt(F.lo)}–${kgTxt(F.hi)} kg. A weight range alone does not measure leanness.</p>
+        <div class="st-goal-acts"><button type="button" class="st-goal-share">Share your cut</button><button type="button" class="st-goal-done">Done</button></div>
+      </div>`;
+    document.body.appendChild(el);
+    document.documentElement.classList.add("st-story-open");
+    const back = document.activeElement;
+    let key = null;
+    const close = () => { document.removeEventListener("keydown", key, true); document.documentElement.classList.remove("st-story-open"); if (reduced()) el.remove(); else { el.classList.add("is-out"); setTimeout(() => el.remove(), 320); } if (back && back.focus && back.isConnected) back.focus({ preventScroll: true }); };
+    el.querySelector(".st-goal-done").addEventListener("click", close);
+    el.querySelector(".st-goal-share").addEventListener("click", () => { close(); setTimeout(() => { if (typeof NXP === "object" && NXP.shareProgress) NXP.shareProgress(); }, 60); });
+    key = e => { if (!el.isConnected) return; if (e.key === "Escape") { e.preventDefault(); close(); } else if (e.key === "Tab") { const f = [...el.querySelectorAll("button")]; const a = f.indexOf(document.activeElement); if (e.shiftKey && a <= 0) { e.preventDefault(); f[f.length - 1].focus(); } else if (!e.shiftKey && (a === f.length - 1 || a < 0)) { e.preventDefault(); f[0].focus(); } } };
+    document.addEventListener("keydown", key, true);
+    el.querySelector(".st-goal-done").focus({ preventScroll: true });
+    haptic("success");
+    if (!reduced()) requestAnimationFrame(() => { el.classList.add("is-in"); el.querySelectorAll("[data-st-num]").forEach(countNum); });
+    else el.classList.add("is-in", "is-still");
+  }
+  return { observatory, closeObservatory, hydrate, install, odoSet, stopReplay, sky, haptic, story, storyClose, goalMoment, goalCheck, glance: () => { glTouch = 0; showGlance(); }, tiltState, allowTilt, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
 })();
 STRATA.install();
 if (typeof NXT === "object" && NXT && typeof NXT.repaint === "function" && document.readyState !== "loading") {
