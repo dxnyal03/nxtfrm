@@ -171,8 +171,6 @@ const STRATA = (() => {
       }
       if (clip) clip.insertAdjacentHTML("beforeend", `<line id="st-stem" class="st-stem" y1="0" y2="0" x1="0" x2="0" visibility="hidden"/>`);
     }
-    const read = page.querySelector("#vn-traj-read");
-    if (read && /^no plateau detected\.?$/i.test(read.textContent.trim())) read.hidden = true;
     const wrapEl = page.querySelector("#vn-chart-wrap");
     if (wrapEl && !wrapEl.querySelector(".st-tip")) { wrapEl.style.position = "relative"; wrapEl.insertAdjacentHTML("beforeend", `<div class="st-tip" hidden></div>`); }
   }
@@ -214,7 +212,7 @@ const STRATA = (() => {
         const attrs = x => `class="st-wk wx-it${x.w.part ? " is-now" : ""}" data-a="${x.w.st}" data-b="${x.w.end}" aria-label="${esc(`${x.w.part ? "This week so far" : "Week of " + shortDate(x.w.st)}: average ${x.w.avg.toFixed(1)} kilograms${x.d === null ? "" : x.dir === "flat" ? ", unchanged" : `, ${x.dir} ${Math.abs(x.d).toFixed(1)} on the week before`}, ${x.w.n} of ${x.so} mornings weighed`)}"`;
         if (style === "ledger") {
           host.className = "st-weeks wx-ledger" + (entering && !reduced() ? " is-draw" : "");
-          host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Morning average, Mon–Sun</small></div><ol class="st-wk-l">${meta.map((x, k) => `<li ${attrs(x)} style="--i:${k}"><span class="wx-d">${esc(x.name)}${x.w.part ? `<small>${7 - x.so} ${7 - x.so === 1 ? "day" : "days"} to go</small>` : ""}</span><b class="wx-v">${x.w.avg.toFixed(1)}<em>kg</em></b>${chip(x)}<span class="wx-dots" aria-hidden="true">${x.days.map(c => `<i class="is-${c}"></i>`).join("")}</span></li>`).join("")}</ol>`;
+          host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Morning average, Mon–Sun</small></div><ol class="st-wk-l">${meta.map((x, k) => `<li ${attrs(x)} style="--i:${k}"><span class="wx-d">${esc(x.name)}${x.w.part ? `<small>${7 - x.so} ${7 - x.so === 1 ? "day" : "days"} to go</small>` : ""}</span><b class="wx-v">${x.w.avg.toFixed(1)}<em>kg</em></b>${chip(x)}<span class="wx-dots" aria-hidden="true">${x.days.map((c, j) => `<i class="is-${c}" style="--j:${j}"></i>`).join("")}</span></li>`).join("")}</ol>`;
         }
       }
     }
@@ -646,7 +644,7 @@ const STRATA = (() => {
       io.unobserve(e.target);
       const el = e.target;
       if (el.hasAttribute("data-st-view")) { el.classList.add("is-in", "st-play"); rollDec(el); }
-      if (el.classList.contains("st-rv")) el.classList.add("st-rv-in");
+      if (el.classList.contains("st-rv")) { el.classList.add("st-rv-in"); revealNums(el); }
     }
   }, { threshold: 0.28, rootMargin: "0px 0px -6% 0px" }) : null;
   function rollDec(root) {
@@ -1650,7 +1648,7 @@ const STRATA = (() => {
   }
   function bindPull() {
     let y0 = null, x0 = 0, pulling = false, px = 0, armed = false;
-    const blocked = t => !t || !t.closest || !!t.closest("#modalRoot,input,textarea,select,#vn-chart-wrap,.st-gl,.st-fin,.st-ask,.st-dk,.vn-week,[data-rail],.nxp-cal-grid,.tabs,#stTop,.st-shr");
+    const blocked = t => !t || !t.closest || !!t.closest("#modalRoot,input,textarea,select,#vn-chart-wrap,.st-jr-rail,.st-ev-g,.st-story,.st-goal,.st-gl,.st-fin,.st-ask,.st-dk,.vn-week,[data-rail],.nxp-cal-grid,.tabs,#stTop,.st-shr");
     document.addEventListener("touchstart", e => {
       y0 = null;
       if (e.touches.length !== 1 || (window.scrollY || 0) > 0 || blocked(e.target)) return;
@@ -1703,6 +1701,8 @@ const STRATA = (() => {
     if (page.id === "weightPage") {
       dressChartHead();
       /* D85's Share button is part of the Cut journey markup now (D95), so nothing is injected here. */
+      bindJourney(page);
+      bindEvidence(page);
     }
     resumeRest();
     resumeExercise(page);
@@ -1727,7 +1727,7 @@ const STRATA = (() => {
     bindSheets();
     if (typeof NXT === "object" && typeof NXT.selectPoint === "function" && !NXT.selectPoint.__strata) {
       const sp = NXT.selectPoint;
-      NXT.selectPoint = function (index, opts) { const o = sp.apply(this, arguments); try { progressTip(index, opts); weeksSync(index); if (index !== lastScrub && !(opts && opts.clear)) { if (lastScrub !== -1) haptic("tick"); lastScrub = index; } } catch (e) {} return o; };
+      NXT.selectPoint = function (index, opts) { const o = sp.apply(this, arguments); try { progressTip(index, opts); weeksSync(index); weeksReplay(index); jrFromChart(index, opts); if (index !== lastScrub && !(opts && opts.clear)) { if (lastScrub !== -1 && !JR.dragging) haptic("tick"); lastScrub = index; } } catch (e) {} return o; };
       NXT.selectPoint.__strata = true;
     }
     bindCalSwipe();
@@ -1767,6 +1767,228 @@ const STRATA = (() => {
       }, 150);
     });
     document.documentElement.classList.add("st-on");
+  }
+
+  /* ---- D96 · Cut journey and Evidence, interactive -------------------------------------------------------
+     One time cursor for the Weight view. The chart's selection (scrub, replay, a week row) rewinds the Cut
+     journey to that day; dragging the journey's bar, its arrow keys or a milestone move the chart's selection
+     when that day is on the chart. Every figure is the journey's own level series (D97) shipped in
+     data-st-jr: nothing here goes beyond a lookup, a difference and a position on the bar. */
+  const JR = { sec: null, d: null, at: null, base: null, k: null, dragging: false };
+  function jrParse(sec) { try { return JSON.parse(sec.getAttribute("data-st-jr")); } catch (e) { return null; } }
+  function jrAt(d, date) { let v = null, w = null; for (const q of d.pts) { if (q[0] > date) break; v = q[1]; w = q[0]; } return v === null ? null : { v, date: w }; }
+  function jrFirstAt(d, kg) { for (const q of d.pts) if (q[1] <= kg) return q[0]; return null; }
+  function jrPct(d, v) { return Math.max(0, Math.min(100, (d.max - v) / d.span * 100)); }
+  function jrGo(date) {
+    const m = NXT.ui && NXT.ui.chart;
+    if (m && m.points && m.points.length) {
+      if (date === null) { NXT.selectPoint(m.points.length - 1, { clear: true }); return; }
+      const i = m.points.findIndex(p => p.date === date);
+      if (i >= 0) { NXT.selectPoint(i); return; }
+    }
+    jrShow(date);
+  }
+  function jrFromChart(index, opts) {
+    if (!JR.sec || !JR.sec.isConnected) return;
+    const m = NXT.ui.chart, p = m && m.points && m.points[index];
+    if (!p) return;
+    jrShow((opts && opts.clear) || index === m.points.length - 1 ? null : p.date);
+  }
+  function stopCount(el) { if (el) el.dataset.stTok = String(Math.random()); }
+  function jrWord(word, date) {
+    const em = JR.sec && JR.sec.querySelector("[data-st-jr-noww]"); if (!em) return;
+    const i = em.querySelector("i"); if (em.firstChild && em.firstChild.nodeType === 3) em.firstChild.nodeValue = word; if (i) i.textContent = date || "";
+  }
+  function jrShow(date) {
+    const sec = JR.sec, d = JR.d;
+    if (!sec || !d || !sec.isConnected) return;
+    const q = sel => sec.querySelector(sel);
+    const set = (sel, t) => { const el = q(sel); if (el && t != null) { stopCount(el); el.textContent = t; } };
+    const rail = q(".st-jr-rail"), dot = q(".vn-journey-now"), trav = q(".vn-journey-travel"), fut = q(".st-jr-fut"), today = q(".st-jr-today"), back = q(".st-jr-back"), when = q(".st-jr-when");
+    const L = date ? jrAt(d, date) : null, last = d.pts[d.pts.length - 1][0];
+    const isToday = !L || L.date >= last;
+    sec.classList.toggle("is-rewind", !isToday);
+    rtCursor(isToday ? null : L.date);
+    if (isToday) {
+      JR.at = null; JR.k = null;
+      const b = JR.base;
+      set("[data-st-jr-done]", b.done); set("[data-st-jr-sub]", b.sub); set("[data-st-jr-togo]", b.togo); set("[data-st-jr-togol]", b.togol);
+      set("[data-st-jr-nowv]", b.nowv); jrWord("Now", b.noww); if (when) when.textContent = b.when;
+      dot.style.left = jrPct(d, d.now) + "%"; trav.style.left = b.trav.left; trav.style.width = b.trav.width; trav.classList.toggle("is-back", b.trav.back);
+      fut.hidden = true; today.hidden = true; if (back) back.hidden = true;
+      sec.querySelectorAll(".st-jr-bead").forEach((x, i) => x.classList.toggle("is-on", !!b.beads[i]));
+      rail.setAttribute("aria-valuenow", rail.getAttribute("aria-valuemax")); rail.setAttribute("aria-valuetext", b.vt);
+      return;
+    }
+    JR.at = L.date;
+    const v = L.v, done = d.seed - v, togo = v - d.hi, ds = shortDate(L.date);
+    const k = Math.floor(v);
+    if (JR.k !== null && k !== JR.k && JR.dragging) haptic("tick");
+    JR.k = k;
+    set("[data-st-jr-done]", Math.abs(done).toFixed(1));
+    set("[data-st-jr-sub]", `${done >= .05 ? "down" : done <= -.05 ? "up" : "no change"} by ${ds}`);
+    if (q("[data-st-jr-togo]")) { set("[data-st-jr-togo]", Math.max(0, togo).toFixed(1)); set("[data-st-jr-togol]", togo > 0 ? "to go that day" : "in your range that day"); }
+    set("[data-st-jr-nowv]", v.toFixed(1)); jrWord("Then", ds);
+    if (when) when.textContent = (d.first ? shortDate(d.first) : shortDate(d.pts[0][0])) + " \u2192 " + ds;
+    const pv = jrPct(d, v), ps = jrPct(d, d.seed), pn = jrPct(d, d.now);
+    dot.style.left = pv + "%";
+    trav.classList.toggle("is-back", v > d.seed + .05);
+    trav.style.left = Math.min(ps, pv) + "%"; trav.style.width = Math.abs(pv - ps) + "%";
+    fut.hidden = false; fut.style.left = Math.min(pv, pn) + "%"; fut.style.width = Math.abs(pn - pv) + "%";
+    today.hidden = false; today.style.left = pn + "%";
+    if (back) back.hidden = false;
+    sec.querySelectorAll(".st-jr-bead").forEach(x => { const r = jrFirstAt(d, Number(x.dataset.k)); x.classList.toggle("is-on", !!r && r <= L.date); });
+    rail.setAttribute("aria-valuenow", String(Math.max(0, Math.round((NXT.dateMs(L.date) - NXT.dateMs(d.pts[0][0])) / 864e5))));
+    rail.setAttribute("aria-valuetext", `${ds}: ${v.toFixed(1)} kilograms, ${Math.abs(done).toFixed(1)} ${done >= 0 ? "down" : "up"}`);
+  }
+  function bindJourney(page) {
+    const sec = page.querySelector(".st-jr[data-st-jr]");
+    JR.sec = null; JR.d = null; JR.at = null; JR.k = null;
+    if (!sec) return;
+    const d = jrParse(sec);
+    if (!d || !Array.isArray(d.pts) || d.pts.length < 3) return;
+    JR.sec = sec; JR.d = d;
+    const q = sel => sec.querySelector(sel), tx = sel => { const el = q(sel); return el ? el.textContent : null; };
+    const rail = q(".st-jr-rail"), trav = q(".vn-journey-travel");
+    JR.base = { done: tx("[data-st-jr-done]"), sub: tx("[data-st-jr-sub]"), togo: tx("[data-st-jr-togo]"), togol: tx("[data-st-jr-togol]"), when: tx(".st-jr-when"),
+      nowv: tx("[data-st-jr-nowv]"), noww: tx("[data-st-jr-noww] i"), vt: rail.getAttribute("aria-valuetext"),
+      trav: { left: trav.style.left, width: trav.style.width, back: trav.classList.contains("is-back") },
+      beads: [...sec.querySelectorAll(".st-jr-bead")].map(b => b.classList.contains("is-on")) };
+    const pick = x => {
+      const r = rail.getBoundingClientRect(), kg = d.max - Math.max(0, Math.min(1, (x - r.left) / r.width)) * d.span;
+      if (kg >= d.seed) return d.pts[0][0];
+      if (kg <= d.now) return null;
+      return jrFirstAt(d, kg);
+    };
+    let drag = false;
+    rail.addEventListener("pointerdown", e => { if (e.button > 0) return; drag = true; JR.dragging = true; try { rail.setPointerCapture(e.pointerId); } catch (_) {} sec.classList.add("is-drag"); jrGo(pick(e.clientX)); });
+    rail.addEventListener("pointermove", e => { if (drag) jrGo(pick(e.clientX)); });
+    const end = () => { drag = false; JR.dragging = false; sec.classList.remove("is-drag"); };
+    rail.addEventListener("pointerup", end); rail.addEventListener("pointercancel", end);
+    rail.addEventListener("keydown", e => {
+      const n = d.pts.length, ix = JR.at ? Math.max(0, d.pts.findIndex(p => p[0] === JR.at)) : n - 1;
+      const near = t => { const j = d.pts.findIndex(p => p[0] >= t); return j < 0 ? n - 1 : j; };
+      let to;
+      if (e.key === "ArrowLeft" || e.key === "ArrowDown") to = Math.max(0, ix - 1);
+      else if (e.key === "ArrowRight" || e.key === "ArrowUp") to = Math.min(n - 1, ix + 1);
+      else if (e.key === "PageUp") to = Math.max(0, near(NXT.dateAdd(d.pts[ix][0], -7)));
+      else if (e.key === "PageDown") to = near(NXT.dateAdd(d.pts[ix][0], 7));
+      else if (e.key === "Home") to = 0;
+      else if (e.key === "End" || (e.key === "Escape" && JR.at)) to = n - 1;
+      else return;
+      e.preventDefault();
+      jrGo(to >= n - 1 ? null : d.pts[to][0]);
+    });
+    sec.querySelectorAll("[data-st-jr-go]").forEach(b => b.addEventListener("click", () => jrGo(b.getAttribute("data-st-jr-go"))));
+    const back = q(".st-jr-back");
+    if (back) back.addEventListener("click", () => { jrGo(null); rail.focus({ preventScroll: true }); });
+    const m = NXT.ui && NXT.ui.chart, sel = NXT.ui && NXT.ui.selected;
+    if (sel && m && m.points && m.points.length && sel !== m.points[m.points.length - 1].date) jrShow(sel);
+  }
+  /* The rate chart's cursor follows the same day. */
+  function rtCursor(date) {
+    const svg = document.querySelector("#weightPage .st-rax-svg"), g = svg && svg.querySelector(".st-rax-cur");
+    if (!g) return;
+    let d; try { d = JSON.parse(svg.getAttribute("data-st-rax")); } catch (e) { return; }
+    let pt = null;
+    if (date && date >= d.d0 && date < d.d1) for (const p of d.pts) { if (p[0] > date) break; pt = p; }
+    if (!pt) { g.setAttribute("visibility", "hidden"); return; }
+    const t0 = NXT.dateMs(d.d0), t1 = NXT.dateMs(d.d1), x = (d.x0 + (NXT.dateMs(pt[0]) - t0) / Math.max(864e5, t1 - t0) * (d.x1 - d.x0)).toFixed(1);
+    const ln = g.querySelector("line"), c = g.querySelector("circle");
+    ln.setAttribute("x1", x); ln.setAttribute("x2", x); c.setAttribute("cx", x); c.setAttribute("cy", String(pt[1]));
+    g.setAttribute("visibility", "visible");
+  }
+  /* Replay fills the week list as it goes: weeks after the replayed day wait their turn. */
+  function weeksReplay(index) {
+    const host = document.querySelector(".st-weeks"), m = NXT.ui && NXT.ui.chart, p = m && m.points && m.points[index];
+    if (!host) return;
+    const on = !!(state0.replay && p);
+    host.classList.toggle("is-replay", on);
+    host.querySelectorAll(".st-wk").forEach(r => r.classList.toggle("is-ahead", on && r.dataset.a > p.date));
+  }
+  /* Numbers count up once, as their card scrolls in after a tab change. A rewind cancels a count in flight. */
+  function countNum(el) {
+    if (reduced() || !el || el.dataset.stCounted) return;
+    const txt = el.textContent.trim(), m = /^([+−-]?)(\d+(?:\.\d+)?)$/.exec(txt);
+    if (!m) return;
+    el.dataset.stCounted = "1";
+    const tok = String(Math.random()); el.dataset.stTok = tok;
+    const sign = m[1], target = parseFloat(m[2]), dp = (m[2].split(".")[1] || "").length, t0 = performance.now(), dur = 950;
+    const step = now => {
+      if (!el.isConnected || el.dataset.stTok !== tok) return;
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 4);
+      el.textContent = k < 1 ? sign + (target * e).toFixed(dp) : txt;
+      if (k < 1) requestAnimationFrame(step);
+    };
+    el.textContent = sign + (0).toFixed(dp);
+    requestAnimationFrame(step);
+  }
+  function revealNums(el) { if (el && el.querySelectorAll) el.querySelectorAll("[data-st-num]").forEach(countNum); }
+  /* What-if pace (D96): drag the marker, or use the arrow keys, to try another pace. Plain arithmetic from
+     where you are now to the top of the goal range; it springs back when you let go and is never stored. */
+  function bindEvidence(page) {
+    const g = page.querySelector(".st-ev-g.is-what");
+    if (!g) return;
+    let d; try { d = JSON.parse(g.getAttribute("data-st-ev")); } catch (e) { return; }
+    if (!d || !(d.now > d.hi) || !(d.ref > 0)) return;
+    const sec = g.closest(".st-ev"), knob = g.querySelector(".st-ev-gk"), lab = g.querySelector(".st-ev-gkl"), trail = g.querySelector(".st-ev-trail"), z = g.querySelector(".st-ev-z");
+    const wi = sec.querySelector(".st-ev-wi"), hint = sec.querySelector(".st-ev-hint");
+    if (!knob || !lab || !trail || !z || !wi) return;
+    const mkPct = Math.min(d.axis, Math.max(0, -d.rate) / d.ref * 100), mkAt = mkPct / d.axis * 100;
+    const base = { vt: g.getAttribute("aria-valuetext"), now: g.getAttribute("aria-valuenow") };
+    const hiTxt = Number.isInteger(d.hi) ? String(d.hi) : Number(d.hi).toFixed(1), flatKg = d.flat / 100 * d.ref;
+    let cur = null, drag = false, t = 0, lastStep = null;
+    function show(p) {
+      clearTimeout(t);
+      p = Math.max(0, Math.min(d.axis, p)); cur = p;
+      const kg = p / 100 * d.ref, at = p / d.axis * 100;
+      g.classList.remove("is-back"); sec.classList.add("is-whatif");
+      knob.hidden = false; lab.hidden = false; trail.hidden = false; wi.hidden = false; wi.classList.remove("is-out"); if (hint) hint.hidden = true;
+      knob.style.left = at + "%"; lab.style.left = Math.max(10, Math.min(90, at)) + "%";
+      trail.style.left = Math.min(at, mkAt) + "%"; trail.style.width = Math.abs(mkAt - at) + "%";
+      lab.textContent = "−" + kg.toFixed(2) + " kg/wk";
+      const b = wi.querySelector("b"), sp = wi.querySelector("span");
+      let vt;
+      if (kg <= flatKg) {
+        b.textContent = "No arrival at this pace";
+        sp.textContent = `Under ${flatKg.toFixed(2)} kg a week the trend reads as flat. A what-if, not a forecast.`;
+        vt = `What if ${kg.toFixed(2)} kilograms a week: no arrival, the trend reads as flat`;
+      } else {
+        const weeks = (d.now - d.hi) / kg, date = NXT.dateAdd(d.today, Math.max(1, Math.round(weeks * 7))), wk = Math.max(1, Math.round(weeks));
+        b.textContent = `${hiTxt} kg around ${shortDate(date)}`;
+        sp.textContent = `About ${wk} ${wk === 1 ? "week" : "weeks"} at −${kg.toFixed(2)} kg/wk from ${Number(d.now).toFixed(1)} kg now${p > 1 ? ", past the 1% line" : ""}. A what-if, not a forecast.`;
+        vt = `What if ${kg.toFixed(2)} kilograms a week: ${hiTxt} kilograms around ${shortDate(date)}`;
+      }
+      g.setAttribute("aria-valuenow", kg.toFixed(2)); g.setAttribute("aria-valuetext", vt);
+      const step = Math.round(kg * 10);
+      if (drag && lastStep !== null && step !== lastStep) haptic("tick");
+      lastStep = step;
+    }
+    function reset(delay) {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        if (cur === null) return;
+        cur = null; lastStep = null;
+        g.classList.add("is-back"); knob.style.left = mkAt + "%"; lab.hidden = true; trail.hidden = true; wi.classList.add("is-out");
+        g.setAttribute("aria-valuetext", base.vt); g.setAttribute("aria-valuenow", base.now);
+        t = setTimeout(() => { knob.hidden = true; wi.hidden = true; wi.classList.remove("is-out"); g.classList.remove("is-back"); sec.classList.remove("is-whatif"); if (hint) hint.hidden = false; }, reduced() ? 0 : 520);
+      }, delay);
+    }
+    const fromX = x => { const r = z.getBoundingClientRect(); return Math.max(0, Math.min(1, (x - r.left) / r.width)) * d.axis; };
+    g.addEventListener("pointerdown", e => { if (e.button > 0) return; drag = true; g.classList.add("is-drag"); try { g.setPointerCapture(e.pointerId); } catch (_) {} show(fromX(e.clientX)); });
+    g.addEventListener("pointermove", e => { if (drag) show(fromX(e.clientX)); });
+    const up = () => { if (!drag) return; drag = false; g.classList.remove("is-drag"); reset(1800); };
+    g.addEventListener("pointerup", up); g.addEventListener("pointercancel", up);
+    g.addEventListener("keydown", e => {
+      const stepPct = 0.05 / d.ref * 100;
+      let p = cur === null ? mkPct : cur;
+      if (e.key === "ArrowRight" || e.key === "ArrowUp") p += stepPct;
+      else if (e.key === "ArrowLeft" || e.key === "ArrowDown") p -= stepPct;
+      else if (e.key === "Escape" && cur !== null) { e.preventDefault(); reset(0); return; }
+      else return;
+      e.preventDefault(); show(p);
+    });
+    g.addEventListener("blur", () => { if (cur !== null) reset(700); });
   }
   return { observatory, closeObservatory, hydrate, install, odoSet, stopReplay, sky, haptic, glance: () => { glTouch = 0; showGlance(); }, tiltState, allowTilt, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
 })();

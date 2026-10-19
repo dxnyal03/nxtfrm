@@ -1662,9 +1662,6 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 .st-wchips li.is-low i{background:var(--st-lean);box-shadow:0 0 8px var(--st-lean)}
 #weightPage .st-wchips li span{font:550 13px/1.2 var(--st-font) !important;color:var(--st-ink) !important;text-transform:none !important;letter-spacing:0 !important}
 
-.st-down{margin:12px 0 0}
-#weightPage .st-down,#weightPage .st-down b{font:520 15px/1.35 var(--st-font) !important;color:var(--st-ink-2) !important}
-#weightPage .st-down b{font-weight:640 !important;color:var(--st-ink) !important}
 
 .st-slow{margin:0 0 16px}
 #weightPage .st-slow{font:450 14px/1.45 var(--st-font) !important;color:var(--st-ink-3) !important}
@@ -2170,7 +2167,6 @@ html{caret-color:#B49AFF;-webkit-tap-highlight-color:transparent}
 #weightPage h2.nxp-caption.nxp-progress-body-heading{font-size:var(--fs-sect) !important;font-weight:var(--fw-semi) !important}/* 18/590 */
 #weightPage h2.vn-h-sub{font-size:var(--fs-hero) !important;font-weight:var(--fw-semi) !important}/* 20/590 */
 #weightPage p.st-cm-read{font-size:var(--fs-row) !important;font-weight:var(--fw-reg) !important}/* 16/400 */
-#weightPage p.st-down{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 15/520 */
 #weightPage p.vn-h-sect{font-size:var(--fs-sect) !important;font-weight:var(--fw-semi) !important}/* 18/590 */
 #weightPage p.vn-meta.vn-mt2{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12.5/500 */
 #weightPage span.vn-row-v{font-size:var(--fs-hero) !important;font-weight:var(--fw-semi) !important}/* 20/600 */
@@ -2183,7 +2179,6 @@ html{caret-color:#B49AFF;-webkit-tap-highlight-color:transparent}
 #historyPage .nxp-history-ex b{font:300 22px/1.1 var(--st-font-d) !important;letter-spacing:-.02em !important;font-variant-numeric:tabular-nums}
 /* Remaining off-scale text, snapped with its own context (audit, second pass) */
 #weightPage .vn-weight h2.vn-h-sub{font-size:var(--fs-hero) !important;font-weight:var(--fw-semi) !important}
-#weightPage .st-down b{font-size:var(--fs-row) !important;font-weight:var(--fw-semi) !important}
 #trainPage .st-card-head b,#trainPage .st-card-head span{font-size:var(--fs-sect) !important}
 #trainPage .st-card-head b{font-weight:var(--fw-semi) !important}
 #trainPage .nxp-seg button{font-size:var(--fs-label) !important}
@@ -4024,7 +4019,7 @@ body.st-live-on main::after{height:76px}
 #weightPage .st-jr-sub{margin:7px 0 0;font:500 14px/1.3 var(--st-font);color:var(--st-ink-3)}
 #weightPage .st-jr-togo{margin-left:auto;min-width:0;text-align:right}
 #weightPage .st-jr-togo b{display:block;font:300 30px/1 var(--st-font-d);letter-spacing:-.03em;color:var(--st-ink);white-space:nowrap;font-feature-settings:"tnum" 1}
-#weightPage .st-jr-togo span{display:block;margin-top:6px;font:500 13px/1.3 var(--st-font);color:var(--st-ink-3)}
+#weightPage .st-jr-togo>span{display:block;margin-top:6px;font:500 13px/1.3 var(--st-font);color:var(--st-ink-3)}
 #weightPage .st-jr-rail{height:40px;margin:18px 4px 0}
 #weightPage .st-jr-rail .vn-journey-track{top:17px;height:6px;border-radius:3px;background:rgba(var(--st-hl),.07)}
 #weightPage .st-jr-rail .vn-journey-band{top:12px;height:16px;border-radius:6px;background:rgba(139,92,246,.18);box-shadow:inset 0 0 0 1.5px rgba(167,139,250,.6)}
@@ -4105,3 +4100,114 @@ body.st-live-on main::after{height:76px}
 @media (prefers-reduced-motion:reduce){#weightPage .st-jr .vn-journey-travel,#weightPage .st-jr .st-jr-ahead,#weightPage .st-jr .vn-journey-now,#weightPage .st-ev .st-ev-mk{animation:none !important}}
 :root[data-nxp-motion="reduced"] #weightPage .st-jr .vn-journey-travel,:root[data-nxp-motion="reduced"] #weightPage .st-jr .st-jr-ahead,
 :root[data-nxp-motion="reduced"] #weightPage .st-jr .vn-journey-now,:root[data-nxp-motion="reduced"] #weightPage .st-ev .st-ev-mk{animation:none !important}
+
+/* ---- D96 · Milestones, rewind, what-if pace, rate across your cut ------------------------------------------
+   The journey bar is a slider through your cut (drag, arrow keys, a milestone, or the chart's own scrub and
+   replay); the gauge marker is a what-if slider that springs back; the rate chart answers "am I slowing down?".
+   Motion: counts and the draw-in play once on scroll-in; the light sweep loops slowly; none under reduced motion. */
+#weightPage .st-jr-rail[role="slider"]{cursor:grab;touch-action:pan-y;outline:none}
+#weightPage .st-jr-rail[role="slider"]::before{content:"";position:absolute;left:-6px;right:-6px;top:-10px;bottom:-10px}
+#weightPage .st-jr.is-drag .st-jr-rail{cursor:grabbing}
+#weightPage .st-jr-rail[role="slider"]:focus-visible{box-shadow:0 0 0 2px rgba(180,154,255,.75);border-radius:12px}
+#weightPage .st-jr-bead{position:absolute;top:18px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:rgba(203,184,255,.3);pointer-events:none}
+#weightPage .st-jr-bead.is-on{background:#E4DBFF;box-shadow:0 0 6px rgba(196,181,253,.9)}
+#weightPage .st-jr-fut{position:absolute;top:17px;height:6px;border-radius:3px;background:rgba(139,92,246,.26);pointer-events:none}
+#weightPage .st-jr-today{position:absolute;top:11px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:rgba(7,6,11,.55);box-shadow:inset 0 0 0 2px rgba(203,184,255,.75);pointer-events:none}
+#weightPage .st-jr-rail .vn-journey-now{transition:left .12s linear}
+#weightPage .st-jr.is-drag .st-jr-rail .vn-journey-now{box-shadow:0 0 0 7px rgba(139,92,246,.3),0 0 24px rgba(196,181,253,1) !important}
+#weightPage .st-jr.is-rewind .st-jr-big{background:linear-gradient(180deg,#F1EBFF 35%,#BBA3FF 100%);-webkit-background-clip:text;background-clip:text}
+#weightPage .st-jr.is-rewind .st-jr-sub,#weightPage .st-jr.is-rewind .st-jr-labs .is-now em{color:#D4C4FF}
+#weightPage .st-jr.is-rewind .st-jr-when{color:#DCD0FF !important}
+@media (max-width:359px){#weightPage .st-jr .st-jr-when{display:none}#weightPage .vn-weight .st-jr .vn-sect-head .vn-h-sect{margin:0 auto 0 0 !important}}
+#weightPage .st-jr-labs em{font-style:normal}
+#weightPage .st-jr-ms{margin-top:16px}
+#weightPage .st-jr-mh{margin:0 0 8px;font:560 13px/1.2 var(--st-font);color:var(--st-ink-2)}
+#weightPage .st-jr-ms ul{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+#weightPage .st-jr-mc{position:relative;display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 12px;border:0;border-radius:999px;cursor:pointer;
+  font:560 13px/1.2 var(--st-font-d);color:var(--st-ink);background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+#weightPage button.st-jr-mc::after{content:"";position:absolute;left:-2px;right:-2px;top:-5px;bottom:-5px}
+#weightPage .st-jr-mc em{font-style:normal;font-weight:500;color:var(--st-ink-2);font-feature-settings:"tnum" 1}
+#weightPage .st-jr-mc i{width:7px;height:7px;flex:none;border-radius:50%;background:#B49AFF;box-shadow:0 0 7px rgba(180,154,255,.8)}
+#weightPage .st-jr-mc.is-low i{width:10px;height:10px;border-radius:1px;background:#EFE8FF;box-shadow:none;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
+#weightPage .st-jr-mc.is-est{cursor:default;background:none;box-shadow:none;outline:1.5px dashed rgba(196,181,253,.5);outline-offset:-1.5px;color:#DCD0FF}
+#weightPage .st-jr-mc.is-est i{background:none;box-shadow:inset 0 0 0 1.5px #C4B5FD}
+#weightPage .st-jr-mc:focus-visible{outline:2px solid rgba(180,154,255,.8);outline-offset:2px}
+#weightPage .st-jr-backrow{display:flex;justify-content:flex-end}
+#weightPage .st-jr-back{margin-top:12px;min-height:40px;padding:0 15px;border:0;border-radius:999px;cursor:pointer;font:600 13.5px/1 var(--st-font-d);color:#EDE6FF;
+  background:rgba(139,92,246,.22);box-shadow:inset 0 0 0 1px rgba(180,154,255,.45)}
+#weightPage .st-jr-back::after{content:"";position:absolute;inset:-3px}
+#weightPage .st-jr-back{position:relative}
+/* light runs along the road travelled toward Now */
+#weightPage .st-jr-rail .vn-journey-travel{overflow:hidden}
+#weightPage .st-jr-rail .vn-journey-travel::after{content:"";position:absolute;top:0;bottom:0;left:0;width:34%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);transform:translateX(-110%);animation:st-jr-flow 6.5s var(--st-glide) 2.2s infinite}
+#weightPage .st-jr.is-rewind .st-jr-rail .vn-journey-travel::after,#weightPage .st-jr-rail .vn-journey-travel.is-back::after{animation:none;opacity:0}
+@keyframes st-jr-flow{0%{transform:translateX(-110%)}38%,100%{transform:translateX(320%)}}
+
+/* what-if pace */
+#weightPage .st-ev-g.is-what{cursor:grab;touch-action:pan-y;outline:none}
+#weightPage .st-ev-g.is-what::before{content:"";position:absolute;left:-4px;right:-4px;top:-14px;bottom:-6px}
+#weightPage .st-ev-g.is-what:focus-visible{box-shadow:0 0 0 2px rgba(180,154,255,.75);border-radius:10px}
+#weightPage .st-ev-g.is-drag{cursor:grabbing}
+#weightPage .st-ev-gk{position:absolute;top:-1px;width:18px;height:22px;margin-left:-9px;border-radius:9px;background:radial-gradient(circle at 50% 40%,#FFFFFF,#C9B6FF 60%,#8B5CF6);
+  box-shadow:0 0 0 5px rgba(139,92,246,.28),0 0 20px rgba(196,181,253,.95);transition:left .5s var(--st-spring,cubic-bezier(.2,.9,.3,1.2));pointer-events:none;z-index:2}
+#weightPage .st-ev-g.is-drag .st-ev-gk{transition:none}
+#weightPage .st-ev-gkl{position:absolute;bottom:calc(100% + 6px);transform:translateX(-50%);padding:4px 9px;border-radius:9px;background:#7C4DFF;font:650 12.5px/1.2 var(--st-font-d);color:#FFFFFF;white-space:nowrap;pointer-events:none;box-shadow:0 8px 16px -8px rgba(0,0,0,.8)}
+#weightPage .st-ev-trail{position:absolute;top:9px;height:2px;border-radius:1px;background:linear-gradient(90deg,rgba(214,200,255,.95),rgba(214,200,255,.25));pointer-events:none}
+#weightPage .st-ev-hint{margin:10px 0 0;font:500 12px/1.3 var(--st-font);color:var(--st-ink-2)}
+#weightPage .st-ev-wi{margin-top:12px;padding:12px 13px;border-radius:15px;background:rgba(139,92,246,.15);box-shadow:inset 0 0 0 1px rgba(180,154,255,.38);transition:opacity .35s ease}
+#weightPage .st-ev-wi.is-out{opacity:0}
+#weightPage .st-ev-wi p{margin:0;font:650 11px/1.2 var(--st-font-d);letter-spacing:.14em;text-transform:uppercase;color:#D9CCFF}
+#weightPage .st-ev-wi b{display:block;margin-top:5px;font:520 19px/1.2 var(--st-font-d);letter-spacing:-.015em;color:var(--st-ink)}
+#weightPage .st-ev-wi span{display:block;margin-top:4px;font:450 12.5px/1.42 var(--st-font);color:var(--st-ink-2)}
+#weightPage .st-ev.is-whatif .st-ev-note{opacity:.45}
+#weightPage .st-ev-g.is-what{margin-top:30px}
+
+/* rate across your cut */
+#weightPage .st-rax{margin-top:10px}
+#weightPage .st-rax-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+#weightPage .st-rax-h p{margin:0;font:600 15px/1.2 var(--st-font-d);color:var(--st-ink)}
+#weightPage .st-rax-h span{margin:0 !important;font:500 11.5px/1.2 var(--st-font) !important;color:var(--st-ink-2) !important}
+#weightPage .st-rax-svg{display:block;width:100%;height:auto;margin-top:10px;overflow:visible}
+#weightPage .st-rax-svg .z-up{fill:rgba(220,90,118,.07)}
+#weightPage .st-rax-svg .z-flat{fill:rgba(255,255,255,.08)}
+#weightPage .st-rax-svg .z-steady{fill:rgba(139,92,246,.13)}
+#weightPage .st-rax-svg .z-fast{fill:rgba(217,160,74,.11)}
+#weightPage .st-rax-svg .z-one{fill:none;stroke:#E8C88F;stroke-opacity:.8;stroke-width:1.5;stroke-dasharray:5 4}
+#weightPage .st-rax-svg .z-zero{stroke:rgba(255,255,255,.18);stroke-width:1}
+#weightPage .st-rax-svg .st-rax-line{fill:none;stroke:#D9CCFF;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+#weightPage .st-rax-svg .st-rax-dot{fill:#FFFFFF}
+#weightPage .st-rax-svg .st-rax-halo{fill:none;stroke:rgba(255,255,255,.32);stroke-width:2}
+#weightPage .st-rax-svg .st-rax-cur line{stroke:rgba(214,200,255,.55);stroke-width:1.2;stroke-dasharray:3 3}
+#weightPage .st-rax-svg .st-rax-cur circle{fill:#B49AFF;stroke:#FFFFFF;stroke-width:1.5}
+#weightPage .st-rax-plot{position:relative;margin-top:10px}
+#weightPage .st-rax-plot .st-rax-svg{margin-top:0}
+#weightPage .st-rax-zl{position:absolute;right:0;transform:translateY(-50%);font:560 11px/1 var(--st-font);color:#ADA8C0;white-space:nowrap;pointer-events:none}
+#weightPage .st-rax-zl.is-one{color:#E8C88F}
+#weightPage .st-rax-xl{display:flex;justify-content:space-between;margin-top:6px;font:500 11px/1.2 var(--st-font);color:#ADA8C0}
+#weightPage .st-rax>span{display:block;margin-top:8px;font:450 12.5px/1.42 var(--st-font);color:var(--st-ink-2)}
+#weightPage .st-ev.st-rv-in .st-rax-line{stroke-dasharray:1;stroke-dashoffset:1;animation:st-draw 1.2s var(--st-glide) .35s forwards}
+#weightPage .st-ev.st-rv-in .st-rax-dot,#weightPage .st-ev.st-rv-in .st-rax-halo{animation:st-jr-fade .4s var(--st-out) 1.45s both}
+
+/* the gauge marker springs in; the confidence bars fill one by one; the week dots light day by day */
+#weightPage .st-ev.st-rv-in .st-ev-mk{animation:st-ev-mk-in .9s var(--st-spring,cubic-bezier(.2,.9,.3,1.2)) .35s both}
+@keyframes st-ev-mk-in{from{left:0;opacity:0}}
+#weightPage .st-ev-meter i.on{transform-origin:left center}
+#weightPage .st-ev.st-rv-in .st-ev-meter i.on{animation:st-ev-fill .5s var(--st-out) calc(.7s + var(--k,1) * .16s) both}
+@keyframes st-ev-fill{from{transform:scaleX(0)}}
+#weightPage .st-weeks.st-rv-in .wx-dots i.is-y{animation:wx-dot .38s var(--st-out) calc(.35s + var(--i,0) * 90ms + var(--j,0) * 55ms) both}
+@keyframes wx-dot{from{opacity:0;transform:scale(.2)}}
+#weightPage .st-weeks.is-replay .st-wk{transition:opacity .25s ease}
+#weightPage .st-weeks.is-replay .st-wk.is-ahead{opacity:.28}
+
+@media (prefers-reduced-motion:reduce){
+  #weightPage .st-jr-rail .vn-journey-travel::after,#weightPage .st-ev.st-rv-in .st-ev-mk,#weightPage .st-ev.st-rv-in .st-ev-meter i.on,#weightPage .st-weeks.st-rv-in .wx-dots i.is-y,
+  #weightPage .st-ev.st-rv-in .st-rax-line,#weightPage .st-ev.st-rv-in .st-rax-dot,#weightPage .st-ev.st-rv-in .st-rax-halo{animation:none !important}
+  #weightPage .st-jr-rail .vn-journey-travel::after{opacity:0}
+  #weightPage .st-ev-gk,#weightPage .st-jr-rail .vn-journey-now,#weightPage .st-ev-wi,#weightPage .st-weeks.is-replay .st-wk{transition:none !important}
+}
+:root[data-nxp-motion="reduced"] #weightPage .st-jr-rail .vn-journey-travel::after,:root[data-nxp-motion="reduced"] #weightPage .st-ev.st-rv-in .st-ev-mk,
+:root[data-nxp-motion="reduced"] #weightPage .st-ev.st-rv-in .st-ev-meter i.on,:root[data-nxp-motion="reduced"] #weightPage .st-weeks.st-rv-in .wx-dots i.is-y,
+:root[data-nxp-motion="reduced"] #weightPage .st-ev.st-rv-in .st-rax-line,:root[data-nxp-motion="reduced"] #weightPage .st-ev.st-rv-in .st-rax-dot,
+:root[data-nxp-motion="reduced"] #weightPage .st-ev.st-rv-in .st-rax-halo{animation:none !important}
+:root[data-nxp-motion="reduced"] #weightPage .st-jr-rail .vn-journey-travel::after{opacity:0}
+:root[data-nxp-motion="reduced"] #weightPage .st-ev-gk,:root[data-nxp-motion="reduced"] #weightPage .st-jr-rail .vn-journey-now,:root[data-nxp-motion="reduced"] #weightPage .st-ev-wi{transition:none !important}
