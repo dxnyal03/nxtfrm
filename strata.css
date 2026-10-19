@@ -491,16 +491,19 @@ button.st-tile:active{transform:scale(.985)}
 /* ---- ENTRANCE + SCROLL REVEAL -------------------------------------------------
    Plays when a tab is entered, never on the repaint that follows logging a set
    or saving a weigh-in (strata.js only adds .st-enter on a tab change). */
+/* Calmer (owner, 2026-10-19): a short 6-point fade-up with a tight stagger, so arriving on a tab settles
+   rather than moves. */
 .st-enter .st-bento>*,.st-enter .st-tile,.st-enter .st-plan-row,.st-enter .vn-weight>*,.st-enter .st-quick{
-  animation:st-rise .7s var(--st-glide) both;
+  animation:st-enter-rise .4s cubic-bezier(.25,.8,.25,1) both;
 }
-.st-enter .st-bento>*:nth-child(2){animation-delay:.05s}
-.st-enter .st-bento>*:nth-child(3){animation-delay:.1s}
-.st-enter .st-bento>*:nth-child(4){animation-delay:.14s}
-.st-enter .st-bento>*:nth-child(5){animation-delay:.18s}
-.st-enter .st-bento>*:nth-child(6){animation-delay:.22s}
-.st-enter .st-bento>*:nth-child(n+7){animation-delay:.26s}
-.st-enter .st-plan-row{animation-delay:calc(var(--i,0) * 45ms + .12s)}
+.st-enter .st-bento>*:nth-child(2){animation-delay:.03s}
+.st-enter .st-bento>*:nth-child(3){animation-delay:.06s}
+.st-enter .st-bento>*:nth-child(4){animation-delay:.08s}
+.st-enter .st-bento>*:nth-child(5){animation-delay:.1s}
+.st-enter .st-bento>*:nth-child(6){animation-delay:.12s}
+.st-enter .st-bento>*:nth-child(n+7){animation-delay:.14s}
+.st-enter .st-plan-row{animation-delay:calc(var(--i,0) * 25ms + .06s)}
+@keyframes st-enter-rise{from{opacity:0;transform:translateY(6px)}}
 @keyframes st-rise{from{opacity:0;transform:translateY(16px) scale(.985)}}
 
 /* ---- DOCK --------------------------------------------------------------------
@@ -849,7 +852,7 @@ button.st-refc:active{transform:scale(.97)}
 #historyPage .vn-hist-filters button.active,#historyPage .nxp-history-filters button.active{color:#fff !important}
 
 /* ---- SETTINGS ---------------------------------------------------------------------- */
-#morePage .vn-set-group{
+#morePage .vn-set-group,#morePage .vn-set-block{
   padding:6px 16px;margin-top:14px;border-radius:22px;border:1px solid var(--st-tile-line);background:var(--st-tile),var(--st-tile-bg);box-shadow:var(--st-tile-hl),var(--st-shadow);
 }
 #morePage .vn-set-grp{padding-top:12px}
@@ -909,7 +912,8 @@ html.st-sheet-open main{transform:scale(.94) translateY(10px);filter:brightness(
 .st-wd.is-lift b{color:#EDE6FF}
 .st-wd.is-today{box-shadow:inset 0 0 0 1.5px var(--st-accent-lift)}
 .st-gymseg{display:flex;padding:3px;border-radius:999px;background:rgba(var(--st-hl),.07)}
-.st-gymseg button{height:34px;padding:0 14px;border:0;border-radius:999px;background:none;cursor:pointer;color:var(--st-ink-3);font:550 13px var(--st-font)}
+.st-gymseg button{position:relative;height:36px;padding:0 14px;border:0;border-radius:999px;background:none;cursor:pointer;color:var(--st-ink-3);font:550 13px var(--st-font)}
+.st-gymseg button::after{content:"";position:absolute;inset:-4px 0}/* 44 pt effective target inside the 42 pt track */
 .st-gymseg button.is-on{background:rgba(var(--st-hl),.14);color:var(--st-ink)}
 .st-rts{display:flex;flex-direction:column;gap:10px}
 .st-rt{
@@ -1985,9 +1989,9 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 #morePage .apx96-danger .apx96-kicker{color:#F58BAE !important}
 #morePage button,#morePage .apx96-btn{text-transform:none !important;letter-spacing:0 !important}
 #morePage h1,#morePage h2,#morePage h3{font-weight:600 !important;letter-spacing:-.01em !important}
-#morePage .vn-set-group{border-radius:var(--st-r,26px) !important;-webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3)}
+#morePage .vn-set-group,#morePage .vn-set-block{border-radius:var(--st-r,26px) !important;-webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3)}
 #morePage .vn-set-back .st-ico,#morePage .apx96-back .st-ico{width:18px;height:18px;vertical-align:-4px;margin-right:2px}
-@media (prefers-reduced-transparency:reduce){#morePage .vn-set-group{-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-reduced-transparency:reduce){#morePage .vn-set-group,#morePage .vn-set-block{-webkit-backdrop-filter:none;backdrop-filter:none}}
 #morePage .apx96-more-subhead .apx96-kicker{display:none}
 #morePage *{text-transform:none !important}
 #morePage .kicker{font:550 13px/1.2 var(--st-font) !important;letter-spacing:0 !important;color:var(--st-ink-3) !important}
@@ -2014,7 +2018,7 @@ html{caret-color:#B49AFF;-webkit-tap-highlight-color:transparent}
 .vn-num,.st-odo,.st-mini-v,.st-qw-field input,.nxp-stepper-row input,.vn-row-v{font-variant-numeric:tabular-nums}
 
 /* Radii onto three steps: tiles, inner cards, controls */
-#morePage .vn-set-group,#morePage .apx96-card{border-radius:var(--r-tile) !important}
+#morePage .vn-set-group,#morePage .vn-set-block,#morePage .apx96-card{border-radius:var(--r-tile) !important}
 
 /* ---- Toast: a dark glass pill that drops in, not a lilac slab ---- */
 .toast{background:rgba(26,23,38,.92) !important;color:var(--st-ink) !important;font:550 13.5px/1.2 var(--st-font) !important;letter-spacing:0 !important;padding:12px 18px 12px 14px !important;
@@ -2382,15 +2386,15 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 .st-dec-txt b{font-weight:560 !important;letter-spacing:-.01em !important}
 
 /* ---- Material: lit glass on every card --------------------------------------- */
-.st-tile,#weightPage .vn-weight,#weightPage .vn-perf-rows,#weightPage .nxp-progress-body-section,#historyPage .vn-hist-calendar,#historyPage .nxp-history-calendar,#historyPage .vn-hist-day,#morePage .vn-set-group,#trainPage .nxp-train-idle-copy,#trainPage .st-cmeter{
+.st-tile,#weightPage .vn-weight,#weightPage .vn-perf-rows,#weightPage .nxp-progress-body-section,#historyPage .vn-hist-calendar,#historyPage .nxp-history-calendar,#historyPage .vn-hist-day,#morePage .vn-set-group,#morePage .vn-set-block,#trainPage .nxp-train-idle-copy,#trainPage .st-cmeter{
   border-color:transparent !important;box-shadow:var(--st-depth) !important;
 }
-.st-tile::before,#weightPage .vn-weight::before,#weightPage .vn-perf-rows::before,#weightPage .nxp-progress-body-section::before,#historyPage .vn-hist-calendar::before,#historyPage .vn-hist-day::before,#morePage .vn-set-group::before,#trainPage .nxp-train-idle-copy::before,#trainPage .st-cmeter::before{
+.st-tile::before,#weightPage .vn-weight::before,#weightPage .vn-perf-rows::before,#weightPage .nxp-progress-body-section::before,#historyPage .vn-hist-calendar::before,#historyPage .vn-hist-day::before,#morePage .vn-set-group::before,#morePage .vn-set-block::before,#trainPage .nxp-train-idle-copy::before,#trainPage .st-cmeter::before{
   content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;z-index:2;
   background:var(--st-edge);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
 }
-#weightPage .vn-perf-rows,#weightPage .nxp-progress-body-section,#historyPage .vn-hist-calendar,#historyPage .vn-hist-day,#morePage .vn-set-group,#trainPage .nxp-train-idle-copy,#trainPage .st-cmeter{position:relative;isolation:isolate}
+#weightPage .vn-perf-rows,#weightPage .nxp-progress-body-section,#historyPage .vn-hist-calendar,#historyPage .vn-hist-day,#morePage .vn-set-group,#morePage .vn-set-block,#trainPage .nxp-train-idle-copy,#trainPage .st-cmeter{position:relative;isolation:isolate}
 /* Category bloom: each tile lights its own corner in its own hue */
 .st-tile{background:
   radial-gradient(120% 90% at 0% 0%,color-mix(in srgb,var(--c,var(--st-accent)) 20%,transparent),transparent 55%),
@@ -3333,29 +3337,25 @@ html::after{content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;opa
 #morePage .vn-set-title{margin:calc(6px + 16.9px + 4px) 0 18px !important}
 @media (max-width:359px){#homePage .st-head .st-h1,#trainPage .nxp-train-chrome h1,#weightPage .nxp-progress-chrome h1,#historyPage .vn-hist-chrome h1,#morePage .vn-set-title{font-size:30px !important}}
 
-/* ---- D71 · Tab transitions ---------------------------------------------------------------------------
-   The page crossfades (the canvas and the dock live in it, so nothing slides out of the world); the
-   title travels in the direction of the tab you chose; the session name and the trend figure fly to
-   their place on the next screen. Group geometry uses the house spatial curve (I8: 280ms+, --st-out). */
+/* ---- D71 · Tab transitions (calmer, owner 2026-10-19) ---------------------------------------------------
+   A short crossfade with the title easing a few points in the direction of travel. Nothing flies across the
+   screen and nothing overshoots. Starting a workout keeps its own portal (below). */
 @media (prefers-reduced-motion:no-preference){
-  ::view-transition-group(*){animation-duration:.44s;animation-timing-function:cubic-bezier(.32,.72,0,1)}
-  ::view-transition-old(root){animation:st-vt-out .2s cubic-bezier(.4,0,1,1) both}
-  ::view-transition-new(root){animation:st-vt-in .34s cubic-bezier(.32,.72,0,1) .03s both}
+  ::view-transition-group(*){animation-duration:.22s;animation-timing-function:cubic-bezier(.25,.8,.25,1)}
+  ::view-transition-old(root){animation:st-vt-out .14s ease-in both}
+  ::view-transition-new(root){animation:st-vt-in .2s ease-out both}
   ::view-transition-old(st-mast),::view-transition-new(st-mast){height:100%;object-fit:none;object-position:left center}
-  ::view-transition-old(st-mast){animation:st-vt-mast-out-l .24s cubic-bezier(.4,0,1,1) both}
-  ::view-transition-new(st-mast){animation:st-vt-mast-in-r .46s cubic-bezier(.32,.72,0,1) .04s both}
+  ::view-transition-old(st-mast){animation:st-vt-mast-out-l .14s ease-in both}
+  ::view-transition-new(st-mast){animation:st-vt-mast-in-r .22s ease-out both}
   :root[data-st-nav="back"]::view-transition-old(st-mast){animation-name:st-vt-mast-out-r}
   :root[data-st-nav="back"]::view-transition-new(st-mast){animation-name:st-vt-mast-in-l}
-  ::view-transition-group(st-m-session),::view-transition-group(st-m-trend){animation-duration:.56s;animation-timing-function:cubic-bezier(.2,.9,.1,1)}
-  ::view-transition-old(st-m-session),::view-transition-old(st-m-trend){animation:st-vt-out .26s ease both}
-  ::view-transition-new(st-m-session),::view-transition-new(st-m-trend){animation:st-vt-in .4s ease .08s both}
 }
 @keyframes st-vt-out{to{opacity:0}}
 @keyframes st-vt-in{from{opacity:0}}
-@keyframes st-vt-mast-out-l{to{opacity:0;transform:translateX(-30px)}}
-@keyframes st-vt-mast-out-r{to{opacity:0;transform:translateX(30px)}}
-@keyframes st-vt-mast-in-r{from{opacity:0;transform:translateX(36px)}}
-@keyframes st-vt-mast-in-l{from{opacity:0;transform:translateX(-36px)}}
+@keyframes st-vt-mast-out-l{to{opacity:0;transform:translateX(-6px)}}
+@keyframes st-vt-mast-out-r{to{opacity:0;transform:translateX(6px)}}
+@keyframes st-vt-mast-in-r{from{opacity:0;transform:translateX(8px)}}
+@keyframes st-vt-mast-in-l{from{opacity:0;transform:translateX(-8px)}}
 :root[data-nxp-motion="reduced"]::view-transition-group(*),:root[data-nxp-motion="reduced"]::view-transition-old(*),:root[data-nxp-motion="reduced"]::view-transition-new(*){animation:none !important}
 
 /* ---- D72 · Scroll-aware top chrome --------------------------------------------------------------------
@@ -3375,6 +3375,7 @@ html::after{content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;opa
   font:620 15px/34px var(--st-font-d);letter-spacing:-.01em;color:var(--st-ink);white-space:nowrap;
   opacity:0;transform:translate(-50%,-8px) scale(.94);transition:opacity .22s ease,transform .38s cubic-bezier(.32,.72,0,1);pointer-events:none}
 #stTop.is-compact .st-top-bar{opacity:1;transform:translate(-50%,0) scale(1);pointer-events:auto}
+#stTop .st-top-bar::after{content:"";position:absolute;inset:-6px -4px}/* 46 pt effective target for the 34 pt capsule */
 @media (prefers-reduced-motion:reduce){#stTop .st-top-scrim,#stTop .st-top-bar{transition:none}}
 :root[data-nxp-motion="reduced"] #stTop .st-top-scrim,:root[data-nxp-motion="reduced"] #stTop .st-top-bar{transition:none}
 /* ---- D74 · Breathing rest orb and set ignition ---------------------------------------------------------
@@ -3664,12 +3665,55 @@ body .toast.st-island.is-quiet{position:fixed !important;width:1px !important;he
 #historyPage .st-hw-o{display:flex;align-items:baseline;gap:8px;margin:8px 0 0;font:450 13px/1.3 var(--st-font);color:var(--st-ink-3)}
 #historyPage .st-hw-o b{font:520 15px/1 var(--st-font-d);color:var(--st-ink-2)}
 
-/* ---- Today: the morning weigh-in chip ------------------------------------------------------------------------ */
-#homePage .st-wchip{display:inline-flex;align-items:center;gap:9px;min-height:40px;margin-top:12px;padding:0 16px 0 12px;border:0;border-radius:999px;cursor:pointer;
-  font:600 14.5px/1 var(--st-font-d);color:var(--st-ink);background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.04));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.08),0 10px 24px -14px rgba(139,92,246,.8)}
-#homePage .st-wchip i{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff7ed,#f6b48a 55%,#d37732);box-shadow:0 0 12px rgba(246,180,138,.8)}
-#homePage .st-wchip:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:3px}
+/* ---- D103 · Today: the weigh-in pill ----------------------------------------------------------------------------
+   Under the greeting: a lit "Log morning weight" until this morning's reading is in (warm orb, as D81's chip), then
+   the reading on quiet glass with a filled check. Replaces the 04–12 chip. */
+#homePage .st-wpill{position:relative;display:inline-flex;align-items:center;gap:9px;min-height:40px;margin-top:12px;padding:0 16px 0 12px;border:0;border-radius:999px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;font:600 14.5px/1 var(--st-font-d);color:var(--st-ink);background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.04));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.08),0 10px 24px -14px rgba(139,92,246,.8);transition:transform .18s cubic-bezier(.25,.8,.25,1)}
+#homePage .st-wpill::after{content:"";position:absolute;inset:-3px -2px}/* 46 pt effective */
+#homePage .st-wpill>i{flex:none;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff7ed,#f6b48a 55%,#d37732);box-shadow:0 0 12px rgba(246,180,138,.8)}
+#homePage .st-wpill b{font:inherit;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+#homePage .st-wpill span{font:450 13.5px/1 var(--st-font);color:var(--st-ink-2)}
+#homePage .st-wpill.is-done{gap:8px;padding:0 15px 0 8px;background:linear-gradient(180deg,rgba(var(--st-hl),.07),rgba(var(--st-hl),.03)),rgba(14,12,24,.42);
+  box-shadow:inset 0 1px 0 rgba(var(--st-hl),.08),inset 0 0 0 1px rgba(var(--st-hl),.08)}/* darker glass: the pill sits on the brightest part of the sky */
+#homePage .st-wpill.is-done>i{display:grid;place-items:center;width:24px;height:24px;color:#15121f;background:var(--st-weight);box-shadow:0 0 14px rgba(180,154,255,.5)}
+#homePage .st-wpill.is-done>i svg{width:13px;height:13px}
+#homePage .st-wpill:active{transform:scale(.97)}
+#homePage .st-wpill:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:3px}
+
+/* ---- D103 · Today: the coach deck -------------------------------------------------------------------------------
+   Two or more coach notes fold into one deck: the top note shows its kind and headline on glass, the next two lie
+   beneath as lit edges (iOS notification stack). A tap fans the deck out into the full notes; Show less folds it.
+   STRATA.morph turns either change into one movement; reduced motion swaps in place. */
+#homePage .st-codeck{grid-column:1/-1;position:relative;min-width:0}
+#homePage .st-codeck-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:6px 2px 10px 4px}
+#homePage .st-codeck-t{display:inline-flex;align-items:center;gap:9px;margin:0;font:600 17px/1.2 var(--st-font-d) !important;letter-spacing:-.015em !important;color:var(--st-ink)}
+#homePage .st-codeck-n{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 7px;border-radius:999px;box-sizing:border-box;font:600 12.5px/1 var(--st-font-d);color:var(--st-ink-2);background:rgba(var(--st-hl),.09);font-variant-numeric:tabular-nums}
+#homePage .st-codeck-tg{min-height:44px;margin-right:-8px;padding:0 8px;font-size:14.5px}
+#homePage .st-codeck-b{position:relative;display:grid;gap:12px}
+#homePage .st-codeck-open{display:none}
+/* folded */
+#homePage .st-codeck:not(.is-open) .st-codeck-b{gap:0;padding-bottom:24px}
+#homePage .st-codeck:not(.is-open) .co-tile{grid-area:1/1;margin:0}
+#homePage .st-codeck:not(.is-open) .co-tile:first-child{z-index:3;padding-bottom:18px}
+#homePage .st-codeck:not(.is-open) .co-tile:first-child :is(.co-body,.co-chips,.co-act,.co-why,.co-fig,.co-out,.co-xm,.co-more,.co-open){display:none}
+#homePage .st-codeck:not(.is-open) .co-tile:first-child :is(.co-dismiss,.co-got){visibility:hidden}/* keeps the head row's height, so the title does not move when the deck opens */
+#homePage .st-codeck:not(.is-open) .co-tile:not(:first-child){position:absolute;top:0;left:0;right:0;bottom:24px;transform-origin:50% 100%;pointer-events:none}
+#homePage .st-codeck:not(.is-open) .co-tile:not(:first-child)>*{visibility:hidden}
+#homePage .st-codeck:not(.is-open) .co-tile:nth-child(2){z-index:2;transform:translateY(12px) scale(.95);opacity:.88}
+#homePage .st-codeck:not(.is-open) .co-tile:nth-child(3){z-index:1;transform:translateY(24px) scale(.9);opacity:.6}
+#homePage .st-codeck:not(.is-open) .co-tile:nth-child(n+4):not(.st-codeck-open){visibility:hidden}
+#homePage .st-codeck:not(.is-open) .st-codeck-open{display:block;position:absolute;top:0;left:0;right:0;bottom:24px;z-index:4;margin:0;padding:0;border:0;border-radius:var(--st-r);background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#homePage .st-codeck-open:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:2px}
+/* the morph: cards keep their stacking order while they travel; the page does not fade */
+:root[data-st-morph]::view-transition-old(root),:root[data-st-morph]::view-transition-new(root){animation:none}
+:root[data-st-morph]::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.32,.72,0,1)}
+:root[data-st-morph]::view-transition-old(*){animation-duration:.18s}
+:root[data-st-morph]::view-transition-group(st-mo-0){z-index:5}
+:root[data-st-morph]::view-transition-group(st-mo-1){z-index:4}
+:root[data-st-morph]::view-transition-group(st-mo-2){z-index:3}
+:root[data-st-morph]::view-transition-group(st-mo-3){z-index:2}
 
 /* ---- Chart: the day behind a reading ------------------------------------------------------------------------- */
 .st-tip .st-tip-ctx{order:9;margin-top:3px;padding-top:4px;border-top:1px solid rgba(255,255,255,.08);color:#d9ccff;font-weight:560;font-size:11px}
@@ -3865,12 +3909,12 @@ body.st-live-on main::after{height:76px}
 @supports (animation-timeline: view()){
   @media (prefers-reduced-motion:no-preference){
     #homePage:not(.st-enter) .st-bento>*,#homePage:not(.st-enter) .st-quick,#weightPage:not(.st-enter) .vn-weight,#weightPage:not(.st-enter) .vn-journey,
-    #historyPage:not(.st-enter) .vn-hist-calendar,#historyPage:not(.st-enter) .vn-hist-day,#morePage:not(.st-enter) .vn-set-group{
+    #historyPage:not(.st-enter) .vn-hist-calendar,#historyPage:not(.st-enter) .vn-hist-day,#morePage:not(.st-enter) .vn-set-group,#morePage:not(.st-enter) .vn-set-block{
       animation:st-recede linear none;animation-timeline:view();animation-range:exit 0% exit 100%;transform-origin:50% 100%}
   }
 }
 @keyframes st-recede{from{opacity:1;transform:none}to{opacity:.18;transform:translateY(10px) scale(.94)}}
-:root[data-nxp-motion="reduced"] .st-bento>*,:root[data-nxp-motion="reduced"] .vn-weight,:root[data-nxp-motion="reduced"] .vn-hist-calendar,:root[data-nxp-motion="reduced"] .vn-set-group{animation-timeline:auto}
+:root[data-nxp-motion="reduced"] .st-bento>*,:root[data-nxp-motion="reduced"] .vn-weight,:root[data-nxp-motion="reduced"] .vn-hist-calendar,:root[data-nxp-motion="reduced"] .vn-set-group,:root[data-nxp-motion="reduced"] .vn-set-block{animation-timeline:auto}
 
 /* ---- D93 · The Observatory ------------------------------------------------------------------------------------- */
 #historyPage .vn-hist-chrome{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
@@ -4379,3 +4423,49 @@ body.st-live-on main::after{height:76px}
 @media (prefers-reduced-motion:reduce){#weightPage .st-weeks.is-draw .wk-row,#weightPage .wk-row.is-open .wk-p,#weightPage .wk-row.is-open .wk-day{animation:none !important}#weightPage .wk-row{transition:none}}
 :root[data-nxp-motion="reduced"] #weightPage .st-weeks.is-draw .wk-row,:root[data-nxp-motion="reduced"] #weightPage .wk-row.is-open .wk-p,:root[data-nxp-motion="reduced"] #weightPage .wk-row.is-open .wk-day{animation:none !important}
 #weightPage .wk-al.is-v{font-weight:600;fill:#CBC6DA;font-feature-settings:"tnum" 1}
+
+/* ---- D102 · Train: last time, set by set ----------------------------------------------------------------------
+   The previous session of this exercise at this gym, working sets in order. A tap fills that set's load and reps.
+   One row under the set card, so Log set keeps its place; it scrolls sideways when a session had many sets. */
+.st-lastx{display:flex;align-items:center;gap:10px;margin:14px 0 2px;padding:0 2px;min-width:0}
+.st-lastx-l{flex:none;display:flex;flex-direction:column;gap:3px;font:550 11.5px/1 var(--st-font);letter-spacing:.02em;color:var(--st-ink-3);white-space:nowrap}
+.st-lastx-l small{font:450 11.5px/1 var(--st-font);letter-spacing:0;color:var(--st-ink-3)}
+.st-lastx-r{flex:1;display:flex;gap:6px;min-width:0;overflow-x:auto;padding:4px 18px 4px 2px;scrollbar-width:none;overscroll-behavior-x:contain;
+  -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 18px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 18px),transparent)}
+.st-lastx-r::-webkit-scrollbar{display:none}
+.st-lastx-s{position:relative;flex:none;min-height:36px;padding:0 11px;border:0;border-radius:999px;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  background:rgba(var(--st-hl),.06);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.08);color:var(--st-ink);
+  font:560 14px/1 var(--st-font-d);letter-spacing:-.01em;font-variant-numeric:tabular-nums;transition:background .2s,transform .18s cubic-bezier(.25,.8,.25,1)}
+.st-lastx-s::after{content:"";position:absolute;inset:-4px -3px}/* 44 pt effective */
+.st-lastx-s i{margin:0 3px;font-style:normal;font-weight:450;color:var(--st-ink-3)}
+.st-lastx-s:active{background:rgba(139,92,246,.2);transform:scale(.96)}
+.st-lastx-s:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:2px}
+
+/* ---- D102 · History: records you can open ----------------------------------------------------------------------
+   A cardio session and a chart note are buttons in the day card: Edit opens the same sheet that made them. */
+#historyPage button.st-hx-edit{width:100%;min-height:44px;padding:0 4px 0 0;border:0;border-radius:12px;background:none;color:inherit;font:inherit;text-align:left;
+  align-items:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .2s}
+#historyPage button.st-hx-edit b{flex:1;min-width:0}
+#historyPage button.st-hx-edit:active{background:rgba(139,92,246,.1)}
+#historyPage button.st-hx-edit:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:2px}
+#historyPage .st-hx-e{flex:none;padding:6px 11px;border-radius:999px;font:600 12.5px/1 var(--st-font);font-style:normal;color:var(--st-accent-lift);background:rgba(139,92,246,.14)}
+#historyPage .st-hx-nd{display:inline-block;width:9px;height:9px;margin:0 10px 0 2px;border-radius:2px;transform:rotate(45deg) translateY(-3px);background:var(--st-accent-lift);box-shadow:0 0 8px rgba(180,154,255,.6)}
+
+/* ---- D102 · Data & sync: the same glass as the Settings hub ---------------------------------------------------
+   Its blocks join the hub's tile rules above (lit edge, depth while scrolling); here the inside follows suit: the
+   status box stops looking like a button and the actions are the app's capsules, glass for the quiet ones. */
+#morePage .vn-set-block{padding:4px 16px 16px}
+#morePage .vn-set-block > .vn-set-grp{margin:0 0 8px}
+#morePage .vn-set-block .nxp-connection{margin:10px 0 0;padding:12px 14px;border:0;border-radius:16px;background:rgba(var(--st-hl),.045);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.06)}
+#morePage .vn-set-block .nxp-connection b{font:560 14.5px/1.35 var(--st-font);color:var(--st-ink-2)}
+#morePage .vn-set-act{border-radius:999px}
+#morePage .vn-set-act.is-quiet{background:rgba(var(--st-hl),.07);color:var(--st-ink);box-shadow:inset 0 1px 0 rgba(var(--st-hl),.08),inset 0 0 0 1px rgba(var(--st-hl),.1)}
+#morePage .vn-set-block .vn-set-act{margin-top:14px}
+#morePage .vn-set-block .vn-set-actions .vn-set-act{margin-top:0}
+#morePage .vn-set-block .vn-set-disc:last-child{margin-bottom:-8px}
+
+/* ---- D102 · Scan history: Edit reveals Delete -------------------------------------------------------------------- */
+:is(#morePage,#weightPage) .vn-evo-hist-h{display:flex;align-items:center;justify-content:space-between;gap:12px}
+:is(#morePage,#weightPage) .vn-evo-hist-edit{min-height:44px;padding:0 4px 0 12px;border:0;background:none;cursor:pointer;font:600 15px/1 var(--st-font);color:var(--st-accent-lift);-webkit-tap-highlight-color:transparent}
+:is(#morePage,#weightPage) .vn-evo-hist-sec:not(.is-editing) .vn-evo-hist-del{display:none}
+

@@ -118,4 +118,39 @@ PR dxnyal03/nxtfrm#38 was merged by the owner (`f45e6e0`, Release 163). New bran
 | Reduced motion, OS and in-app | 0 running animations |
 | Tilt light | no Settings row, no `deviceorientation` listener, no API left |
 
-Not pushed. `RELEASE` is 163; shipping this needs 164.
+Pushed as PR dxnyal03/nxtfrm#39 (with the follow-up that gives the weekly average label its own gutter, found on the
+owner's screenshot). `RELEASE` is 163; shipping this needs 164.
+
+## Whole-app pass and a distilled Today (2026-10-19)
+
+Owner: "using the ios sim, now go through each of the pages and the whole nxtfrm, upgrade it and enhance the app
+experience", then "tab switch animation not so aggressive", then "think of a more sleek way to do the Today page",
+"be creative, think like a senior app designer", "match the design direction of NXTFRM". Same branch and PR.
+
+**Today (D103).** It was about 2,560 px at 320 pt, roughly three screens: the training card, three full coach cards,
+the minis, a Decision pushed below them, the scan tile and a Quick actions row, with "Full Body A · 6 of 15" said four
+times. Now:
+- one pill under the greeting for the morning: a lit "Log morning weight", then "✓ 81.7 kg this morning", which replays
+  the weigh-in moment on the trend;
+- the training card on its own, ending on its button, followed by the three numbers at a glance;
+- the **Coach deck**: the notes stacked like iOS notifications, the top headline readable, a tap fanning them out with a
+  View Transition and Show less folding them back;
+- the Decision and the latest scan;
+- about 1,670 px at 320 pt, with nothing removed that is not one tap away.
+A three-step "Your day" strip was tried first and replaced: it repeated the training card in a box of its own.
+
+**Everywhere else (D102).** Edit or delete a cardio session from History; "Last time" set by set in Train (under the
+set card, so Log set does not move down); a day's chart note in its History card; Data & sync on the hub's glass cards;
+one Edit for scan history; 44 pt targets for the gym toggle and the scrolled title; calmer tab transitions and a fix for
+the "App error" toast after a quick second tab tap.
+
+| Check | Result |
+|---|---|
+| Deterministic suites, Node v26.8.2 | 23 suites · 631 passed · 0 failed · every exit 0 |
+| D18 Train layout budget | 6 / 6 at 320–430 pt |
+| Whole-app crawl at 402 and 320 pt | 21 screens, 0 console errors; no new overflow or small targets (the flags are screen-reader text, the cropped ghost word, and the existing calendar cells at 320) |
+| Text contrast on new surfaces | all ≥ 4.5:1 after darkening the logged pill (it measured 2.5:1 on the bright sky) |
+| Reduced motion | OS: 0 running animations, the deck opens in place; in-app: only the settle from changing the setting |
+| Functional, disposable profile | cardio edit prefilled → saved in place → "Cardio updated"; delete asks → removed; Last time fills kg and reps; scan Edit reveals Delete; the deck opens, focuses Show less, folds back; the pill replays the moment |
+
+`RELEASE` unchanged (163).

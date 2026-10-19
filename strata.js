@@ -787,7 +787,9 @@ const STRATA = (() => {
     const named = [];
     const tag = (el, n) => { if (el) { el.style.viewTransitionName = n; named.push(el); } };
     /* A portal is the only motion of its transition: no title travel, no flying name. */
-    const pairs = portal ? [] : MORPH.filter(m => m.sel[from] && m.sel[to]).map(m => ({ m, el: pick(m.sel[from]) })).filter(p => p.el);
+    /* D71 calmer (owner, 2026-10-19: "tab switch animation not so aggressive"): elements no longer fly
+       between tabs; the page fades and the title moves a few points. MORPH stays defined for reference. */
+    const pairs = [];
     if (!portal) tag(pick(MAST[from]), "st-mast");
     pairs.forEach(p => tag(p.el, p.m.name));
     const untag = () => { named.splice(0).forEach(el => { el.style.viewTransitionName = ""; }); };
@@ -801,6 +803,11 @@ const STRATA = (() => {
       });
       const done = () => { untag(); de.removeAttribute("data-st-nav"); };
       t.finished.then(done, done);
+      /* Tapping another tab before this one settles skips it, and `ready` rejects with an AbortError.
+         Nothing failed, but the page's unhandledrejection handler would toast "App error", so it is
+         absorbed here (found on the iPhone simulator, 2026-10-19). */
+      if (t.ready && t.ready.catch) t.ready.catch(() => {});
+      if (t.updateCallbackDone && t.updateCallbackDone.catch) t.updateCallbackDone.catch(() => {});
     } catch (e) { untag(); de.removeAttribute("data-st-nav"); return swap(); }
     return out;
   }
@@ -1340,6 +1347,43 @@ const STRATA = (() => {
     apx95SaveQuickWeight.__strataH = true;
   }
 
+  /* D103 · Today's weigh-in pill replays this morning's moment (same card, nothing new computed). */
+  function moment() {
+    try {
+      if (typeof NXT !== "object" || typeof state !== "object" || !state) return false;
+      const e = NXT.timingRows("Morning").filter(r => r && r.date === state.date).at(-1);
+      return e ? weighMoment(e, false) : false;
+    } catch (err) { return false; }
+  }
+
+  /* ---- D103 · Morph: one region changes layout as one movement -------------------------------------
+     Today's coach deck fans out and folds back with a View Transition: each card in the region, its
+     header and everything after it on the page carry a transition name for the length of the change,
+     so cards travel to their places and the page below slides instead of jumping. The page itself does
+     not fade (the tab transition's root animation is switched off for it). Plain change without support,
+     under reduced motion, or while a tab transition is running. */
+  function morph(scope, mutate) {
+    const de = document.documentElement;
+    if (!scope || typeof document.startViewTransition !== "function" || reduced() || document.hidden || de.hasAttribute("data-st-nav") || de.hasAttribute("data-st-morph")) return mutate();
+    const named = [];
+    const tag = (el, n) => { if (el && el.getClientRects().length) { el.style.viewTransitionName = n; named.push(el); } };
+    const untag = () => { named.splice(0).forEach(el => { el.style.viewTransitionName = ""; }); };
+    tag(scope.querySelector(".st-codeck-h"), "st-mh");
+    scope.querySelectorAll(".co-tile").forEach((el, i) => tag(el, "st-mo-" + i));
+    const page = scope.closest(".page") || document.body;
+    let k = 0;
+    for (let el = scope; el && el !== page; el = el.parentElement)
+      for (let sib = el.nextElementSibling; sib; sib = sib.nextElementSibling) tag(sib, "st-ms-" + k++);
+    de.setAttribute("data-st-morph", "");
+    const done = () => { untag(); de.removeAttribute("data-st-morph"); };
+    try {
+      const t = document.startViewTransition(() => { mutate(); });
+      t.finished.then(done, done);
+      if (t.ready && t.ready.catch) t.ready.catch(() => {});
+      if (t.updateCallbackDone && t.updateCallbackDone.catch) t.updateCallbackDone.catch(() => {});
+    } catch (e) { done(); mutate(); }
+  }
+
   /* ---- D93 · The Observatory ------------------------------------------------------------------------
      Your sky, explorable. Every lifting session is a star, gathered into one constellation per routine and
      laid out on a sunflower spiral in the order you trained (the first session at the centre); walks have
@@ -1524,7 +1568,7 @@ const STRATA = (() => {
   /* ---- D87 · Touch light ---------------------------------------------------------------------------
      The tap ripple (D38), made continuous: glass catches light under the finger, the light follows it
      while pressed, and on release it opens out and fades. Off under reduced motion. */
-  const LIT = ".st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row,.st-dec-chip,.vn-row,.vn-set-row,.st-lrow>button,.co-tile,.st-wchip,.st-share-b,.vn-set-act,.st-fin-done,.st-fin-cardio,.st-ask-acts button,.nxp-cal-day,.st-live,.st-dk-menu button";
+  const LIT = ".st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row,.st-dec-chip,.vn-row,.vn-set-row,.st-lrow>button,.co-tile,.st-wpill,.st-codeck-open,.st-share-b,.vn-set-act,.st-fin-done,.st-fin-cardio,.st-ask-acts button,.nxp-cal-day,.st-live,.st-dk-menu button";
   let lit = null;
   function bindRipple() {
     const end = () => {
@@ -2234,7 +2278,7 @@ const STRATA = (() => {
     if (!reduced()) requestAnimationFrame(() => { el.classList.add("is-in"); el.querySelectorAll("[data-st-num]").forEach(countNum); });
     else el.classList.add("is-in", "is-still");
   }
-  return { observatory, closeObservatory, hydrate, install, odoSet, stopReplay, sky, haptic, story, storyClose, goalMoment, goalCheck, glance: () => { glTouch = 0; showGlance(); }, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
+  return { observatory, closeObservatory, hydrate, install, odoSet, stopReplay, sky, haptic, story, storyClose, goalMoment, goalCheck, moment, morph, glance: () => { glTouch = 0; showGlance(); }, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
 })();
 STRATA.install();
 if (typeof NXT === "object" && NXT && typeof NXT.repaint === "function" && document.readyState !== "loading") {
