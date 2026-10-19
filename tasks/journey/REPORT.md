@@ -98,3 +98,24 @@ Not verified: WebKit and the iPhone simulator, for the reason above; haptics (no
    moment on test data.
 2. **Release:** bump `RELEASE` to 163 when shipping.
 3. **Decisions:** D95–D100 in `tasks/elevate/DECISIONS-PROPOSED.md`.
+
+## Week by week, and the tilt light removed (2026-10-19)
+
+PR dxnyal03/nxtfrm#38 was merged by the owner (`f45e6e0`, Release 163). New branch `week-by-week-tilt` from it.
+
+- **Week by week (D101).** Rebuilt from the proposal the owner approved ("okay"): bars for each week's change, an honest
+  week in progress, context chips (lifts, cardio, notes), the fastest week starred, Show all, and rows that open in
+  place to their seven mornings. Old ledger styles removed; scrub, replay and "Show on chart" still drive the rows.
+- **Tilt light removed (D88 withdrawn).** Owner: "remove the tilt light not nice". The orientation listener, the
+  reflections and canvas drift, the Settings › Appearance row and the styles are deleted.
+
+| Check | Result |
+|---|---|
+| Deterministic suites, Node v26.8.2 | 23 suites · 631 passed · 0 failed · every exit 0 |
+| D18 Train layout budget | 6 / 6 |
+| Week list at 320, 375, 402 pt | no overflow, 0 console errors; open, Show all, Show on chart, replay all checked |
+| Text contrast on the week list | 50 of 51 texts measured AA; the one flag was the workout dock overlapping the capture |
+| Reduced motion, OS and in-app | 0 running animations |
+| Tilt light | no Settings row, no `deviceorientation` listener, no API left |
+
+Not pushed. `RELEASE` is 163; shipping this needs 164.

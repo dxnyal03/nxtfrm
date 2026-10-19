@@ -2859,8 +2859,7 @@ const NXP = (() => {
         ${setField('nxp-motion','Motion','Reduce motion removes page and set-logging animation. Your device setting is followed by default.',[['system','Follow device'],['reduced','Reduce motion']],p.motion==='reduced'?'reduced':'system')}
         <button type="submit" class="vn-set-act">Save appearance</button>
       </form>
-      ${(()=>{const t=typeof STRATA==='object'&&STRATA.tiltState?STRATA.tiltState():'none';if(t==='none')return '';
-        return `<section class="vn-set-group st-tilt-g"><h2 class="vn-set-grp">Tilt light</h2><div class="st-tilt-row"><p>Light moves across the glass as you tilt your phone. ${t==='on'?'On for this device.':'Your iPhone asks once for motion access.'}</p>${t==='on'?'<span class="st-tilt-on">On</span>':`<button type="button" class="vn-set-act" onclick="STRATA.allowTilt().then(()=>NXT.more('appearance'))">Allow tilt light</button>`}</div></section>`;})()}`,'vn-settings');
+      `,'vn-settings');
   }
   function saveAppearance() {N.cfg().appearance={text:val('nxp-text')==='large'?'large':'normal',motion:val('nxp-motion')==='reduced'?'reduced':'system'};applyAppearance();N.commit('Appearance saved');}
   /* Associates the persistent labels the legacy cloud/backup forms already
