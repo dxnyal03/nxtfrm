@@ -763,18 +763,29 @@ const STRATA = (() => {
   }
   function pick(sel) { if (!sel) return null; for (const el of document.querySelectorAll(sel)) if (onScreen(el)) return el; return null; }
   function currentTab() { return (typeof state === "object" && state && TABS.includes(state.tab)) ? state.tab : "home"; }
+  /* The tab asked for last. A tap during a running transition used to compare against state.tab, which only
+     changes inside the transition's update; a quick third tap back to the tab on screen then rendered at once and
+     the two pending updates landed after it (WebKit may run an interrupted update late), so the app ended on an
+     older tab (iPhone simulator, 2026-10-19). Every update now renders the latest request. */
+  let navLast = null, navPending = 0, navUntil = 0;
   function navigate(orig, args) {
-    const from = currentTab(), to = TABS.includes(args[0]) ? args[0] : "home";
+    const shown = currentTab(), to = TABS.includes(args[0]) ? args[0] : "home";
+    const pending = navPending > 0 && performance.now() < navUntil;
+    const from = pending && navLast ? navLast : shown;
     if (to === from) {
+      if (to !== shown) return; /* already on its way */
       const out = orig.apply(null, args);
       if ((window.scrollY || 0) > 2) window.scrollTo({ top: 0, behavior: reduced() ? "auto" : "smooth" });
       return out;
     }
-    scrollMemo[from] = window.scrollY || 0;
-    const back = scrollMemo[to] || 0;
+    navLast = to;
+    scrollMemo[shown] = window.scrollY || 0;
     const swap = () => {
+      const target = navLast;
+      if (currentTab() === target) return;
       window.scrollTo(0, 0);
-      const o = orig.apply(null, args);
+      const o = orig.apply(null, [target].concat(Array.prototype.slice.call(args, 1)));
+      const back = scrollMemo[target] || 0;
       if (back) window.scrollTo(0, back);
       queueTop();
       return o;
@@ -783,32 +794,34 @@ const STRATA = (() => {
     if (typeof document.startViewTransition !== "function" || reduced() || document.hidden || de.classList.contains("st-sheet-open")) return swap();
     const portal = to === "train" && lastPress && performance.now() - lastPress.t < 1500;
     if (portal) { de.style.setProperty("--st-px", Math.round(lastPress.x) + "px"); de.style.setProperty("--st-py", Math.round(lastPress.y) + "px"); lastPress = null; }
-    de.setAttribute("data-st-nav", portal ? "portal" : TABS.indexOf(to) > TABS.indexOf(from) ? "fwd" : "back");
+    de.setAttribute("data-st-nav", portal ? "portal" : TABS.indexOf(to) > TABS.indexOf(shown) ? "fwd" : "back");
     const named = [];
     const tag = (el, n) => { if (el) { el.style.viewTransitionName = n; named.push(el); } };
     /* A portal is the only motion of its transition: no title travel, no flying name. */
     /* D71 calmer (owner, 2026-10-19: "tab switch animation not so aggressive"): elements no longer fly
        between tabs; the page fades and the title moves a few points. MORPH stays defined for reference. */
     const pairs = [];
-    if (!portal) tag(pick(MAST[from]), "st-mast");
+    if (!portal) tag(pick(MAST[shown]), "st-mast");
     pairs.forEach(p => tag(p.el, p.m.name));
     const untag = () => { named.splice(0).forEach(el => { el.style.viewTransitionName = ""; }); };
     let out;
+    navPending++; navUntil = performance.now() + 1500;
     try {
       const t = document.startViewTransition(() => {
         untag();
         out = swap();
-        if (!portal) tag(pick(MAST[to]), "st-mast");
-        pairs.forEach(p => tag(pick(p.m.sel[to]), p.m.name));
+        if (!portal) tag(pick(MAST[currentTab()]), "st-mast");
+        pairs.forEach(p => tag(pick(p.m.sel[currentTab()]), p.m.name));
       });
-      const done = () => { untag(); de.removeAttribute("data-st-nav"); };
+      /* The direction attribute stays until the last overlapping transition is done. */
+      const done = () => { untag(); navPending = Math.max(0, navPending - 1); if (!navPending) de.removeAttribute("data-st-nav"); };
       t.finished.then(done, done);
       /* Tapping another tab before this one settles skips it, and `ready` rejects with an AbortError.
          Nothing failed, but the page's unhandledrejection handler would toast "App error", so it is
          absorbed here (found on the iPhone simulator, 2026-10-19). */
       if (t.ready && t.ready.catch) t.ready.catch(() => {});
       if (t.updateCallbackDone && t.updateCallbackDone.catch) t.updateCallbackDone.catch(() => {});
-    } catch (e) { untag(); de.removeAttribute("data-st-nav"); return swap(); }
+    } catch (e) { untag(); navPending = Math.max(0, navPending - 1); if (!navPending) de.removeAttribute("data-st-nav"); return swap(); }
     return out;
   }
 

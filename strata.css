@@ -3325,7 +3325,7 @@ html::after{content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;opa
 :root{--st-gutter:16px}
 @media (max-width:359px){:root{--st-gutter:12px}}
 #trainPage,#weightPage,#historyPage,#morePage{padding-left:0 !important;padding-right:0 !important}
-#homePage .vn-pad,#trainPage>.n99,#weightPage>.n99,#historyPage>.n99,#morePage>.n99{padding-left:var(--st-gutter) !important;padding-right:var(--st-gutter) !important}
+#homePage .vn-pad,#trainPage>.n99,#weightPage>.n99,#historyPage>.n99,#morePage>.n99,#morePage>.apx96-page{padding-left:var(--st-gutter) !important;padding-right:var(--st-gutter) !important}/* App & install is the one legacy page (.apx96-page); it ran edge to edge (D102) */
 #trainPage:has(.st-train-active){padding-left:12px !important;padding-right:12px !important}
 #trainPage:has(.st-train-active)>.n99{padding-left:0 !important;padding-right:0 !important}
 #homePage .st-head,#trainPage .nxp-train-chrome.st-head,#weightPage .nxp-progress-chrome,#historyPage .vn-hist-chrome{margin-top:6px !important;padding-top:0 !important}

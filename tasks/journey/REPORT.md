@@ -154,4 +154,15 @@ the "App error" toast after a quick second tab tap.
 | Reduced motion | OS: 0 running animations, the deck opens in place; in-app: only the settle from changing the setting |
 | Functional, disposable profile | cardio edit prefilled → saved in place → "Cardio updated"; delete asks → removed; Last time fills kg and reps; scan Edit reveals Delete; the deck opens, focuses Show less, folds back; the pill replays the moment |
 
+**Found on the iPhone simulator after the push (fixed in the next commit).**
+- Tapping three tabs quickly could land on an older one: during a transition the app still believed it was on the
+  first tab, so a tap back to it rendered at once and the pending updates overwrote it. Reproduced in Chrome too
+  (Progress → History → Today with no gap ended on History); every update now renders the last tab asked for. Seven
+  rapid sequences, 0, 20–120 ms apart, all end on the last tab; re-tapping the current tab still scrolls to the top.
+- Settings › App & install ran edge to edge; it now sits on the same 16 pt gutter as every page.
+
+Checked on the simulator (iOS 27.0 WebKit) through the deploy preview: the weigh-in pill and its replay, the coach deck
+folding and fanning out, the training card, "Last time" filling 120 × 14, Edit cardio prefilled from History, the
+Settings hub. The simulator is slow, so a transition caught mid-way is the simulator's frame rate, not the app's.
+
 `RELEASE` unchanged (163).
