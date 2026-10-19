@@ -1062,10 +1062,13 @@ const NXP = (() => {
     if(seed===null||cur===null||!Number.isFinite(hi))return null;
     const cs=typeof settings!=='undefined'&&settings&&Number.isFinite(N.dateMs(settings.cutStart))&&settings.cutStart<=state.date?settings.cutStart:null;
     const first=cs||(rows[0]&&rows[0].date)||state.date;
-    const days=Math.max(0,Math.round((N.dateMs(state.date)-N.dateMs(first))/864e5));
-    const trend=N.trend(rows).filter(p=>p.avg!==null&&p.date>=first&&p.date<=state.date).map(p=>({d:p.date,v:Number(p.avg)}));
-    const liftDays=new Set(N.workRows().filter(r=>r.date>=first&&r.date<=state.date).map(r=>r.date)).size;
-    return {seed,cur,lo,hi,first,days,trend,liftDays,done:seed-cur,remain:Math.max(0,cur-hi)};
+    /* D104: the card's range, its days and its lifting days end where its "Now" is measured once the forecast is
+       not fresh, so a weeks-old figure is not dated today. Fresh, that is today, as before. */
+    const asOf=N.forecastView?N.forecastView(rows).asOfDate:state.date,to=asOf<first?first:asOf;
+    const days=Math.max(0,Math.round((N.dateMs(to)-N.dateMs(first))/864e5));
+    const trend=N.trend(rows).filter(p=>p.avg!==null&&p.date>=first&&p.date<=to).map(p=>({d:p.date,v:Number(p.avg)}));
+    const liftDays=new Set(N.workRows().filter(r=>r.date>=first&&r.date<=to).map(r=>r.date)).size;
+    return {seed,cur,lo,hi,first,to,days,trend,liftDays,done:seed-cur,remain:Math.max(0,cur-hi)};
   }
   async function drawProgressCard(f,showKg){
     const W=1080,H=1350,cv=document.createElement('canvas');cv.width=W;cv.height=H;
@@ -1078,11 +1081,11 @@ const NXP = (() => {
     glow(170,120,820,'rgba(139,92,246,.46)');glow(1010,300,560,'rgba(236,72,153,.17)');glow(520,1330,820,'rgba(85,82,187,.26)');
     /* the lifting days of the cut as stars (a stable hash of each date) */
     let seedN=2166136261;const rnd=()=>{seedN=(Math.imul(seedN^(seedN>>>15),2246822507)+1013904223)>>>0;return seedN/4294967296;};
-    const ld=[...new Set(N.workRows().filter(r=>r.date>=f.first&&r.date<=state.date).map(r=>r.date))];
+    const ld=[...new Set(N.workRows().filter(r=>r.date>=f.first&&r.date<=f.to).map(r=>r.date))];
     ld.forEach((d,i)=>{seedN=2166136261^(N.dateMs(d)/864e5|0);const x=60+rnd()*960,y=40+rnd()*560,s=1.6+rnd()*2.2;g.fillStyle=`rgba(236,228,255,${(.35+rnd()*.5).toFixed(2)})`;g.beginPath();g.arc(x,y,s,0,Math.PI*2);g.fill();});
     g.textBaseline='alphabetic';g.textAlign='left';
     g.fillStyle='rgba(206,190,255,.92)';g.font=F(600,30);track(7);g.fillText('NXTFRM  ·  CUT',96,150);track(0);
-    const range=`${N.shortDate(f.first)} – ${N.shortDate(state.date)} ${String(state.date).slice(0,4)}`;
+    const range=`${N.shortDate(f.first)} – ${N.shortDate(f.to)} ${String(f.to).slice(0,4)}`;
     g.fillStyle='rgba(214,204,240,.72)';g.font=F(500,32);g.fillText(range,96,202);
     /* the headline: kilograms down on the trend */
     const big=f.done>0?f.done.toFixed(1):'0.0';
@@ -1109,7 +1112,7 @@ const NXP = (() => {
       if(showKg){g.font=F(560,34);g.fillStyle='rgba(225,214,255,.9)';g.textAlign='right';g.fillText(`${e.v.toFixed(1)} kg`,X1,Math.max(Y0-22,ey-46));g.textAlign='left';}
     }
     /* three facts along the bottom */
-    const cols=showKg?[[f.seed.toFixed(1)+' kg','Start'],[f.cur.toFixed(1)+' kg','Trend now'],[f.remain>0?f.remain.toFixed(1)+' kg':'In range',f.remain>0?'To goal range':'Goal range']]
+    const cols=showKg?[[f.seed.toFixed(1)+' kg','Start'],[f.cur.toFixed(1)+' kg',f.to===state.date?'Trend now':'Trend · '+N.shortDate(f.to)],[f.remain>0?f.remain.toFixed(1)+' kg':'In range',f.remain>0?'To goal range':'Goal range']]
       :[[String(f.liftDays),f.liftDays===1?'Lifting day':'Lifting days'],[String(f.days),f.days===1?'Day':'Days'],[f.remain>0?f.remain.toFixed(1)+' kg':'In range',f.remain>0?'To goal range':'Goal range']];
     g.fillStyle='rgba(255,255,255,.05)';const rr=(x,y,w,h,r)=>{g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();};
     rr(72,1080,936,180,44);g.fill();g.strokeStyle='rgba(255,255,255,.09)';g.lineWidth=2;g.stroke();
@@ -2088,13 +2091,6 @@ const NXP = (() => {
     if(!(up>=0.05)||rate===null||!(rate<0))return '';
     return `<p class="st-slow">This week’s average is ${up.toFixed(1)} kg above last week. Your trend is still down ${Math.abs(rate).toFixed(2)} kg a week. Daily weight moves around; the trend is what counts.</p>`;
   }
-  /* The projection already says "~N weeks to goal"; this adds the date it points to. */
-  function withGoalDate(html){
-    const f=N.cfg().targetConfirmed?N.forecastGoal():null;
-    if(!f||!f.ok||!(f.weeks>0))return html;
-    const d=N.shortDate(N.dateAdd(state.date,f.weeks*7));
-    return html.replace(/(~\d+ weeks? to goal(?: \(range \d+–\d+\))?)/,`$1 · around ${d}`);
-  }
   function weightHighlightsHTML(){
     const h=weightHighlights();
     return h.length?`<ul class="st-wchips" aria-label="Highlights">${h.map(x=>`<li class="is-${x.k}"><i aria-hidden="true"></i><span>${esc(x.t)}</span></li>`).join('')}</ul>`:'';
@@ -2132,7 +2128,7 @@ const NXP = (() => {
     }
     /* Phase 2C — Weight owns its layout inside chartHTML (trajectory + journey).
        TDEE and weigh-in history are demoted below, not deleted. */
-    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${withGoalDate(N.chartHTML()).replace('<div class="vn-mhead"',weightHighlightsHTML()+slowWeekHTML()+'<div class="vn-mhead"')}${N.features&&N.features.calories?`<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details>`:''}<button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${(n=>n+" "+N.plural(n,"reading"))(N.weights().length)}</span></span><span class="vn-chev">›</span></button></div>`;
+    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${N.chartHTML().replace('<div class="vn-mhead"',weightHighlightsHTML()+slowWeekHTML()+'<div class="vn-mhead"')}${N.features&&N.features.calories?`<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details>`:''}<button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${(n=>n+" "+N.plural(n,"reading"))(N.weights().length)}</span></span><span class="vn-chev">›</span></button></div>`;
   }
   /* Engine vocabulary only (I12). The word is the status; colour and shape follow it. */
   const PERF_NOTE='Estimated 1RM is a comparison aid, not a tested maximum or proof of muscle retention. Technique, effort and equipment setup affect it.';

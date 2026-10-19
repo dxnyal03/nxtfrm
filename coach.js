@@ -176,7 +176,8 @@
                  today keeps the EWMA continuous); 4+ → watch; only
                  post-workout/scan readings and no morning one → watch
      Coordinator: drop a candidate whose newest evidence date is > 14 days
-     old; a cautious weight decision (tone 'watch', or a title/action about
+     old, except data.morning, which is about an absence (D104); a cautious
+     weight decision (tone 'watch', or a title/action about
      recovery or slipping lifts) turns strength.ready into strength.hold
      (info), and trainAdvice() into a hold the same way; hide dismissed
      id|fingerprint pairs; keep one per domain (highest
@@ -634,6 +635,9 @@ Object.assign(NXT, (() => {
     return out;
   }
   function stale(c, date) {
+    /* D104: the morning weigh-in nudge is about an absence, so its evidence (the last morning reading) ages by
+       design. It stays on day 15 and after, exactly while the weight forecast is paused, instead of vanishing. */
+    if (c.id === "data.morning") return false;
     const ds = c.evidence.map(e => e.date).filter(isDate).sort();
     return ds.length > 0 && gap(ds[ds.length - 1], date) > T.STALE_DAYS;
   }
@@ -940,7 +944,8 @@ Object.assign(NXT, (() => {
 
   /* ---- coordinator -------------------------------------------------------------
      1 evaluators propose (0–n each); 2 candidates whose newest evidence is older
-     than 14 days are dropped; 3 a cautious weight decision (tone watch, or a
+     than 14 days are dropped (not the morning weigh-in nudge, D104); 3 a
+     cautious weight decision (tone watch, or a
      title/action about recovery or slipping lifts) turns "move up" into "hold"
      (info); 4 dismissed id|fingerprint pairs are hidden; 5 one insight per
      domain (highest severity, evaluator order breaks ties — so a catch-up

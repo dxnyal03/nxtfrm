@@ -207,6 +207,58 @@ const NXT = (() => {
     const confidence=n<FORECAST_TRUST_POINTS||spanRatio>2?"low":spanRatio>.5?"medium":"high";
     return {ok:true,weeks,lowWeeks,highWeeks,confidence,reason:"",slope,lastDate,lastAvg,fittedLevel};
   }
+  /* D104 (proposed) — forecast time semantics. forecastGoal() fits the 21 days ending at its last trend-ready
+     morning, the model origin, and counts every week from there; it never reads the calendar. This view is the
+     one place its weeks become dates, so every surface prints the same arrival, anchored at the origin: an old
+     forecast keeps its own date instead of sliding a day later for every day without a weigh-in. Weeks still
+     count from the origin; weeksRemaining counts from the calculation date (today), for copy that says "away".
+     Freshness is days since the origin, on thresholds the app already uses: fresh to 3 (EWMA_GAP_DAYS; past it
+     the trend restarts), aging to 14 (the coach's STALE_DAYS, the span of its weigh-in nudge), stale to 21
+     (FORECAST_WINDOW_DAYS; a fit made today would hold no reading), then expired, as is any forecast whose
+     earliest arrival (arrivalLow) is today or past. Fresh and aging may print the anchored date, aging "as of"
+     the origin; stale and expired pause and never print an arrival. Freshness is separate from the model's own
+     confidence (modelConfidence, unchanged): an old forecast is not a less certain one, it is an old one. The
+     last observation (the newest morning reading) can be later than the origin: after a break of more than three
+     days the trend needs three mornings before it, and the fit, move on. Nothing here changes a number. */
+  const FORECAST_FRESH_DAYS=EWMA_GAP_DAYS,FORECAST_AGING_DAYS=14,FORECAST_STALE_DAYS=FORECAST_WINDOW_DAYS;
+  function forecastView(rows=weights(),calculationDate=state.date) {
+    const calc=Number.isFinite(dateMs(calculationDate))?calculationDate:state.date;
+    const seen=(Array.isArray(rows)?rows:[]).filter(r=>r&&Number.isFinite(dateMs(r.date))&&r.date<=calc);
+    const f=forecastGoal(seen),origin=f.lastDate||null;
+    const obs=seen.reduce((m,r)=>!m||r.date>m?r.date:m,null);
+    const since=d=>d?Math.round((dateMs(calc)-dateMs(d))/DAY):null;
+    const ahead=!!(f.ok&&origin&&finite(f.weeks)!==null&&f.weeks>0);
+    const at=w=>ahead?dateAdd(origin,w*7):null;
+    const arrivalDate=at(f.weeks),arrivalLow=at(f.lowWeeks),arrivalHigh=at(f.highWeeks);
+    // "About N weeks away" from today: never 0 while the date is still ahead, nothing once it has passed.
+    const left=d=>!d?null:d<=calc?0:Math.max(1,Math.round((dateMs(d)-dateMs(calc))/DAY/7));
+    const daysSinceOrigin=since(origin);
+    let freshness=null;
+    if(origin)freshness=arrivalLow&&calc>=arrivalLow?"expired":daysSinceOrigin<=FORECAST_FRESH_DAYS?"fresh":
+      daysSinceOrigin<=FORECAST_AGING_DAYS?"aging":daysSinceOrigin<=FORECAST_STALE_DAYS?"stale":"expired";
+    const current=freshness==="fresh"||freshness==="aging",goalConfirmed=!!cfg().targetConfirmed;
+    return {ok:f.ok,reason:f.reason,lastObservationDate:obs,modelOriginDate:origin,calculationDate:calc,
+      originLevel:f.fittedLevel,slopeKgWk:finite(f.slope)===null?null:f.slope*7,modelConfidence:f.confidence,
+      weeks:f.weeks,lowWeeks:f.lowWeeks,highWeeks:f.highWeeks,arrivalDate,arrivalLow,arrivalHigh,
+      weeksRemaining:left(arrivalDate),lowWeeksRemaining:left(arrivalLow),highWeeksRemaining:left(arrivalHigh),
+      daysSinceOrigin,daysSinceObservation:since(obs),freshness,current,goalConfirmed,
+      // No confirmed goal, no goal ETA anywhere (goalHigh() still falls back to a default range).
+      showArrival:ahead&&current&&goalConfirmed,
+      // Elapsed copy ("down in 11 weeks", the share card's range) counts to the origin once it is not fresh.
+      asOfDate:origin&&freshness!=="fresh"?origin:calc};
+  }
+  /* The words for a forecast's age, so every surface says it the same way (D104). */
+  function forecastWords(v) {
+    const out={asOf:"",paused:"",restart:""};
+    if(!v||!v.modelOriginDate)return out;
+    if(v.freshness==="aging")out.asOf=`as of ${shortDate(v.modelOriginDate)}`;
+    const n=v.daysSinceObservation;
+    if((v.freshness==="stale"||v.freshness==="expired")&&v.lastObservationDate)
+      out.paused=`Last morning weigh-in ${shortDate(v.lastObservationDate)}, ${n===0?"today":n===1?"yesterday":n+" days ago"}.`;
+    if(v.lastObservationDate&&v.lastObservationDate>v.modelOriginDate)
+      out.restart=`After a break of more than ${EWMA_GAP_DAYS} days the trend needs three mornings before the projection moves on.`;
+    return out;
+  }
   const PLATEAU_WINDOW_DAYS=28,PLATEAU_MIN_READINGS=10,PLATEAU_MIN_SPAN_DAYS=14,PLATEAU_FLAT_KG_WEEK=.15,PLATEAU_T=2;
   const PLATEAU_LADDER=[35,42,49,56,63,70,77,84,90],PLATEAU_LADDER_SLACK=7;
   // One equivalence test over the trailing `days` of raw readings, or null when the window is too thin.
@@ -352,7 +404,9 @@ const NXT = (() => {
     const fresh=lifts.filter(x=>x.delta!==null),holding=fresh.filter(x=>x.status==="Improving"||x.status==="Holding steady").length;
     const slipping=fresh.some(x=>x.status==="Watch"||x.status==="Review");
     const strengthLine=fresh.length?`${holding} of ${fresh.length} tracked lift${fresh.length===1?" is":"s are"} holding or improving.`:"Strength history is still building, so muscle retention is not yet assessable.";
-    const fc=forecastGoal(rows),eta=fc.ok&&fc.weeks>0?` At this pace your goal range is about ${fc.weeks} week${fc.weeks===1?"":"s"} away.`:"";
+    /* D104: counted from today to the anchored arrival, said "as of" the last reading once it is not fresh,
+       silent once the forecast is paused, and silent without a confirmed goal. */
+    const fc=forecastView(rows),wk=fc.weeksRemaining,eta=fc.showArrival?` ${fc.freshness==="aging"?`At your pace as of ${shortDate(fc.modelOriginDate)},`:"At this pace"} your goal range is about ${wk} week${wk===1?"":"s"} away.`:"";
     const why=`${kg(rate)} over ${pl.ok?"four weeks":"the last week"} · ${Math.abs(pct).toFixed(1)}% of body weight`;
     if(pct < -1)return {...base,title:slipping?"Losing fast, and lifts are slipping":"Losing quickly",message:slipping?"Weight is dropping faster than usual while some lifts are down. Consider easing the deficit before strength suffers; this is a review prompt, not a diagnosis.":"Check energy, hunger and strength before pushing further. "+strengthLine+" Early water changes can contribute; this is a review prompt, not a diagnosis.",action:"Review your target",reason:why,change:rate,tone:"watch"};
     const c=cfg(),target=c.targetConfirmed?{low:goalLow(),high:goalHigh()}:null;
@@ -442,7 +496,7 @@ const NXT = (() => {
     return {...base,ok:true,tdee,intake:Math.round(intake),weightChange:Math.round(weightChange*100)/100,confidence,spanDays:span};
   }
   function diagnose() {
-    const p=detectPlateau(),f=forecastGoal(),at=adaptiveTDEE();
+    const p=detectPlateau(),f=forecastGoal(),fv=forecastView(),fw=forecastWords(fv),at=adaptiveTDEE();
     const days=p.plateauDays||p.windowDays||PLATEAU_WINDOW_DAYS;
     const end=state.date,start=dateAdd(end,1-days);
     const map=cfg().adherence;let adhSum=0,adhLogged=0,adhDays=0;
@@ -512,8 +566,12 @@ const NXT = (() => {
           [{text:`${care.action}.`,kind:"hold"}],p.ok&&p.confidence==="high"?"high":p.ok?"medium":"low",care.reason);
       }
     }
-    if(!p.plateau&&f.ok&&finite(f.slope)!==null&&f.slope<0) {
-      const extra=[{label:"Forecast",value:f.weeks===0?"At goal range":`~${f.weeks} week${f.weeks===1?"":"s"} to goal`,tone:"good"}];
+    /* D104: "Cut is progressing" needs a forecast that is still current (fresh or aging). Its row counts from
+       today to the anchored date, names that date and, once not fresh, the reading it rests on; without a
+       confirmed goal there is no row at all. A paused forecast falls through to the cases below. */
+    if(!p.plateau&&f.ok&&finite(f.slope)!==null&&f.slope<0&&fv.current) {
+      const wk=fv.weeksRemaining,asOf=fw.asOf?` · ${fw.asOf}`:"";
+      const extra=!fv.goalConfirmed?[]:[{label:"Forecast",value:f.weeks===0?`At goal range${asOf}`:`~${wk} week${wk===1?"":"s"} to goal · around ${shortDate(fv.arrivalDate)}${asOf}`,tone:"good"}];
       const conf=f.confidence==="high"&&p.ok&&p.confidence==="high"?"high":f.confidence==="low"||!p.ok?"low":"medium";
       return pack("no_issue","Cut is progressing.",extra,[{text:"Keep the current plan.",kind:"hold"}],conf,"Weight is still trending down.");
     }
@@ -546,11 +604,13 @@ const NXT = (() => {
         `Adaptive TDEE fell ${Math.round(tdeeDrop)} kcal over the plateau window.`);
     }
     const need=gap();
+    /* D104: a projection that has gone quiet says so, with the reading it last rested on. */
+    const paused=!p.plateau&&fv.goalConfirmed&&f.ok&&f.weeks>0&&!fv.current&&fw.paused?[{label:"Forecast",value:`Paused · ${fw.paused.replace(/\.$/,"")}`,tone:"neutral"}]:[];
     const headline=p.plateau
       ?`Plateau confirmed. Not enough context to name the cause — keep logging ${need.what} for ${need.need} more day${need.need===1?"":"s"}.`
       :`Not enough context to name the cause — keep logging ${need.what} for ${need.need} more day${need.need===1?"":"s"}.`;
     return pack("insufficient_context",headline,
-      [{label:"Needed",value:`${need.what} · ${need.need} more day${need.need===1?"":"s"}`,tone:"neutral"}],
+      [{label:"Needed",value:`${need.what} · ${need.need} more day${need.need===1?"":"s"}`,tone:"neutral"}].concat(paused),
       [{text:`Keep logging ${need.what} for ${need.need} more day${need.need===1?"":"s"}.`,kind:"diagnose_more"}],
       p.plateau&&p.confidence==="high"?"medium":"low",
       p.plateau?"Plateau confirmed, but no cause matched strictly.":p.reason||"Not enough data to diagnose.");
@@ -1014,7 +1074,7 @@ const NXT = (() => {
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard(true)}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' '+plural(s.current.n,'weigh-in'))}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' '+plural(s.previous.n,'weigh-in'))}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any change to your plan stays your choice.</p><div class="n99-stack">${CALORIES_ENABLED?button('Review calorie guide','NXT.openCalories()',true):''}${FEATURES.checkin?button('Update recovery check-in','apx96OpenReadiness()',true):''}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,features:FEATURES,flatKgWeek:PLATEAU_FLAT_KG_WEEK,levelSeries,nowLevel,rateSeries,chartNotes,noteLabel,noteKinds:NOTE_KINDS.slice(),pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,plural,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,features:FEATURES,flatKgWeek:PLATEAU_FLAT_KG_WEEK,levelSeries,nowLevel,rateSeries,forecastView,forecastWords,chartNotes,noteLabel,noteKinds:NOTE_KINDS.slice(),pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,plural,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
@@ -1043,7 +1103,7 @@ Object.assign(NXT, (()=>{
     const target=N.finite(goalHigh()),level=N.finite(f.fittedLevel),slope=N.finite(f.slope);
     if(!f.ok||!f.weeks||target===null||level===null||slope===null||!(slope<0))return null;
     // An anchor older than the visible window would be drawn off the left edge, so it is dropped
-    // from the chart. The trend read line still reports the horizon.
+    // from the chart. Evidence still reports the horizon.
     if(f.lastDate<start)return null;
     const days=(level-target)/-slope;
     if(!Number.isFinite(days)||!(days>0))return null;
@@ -1053,40 +1113,26 @@ Object.assign(NXT, (()=>{
     const sigma=here&&N.finite(here.sigma)!==null?here.sigma:CONE_SIGMA_FALLBACK;
     const historyDays=Math.max(1,(N.dateMs(state.date)-N.dateMs(start))/86400000);
     // Room for the future without letting it crowd out the record. A horizon past the cap runs to
-    // the edge unfinished, which reads as "continues"; the trend read line carries the number.
+    // the edge unfinished, which reads as "continues"; the goal pill carries the date.
     const soon=f.lowWeeks*7,late=f.highWeeks*7;
     const futureDays=Math.min(Math.max(days,late),Math.max(7,Math.round(FUTURE_SHARE*historyDays)),FUTURE_MAX_DAYS);
+    /* D104: the cone starts at its origin, which can be days before today while the forecast is aging. It
+       still runs to the plot's right edge (today + futureDays), so it never ends before the today line. */
+    const reach=futureDays+Math.max(0,(N.dateMs(state.date)-N.dateMs(f.lastDate))/86400000);
     // The cone spans the band's mouth today and the reported arrival window on the goal line: the
     // upper wall reaches the goal at highWeeks, the lower wall at lowWeeks. Neither is a new
     // statistic, both are forecastGoal's own bounds drawn out. It narrows instead of widening when
     // today's level spread is wider than the arrival window, which is a fact about the data, and the
     // walls provably cannot cross before their own arrivals, so the polygon stays simple.
     const upper=t=>level+sigma+(target-level-sigma)*t/late,lower=t=>level-sigma+(target-level+sigma)*t/soon;
-    const tU=Math.min(futureDays,late),tL=Math.min(futureDays,soon),tMid=Math.min(futureDays,days);
+    const tU=Math.min(reach,late),tL=Math.min(reach,soon),tMid=Math.min(reach,days);
     const cone=[[0,level+sigma],[tU,upper(tU)]];
     // Once the fast wall has landed, the goal line itself closes the shape, so the arrival window
     // reads as a segment along the goal rather than a vertical cut through it.
-    if(futureDays>soon&&futureDays<late)cone.push([futureDays,target]);
+    if(reach>soon&&reach<late)cone.push([reach,target]);
     cone.push([tL,lower(tL)],[0,level-sigma]);
     return {weeks:f.weeks,lowWeeks:f.lowWeeks,highWeeks:f.highWeeks,confidence:f.confidence,lastDate:f.lastDate,
-      level,slope,sigma,target,days,futureDays,arrives:days<=futureDays,cone,mid:[[0,level],[tMid,level+slope*tMid]]};
-  }
-  // One line of plain reading under the chart. The bounds are printed exactly as forecastGoal
-  // returns them and never widened to centre the point estimate: the chart, this line and
-  // NXT.forecastGoal() in the console have to tell the same story or none of them is trusted.
-  function trendReadText(forecast,plateau) {
-    const spell=n=>n===1?"1 week":n+" weeks";
-    // forecastGoal's reasons are full sentences; the trailing stop is dropped so the two clauses
-    // punctuate alike. Wording and numbers are left exactly as the stats layer produced them.
-    const horizon=!forecast.ok?forecast.reason.replace(/\.$/,""):forecast.weeks===0?"At your goal range":
-      forecast.lowWeeks===forecast.weeks&&forecast.highWeeks===forecast.weeks?`~${spell(forecast.weeks)} to goal`:
-      `~${spell(forecast.weeks)} to goal (range ${forecast.lowWeeks}–${forecast.highWeeks})`;
-    // "Undetermined" is dropped rather than reported as no plateau: too noisy to call is not the
-    // same finding as still losing.
-    const level=!plateau.ok||plateau.status==="undetermined"?"":
-      plateau.status==="flat"?`Plateau: ${plateau.plateauDays} days`:
-      plateau.status==="gaining"?"Trend is gaining":"No plateau detected";
-    return [horizon,level].filter(Boolean).join(" · ");
+      level,slope,sigma,target,days,futureDays,arrives:days<=reach,cone,mid:[[0,level],[tMid,level+slope*tMid]]};
   }
   /* "Cut" range (D48): from settings.cutStart (D31) to today. Display only — the
      same series, domain rule and trend; only the window changes. */
@@ -1118,10 +1164,11 @@ Object.assign(NXT, (()=>{
     // showGoal is accepted for API compatibility but must not affect the domain (D2/D3).
     void showGoal;
     const bandRows=(N.trendConfidence(rows)||[]).filter(r=>r.date>=start&&r.date<=state.date);
-    const forecastRead=N.forecastGoal(rows);
+    const forecastRead=N.forecastGoal(rows),forecastView=N.forecastView(rows);
     /* Projection is off by default. Omit entirely when forecastGoal reports
-       insufficient evidence (!ok) rather than drawing a weak estimate (I11). */
-    const canForecast=!!(N.cfg().targetConfirmed&&forecastRead.ok&&forecastRead.weeks!==null&&forecastRead.confidence!=='none');
+       insufficient evidence (!ok) rather than drawing a weak estimate (I11),
+       and when it has gone stale (D104): a paused projection draws no cone. */
+    const canForecast=!!(N.cfg().targetConfirmed&&forecastRead.ok&&forecastRead.weeks!==null&&forecastRead.confidence!=='none'&&forecastView.current);
     const fc=N.ui.showForecast&&canForecast?forecastGeometry(forecastRead,start,bandRows):null;
     const dataLow=Math.min(...values),rawHigh=Math.max(...values);
     const span=Math.max(1,rawHigh-dataLow);
@@ -1169,7 +1216,7 @@ Object.assign(NXT, (()=>{
     const anchor=forecast?{x:forecast.mid.x1,y:forecast.mid.y1,fitted:true}:tail?{x:tail.x,y:tail.y,fitted:false}:null;
     // Distant goal lives on Journey (D3) — never as a chart reference line.
     return {visible,start,W,H,left,right,top,bottom,low,high,step,points,post,postByDate,segments,ticks,x,y,
-      todayX:x(state.date),futureDays,bands,forecast,anchor,forecastRead,canForecast,
+      todayX:x(state.date),futureDays,bands,forecast,anchor,forecastRead,forecastView,canForecast,
       plateau:N.detectPlateau(rows),goalRef:null};
   }
   /* The primary series is the canonical per-date row, which prefers Morning but
@@ -1205,13 +1252,13 @@ Object.assign(NXT, (()=>{
   /* Cut journey and Evidence (proposed D95; the owner approved the direction on 2026-10-19). Presentation
      only: every figure is the engine's own — the start weight, the trend now (plateau.lastAvg), the goal
      range, the four-week rate and its 95% range (detectPlateau), the D37 1%-of-body-weight line (review()),
-     and the goal forecast (forecastGoal; its date is the D28 formula). What changes: the projection names
+     and the goal forecast (forecastGoal, dated by forecastView, D104). What changes: the projection names
      its date and both of its inputs (where the last three weeks put you today, and their pace), so the
      weeks add up on the card; the rate leads with its share of body weight and the word review() already
      uses; confidence says what it measures; a plateau only takes a card when there is one. */
-  function journeyHTML(forecastRead) {
+  function journeyHTML(forecastRead,view) {
     if(!N.cfg().targetConfirmed)return '';
-    const rows=N.weights();
+    const rows=N.weights(),fv=view||N.forecastView(rows),fw=N.forecastWords(fv);
     const startW=N.finite(typeof START_WEIGHT!=='undefined'?START_WEIGHT:null);
     const seed=startW!==null?startW:(rows[0]?rows[0].weight:null);
     const lo=goalLow(),hi=goalHigh();
@@ -1225,11 +1272,13 @@ Object.assign(NXT, (()=>{
     const done=seed-cur,remain=Math.max(0,cur-hi);
     const cs=typeof settings!=='undefined'&&settings&&Number.isFinite(N.dateMs(settings.cutStart))&&settings.cutStart<=state.date?settings.cutStart:null;
     const first=cs||rows[0]?.date;
-    const elapsed=first?Math.round((N.dateMs(state.date)-N.dateMs(first))/86400000):0;
+    /* D104: "down in N weeks" ends where Now is measured once the forecast is not fresh, so an old figure is not
+       credited to the weeks since. */
+    const elapsed=first?Math.max(0,Math.round((N.dateMs(fv.asOfDate)-N.dateMs(first))/86400000)):0;
     const sinceTxt=elapsed>=14?`${Math.round(elapsed/7)} weeks`:`${elapsed} ${N.plural(elapsed,'day')}`;
     const dir=done>=.05?'down':done<=-.05?'up':'no change';
-    const f=forecastRead||N.forecastGoal(rows);
-    const arrive=remain>0&&f&&f.ok&&N.finite(f.weeks)!==null&&f.weeks>0?N.shortDate(N.dateAdd(state.date,f.weeks*7)):null;
+    /* The goal label's date is the anchored arrival (D104), shown only while the forecast is current. */
+    const arrive=remain>0&&fv.showArrival?N.shortDate(fv.arrivalDate):null;
     const leftTrav=Math.min(pct(seed),pct(cur)),widthTrav=Math.abs(pct(cur)-pct(seed));
     const leftBand=Math.min(pct(lo),pct(hi)),widthBand=Math.abs(pct(lo)-pct(hi));
     /* A net gain is ground to make up: drawn in the review hue, and the road ahead starts where it ends. */
@@ -1253,10 +1302,15 @@ Object.assign(NXT, (()=>{
     const low=inCut.length>=5?inCut.reduce((m,r)=>Number(r.weight)<Number(m.weight)?r:m):null;
     if(low)ms.push({d:low.date,t:`Lowest weigh-in ${Number(low.weight).toFixed(1)}`,low:true});
     ms.sort((x,y)=>x.d.localeCompare(y.d));
-    /* The next whole kilogram, at the projection's own pace from where you are now: an estimate, drawn dashed (I11). */
-    const pace=f&&f.ok&&N.finite(f.slope)!==null&&f.slope<0?f.slope:null;
+    /* The next whole kilogram, at the projection's own pace from its own origin (D104): an estimate, drawn dashed
+       (I11), dropped once that day has come without a reading to show it, or while the forecast is paused. */
+    const pace=fv.ok&&fv.current&&N.finite(fv.slopeKgWk)!==null&&fv.slopeKgWk<0?fv.slopeKgWk/7:null;
     let next=null;
-    if(pace&&remain>0){const k=Math.ceil(cur-1e-6)-1;if(k>=hi){next={k,d:N.dateAdd(state.date,Math.max(1,Math.round((cur-k)/-pace)))};}}
+    if(pace&&remain>0&&fv.modelOriginDate){
+      const k=Math.ceil(cur-1e-6)-1,from=N.finite(fv.originLevel)!==null?fv.originLevel:cur;
+      const d=k>=hi?N.dateAdd(fv.modelOriginDate,Math.max(1,Math.round((from-k)/-pace))):null;
+      if(d&&d>state.date)next={k,d};
+    }
     const play='<button type="button" class="st-share-b is-icon st-jr-play" aria-label="Play your cut" data-st-story><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 4.6v10.8L15.2 10z" fill="currentColor" stroke="none"/></svg></button>';
     const share='<button type="button" class="st-share-b is-icon" aria-label="Share your cut" onclick="window.NXP&&NXP.shareProgress&&NXP.shareProgress()"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5.5 9.5H5a1.5 1.5 0 0 0-1.5 1.5v4.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V11A1.5 1.5 0 0 0 15 9.5h-.5"/></svg></button>';
     const hiTxt=Number.isInteger(hi)?String(hi):hi.toFixed(1);
@@ -1268,7 +1322,7 @@ Object.assign(NXT, (()=>{
     const canRewind=lv.length>=3;
     const payload={seed:+seed.toFixed(2),first:first||null,lo,hi,max:+max.toFixed(3),span:+span.toFixed(3),today:state.date,now:+cur.toFixed(2),nowWord,
       pts:lv.map(q=>[q.date,+q.value.toFixed(2)])};
-    const sum=`Start ${seed.toFixed(1)} kilograms${first?' on '+N.shortDate(first):''}, now ${cur.toFixed(1)}, goal ${lo} to ${hi}${arrive?', projected around '+arrive:''}.`;
+    const sum=`Start ${seed.toFixed(1)} kilograms${first?' on '+N.shortDate(first):''}, now ${cur.toFixed(1)}, goal ${lo} to ${hi}${arrive?', projected around '+arrive+(fw.asOf?' '+fw.asOf:''):''}.`;
     return `<section class="vn-journey st-jr" aria-label="Cut journey"${canRewind?` data-st-jr="${esc(JSON.stringify(payload))}"`:''}>
       <div class="vn-sect-head"><p class="vn-h-sect">Cut journey</p>
         <span class="vn-tiny st-jr-when">${first?esc(N.shortDate(first)):'Start'} → now</span>${lv.length>=7?play:''}${share}</div>
@@ -1301,7 +1355,8 @@ Object.assign(NXT, (()=>{
     const nl=N.nowLevel();
     return nl&&nl.source==='line'?'<p class="vn-tiny vn-mt3">The Cut journey’s “Now” is where the line through your last three weeks of mornings puts you. The chart’s trend line is smoother and runs about ten days behind a moving weight.</p>':'';
   }
-  function evidenceHTML(plateau,forecastRead) {
+  function evidenceHTML(plateau,forecastRead,view) {
+    const fv=view||N.forecastView(N.weights()),fw=N.forecastWords(fv);
     const rate=N.finite(plateau&&plateau.weeklyRate),ref=N.finite(plateau&&plateau.lastAvg);
     const ok=!!(plateau&&plateau.ok)&&rate!==null;
     /* The D37 reading, exactly as review() takes it: the four-week rate over the trend now. */
@@ -1323,30 +1378,39 @@ Object.assign(NXT, (()=>{
       const axis=Math.max(2,Math.min(4,Math.abs(pct)+.3)),flat=N.flatKgWeek/ref*100;
       const w=v=>(Math.max(0,Math.min(axis,v))/axis*100).toFixed(2);
       /* D96 · What-if pace: drag the marker to try another pace. Plain arithmetic from where you are now to the
-         top of the goal range, shown as a what-if and dropped when you let go; nothing is stored or forecast. */
-      const nl=N.nowLevel(),nowV=nl?nl.value:null,canWhat=N.cfg().targetConfirmed&&nowV!==null&&nowV>goalHigh()+.05;
+         top of the goal range, shown as a what-if and dropped when you let go; nothing is stored or forecast.
+         D104: it counts from the day Now is measured (base), not from today, and rests while the forecast is
+         paused, since Now is then too old to start from. */
+      const nl=N.nowLevel(),nowV=nl?nl.value:null,canWhat=N.cfg().targetConfirmed&&fv.current&&nowV!==null&&nowV>goalHigh()+.05;
       const gl=`${rate<0?'Losing':'Gaining'} ${Math.abs(pct).toFixed(1)} percent of body weight a week; the 1 percent line is where losing quickly starts`;
-      const wdata={axis:+axis.toFixed(3),ref:+ref.toFixed(3),flat:+flat.toFixed(4),now:nowV===null?null:+nowV.toFixed(3),hi:goalHigh(),rate:+rate.toFixed(3),today:state.date};
+      const wdata={axis:+axis.toFixed(3),ref:+ref.toFixed(3),flat:+flat.toFixed(4),now:nowV===null?null:+nowV.toFixed(3),hi:goalHigh(),rate:+rate.toFixed(3),today:state.date,base:nl?nl.date:state.date};
       gauge=`<div class="st-ev-g${canWhat?' is-what':''}" ${canWhat?`role="slider" tabindex="0" aria-label="What-if pace" aria-valuemin="0" aria-valuemax="${(axis*ref/100).toFixed(2)}" aria-valuenow="${Math.max(0,-rate).toFixed(2)}" aria-valuetext="${esc(`Your 4-week rate, ${Math.abs(rate).toFixed(2)} kilograms a week. Arrow keys try another pace.`)}" data-st-ev="${esc(JSON.stringify(wdata))}"`:`role="img" aria-label="${esc(gl)}"`}><div class="st-ev-z"><i class="z-flat" style="width:${w(flat)}%"></i><i class="z-steady" style="width:${(w(1)-w(flat)).toFixed(2)}%"></i><i class="z-fast" style="flex:1"></i></div><i class="st-ev-mk" style="left:${w(Math.max(0,-pct))}%"></i>${canWhat?'<i class="st-ev-trail" hidden></i><i class="st-ev-gk" hidden></i><span class="st-ev-gkl" hidden></span>':''}<div class="st-ev-zl" aria-hidden="true"><span>Flat</span>${axis<=2.2?`<span class="is-mid is-steady" style="left:${w((flat+1)/2)}%">Steady</span>`:''}<span class="is-mid" style="left:${w(1)}%">1% line</span><span>Fast</span></div></div>${canWhat?'<p class="st-ev-hint" aria-hidden="true">Drag the marker to try another pace</p><div class="st-ev-wi" hidden><p>What if</p><b></b><span></span></div>':''}`;
     }
     const plateauLine=!ok?esc((plateau&&plateau.reason)||''):plateau.plateau?'':plateau.status==='losing'?'No plateau: still trending down.':esc(plateau.reason||'');
     const plateauTile=ok&&plateau.plateau?`<div class="st-ev-t is-wide is-watch"><p>Plateau</p><b>${esc(String(plateau.plateauDays))} days</b><span>${esc(plateau.reason||'')}</span></div>`:'';
-    /* Projection: the D28 date and the pace it runs at, so it adds up beside the four-week rate. */
+    /* Projection: the D28 date and the pace it runs at, so it adds up beside the four-week rate. D104: the date is
+       anchored at the forecast's origin (forecastView) and the weeks count from today to it; once the origin is not
+       fresh the tile says "as of" it and the start is "on" that day; once stale it pauses, names the last morning
+       weigh-in and prints no date. */
     let proj;
+    const read=!!(forecastRead&&forecastRead.ok&&N.finite(forecastRead.weeks)!==null);
     if(!N.cfg().targetConfirmed)proj=`<b>Set a goal</b><span>A projection needs a confirmed goal range.</span>`;
-    else if(forecastRead&&forecastRead.ok&&N.finite(forecastRead.weeks)!==null){
+    else if(read&&!fv.current)proj=`<b>Paused</b><span>${esc(fw.paused||'No recent morning weigh-in.')} ${esc(fw.restart||'Weigh in to refresh it.')}</span>`;
+    else if(read){
+      const asOf=fw.asOf?` ${fw.asOf.charAt(0).toUpperCase()}${fw.asOf.slice(1)}.`:'';
       if(forecastRead.weeks===0){
         const la=N.finite(forecastRead.lastAvg),under=la!==null&&la<goalLow();
-        proj=under?`<b>Below goal</b><span>The trend is under your goal range.</span>`:`<b>At goal</b><span>The trend is in your goal range.</span>`;
+        proj=under?`<b>Below goal</b><span>The trend is under your goal range.${esc(asOf)}</span>`:`<b>At goal</b><span>The trend is in your goal range.${esc(asOf)}</span>`;
       }
       else{
-        const d=N.shortDate(N.dateAdd(state.date,forecastRead.weeks*7)),pace=N.finite(forecastRead.slope)!==null?forecastRead.slope*7:null;
-        const range=forecastRead.lowWeeks!==forecastRead.weeks||forecastRead.highWeeks!==forecastRead.weeks?` <small>(${forecastRead.lowWeeks}–${forecastRead.highWeeks})</small>`:'';
-        /* The forecast starts where the line through the last three weeks sits today (fittedLevel), which
-           runs ahead of the trend figure; naming both inputs lets the weeks add up on the card. */
-        const lvl=N.finite(forecastRead.fittedLevel),nl=N.nowLevel(),same=lvl!==null&&nl&&Math.abs(nl.value-lvl)<.05;
-        const basis=pace===null?"At your last 3 weeks' pace":same?`From ${lvl.toFixed(1)} kg now, at your last 3 weeks' pace of ${sgn(pace)} kg/wk`:lvl!==null?`Your last 3 weeks: ${lvl.toFixed(1)} kg today, ${sgn(pace)} kg/wk`:`At your last 3 weeks' pace, ${sgn(pace)} kg/wk`;
-        proj=`<b class="vn-num">~<span data-st-num>${forecastRead.weeks}</span> wk${range}</b><em>around ${esc(d)}</em><span>${basis}. An estimate, not a measurement.</span>`;
+        const d=N.shortDate(fv.arrivalDate),pace=N.finite(fv.slopeKgWk),wk=fv.weeksRemaining,lo=fv.lowWeeksRemaining,hi=fv.highWeeksRemaining;
+        const range=lo!==wk||hi!==wk?` <small>(${lo}–${hi})</small>`:'';
+        /* The forecast starts where the line through the last three weeks sits on its origin day (fittedLevel),
+           which runs ahead of the trend figure; naming both inputs lets the weeks add up on the card. */
+        const lvl=N.finite(fv.originLevel),nl=N.nowLevel(),same=lvl!==null&&nl&&Math.abs(nl.value-lvl)<.05;
+        const on=fv.freshness==='aging'?'on '+N.shortDate(fv.modelOriginDate):'';
+        const basis=pace===null?"At your last 3 weeks' pace":same?`From ${lvl.toFixed(1)} kg ${on||'now'}, at your last 3 weeks' pace of ${sgn(pace)} kg/wk`:lvl!==null?`Your last 3 weeks: ${lvl.toFixed(1)} kg ${on||'today'}, ${sgn(pace)} kg/wk`:`At your last 3 weeks' pace, ${sgn(pace)} kg/wk`;
+        proj=`<b class="vn-num">~<span data-st-num>${wk}</span> wk${range}</b><em>around ${esc(d)}${fw.asOf?` · ${esc(fw.asOf)}`:''}</em><span>${basis}.${fw.restart?' '+esc(fw.restart):''} An estimate, not a measurement.</span>`;
       }
     } else proj=`<b>Unavailable</b><span>${esc((forecastRead&&forecastRead.reason)||'Not enough recent weigh-ins for a projection.')}</span>`;
     const conf=plateau&&plateau.confidence&&plateau.confidence!=='none'?plateau.confidence:null;
@@ -1511,8 +1575,8 @@ Object.assign(NXT, (()=>{
       ${rangeRead}
       <details class="st-csum-d"><summary>How to read this chart</summary><p class="vn-tiny" id="vn-csum">${esc(summary)}</p></details>
       <div class="vn-togs">${togPost}${togProj}</div>
-      ${journeyHTML(forecastRead)}
-      ${evidenceHTML(plateau,forecastRead)}
+      ${journeyHTML(forecastRead,model.forecastView)}
+      ${evidenceHTML(plateau,forecastRead,model.forecastView)}
       <details class="vn-more-block"><summary>Why NXTFRM says this</summary>${N.diagnosisCard()}${N.reviewCard()}${nowNote()}${N.cfg().targetConfirmed?'<p class="vn-tiny vn-mt3">A weight range alone does not measure leanness.</p>':''}</details>
       <input type="hidden" id="n99-chart-slider" value="${idx}" aria-hidden="true">
     </section>`;
@@ -1767,7 +1831,7 @@ Object.assign(NXT, (()=>{
     if(!(await ask))return;
     state.bws=state.bws.filter(x=>x!==r);N.commit('Weigh-in deleted');
   }
-  return {signed,smoothPath,trendReadText,chartModel,chartHTML,journeyHTML,selectPoint,scrub,chartKey,openNote,saveNote,removeNote,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
+  return {signed,smoothPath,chartModel,chartHTML,journeyHTML,selectPoint,scrub,chartKey,openNote,saveNote,removeNote,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
 })());
 
 Object.assign(NXT, (()=>{

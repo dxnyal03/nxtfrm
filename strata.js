@@ -126,10 +126,12 @@ const STRATA = (() => {
         }
       }
       const steps = cols.map(c => `<line class="st-wstep" x1="${c.x1.toFixed(1)}" x2="${c.x2.toFixed(1)}" y1="${c.y.toFixed(1)}" y2="${c.y.toFixed(1)}"/>`).join("");
-      /* Projection end: the date the engine's horizon points to, on the mark itself. */
-      const fe = m.forecast && (m.forecast.endpoint || { x: m.forecast.mid.x2, y: m.forecast.mid.y2 }), fr = m.forecastRead;
-      if (fe && fr && fr.ok && fr.weeks > 0) {
-        const txt = "Goal range · ~" + shortDate(NXT.dateAdd(state.date, fr.weeks * 7)), w = 18 + txt.length * 5.9, px = m.W - m.right - w - 2, py = m.top + 4;
+      /* Projection end: the date the engine's horizon points to, on the mark itself. D104: the anchored arrival
+         (forecastView), the same date Evidence and the Cut journey print; there is no cone, and so no pill, while
+         the forecast is paused. */
+      const fe = m.forecast && (m.forecast.endpoint || { x: m.forecast.mid.x2, y: m.forecast.mid.y2 }), fv = m.forecastView;
+      if (fe && fv && fv.showArrival) {
+        const txt = "Goal range · ~" + shortDate(fv.arrivalDate), w = 18 + txt.length * 5.9, px = m.W - m.right - w - 2, py = m.top + 4;
         svg.insertAdjacentHTML("beforeend", `<g class="st-pillg is-goal"><rect x="${px.toFixed(1)}" y="${py.toFixed(1)}" width="${w.toFixed(1)}" height="20" rx="10"/><text x="${(px + w / 2).toFixed(1)}" y="${(py + 13.6).toFixed(1)}" text-anchor="middle">${txt}</text></g>`);
       }
       /* The projection starts from the fitted level (it leads the smoothed trend); a faint
@@ -2045,10 +2047,18 @@ const STRATA = (() => {
         sp.textContent = `Under ${flatKg.toFixed(2)} kg a week the trend reads as flat. A what-if, not a forecast.`;
         vt = `What if ${kg.toFixed(2)} kilograms a week: no arrival, the trend reads as flat`;
       } else {
-        const weeks = (d.now - d.hi) / kg, date = NXT.dateAdd(d.today, Math.max(1, Math.round(weeks * 7))), wk = Math.max(1, Math.round(weeks));
-        b.textContent = `${hiTxt} kg around ${shortDate(date)}`;
-        sp.textContent = `About ${wk} ${wk === 1 ? "week" : "weeks"} at −${kg.toFixed(2)} kg/wk from ${Number(d.now).toFixed(1)} kg now${p > 1 ? ", past the 1% line" : ""}. A what-if, not a forecast.`;
-        vt = `What if ${kg.toFixed(2)} kilograms a week: ${hiTxt} kilograms around ${shortDate(date)}`;
+        /* D104: counted from the day Now is measured (d.base), which can be before today. */
+        const from = d.base || d.today, on = from < d.today ? "on " + shortDate(from) : "now";
+        const weeks = (d.now - d.hi) / kg, date = NXT.dateAdd(from, Math.max(1, Math.round(weeks * 7))), wk = Math.max(1, Math.round(weeks));
+        if (date <= d.today) {
+          b.textContent = "Already past at this pace";
+          sp.textContent = `At −${kg.toFixed(2)} kg/wk from ${Number(d.now).toFixed(1)} kg ${on}, ${hiTxt} kg would fall before today. Weigh in to see where you are. A what-if, not a forecast.`;
+          vt = `What if ${kg.toFixed(2)} kilograms a week: ${hiTxt} kilograms would fall before today`;
+        } else {
+          b.textContent = `${hiTxt} kg around ${shortDate(date)}`;
+          sp.textContent = `About ${wk} ${wk === 1 ? "week" : "weeks"} at −${kg.toFixed(2)} kg/wk from ${Number(d.now).toFixed(1)} kg ${on}${p > 1 ? ", past the 1% line" : ""}. A what-if, not a forecast.`;
+          vt = `What if ${kg.toFixed(2)} kilograms a week: ${hiTxt} kilograms around ${shortDate(date)}`;
+        }
       }
       g.setAttribute("aria-valuenow", kg.toFixed(2)); g.setAttribute("aria-valuetext", vt);
       const step = Math.round(kg * 10);
@@ -2087,7 +2097,7 @@ const STRATA = (() => {
      the fastest week, the lifts, the mornings weighed and where it is heading, ending on the share card (D85).
      Every figure is the engine's: the Cut journey's start and Now (D97), Mon–Sun morning averages with at least
      three readings (the Week by week rule), strengthItems() and its words (I12), the weigh-ins themselves and
-     forecastGoal(). Nothing is stored. Under reduced motion nothing moves and nothing advances by itself. */
+     forecastGoal(), dated by forecastView() (D104). Nothing is stored. Under reduced motion nothing moves and nothing advances by itself. */
   const SYD = 6500;
   let SY = null;
   const syLong = d => { try { return new Date(d + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }); } catch (e) { return shortDate(d); } };
@@ -2104,10 +2114,12 @@ const STRATA = (() => {
     const conf = !!N.cfg().targetConfirmed, lo = typeof goalLow === "function" ? Number(goalLow()) : NaN, hi = typeof goalHigh === "function" ? Number(goalHigh()) : NaN;
     const nl = N.nowLevel(rows), now = nl ? nl.value : rows[rows.length - 1].weight;
     const days = Math.max(0, Math.round((N.dateMs(state.date) - N.dateMs(first)) / 864e5));
-    const since = days >= 14 ? Math.round(days / 7) + " weeks" : days + " " + N.plural(days, "day");
+    /* D104: the kilograms down are measured where Now is; once the forecast is not fresh, "in N weeks" ends there. */
+    const fv = N.forecastView(rows), upTo = Math.max(0, Math.round((N.dateMs(fv.asOfDate) - N.dateMs(first)) / 864e5));
+    const since = upTo >= 14 ? Math.round(upTo / 7) + " weeks" : upTo + " " + N.plural(upTo, "day");
     const weighed = new Set(rows.filter(r => r.date >= first).map(r => r.date));
     const lv = N.levelSeries(rows).filter(q => q.date >= first);
-    return { N, rows, seed, first, conf, lo, hi, now, days, since, weighed, lv, done: seed - now, goal: conf && Number.isFinite(lo) && Number.isFinite(hi) };
+    return { N, rows, seed, first, conf, lo, hi, now, days, since, fv, weighed, lv, done: seed - now, goal: conf && Number.isFinite(lo) && Number.isFinite(hi) };
   }
   function syBar(F, cls) {
     const max = Math.max(F.seed, F.now, F.goal ? F.hi : F.now) + .6, min = Math.min(F.goal ? F.lo : F.now, F.now, F.seed) - 1.2, span = Math.max(.8, max - min);
@@ -2149,11 +2161,14 @@ const STRATA = (() => {
       /* A long cut folds two or three weeks into a row and shrinks the dots, so the grid never outgrows the screen. */
       const rows7 = Math.ceil(n / 7), per = rows7 > 20 ? 21 : rows7 > 10 ? 14 : 7, sz = per === 21 ? 8 : per === 14 ? 11 : rows7 > 8 ? 12 : 16, gp = per === 21 ? 4 : per === 14 ? 6 : rows7 > 8 ? 6 : 8;
       ch.push({ k: "morn", eye: "Your mornings", num: String(got), unit: "of " + total, sub: `days weighed since ${shortDate(F.first)}. Each one tightens the trend.`, vis: `<div class="st-sy-days" style="--c:${per};--s:${sz}px;--g:${gp}px" aria-hidden="true">${cells.join("")}</div>` }); }
-    const f = NXT.forecastGoal(F.rows), share = '<button type="button" class="st-sy-share"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5.5 9.5H5a1.5 1.5 0 0 0-1.5 1.5v4.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V11A1.5 1.5 0 0 0 15 9.5h-.5"/></svg>Share your cut</button>';
+    const v = F.fv, fw = NXT.forecastWords(v), share = '<button type="button" class="st-sy-share"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5.5 9.5H5a1.5 1.5 0 0 0-1.5 1.5v4.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V11A1.5 1.5 0 0 0 15 9.5h-.5"/></svg>Share your cut</button>';
     if (!F.goal) ch.push({ k: "next", eye: "What's next", num: F.now.toFixed(1), unit: "kg now", sub: "Set a goal range in Settings to see where this is heading.", vis: share });
     else if (F.now <= F.hi) ch.push({ k: "next", eye: "Where you are", num: F.now.toFixed(1), unit: "kg now", sub: F.now >= F.lo ? `Inside your ${F.lo}–${F.hi} kg goal range. A weight range alone does not measure leanness.` : `Below your ${F.lo}–${F.hi} kg goal range.`, vis: share });
-    else if (f.ok && f.weeks > 0) ch.push({ k: "next", eye: "What's next", num: "~" + f.weeks, unit: f.weeks === 1 ? "week" : "weeks", sub: `To ${F.hi} kg around ${shortDate(NXT.dateAdd(state.date, f.weeks * 7))}, at your last 3 weeks' pace of ${sySigned(f.slope * 7)} kg/wk. An estimate, not a measurement.`, vis: share });
-    else ch.push({ k: "next", eye: "What's next", num: (F.now - F.hi).toFixed(1), unit: "kg to go", sub: (f.reason || "Keep weighing in.").replace(/([^.])$/, "$1."), vis: share });
+    /* D104: the anchored arrival, counted from today and said "as of" the last reading once it is not fresh; a
+       paused forecast keeps the reason-style chapter and names the last morning weigh-in instead of a date. */
+    else if (v.showArrival) ch.push({ k: "next", eye: "What's next", num: "~" + v.weeksRemaining, unit: v.weeksRemaining === 1 ? "week" : "weeks", sub: `To ${F.hi} kg around ${shortDate(v.arrivalDate)}${fw.asOf ? ", " + fw.asOf : ""}, at your last 3 weeks' pace of ${sySigned(v.slopeKgWk)} kg/wk. An estimate, not a measurement.`, vis: share });
+    else if (v.ok && v.weeks > 0 && fw.paused) ch.push({ k: "next", eye: "What's next", num: (F.now - F.hi).toFixed(1), unit: "kg to go", sub: `${fw.paused} ${fw.restart || "Weigh in to see where this is heading."}`, vis: share });
+    else ch.push({ k: "next", eye: "What's next", num: (F.now - F.hi).toFixed(1), unit: "kg to go", sub: (v.reason || "Keep weighing in.").replace(/([^.])$/, "$1."), vis: share });
     return ch;
   }
   function story() {
