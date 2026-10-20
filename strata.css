@@ -1623,6 +1623,17 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 @media (prefers-reduced-motion:no-preference){
   html::before{animation:st-aurora-b 52s ease-in-out infinite alternate,st-dust 7s ease-in-out infinite alternate}
 }
+/* D153 · scroll-driven sky: the drift runs on the compositor against the root scroller, so scrolling no longer
+   writes a custom property on <html> and restyles the tree each frame. The JS listener binds only without support. */
+@supports (animation-timeline:scroll()){
+  @media (prefers-reduced-motion:no-preference){
+    :root:not([data-nxp-motion="reduced"]) body::before{translate:none;animation:st-aurora 36s ease-in-out infinite alternate,st-par-b linear both;animation-timeline:auto,scroll(root)}
+    :root:not([data-nxp-motion="reduced"])::before{translate:none;animation:st-aurora-b 52s ease-in-out infinite alternate,st-dust 7s ease-in-out infinite alternate,st-par-h linear both;animation-timeline:auto,auto,scroll(root)}
+  }
+}
+/* Ends tuned so ~600 px of scroll drifts about 6-9 px (sky 1) and 18-28 px (sky 2), today's magnitude; the full-range value scales with page length. */
+@keyframes st-par-b{to{translate:0 -10px}}
+@keyframes st-par-h{to{translate:0 -30px}}
 @keyframes st-aurora-b{
   0%{transform:translate3d(0,0,0) scale(1.02) rotate(0deg)}
   50%{transform:translate3d(-5vw,-3vh,0) scale(1.1) rotate(-5deg)}
@@ -3270,19 +3281,19 @@ html::after{content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;opa
    same height. Before: margins 20/12/12/32/32 and titles 34/28/36/36/38 at four different heights, so
    the page jumped sideways on every tab change. The active workout keeps its own instrument frame (D6,
    D18's layout budget is measured inside it). */
-:root{--st-gutter:16px}
+:root{--st-gutter:16px;--st-mast-mt:4px}/* D155: one masthead offset: safe-top + 12 page pad + 4 = 16 */
 @media (max-width:359px){:root{--st-gutter:12px}}
 #trainPage,#weightPage,#historyPage,#morePage{padding-left:0 !important;padding-right:0 !important}
 #homePage .vn-pad,#trainPage>.n99,#weightPage>.n99,#historyPage>.n99,#morePage>.n99,#morePage>.apx96-page{padding-left:var(--st-gutter) !important;padding-right:var(--st-gutter) !important}/* App & install is the one legacy page (.apx96-page); it ran edge to edge (D102) */
 #trainPage:has(.st-train-active){padding-left:12px !important;padding-right:12px !important}
 #trainPage:has(.st-train-active)>.n99{padding-left:0 !important;padding-right:0 !important}
-#homePage .st-head,#trainPage .nxp-train-chrome.st-head,#weightPage .nxp-progress-chrome,#historyPage .vn-hist-chrome{margin-top:var(--st-mast-mt,6px) !important;padding-top:0 !important}
+#homePage .st-head,#trainPage .nxp-train-chrome.st-head,#weightPage .nxp-progress-chrome,#historyPage .vn-hist-chrome{margin-top:var(--st-mast-mt,4px) !important;padding-top:0 !important}
 #weightPage .nxp-progress-chrome>div,#historyPage .vn-hist-chrome>div{display:flex;flex-direction:column-reverse}
 #weightPage .nxp-progress-chrome>div>p,#historyPage .vn-hist-chrome>div>p{margin:0 !important;font:520 calc(13px*var(--wx-s))/1.3 var(--st-font-d) !important;letter-spacing:.01em !important;text-transform:none !important;
   color:color-mix(in srgb,var(--st-accent-lift) 70%,var(--st-ink-3)) !important}
 #homePage .st-head .st-h1,#trainPage .nxp-train-chrome h1,#weightPage .nxp-progress-chrome h1,#historyPage .vn-hist-chrome h1,#morePage .vn-set-title{
   font-size:calc(34px*var(--wx-sn,1)) !important;line-height:1.05 !important;margin-top:4px !important;letter-spacing:-.04em !important}
-#morePage .vn-set-title{margin:calc(6px + 16.9px + 4px) 0 18px !important}
+#morePage .vn-set-title{margin:calc(var(--st-mast-mt,4px) + 16.9px + 4px) 0 18px !important}
 @media (max-width:359px){#homePage .st-head .st-h1,#trainPage .nxp-train-chrome h1,#weightPage .nxp-progress-chrome h1,#historyPage .vn-hist-chrome h1,#morePage .vn-set-title{font-size:calc(30px*var(--wx-sn,1)) !important}}
 
 /* ---- D71 · Tab transitions (calmer, owner 2026-10-19) ---------------------------------------------------
@@ -3310,12 +3321,14 @@ html::after{content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;opa
    A frosted strip behind the status bar once the page moves; a glass capsule with the tab's name when the
    title has gone. Same material as the dock. --nxt-safe-top is the one place the inset is read. */
 #stTop{position:fixed;left:0;right:0;top:0;z-index:62;pointer-events:none}
-#stTop .st-top-scrim{position:absolute;left:0;right:0;top:0;height:calc(var(--nxt-safe-top,0px) + 54px);
-  background:linear-gradient(180deg,rgba(7,6,11,.86) 0%,rgba(7,6,11,.62) 52%,rgba(7,6,11,0) 100%);
-  -webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);
-  -webkit-mask-image:linear-gradient(180deg,#000 58%,transparent);mask-image:linear-gradient(180deg,#000 58%,transparent);
-  opacity:0;transition:opacity .3s cubic-bezier(.32,.72,0,1)}
+#stTop .st-top-scrim{position:absolute;left:0;right:0;top:0;height:calc(var(--nxt-safe-top,0px) + 64px);
+  /* D154 · progressive blur: full frost at the edge, clear at the foot, so content melts into glass under the status bar. */
+  background:linear-gradient(180deg,rgba(7,6,11,.5) 0%,rgba(7,6,11,.28) 55%,rgba(7,6,11,0) 100%);
+  -webkit-backdrop-filter:blur(20px) saturate(1.4);backdrop-filter:blur(20px) saturate(1.4);
+  -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 45%,transparent 100%);mask-image:linear-gradient(to bottom,#000 0,#000 45%,transparent 100%);
+  opacity:0;transition:opacity .3s cubic-bezier(.32,.72,0,1)}/* at rest nothing is under it; the frost arrives with the first scroll and leaves during a workout (updateTop) */
 #stTop.is-scrolled .st-top-scrim{opacity:1}
+@media (prefers-reduced-transparency:reduce){#stTop .st-top-scrim{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(180deg,rgba(7,6,11,.96) 0%,rgba(7,6,11,.8) 55%,rgba(7,6,11,0) 100%)}}
 #stTop .st-top-bar{position:absolute;left:50%;top:calc(var(--nxt-safe-top,0px) + 8px);height:34px;padding:0 18px;border-radius:999px;border:0;margin:0;
   background:linear-gradient(180deg,rgba(46,40,70,.62),rgba(24,21,36,.62));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(255,255,255,.06),0 10px 26px -12px rgba(0,0,0,.85),0 0 22px -10px rgba(139,92,246,.55);
@@ -3324,8 +3337,8 @@ html::after{content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;opa
   opacity:0;transform:translate(-50%,-8px) scale(.94);transition:opacity .22s ease,transform .38s cubic-bezier(.32,.72,0,1);pointer-events:none}
 #stTop.is-compact .st-top-bar{opacity:1;transform:translate(-50%,0) scale(1);pointer-events:auto}
 #stTop .st-top-bar::after{content:"";position:absolute;inset:-6px -4px}/* 46 pt effective target for the 34 pt capsule */
-@media (prefers-reduced-motion:reduce){#stTop .st-top-scrim,#stTop .st-top-bar{transition:none}}
-:root[data-nxp-motion="reduced"] #stTop .st-top-scrim,:root[data-nxp-motion="reduced"] #stTop .st-top-bar{transition:none}
+@media (prefers-reduced-motion:reduce){#stTop .st-top-bar{transition:none}}
+:root[data-nxp-motion="reduced"] #stTop .st-top-bar{transition:none}
 /* ---- D74 · Breathing rest orb and set ignition ---------------------------------------------------------
    The rest strip becomes an instrument: a ring that sweeps down with the engine's own countdown (--pct,
    painted every second), a core that breathes on an 8-second cycle (a calm 4-in, 4-out), a pulse in the
@@ -4428,8 +4441,7 @@ body.st-live-on main::after{height:76px}
 /* ---- Masthead (D70, W7 / D116): the top padding absorbs the safe-area inset, so a notched phone gains the
    14 px the inset used to add on top of the status reserve; a browser (inset 0) renders exactly as before.
    With the status banner showing, the banner owns the inset and the masthead keeps its 6 px. ---------------- */
-#weightPage{--st-mast-mt:calc(6px - min(var(--nxt-safe-top,0px),14px))}
-body:has(.cloud-local-banner:not([hidden])) #weightPage{--st-mast-mt:6px}
+/* D155 supersedes the Weight-only override: --st-mast-mt is one shared token on :root. */
 /* The masthead and tabs hold the spec's frame on all four Progress tabs: 64 px masthead, 8, a 44 px tab track
    whose buttons are 36 (the pill is drawn 4 px inside) with the full 44 px hit area restored on each button. */
 #weightPage .nxp-progress .nxp-progress-chrome{padding-bottom:7px}
