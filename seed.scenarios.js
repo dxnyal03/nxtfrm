@@ -486,7 +486,10 @@
       badgeObserver = new MutationObserver(function () {
         const active = currentMarker();
         if (active && !document.getElementById(BADGE_ID)) mountBadge(active);
+        else if (active) placeBadge(document.getElementById(BADGE_ID));
       });
+      /* The banner appears after the first paint and can be dismissed; keep the badge under it. */
+      setInterval(function () { const b = document.getElementById(BADGE_ID); if (b) placeBadge(b); }, 1000);
       badgeObserver.observe(document.body, { childList: true });
     }
   }
