@@ -29,6 +29,6 @@ main or deploy. RELEASE 163. Phone first (320–430 px); desktop layouts withdra
 | Weight plate declutter (D148, owner feedback) | builder / Sonnet 5.5 medium | done | `aca1e5a` | 28 suites 0 FAIL; 390/375/320 | before/after sent to the owner |
 | Weight fix round (B1, M1, M4, m1–m3, m7) | builder / Sonnet 5.5 medium (running) | in progress | — | — | re-review changed areas |
 | Today log strip as two cards (D149, owner) | builder / Sonnet 5.5 medium | done | `cca3efe` | 27/28 (forecast-time flake from the concurrent edit) | re-check in the fix round |
-| Today fix round (M2, M3, m4, m5) | builder / Sonnet 5.5 medium (running) | in progress | — | — | — |
+| Today fix round (M2, M3, m4, m5, lit-card contrast, 375 zone alignment) | builder / Sonnet 5.5 medium | done | `b27f334` | 28 suites 0 FAIL | 15/15 dock wording not rendered live — re-review covers it |
 | Stage 6a · one sheet system (owner 2026-10-20: entry sheets "not consistent with the rest of the app") | builder / Sonnet | queued | Log cardio, weigh-in, pickers, note, cardio edit, Why/review, ask | — | after the fix rounds; owner screenshot in cache `checkpoint/owner-sheet-feedback.png`. Owner: Log cardio = Date · Activity · Duration · Speed · Incline · Save; Effort and Heart rate behind "More details" (closed by default; both are stored/shown only, no engine use) — D150 |
 | Stage 6 remaining pages | builders / Sonnet | queued | — | — | after the checkpoint is reviewable |
