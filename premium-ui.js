@@ -2220,17 +2220,17 @@ const NXP = (() => {
     if(!(up>=0.05)||rate===null||!(rate<0))return '';
     return `<p class="st-slow">This week’s average is ${up.toFixed(1)} kg above last week. Your trend is still down ${Math.abs(rate).toFixed(2)} kg a week. Daily weight moves around; the trend is what counts.</p>`;
   }
+  /* W1 (D112): quiet text chips under the plate, a glyph each and no glowing dot; the slow-week note follows. */
   function weightHighlightsHTML(){
-    const h=weightHighlights();
-    return h.length?`<ul class="st-wchips" aria-label="Highlights">${h.map(x=>`<li class="is-${x.k}"><i aria-hidden="true"></i><span>${esc(x.t)}</span></li>`).join('')}</ul>`:'';
+    const h=weightHighlights(),g={low:'★',down:'↘'};
+    return h.length?`<ul class="wx-hl" aria-label="Highlights">${h.map(x=>`<li class="is-${x.k}"><i aria-hidden="true">${g[x.k]||'·'}</i><span>${esc(x.t)}</span></li>`).join('')}</ul>`:'';
   }
+  N.highlightsHTML=()=>{const h=weightHighlightsHTML()+slowWeekHTML();return h?`<div class="wx-after">${h}</div>`:'';};
   function progress() {
     applyAppearance();
     syncTrainNav(false);
-    const v=N.ui.view,r=N.ui.range;
-    const period=r===14?'Last 2 weeks':r===30?'Last month':r===90?'Last 3 months':r==='cut'?(settings.cutStart?'Since your cut started · '+N.shortDate(settings.cutStart):'Since your first weigh-in'):'All recorded weigh-ins';
+    const v=N.ui.view;
     const tabs=`<div class="n99-progress-tabs nxp-progress-tabs vn-progress-tabs" role="group" aria-label="Progress view">${[['overview','Weight'],['training','Training'],['strength','Performance','Lifts'],['body','Body']].map(([key,title,short])=>`<button type="button" class="${v===key?'active':''}" aria-pressed="${v===key}" aria-label="${title}" onclick="NXT.setView('${key}')">${short?`<span class="st-tab-l">${title}</span><span class="st-tab-s" aria-hidden="true">${short}</span>`:title}</button>`).join('')}</div>`;
-    const chrome=`<header class="nxp-heading nxp-progress-chrome vn-progress-chrome"><div><h1>Progress</h1><p>${esc(period)}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>`;
     if(v==='body'){
       /* D106 — waist rows stay in storage but are not shown while the waist feature is off (D55). */
       const waist=N.features.waist?N.cleanRows(N.cfg().waist,'cm'):[],scans=bodyScanSource();
@@ -2256,9 +2256,17 @@ const NXP = (() => {
       document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-strength vn-progress"><header class="nxp-heading nxp-progress-chrome vn-progress-chrome"><div><h1>Progress</h1><p>${esc(performanceSubtitle(items))}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>${tabs}${performanceView(items)}</div>`;
       return;
     }
-    /* Phase 2C — Weight owns its layout inside chartHTML (trajectory + journey).
-       TDEE and weigh-in history are demoted below, not deleted. */
-    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${N.chartHTML().replace('<div class="vn-mhead"',weightHighlightsHTML()+slowWeekHTML()+'<div class="vn-mhead"')}${N.features&&N.features.calories?`<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details>`:''}<button type="button" class="vn-row vn-weighins" onclick="NXT.openWeightHistory()"><span class="vn-row-l"><span class="vn-row-t">All weigh-ins</span><span class="vn-row-s">${(n=>n+" "+N.plural(n,n===0?"morning reading":"reading"))(N.weights().length)}${(o=>o?` · ${o} other-time`:'')(N.otherTimingCount())}</span></span><span class="vn-chev">›</span></button></div>`;
+    /* Weight "Instrument" (D118): the plate, highlights, Cut journey and Analysis come from chartHTML(); the
+       highlights are handed to it through N.highlightsHTML (no string seam). The masthead's context line is the
+       cut's week (D70), since the range now names itself in the plate's summary. The chart is drawn at 1 CSS px
+       per unit (chartGeo 'page'); node tests, which never load this file, keep the legacy frame. */
+    N.ui.chartKind='page';N.ui.chartW=N.ui.chartW||{};
+    /* The cut's week counts from the saved cut start, or (as the Cut journey does) from the first morning reading
+       while a goal is confirmed; with neither there is no cut to count. */
+    const cs=settings.cutStart&&Number.isFinite(N.dateMs(settings.cutStart))&&settings.cutStart<=state.date?settings.cutStart:(N.cfg().targetConfirmed&&N.weights()[0]?N.weights()[0].date:null);
+    const ctx=cs?`Cut · week ${Math.floor(Math.round((N.dateMs(state.date)-N.dateMs(cs))/864e5)/7)+1}`:'Since your first weigh-in';
+    const chrome=`<header class="nxp-heading nxp-progress-chrome vn-progress-chrome"><div><h1>Progress</h1><p>${esc(ctx)}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>`;
+    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${N.chartHTML()}${N.features&&N.features.calories?`<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details>`:''}</div>`;
   }
   /* Engine vocabulary only (I12). The word is the status; colour and shape follow it. */
   const PERF_NOTE='Estimated 1RM is a comparison aid, not a tested maximum or proof of muscle retention. Technique, effort and equipment setup affect it.';
@@ -3772,11 +3780,7 @@ const NXP = (() => {
       if(el.querySelector('em'))el.innerHTML=`${p.weight.toFixed(1)}<em>kg</em>`;
       else el.innerHTML=`${p.weight.toFixed(1)}<small> kg</small>`;
     }
-    const btn=document.getElementById('nxp-progress-latest');
-    if(!btn)return;
-    const pts=NXT.ui.chart?.points||[];
-    const last=pts.at(-1);
-    btn.hidden=!(last&&p&&p.date!==last.date);
+    /* #nxp-progress-latest is the plate's always-visible transport now (D118); selectPoint sets its state. */
   };
 })();
 renderHome=NXP.home;renderTrain=NXP.training;renderWeight=NXP.progress;renderMore=NXP.more;renderHistory=NXP.history;

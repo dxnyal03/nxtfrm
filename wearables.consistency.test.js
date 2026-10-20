@@ -234,7 +234,9 @@ test("two confidence words, two names: Rate precision (Evidence) and Confidence 
 test("the chart header names the reading and the smoothed trend, 1 dp", () => {
   const N = world(STEADY()), html = N.chartHTML(), t = strip(html);
   const last = N.weights().at(-1), tr = N.trend(N.weights()).at(-1);
-  assert.ok(/Latest morning .*? kg 19 Oct · Morning/.test(t), t.slice(0, 300));
+  /* Adapted for D118 (spec §6.2): the date line under the reading carries the weekday ("Mon 19 Oct"). Same intent:
+     the header names the reading, its date and its recorded timing, at 1 dp. */
+  assert.ok(/Latest morning .*? kg Mon 19 Oct · Morning/.test(t), t.slice(0, 300));
   assert.ok(t.indexOf("Smoothed trend " + tr.avg.toFixed(1) + " kg") !== -1, "1 dp: " + tr.avg.toFixed(1));
   assert.strictEqual(t.indexOf(tr.avg.toFixed(2) + " kg"), -1, "no 2 dp kilogram headline");
   assert.ok(t.indexOf(last.weight.toFixed(1)) !== -1);
@@ -259,13 +261,17 @@ test("the Journey's Share button calls NXP directly (a top-level const is not on
   assert.ok(/aria-label="Share your cut" onclick="typeof NXP!==&#39;undefined&#39;&amp;&amp;NXP\.shareProgress|aria-label="Share your cut" onclick="typeof NXP!=='undefined'&&NXP\.shareProgress/.test(html), html.slice(html.indexOf("Share your cut") - 10, html.indexOf("Share your cut") + 140));
 });
 
-test("the Cut-range pill calls the first reading Start only when the Journey's start agrees", () => {
+/* Adapted for D118/W6 (D115): the in-plot Start pill is retired. The Cut-range summary names the first plotted
+   reading "First reading" whether or not it equals the saved start weight, so the two quantities never share a
+   name; the Journey keeps "Start" for the saved setting. Same intent: the first reading is never called Start. */
+test("the Cut-range summary calls the first reading First reading, never Start (the Journey keeps Start)", () => {
   const rows = STEADY();
   const differs = world(rows, { startWeight: 87.4, range: "cut" }), same = world(rows, { startWeight: rows[0].weight, range: "cut" });
   const a = strip(differs.chartHTML()), b = strip(same.chartHTML());
   assert.ok(a.indexOf("First reading " + rows[0].weight.toFixed(1) + " kg") !== -1, a.slice(0, 400));
-  assert.strictEqual(/\bStart \d+\.\d kg/.test(a), false, "the pill does not call the first reading Start");
-  assert.ok(b.indexOf("Start " + rows[0].weight.toFixed(1) + " kg") !== -1);
+  assert.strictEqual(/\bStart \d+\.\d kg/.test(a), false, "the summary does not call the first reading Start");
+  assert.ok(b.indexOf("First reading " + rows[0].weight.toFixed(1) + " kg") !== -1, b.slice(0, 400));
+  assert.strictEqual(/\bStart \d+\.\d kg/.test(b), false, "not even when it equals the saved start weight");
   assert.ok(strip(differs.journeyHTML()).indexOf("87.4 Start") !== -1, "the Journey keeps the saved start weight");
 });
 

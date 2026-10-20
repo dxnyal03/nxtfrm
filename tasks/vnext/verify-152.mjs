@@ -70,12 +70,13 @@ try {
     await tab(page, 'weight'); await page.evaluate(() => NXT.setView('overview')); await page.waitForTimeout(1000);
     const rr = await page.evaluate(() => {
       const m = NXT.ui.chart, pts = m.points, tr = pts.filter((p) => p.avg !== null), low = pts.reduce((a, p) => (p.weight < a.weight ? p : a), pts[0]);
-      const cells = [...document.querySelectorAll('#weightPage .st-rread > div b')].map((b) => b.textContent.replace(/\s+/g, ''));
-      const ch = tr.at(-1).avg - tr[0].avg;
-      return { cells, want: [(ch > 0 ? '+' : ch < 0 ? '−' : '') + Math.abs(ch).toFixed(1) + 'kg', low.weight.toFixed(1) + 'kg', pts.length + '/' + (Math.round((NXT.dateMs(pts.at(-1).date) - NXT.dateMs(pts[0].date)) / 864e5) + 1)] };
+      /* Weight "Instrument" (D118): the range read is the plate's summary (.wx-sum); Weighed counts the window's calendar days. */
+      const cells = [...document.querySelectorAll('#weightPage .wx-sum-c > div b')].map((b) => b.textContent.replace(/\s+/g, ''));
+      const ch = tr.at(-1).avg - tr[0].avg, days = Math.round((NXT.dateMs(state.date) - NXT.dateMs(m.start)) / 864e5) + 1;
+      return { cells, want: [(ch > 0 ? '+' : ch < 0 ? '−' : '') + Math.abs(ch).toFixed(1) + 'kg', low.weight.toFixed(1) + 'kg', pts.length + 'of' + days] };
     });
     check('Weight: range read equals the plotted model (trend change, lowest morning, mornings weighed)', JSON.stringify(rr.cells) === JSON.stringify(rr.want), rr);
-    check('Weight: chart caption is folded behind "How to read this chart"', await page.evaluate(() => { const d = document.querySelector('#weightPage .st-csum-d'); return !!d && !d.open && !!d.querySelector('#vn-csum'); }));
+    check('Weight: how to read the chart is folded behind the Analysis row "How these numbers are made"', await page.evaluate(() => { const b = document.querySelector('#weightPage [data-wx-row="how"] .wx-row-b'), p = document.getElementById('wx-p-how'); return !!b && b.getAttribute('aria-expanded') === 'false' && !!p && p.hidden && /Day-to-day spread/.test(p.textContent); }));
     check('Weight: the y-axis carries the unit (D58: its own label above the tick gutter)', await page.evaluate(() => [...document.querySelectorAll('#n99-chart-svg > text')].some((t) => /(^| )kg$/.test(t.textContent.trim()))));
     await page.evaluate(() => NXT.setRange(0)); await page.waitForTimeout(900);
     const dense = await page.evaluate(() => { const d = document.querySelectorAll('#n99-chart-svg .vn-raw-dot'); return { n: d.length, r: d[0]?.getAttribute('r') }; });
@@ -162,7 +163,7 @@ try {
   {
     const { ctx, page } = await fresh(browser, { reducedMotion: 'reduce' });
     await tab(page, 'home'); await page.waitForTimeout(1200);
-    const running = await page.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running' && a.effect?.target?.closest?.('.st-t-dec,.st-perf,.st-next,.st-rread')).length);
+    const running = await page.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running' && a.effect?.target?.closest?.('.st-t-dec,.st-perf,.st-next,.wx-sum')).length);
     check('reduced motion: 0 running animations on the new surfaces', running === 0, { running });
     await ctx.close();
   }

@@ -408,7 +408,7 @@ test("compare helpers write nothing and use no significance language", () => {
 function chartPage(fx) {
   const ids = ["vn-chart-wrap", "n99-chart-svg", "n99-chart-date", "n99-chart-weight", "n99-chart-average", "n99-chart-coverage",
     "n99-chart-timing", "n99-chart-post", "n99-chart-post-weight", "n99-chart-post-delta", "n99-chart-cursor", "n99-chart-active",
-    "st-chart-halo", "n99-chart-slider", "wx-gap", "wx-lab-a", "wx-lab-c", "nxp-progress-latest", "wx-slot", "wx-sel-sr"];
+    "st-chart-halo", "n99-chart-slider", "wx-gap", "wx-lab-a", "wx-lab-c", "wx-on", "nxp-progress-latest", "wx-slot", "wx-sel-sr"];
   const els = {}; for (const id of ids) els[id] = makeElement(id);
   const N = loadNXT(fx || cutFixture(), els);
   let repaints = 0; N.repaint = () => { repaints += 1; };
@@ -517,7 +517,11 @@ test("selectPoint: vs-trend cell (U+2212, kg), label switch, transport state, sl
   const p = pts[i];
   assert.strictEqual(els["wx-gap"].textContent, "−" + Math.abs(p.weight - p.avg).toFixed(1) + " kg");
   assert.strictEqual(els["wx-lab-a"].textContent, "Morning reading");
-  assert.strictEqual(els["wx-lab-c"].textContent, "Smoothed trend · on " + N.shortDate(p.date));
+  /* D118 (amends D111): the trend cell keeps its name and its sub line names the day, so the time stays explicit
+     without the label overflowing the vs cell on a phone. */
+  assert.strictEqual(els["wx-lab-c"].textContent, "Smoothed trend");
+  assert.strictEqual(els["wx-on"].textContent, "on " + N.shortDate(p.date));
+  assert.strictEqual(els["wx-on"].hidden, false, "the day is shown while historical");
   assert.strictEqual(els["nxp-progress-latest"].getAttribute("data-wx-state"), "historical");
   assert.strictEqual(els["wx-slot"].getAttribute("data-wx-slot"), "select");
   assert.strictEqual(els["vn-chart-wrap"].getAttribute("aria-valuenow"), String(i));
@@ -527,6 +531,7 @@ test("selectPoint: vs-trend cell (U+2212, kg), label switch, transport state, sl
   assert.strictEqual(N.ui.selected, null);
   assert.strictEqual(els["wx-lab-a"].textContent, "Latest morning");
   assert.strictEqual(els["wx-lab-c"].textContent, "Smoothed trend");
+  assert.strictEqual(els["wx-on"].hidden, true, "no day on the latest reading");
   assert.strictEqual(els["nxp-progress-latest"].getAttribute("data-wx-state"), "idle");
   assert.strictEqual(els["wx-slot"].getAttribute("data-wx-slot"), "summary");
   els["nxp-progress-latest"].setAttribute("data-wx-state", "playing");
@@ -551,5 +556,73 @@ test("premium-ui's selectPoint wrapper still passes opts (stage 2 F8, verified h
 });
 
 console.log("");
+/* =========================================================================
+   Commits 4 and 5 · the plate and the plot (D118, D119)
+   ========================================================================= */
+test("the plate is the first section, holds no nested <section>, and the banned words are absent (spec §2, §9)", () => {
+  const N = loadNXT(cutFixture()); N.ui.range = 30;
+  const html = N.chartHTML(), plate = html.slice(0, html.indexOf("</section>"));
+  assert.ok(/^\s*<section class="wx-plate/.test(html), "the plate opens the chart HTML");
+  assert.strictEqual((plate.match(/<section/g) || []).length, 1, "no nested section inside the plate");
+  for (const w of ["certainty", "confidence", "probability", "likelihood", "accuracy"]) assert.strictEqual(plate.toLowerCase().indexOf(w), -1, w);
+  assert.strictEqual(plate.indexOf("Estimated level"), -1, "the Estimated level belongs to the Journey");
+  for (const w of ["Latest morning", "vs trend", "Smoothed trend", "Morning readings", "Post-workout", "Projection", "Day-to-day spread", "Weekly averages"]) assert.ok(plate.indexOf(w) !== -1, w);
+  assert.ok(/data-wx-state="idle"/.test(plate) && /id="nxp-progress-latest"/.test(plate), "the transport slot renders idle on the latest reading");
+  assert.ok(/id="wx-layers"[^>]*hidden/.test(plate), "the Layers drawer is in the DOM and hidden");
+  assert.ok(html.indexOf('<section class="wx-an"') !== -1 && /Each day vs its trend/.test(html) && /How these numbers are made/.test(html), "Analysis rows follow the plate");
+  assert.ok(/First reading|Trend change/.test(plate) && /Lowest/.test(plate) && /Weighed/.test(plate), "the range summary is in the plate's slot");
+});
+
+test("plot: every negative is U+2212, kg at 1 dp, rates at 2 dp; no hyphen-minus before a figure in the plate", () => {
+  const N = loadNXT(cutFixture()); N.ui.range = 30;
+  const html = N.chartHTML(), plate = html.slice(0, html.indexOf("</section>")).replace(/<[^>]+>/g, " ");
+  assert.strictEqual(/(^|[\s>(])-\d/.test(plate), false, "hyphen-minus before a number");
+  assert.ok(/Losing \d\.\d\d kg a week|Building your baseline|Trend is/.test(plate));
+});
+
+test("plot (legacy frame): no <text> inside the plot rect; the pills (end, Low, Start) are gone; the dots carry no fill attribute", () => {
+  const N = loadNXT(cutFixture()); N.ui.range = 30;
+  const m = N.chartModel(), svg = N.plotHTML(m), base = m.H - m.bottom, plotR = m.W - m.right;
+  const texts = [...svg.matchAll(/<text[^>]*x="([\d.]+)"[^>]*y="([\d.]+)"/g)].map(t => ({ x: Number(t[1]), y: Number(t[2]) }));
+  assert.ok(texts.length > 0);
+  for (const t of texts) assert.ok(!(t.x > m.left && t.x < plotR && t.y > m.top && t.y < base), "text inside the plot at " + JSON.stringify(t));
+  assert.strictEqual(/st-pillg is-(end|low|start-ref)/.test(svg), false);
+  assert.strictEqual(/vn-start-ref|st-hc-start|Low \d/.test(svg), false);
+  const lowIsLast = m.points.reduce((a, q) => q.weight < a.weight ? q : a, m.points[0]) === m.points.at(-1);
+  assert.strictEqual(/class="wx-low"/.test(svg), !lowIsLast, "the lowest reading is a hollow ring, unless it is the latest one");
+  assert.strictEqual(/<circle class="vn-raw-dot"[^>]*fill=/.test(svg), false, "dot colour comes from the stylesheet (keyline)");
+  assert.strictEqual(/st-glow|feGaussianBlur/.test(svg), false, "the blur is retired for an underlay");
+  assert.ok(/class="wx-under"/.test(svg));
+});
+
+test("plot: a 30-week synthetic cut draws a weekly step for every eligible week (the guard<20 bug), gated by the Weekly layer", () => {
+  const N0 = loadNXT(baseState([], "2026-10-19")), start = "2026-03-23", rows = [];
+  for (let i = 0; i < 210; i++) { const d = N0.dateAdd(start, i); if (i % 7 === 3) continue; rows.push({ id: "r" + i, date: d, weight: Math.round((90 - i * 0.03 + (i % 5) * 0.1) * 10) / 10, ts: i + 1, timeOfDay: "Morning" }); }
+  const fx = baseState(rows, N0.dateAdd(start, 209)); fx.settings.cutStart = start;
+  const N = loadNXT(fx); N.ui.range = "cut";
+  const m = N.chartModel(); assert.ok(m.points.length > 150);
+  const steps = N.weeklySteps(m);
+  assert.strictEqual(steps.length, 30, "one step per week with 3+ mornings across all 30 weeks");
+  N.ui.showWeekly = false; assert.strictEqual((N.plotHTML(m).match(/class="st-wstep"/g) || []).length, 0, "off by default");
+  N.ui.showWeekly = true; assert.strictEqual((N.plotHTML(m).match(/class="st-wstep"/g) || []).length, 30, "every week when on");
+  N.ui.showWeekly = false;
+});
+
+test("D2: turning on Projection, Post-workout or Spread leaves the y-domain unchanged", () => {
+  const N = loadNXT(cutFixture()); N.ui.range = 30;
+  const a = N.chartModel(); const dom = [a.low, a.high];
+  N.ui.showPost = true; N.ui.showSpread = true; N.ui.showForecast = true; N.ui.showWeekly = true;
+  const b = N.chartModel();
+  assert.deepStrictEqual([b.low, b.high], dom);
+  N.ui.showPost = false; N.ui.showSpread = false; N.ui.showForecast = false; N.ui.showWeekly = false;
+});
+
+test("the deleted markup is gone from the chart HTML and from the stylesheets (delete, not override)", () => {
+  const N = loadNXT(cutFixture()); N.ui.range = 30; const html = N.chartHTML();
+  for (const c of ["vn-mhead", "vn-metric-v", "vn-trend-val", "st-range-row", "st-wchips", "st-csum-d", "vn-togs", "vn-legend", "n99-legend", "st-rread", "vn-weighins", "aria-live=\"polite\" class=\"vn-mhead"]) assert.strictEqual(html.indexOf(c), -1, c);
+  const css = fs.readFileSync(path.join(ROOT, "strata.css"), "utf8") + fs.readFileSync(path.join(ROOT, "vnext.css"), "utf8");
+  for (const c of [".vn-mhead", ".vn-metric-v", ".vn-trend-val", ".st-wchips", ".vn-togs", ".vn-legend", "#weightPage .vn-weight", ".st-rread", ".st-comet", ".st-hc-start", ".is-start-ref", "#vn-chart-wrap{margin-inline"]) assert.strictEqual(css.indexOf(c), -1, c);
+});
+
 console.log((failed ? "FAILED  " : "OK  ") + passed + " passed, " + failed + " failed");
 process.exitCode = failed ? 1 : 0;

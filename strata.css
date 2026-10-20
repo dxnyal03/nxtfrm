@@ -175,9 +175,7 @@
 
 /* 5 · Text floor (11px): the composition-map axis labels, the Progress range-read labels on narrow phones, and the month-start day label */
 svg.st-cmap :is(.st-ax,.st-cm-zl){font-size:11px !important}
-@media (max-width:359px){#weightPage .st-rread small,#weightPage .st-rread span{font-size:11px !important}}
 /* at 320 "Trend change" is 2px wider than its column at 11px: a little tighter tracking and 1px less right padding, so it is not clipped */
-@media (max-width:339px){#weightPage .st-rread small,#weightPage .st-rread span{letter-spacing:-.03em !important}#weightPage .st-rread>div{padding-right:5px !important}}
 #historyPage .nxp-cal-grid>.nxp-cal-day b.is-m1{font-size:11px !important}
 
 /* ---- CANVAS ----------------------------------------------------------------
@@ -303,14 +301,6 @@ button.st-tile:active{transform:scale(.985)}
   font:590 14px var(--st-font);font-variant-numeric:tabular-nums;
 }
 .st-pill.is-up{background:rgba(var(--st-hl),.08);color:var(--st-ink-2)}
-.st-replay{
-  display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 15px;border-radius:999px;cursor:pointer;
-  border:1px solid rgba(var(--st-hl),.1);background:rgba(var(--st-hl),.06);color:var(--st-ink);font:550 13.5px var(--st-font);
-  transition:transform .15s var(--st-out),background .2s;
-}
-.st-replay svg{width:12px;height:12px}
-.st-replay:active{transform:scale(.95)}
-.is-replaying .st-replay,.st-range-row:has(.is-replaying) .st-replay,.vn-weight:has(.is-replaying) .st-replay{background:var(--st-accent);border-color:transparent}
 
 /* The existing text actions keep their behaviour; they only pick up the palette. */
 .st-today .vn-text,.st-train .vn-text{color:var(--st-accent-lift)}
@@ -399,15 +389,11 @@ button.st-tile:active{transform:scale(.985)}
 
 .st-hero-chart{position:relative}
 .st-band{fill:rgba(var(--st-hl),.028)}
-.st-hc-start{fill:var(--st-bg);stroke:#9B7BFF;stroke-width:2}
 .st-pillg rect{fill:rgba(20,18,30,.9);stroke:rgba(180,154,255,.45);stroke-width:1}
 .st-pillg text{fill:var(--st-ink);font:590 11.5px var(--st-font);font-variant-numeric:tabular-nums}
-.st-pillg.is-end rect{fill:#7C3AED;stroke:rgba(255,255,255,.25)}
-.st-pillg.is-end text{fill:#fff}
-.st-pillg.is-start{opacity:.75}
-.is-scrubbing .st-pillg,.is-replaying .st-pillg,.is-scrubbing .st-hc-start{visibility:hidden}
+.is-scrubbing .st-pillg,.is-replaying .st-pillg{visibility:hidden}
 .st-pillg{transition:opacity .3s}
-.is-draw .st-pillg,.is-draw .st-hc-start{opacity:0;animation:st-fade .5s var(--st-out) 1.4s forwards}
+.is-draw .st-pillg{opacity:0;animation:st-fade .5s var(--st-out) 1.4s forwards}
 .st-tip{
   position:absolute;top:-6px;z-index:5;transform:translateX(-50%);display:flex;flex-direction:column;gap:1px;min-width:96px;padding:8px 11px;border-radius:14px;pointer-events:none;
   background:rgba(24,22,34,.94);border:1px solid rgba(180,154,255,.35);box-shadow:0 12px 28px -10px rgba(0,0,0,.9),0 0 0 4px rgba(139,92,246,.08);
@@ -418,9 +404,6 @@ button.st-tile:active{transform:scale(.985)}
 .st-tip em{font-style:normal;color:var(--st-ink);font-weight:550;font-variant-numeric:tabular-nums;margin-left:4px}
 #weightPage .vn-chart-wrap .st-tip{top:0}
 #weightPage .st-band{fill:rgba(var(--st-hl),.028)}
-#weightPage .vn-raw-dot{fill:rgba(var(--st-hl),.85);stroke:rgba(14,12,22,.9);stroke-width:1.2;paint-order:stroke}
-#weightPage #n99-chart-active{fill:#fff;stroke:#8B5CF6;stroke-width:3}
-#weightPage #n99-chart-cursor{stroke:rgba(180,154,255,.55);stroke-dasharray:3 4}
 
 .st-wbig{display:flex;align-items:baseline;gap:6px}
 .st-wbig small{font:450 15px var(--st-font);color:var(--st-ink-3)}
@@ -493,7 +476,7 @@ button.st-tile:active{transform:scale(.985)}
    or saving a weigh-in (strata.js only adds .st-enter on a tab change). */
 /* Calmer (owner, 2026-10-19): a short 6-point fade-up with a tight stagger, so arriving on a tab settles
    rather than moves. */
-.st-enter .st-bento>*,.st-enter .st-tile,.st-enter .st-plan-row,.st-enter .vn-weight>*,.st-enter .st-quick{
+.st-enter .st-bento>*,.st-enter .st-tile,.st-enter .st-plan-row,.st-enter .st-quick{
   animation:st-enter-rise .4s cubic-bezier(.25,.8,.25,1) both;
 }
 .st-enter .st-bento>*:nth-child(2){animation-delay:.03s}
@@ -542,30 +525,15 @@ button.st-tile:active{transform:scale(.985)}
   background:linear-gradient(180deg,rgba(139,92,246,.4),rgba(139,92,246,.2)) !important;color:#fff !important;border-color:transparent !important;
   box-shadow:inset 0 1px 0 rgba(var(--st-hl),.14),0 8px 20px -10px rgba(139,92,246,.8) !important;
 }
-#weightPage .vn-weight{
-  position:relative;padding:20px 18px 18px;margin-top:14px;border-radius:var(--st-r);border:1px solid var(--st-tile-line);
-  background:radial-gradient(110% 60% at 100% 0%,rgba(139,92,246,.16),transparent 58%),var(--st-tile),var(--st-tile-bg);
-  box-shadow:var(--st-tile-hl),var(--st-shadow);
-}
-#weightPage .vn-weight .vn-h-sub#vn-traj-headline{font:590 23px/1.2 var(--st-font-d);letter-spacing:-.02em}
-#weightPage .vn-weight .vn-metric-v{
-  font:250 58px/1 var(--st-font-d) !important;letter-spacing:-.045em !important;
-  background:linear-gradient(180deg,#fff 30%,#CBB8FF);-webkit-background-clip:text;background-clip:text;color:transparent !important;
-}
-#weightPage .vn-weight .vn-metric-v em{-webkit-text-fill-color:var(--st-ink-3);font:450 18px var(--st-font) !important;letter-spacing:0 !important;margin-left:4px}
-#weightPage .vn-weight .vn-trend-val{color:var(--st-weight) !important;text-shadow:0 0 18px rgba(180,154,255,.45)}
 #weightPage .st-range-row{display:flex;align-items:center;gap:10px}
 #weightPage .st-range-row .vn-seg{flex:1;min-width:0}
-#weightPage .vn-chart-wrap{margin-top:10px;border-radius:18px}
-#weightPage .vn-chart-svg .vn-trend-line{stroke-width:3}
-#weightPage .st-halo{opacity:.28;transform-box:fill-box;transform-origin:center;animation:st-halo 2.4s var(--st-out) infinite}
+#weightPage .st-halo{opacity:.2;transform-box:fill-box;transform-origin:center;animation:st-halo 1.6s var(--st-out) 2}/* pulses twice on entry, then rests (nothing in the plate loops) */
 #weightPage .vn-chart-svg.is-range-change .vn-trend-line,#weightPage.st-enter .vn-chart-svg .vn-trend-line{stroke-dasharray:1;stroke-dashoffset:1;animation:st-draw 1.3s var(--st-glide) .15s forwards}
 #weightPage .vn-chart-wrap.is-replaying #n99-chart-cursor,#weightPage .vn-chart-wrap.is-replaying #n99-chart-active{opacity:0}
 #weightPage .vn-journey,#weightPage .vn-evidence{
   margin-top:14px;padding:20px 18px;border-radius:var(--st-r);border:1px solid var(--st-tile-line);
   background:var(--st-tile),var(--st-tile-bg);box-shadow:var(--st-tile-hl),var(--st-shadow);
 }
-#weightPage .vn-weight .vn-evidence,#weightPage .vn-weight .vn-journey{margin-top:18px;padding:18px 0 0;border:0;border-top:1px solid rgba(var(--st-hl),.07);border-radius:0;background:none;box-shadow:none}
 #weightPage .vn-journey-travel{background:linear-gradient(90deg,var(--st-accent-deep),var(--st-accent-lift)) !important;box-shadow:0 0 14px rgba(139,92,246,.6)}
 #weightPage .vn-journey-now{box-shadow:0 0 0 4px rgba(139,92,246,.25),0 0 16px rgba(180,154,255,.8) !important}
 .st-compmap{margin-top:14px}
@@ -868,7 +836,7 @@ button.st-refc:active{transform:scale(.97)}
 
 /* ---- BUTTON SHAPES (one system) -------------------------------------------
    Icon buttons are circles, actions are capsules. */
-.st-cta,.st-ghost,.n99-button,.st-finish,.st-qa,.st-chip,.st-replay{border-radius:999px !important}
+.st-cta,.st-ghost,.n99-button,.st-finish,.st-qa,.st-chip{border-radius:999px !important}
 .st-icon{border-radius:50% !important}
 .st-tools>summary.st-icon{display:grid !important;place-items:center !important;padding:0 !important}
 
@@ -1116,7 +1084,6 @@ html.st-sheet-open main{transform:scale(.94) translateY(10px);filter:brightness(
 .st-refc b{font-size:17px !important}
 .st-mini-w{font-size:16px !important}
 .st-rt-l b{font-size:17px !important}
-#weightPage .vn-weight .vn-h-sub#vn-traj-headline{font-size:var(--fs-hero) !important}
 .tabs .tab .tab-label{font-weight:500 !important}
 .tabs .tab.active .tab-label{font-weight:600 !important}
 #morePage .vn-set-t,#morePage .vn-set-grp{font-weight:500}
@@ -1187,10 +1154,6 @@ body,button,input{-webkit-font-smoothing:antialiased}
   .st-segs{grid-template-columns:1fr}
   .st-bars{gap:6px}
 }
-@media (max-width:420px){
-  #weightPage .st-range-row .st-replay{width:44px;height:44px;padding:0;justify-content:center;flex:none}
-  #weightPage .st-range-row .st-replay span{display:none}
-}
 @media (min-width:560px){
   .st-odo{font-size:88px}
 }
@@ -1233,7 +1196,6 @@ body,button,input{-webkit-font-smoothing:antialiased}
 .st-done .st-cat{justify-content:center}
 
 /* -- Progress · Weight: chart runs to the card's edge; the morning-vs-trend strip sits under it -- */
-#weightPage #vn-chart-wrap{margin-inline:-10px}
 .st-weeks{margin:18px 0 6px;padding-top:16px;border-top:1px solid rgba(var(--st-hl),.07)}
 /* Weigh-in dashes on the calendar: quieter, so lifting and cardio marks are what you see. */
 #historyPage .nxp-cal-marks i.body{opacity:.32}
@@ -1337,24 +1299,21 @@ body,button,input{-webkit-font-smoothing:antialiased}
    ===================================================================================== */
 #weightPage h1,#historyPage h1,#morePage h1,#morePage .vn-set-title,#trainPage h1{font:640 28px/1.1 var(--st-font-d) !important;letter-spacing:-.02em !important;color:var(--st-ink) !important}
 #weightPage .vn-h-sub,#trainPage .st-mt2,#historyPage .nxp-history-selected-head h2,#morePage .vn-set-head h2{font:590 22px/1.2 var(--st-font) !important;letter-spacing:-.015em !important}
-#trainPage .st-sect,#weightPage h3,#weightPage h2,#historyPage .nxp-cal-month{font:590 18px/1.25 var(--st-font) !important;letter-spacing:-.01em !important;text-transform:none !important;color:var(--st-ink) !important}
+#trainPage .st-sect,#weightPage h3,#weightPage h2:not(.wx-h2),#historyPage .nxp-cal-month{font:590 18px/1.25 var(--st-font) !important;letter-spacing:-.01em !important;text-transform:none !important;color:var(--st-ink) !important}
 #historyPage .nxp-cal-month span{font-weight:590 !important}
 /* Labels: no uppercase, no tracking, one muted voice. */
-.nxp-caption,.nxp-progress-body-heading,.vn-perf-kicker,.vn-set-eyebrow,.vn-metric-l,.st-eyebrow,.st-hero-eb,#trainPage small,.vn-h-sect{text-transform:none !important;letter-spacing:0 !important;font:550 13px/1.3 var(--st-font) !important;color:var(--st-ink-3) !important}
+.nxp-caption,.nxp-progress-body-heading,.vn-perf-kicker,.vn-set-eyebrow,.st-eyebrow,.st-hero-eb,#trainPage small,.vn-h-sect{text-transform:none !important;letter-spacing:0 !important;font:550 13px/1.3 var(--st-font) !important;color:var(--st-ink-3) !important}
 .st-mm-f small{text-transform:none !important;letter-spacing:0 !important;font-size:11px !important}
 /* Rows that sat loose on the canvas become Today-style tiles. */
-#weightPage details.nxp-disclosure,#weightPage .vn-weighins{
+#weightPage details.nxp-disclosure{
   position:relative;border-radius:var(--st-r) !important;border:1px solid var(--st-tile-line) !important;
   background:radial-gradient(110% 90% at 100% 0%,rgba(139,92,246,.11),transparent 60%),var(--st-tile),var(--st-tile-bg) !important;
   box-shadow:var(--st-tile-hl),var(--st-shadow) !important;-webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3);
 }
-#weightPage details.nxp-disclosure>summary,#weightPage .vn-weighins{padding:16px 18px !important;font:550 15.5px/1.3 var(--st-font) !important;color:var(--st-ink) !important}
-#weightPage .vn-weighins{width:100%;box-sizing:border-box;margin-top:12px}
+#weightPage details.nxp-disclosure>summary{padding:16px 18px !important;font:550 15.5px/1.3 var(--st-font) !important;color:var(--st-ink) !important}
 #weightPage details.nxp-disclosure{margin-top:12px}
 #weightPage details.nxp-disclosure[open]>summary{border-bottom:1px solid var(--st-tile-line)}
 #morePage .vn-set-grp{font:590 14px/1.3 var(--st-font) !important;letter-spacing:0 !important;text-transform:none !important;color:var(--st-ink-2) !important}
-#weightPage .vn-weighins .vn-row-t{font:550 15.5px/1.3 var(--st-font)}
-#weightPage .vn-weighins .vn-row-s{font:400 13px/1.3 var(--st-font);color:var(--st-ink-3)}
 #morePage .vn-set-eyebrow{display:none !important}
 #weightPage details.nxp-disclosure>summary{font-weight:550 !important}
 
@@ -1488,9 +1447,7 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 #weightPage h2.vn-h-sub{font-size:var(--fs-hero) !important;font-weight:var(--fw-head) !important}/* 20/590 */
 #weightPage small.vn-tiny{font-size:var(--fs-micro) !important;font-weight:var(--fw-med) !important}/* 11.5/500 */
 #weightPage .vn-seg button{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13/560 */
-#weightPage .vn-legend span{font-size:var(--fs-micro) !important;font-weight:var(--fw-med) !important}/* 11.5/520 */
 #weightPage p.vn-tiny{font-size:var(--fs-micro) !important;font-weight:var(--fw-med) !important}/* 11.5/500 */
-#weightPage button.vn-tog{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13.5/540 */
 #weightPage span.vn-status{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13/580 */
 #weightPage span.vn-ink-3{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 15/500 */
 #weightPage span.vn-row-v{font-size:var(--fs-row) !important;font-weight:var(--fw-semi) !important}/* 15/600 */
@@ -1628,11 +1585,6 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 
 
 /* D28 weight highlights */
-.st-wchips{list-style:none;margin:14px 0 18px;padding:0;display:flex;flex-wrap:wrap;gap:8px}
-.st-wchips li{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(var(--st-hl),.06);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.08)}
-.st-wchips li i{flex:none;width:7px;height:7px;border-radius:50%;background:var(--st-accent);box-shadow:0 0 8px var(--st-accent)}
-.st-wchips li.is-low i{background:var(--st-lean);box-shadow:0 0 8px var(--st-lean)}
-#weightPage .st-wchips li span{font:550 13px/1.2 var(--st-font) !important;color:var(--st-ink) !important;text-transform:none !important;letter-spacing:0 !important}
 
 
 .st-slow{margin:0 0 16px}
@@ -1901,24 +1853,15 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 
 /* Weight chart lift: stem from reading to trend, low tag, gap line in the tooltip */
 #weightPage .st-stem{stroke:rgba(210,195,255,.8);stroke-width:1.6;stroke-linecap:round;pointer-events:none}
-.st-pillg.is-low rect{fill:rgba(20,18,30,.82);stroke:rgba(255,255,255,.18)}
-.st-pillg.is-low text{fill:var(--st-ink-2);font-weight:550;font-size:11px}
 .st-tip .st-tip-gap{color:var(--st-ink-3);font-size:11px;margin-top:2px}
 
 /* Weight chart instrument (D41): edge-to-edge canvas, weekly steps, vs-trend strip, scanner, sliding range pill */
-#weightPage .vn-chart-wrap{margin-inline:-18px;border-radius:0;margin-top:14px}
-#weightPage .vn-chart-svg .vn-trend-line{stroke-width:3.4}
-#weightPage .vn-raw-dot{r:2.7px;fill:#14111f;stroke:#CDBBFF;stroke-width:1.5}
-#weightPage .st-scan{pointer-events:none}
 #weightPage .st-wstep{stroke:rgba(244,242,250,.42);stroke-width:1.4;stroke-dasharray:1 4;stroke-linecap:round;pointer-events:none}
-#weightPage .st-wstep-t{fill:var(--st-ink-2);font:590 10.5px var(--st-font);font-variant-numeric:tabular-nums;paint-order:stroke;stroke:rgba(14,12,22,.9);stroke-width:3px;stroke-linejoin:round}
 #weightPage .st-dev-axis{stroke:rgba(255,255,255,.22);stroke-width:1}
-#weightPage .st-dev-t{fill:var(--st-ink-3);font:550 10.5px var(--st-font);letter-spacing:.02em}
 #weightPage .st-dev.is-dn{fill:#8B5CF6}
 #weightPage .st-dev.is-up{fill:rgba(14,12,22,.9);stroke:#CDBBFF;stroke-width:1.5}
 #weightPage .st-dev.is-sel{fill:#fff;stroke:#fff;filter:drop-shadow(0 0 4px rgba(205,187,255,.9))}
 #weightPage .st-dev.is-up.is-sel{fill:rgba(14,12,22,.9);stroke:#fff}
-.is-scrubbing .st-wstep-t{opacity:.35}
 #weightPage .vn-seg{position:relative}
 #weightPage .vn-seg>button{position:relative;z-index:1;background:transparent !important;box-shadow:none !important}
 #weightPage .vn-seg .st-seg-ind{position:absolute;top:4px;bottom:4px;border-radius:14px;z-index:0;pointer-events:none;
@@ -1932,22 +1875,13 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 #weightPage.st-enter .st-wstep,#weightPage .vn-chart-svg.is-range-change .st-wstep{stroke-dashoffset:60;opacity:0;animation:st-fade .6s var(--st-out) 1.4s forwards}
 @media (prefers-reduced-motion:reduce){#weightPage .vn-raw-dot,#weightPage .st-dev,#weightPage .st-wstep{animation:none !important;opacity:1 !important;transform:none !important}#weightPage .vn-seg .st-seg-ind{transition:none}}
 :root[data-nxp-motion="reduced"] #weightPage .vn-raw-dot,:root[data-nxp-motion="reduced"] #weightPage .st-dev,:root[data-nxp-motion="reduced"] #weightPage .st-wstep{animation:none !important;opacity:1 !important;transform:none !important}
-#weightPage #vn-csum{color:var(--st-ink-3);font-size:12.5px;line-height:1.45}
 
 #weightPage .st-weeksel{fill:rgba(139,92,246,.16);stroke:rgba(205,187,255,.5);stroke-width:1;pointer-events:none}
-#weightPage .st-gapline{color:var(--st-ink-2)}
 
 /* Progress pass 3: one visual language with Today (glass chips, the same section heads) */
-#weightPage .st-dev-k path.is-up{fill:none;stroke:#CDBBFF;stroke-width:1.3;stroke-linejoin:round}
-#weightPage .st-dev-k path.is-dn{fill:#8B5CF6}
-#weightPage .st-dev-k text{fill:var(--st-ink-3);font:550 10.5px var(--st-font)}
 #weightPage .st-bridge{stroke:rgba(205,187,255,.55);stroke-width:1.6;stroke-dasharray:1.5 3.5;stroke-linecap:round}
 .st-pillg.is-goal rect{fill:rgba(20,18,30,.86);stroke:rgba(205,187,255,.45)}
 .st-pillg.is-goal text{fill:var(--st-ink);font:590 10.5px var(--st-font)}
-#weightPage .vn-weight .vn-evidence>.vn-h-sect,#weightPage .vn-weight .vn-journey .vn-h-sect{font:590 18px/1.2 var(--st-font) !important;letter-spacing:-.01em !important;color:var(--st-ink) !important;text-transform:none !important;margin:0 0 12px !important}
-#weightPage .vn-chart-svg>text{font-size:calc(11px * var(--tsc,1)) !important}
-#weightPage .st-dev-t,#weightPage .st-dev-k text{font-size:calc(10.5px * var(--tsc,1)) !important}
-#weightPage .st-lg-dev{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 
 
 /* Week by week options */
@@ -2089,9 +2023,8 @@ html{caret-color:#B49AFF;-webkit-tap-highlight-color:transparent}
 /* ---- Small moments that answer a tap ---- */
 #historyPage .nxp-cal-day.is-selected{animation:st-sel-pop .5s var(--st-spring-snappy)}
 @keyframes st-sel-pop{from{scale:.82}}
-.vn-tog[aria-pressed="true"] .vn-tog-box{animation:st-sel-pop .45s var(--st-spring-snappy)}
 .n99-modal .sheet{animation:st-sheet-in .55s var(--st-spring-soft) both !important}
-@media (prefers-reduced-motion:reduce){.toast,#historyPage .nxp-cal-day.is-selected,.vn-tog .vn-tog-box{animation:none !important}.n99-modal .sheet{animation:none !important}}
+@media (prefers-reduced-motion:reduce){.toast,#historyPage .nxp-cal-day.is-selected{animation:none !important}.n99-modal .sheet{animation:none !important}}
 :root[data-nxp-motion="reduced"] .toast,:root[data-nxp-motion="reduced"] #historyPage .nxp-cal-day.is-selected{animation:none !important}
 
 /* ---- Type snapped onto the eight-step scale (generated from the audit; old value trails) ---- */
@@ -2125,11 +2058,9 @@ html{caret-color:#B49AFF;-webkit-tap-highlight-color:transparent}
 #weightPage span.wx-chip.is-down{font-size:var(--fs-cap) !important;font-weight:var(--fw-semi) !important}/* 12.5/600 */
 #weightPage span.wx-chip.is-none{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12.5/500 */
 /* Progress legend sits on one line at phone width */
-#weightPage .vn-legend{gap:6px 10px !important}
 /* History: logged values read in the same thin numerals as Progress */
 #historyPage .nxp-history-ex b{font:300 22px/1.1 var(--st-font-d) !important;letter-spacing:-.02em !important;font-variant-numeric:tabular-nums}
 /* Remaining off-scale text, snapped with its own context (audit, second pass) */
-#weightPage .vn-weight h2.vn-h-sub{font-size:var(--fs-hero) !important;font-weight:var(--fw-semi) !important}
 #trainPage .st-card-head b,#trainPage .st-card-head span{font-size:var(--fs-sect) !important}
 #trainPage .st-card-head b{font-weight:var(--fw-semi) !important}
 #trainPage .nxp-seg button{font-size:var(--fs-label) !important}
@@ -2230,6 +2161,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 /* Lifts mini with a recent outcome */
 .st-mini-lifts .st-mini-v small{font-size:12px;font-weight:550;color:var(--st-ink-3);margin-left:3px}
 
+
 /* Five range options (2W 1M 3M Cut All) on a 320px phone: the row stays one line, each
    option ~43px wide × 44 tall beside the 44px replay button. */
 @media (max-width:359px){
@@ -2264,15 +2196,6 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 .st-recap .st-rc-best li span{white-space:normal !important;overflow:visible !important;text-overflow:clip !important;line-height:1.3}
 
 /* -- Progress › Weight: range read -- */
-#weightPage .st-rread{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:14px 0 4px;border-radius:18px;
-  background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.015));box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(var(--st-hl),.07)}
-#weightPage .st-rread>div{display:flex;flex-direction:column;gap:3px;min-width:0;padding:12px 12px 11px}
-#weightPage .st-rread>div+div{border-left:1px solid rgba(var(--st-hl),.07)}
-#weightPage .st-rread small{font:550 11px/1.2 var(--st-font);color:var(--st-ink-3)}
-#weightPage .st-rread b{font:300 22px/1.05 var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink);white-space:nowrap;font-variant-numeric:tabular-nums}
-#weightPage .st-rread b em{font:500 11.5px var(--st-font);font-style:normal;color:var(--st-ink-3);margin-left:2px;letter-spacing:0}
-#weightPage .st-rread span{font:500 11.5px/1.2 var(--st-font);color:var(--st-ink-3)}
-@media (max-width:359px){#weightPage .st-rread>div{padding:10px 8px}#weightPage .st-rread b{font-size:19px}}
 #weightPage .st-csum-d{margin:10px 0 0}
 #weightPage .st-csum-d summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-height:44px;font:550 13px var(--st-font);color:var(--st-ink-3)}
 #weightPage .st-csum-d summary::-webkit-details-marker{display:none}
@@ -2342,14 +2265,10 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #historyPage .st-hw-t b{font:inherit;color:var(--st-accent-lift)}
 
 /* ---- D51 · Cut range: start reference, busy windows ---- */
-#weightPage .st-pillg.is-start-ref rect{fill:rgba(20,18,30,.88);stroke:rgba(205,187,255,.38)}
-#weightPage .st-pillg.is-start-ref text{fill:var(--st-ink-2);font:590 10.5px var(--st-font)}
 /* Over 45 readings the weekly steps step back so the trend reads first; the Week by week list carries them. */
 #weightPage .vn-chart-svg.is-busy .st-wstep{opacity:.35}
 
 /* ---- D52 · weight chart edge to edge across the card ---- */
-#weightPage #vn-chart-wrap{margin-inline:-18px !important;padding-inline:0 !important;border-radius:0}
-@media (max-width:359px){#weightPage #vn-chart-wrap{margin-inline:-14px !important}}
 
 /* =============================================================================
    D53 · "Night session" — visual system v2
@@ -2375,21 +2294,21 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 }
 .st-h1{font-size:32px !important;line-height:1.05 !important}
 #weightPage h1,#historyPage h1,#morePage h1{font-size:36px !important;line-height:1.05 !important}
-.st-h2,.st-h3,#weightPage .vn-weight .vn-h-sub#vn-traj-headline,.vn-perf-name,#trainPage .st-next .st-h3{font-family:var(--st-font-d) !important;letter-spacing:-.025em !important}
+.st-h2,.st-h3,.vn-perf-name,#trainPage .st-next .st-h3,#weightPage .wx-h2,#weightPage .wx-v,#weightPage .wx-gap,#weightPage .wx-cd b,#weightPage .wx-tp,#weightPage .wx-sum-c b{font-family:var(--st-font-d) !important;letter-spacing:-.025em !important}
 .st-h2{font-weight:620 !important}.st-h3{font-weight:600 !important}
 .st-eyebrow,.st-head .st-eyebrow{font-family:var(--st-font-d) !important;font-weight:520 !important;letter-spacing:.01em !important;color:color-mix(in srgb,var(--st-accent-lift) 70%,var(--st-ink-3)) !important}
-.st-odo,.st-od,.st-od-s i,#weightPage .vn-weight .vn-metric-v,#weightPage .st-rread b,#weightPage .st-perf-best,.st-recap .st-rc-stats b,.st-mini-v,.st-mini-v b,#homePage .st-minis .st-odo,.st-count-v b,.st-scan-c b,#weightPage .st-jr-big,#trainPage .st-cmeter-h .vn-num b{
+.st-odo,.st-od,.st-od-s i,#weightPage .st-perf-best,.st-recap .st-rc-stats b,.st-mini-v,.st-mini-v b,#homePage .st-minis .st-odo,.st-count-v b,.st-scan-c b,#weightPage .st-jr-big,#trainPage .st-cmeter-h .vn-num b{
   font-family:var(--st-font-d) !important;font-weight:220 !important;font-feature-settings:"tnum" 1,"ss01" 1;
 }
-#weightPage .vn-weight .vn-trend-val,.st-dec-txt b,.st-dec-range,#weightPage .st-perf-pill,.st-cat{font-family:var(--st-font-d) !important}
+.st-dec-txt b,.st-dec-range,#weightPage .st-perf-pill,.st-cat{font-family:var(--st-font-d) !important}
 .st-cat{font-weight:560 !important;letter-spacing:.02em !important}
 .st-dec-txt b{font-weight:560 !important;letter-spacing:-.01em !important}
 
 /* ---- Material: lit glass on every card --------------------------------------- */
-.st-tile,#weightPage .vn-weight,#weightPage .vn-perf-rows,#weightPage .nxp-progress-body-section,#historyPage .vn-hist-calendar,#historyPage .nxp-history-calendar,#historyPage .vn-hist-day,#morePage .vn-set-group,#morePage .vn-set-block,#trainPage .nxp-train-idle-copy,#trainPage .st-cmeter{
+.st-tile,#weightPage .vn-perf-rows,#weightPage .nxp-progress-body-section,#historyPage .vn-hist-calendar,#historyPage .nxp-history-calendar,#historyPage .vn-hist-day,#morePage .vn-set-group,#morePage .vn-set-block,#trainPage .nxp-train-idle-copy,#trainPage .st-cmeter{
   border-color:transparent !important;box-shadow:var(--st-depth) !important;
 }
-.st-tile::before,#weightPage .vn-weight::before,#weightPage .vn-perf-rows::before,#weightPage .nxp-progress-body-section::before,#historyPage .vn-hist-calendar::before,#historyPage .vn-hist-day::before,#morePage .vn-set-group::before,#morePage .vn-set-block::before,#trainPage .nxp-train-idle-copy::before,#trainPage .st-cmeter::before{
+.st-tile::before,#weightPage .vn-perf-rows::before,#weightPage .nxp-progress-body-section::before,#historyPage .vn-hist-calendar::before,#historyPage .vn-hist-day::before,#morePage .vn-set-group::before,#morePage .vn-set-block::before,#trainPage .nxp-train-idle-copy::before,#trainPage .st-cmeter::before{
   content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;z-index:2;
   background:var(--st-edge);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
@@ -2441,13 +2360,9 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 
 /* ---- Progress: segmented controls and chart header in the new voice ---------- */
 #weightPage .vn-progress-tabs button.active,#weightPage .n99-progress-tabs button.active,#weightPage .vn-seg button.active,#historyPage .vn-hist-filters button.active{font-family:var(--st-font-d) !important}
-#weightPage .vn-weight{background:
-  radial-gradient(130% 55% at 0% 0%,rgba(139,92,246,.22),transparent 60%),
-  radial-gradient(90% 50% at 100% 20%,rgba(99,102,241,.10),transparent 70%),
-  linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012)),rgba(18,17,27,.72) !important}
 
 @media (prefers-reduced-transparency:reduce){
-  .st-tile,#homePage .st-t-train,#weightPage .vn-weight{background:rgba(30,27,44,.96) !important}
+  .st-tile,#homePage .st-t-train{background:rgba(30,27,44,.96) !important}
 }
 @media (max-width:359px){
   #homePage .st-t-train .st-h2{font-size:32px !important}
@@ -2551,7 +2466,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 .st-cta>span[aria-hidden]{display:grid;place-items:center;width:28px;height:28px;margin-right:-6px;border-radius:50%;font-size:18px;line-height:1;
   background:rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
 /* ---- Tier 2 · glass ------------------------------------------------------- */
-.n99-button.secondary,.st-chip,.st-link.st-why,.st-qa,.st-replay,#historyPage .nxp-cal-nav button,#historyPage .nxp-cal-today,.st-fold,#weightPage .vn-tog,.n99-modal .n99-icon,#morePage .vn-set-back,.st-dec-chip{
+.n99-button.secondary,.st-chip,.st-link.st-why,.st-qa,#historyPage .nxp-cal-nav button,#historyPage .nxp-cal-today,.st-fold,.n99-modal .n99-icon,#morePage .vn-set-back,.st-dec-chip{
   border-radius:999px !important;border:0 !important;
   background:var(--btn-glass) !important;box-shadow:var(--btn-glass-shadow) !important;
   color:var(--btn-ink) !important;font-family:var(--st-font-d) !important;font-weight:560 !important;letter-spacing:-.005em !important;
@@ -2577,17 +2492,13 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
   box-shadow:inset 0 1px 0 rgba(255,255,255,.32),0 8px 20px -10px rgba(139,92,246,.95),0 0 0 1px rgba(205,187,255,.22) !important}
 #weightPage .vn-seg button.active,#weightPage .vn-progress-tabs button.active,#weightPage .n99-progress-tabs button.active,#historyPage .vn-hist-filters button.active,#historyPage .nxp-history-filters button.active{color:#fff !important}
 /* ---- Focus: one ring for every tier ---------------------------------------- */
-.st-cta:focus-visible,.n99-button:focus-visible,.st-chip:focus-visible,.st-qa:focus-visible,.st-replay:focus-visible,.vn-text:focus-visible,.n99-text:focus-visible,.st-link:focus-visible{outline:2px solid #CDBBFF !important;outline-offset:3px !important}
+.st-cta:focus-visible,.n99-button:focus-visible,.st-chip:focus-visible,.st-qa:focus-visible,.vn-text:focus-visible,.n99-text:focus-visible,.st-link:focus-visible{outline:2px solid #CDBBFF !important;outline-offset:3px !important}
 /* ---- Banner actions follow the glass tier ---------------------------------- */
 .cloud-local-banner .cloud-local-banner-login{border-radius:999px !important;border:0 !important;background:var(--btn-glass) !important;box-shadow:var(--btn-glass-shadow) !important;color:var(--btn-text) !important;font-family:var(--st-font-d) !important;font-weight:560 !important}
 .cloud-local-banner .cloud-local-banner-dismiss{font-family:var(--st-font-d) !important;color:var(--st-ink-3) !important}
 
 /* D57 — range read alignment: every column is the same three-row grid, labels never wrap,
    so the three values sit on one baseline whatever the label length. */
-#weightPage .st-rread>div{display:grid;grid-template-rows:14px auto auto;row-gap:4px;align-content:start}
-#weightPage .st-rread small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:14px}
-#weightPage .st-rread span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-@media (max-width:359px){#weightPage .st-rread>div{padding:10px 6px 9px 9px}#weightPage .st-rread small,#weightPage .st-rread span{font-size:10.5px;letter-spacing:-.01em}}
 
 /* =============================================================================
    NXTFRM 2.0 · Progress › Training — the activity ledger
@@ -3345,7 +3256,7 @@ html::after{content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;opa
 #homePage .vn-pad,#trainPage>.n99,#weightPage>.n99,#historyPage>.n99,#morePage>.n99,#morePage>.apx96-page{padding-left:var(--st-gutter) !important;padding-right:var(--st-gutter) !important}/* App & install is the one legacy page (.apx96-page); it ran edge to edge (D102) */
 #trainPage:has(.st-train-active){padding-left:12px !important;padding-right:12px !important}
 #trainPage:has(.st-train-active)>.n99{padding-left:0 !important;padding-right:0 !important}
-#homePage .st-head,#trainPage .nxp-train-chrome.st-head,#weightPage .nxp-progress-chrome,#historyPage .vn-hist-chrome{margin-top:6px !important;padding-top:0 !important}
+#homePage .st-head,#trainPage .nxp-train-chrome.st-head,#weightPage .nxp-progress-chrome,#historyPage .vn-hist-chrome{margin-top:var(--st-mast-mt,6px) !important;padding-top:0 !important}
 #weightPage .nxp-progress-chrome>div,#historyPage .vn-hist-chrome>div{display:flex;flex-direction:column-reverse}
 #weightPage .nxp-progress-chrome>div>p,#historyPage .vn-hist-chrome>div>p{margin:0 !important;font:520 13px/1.3 var(--st-font-d) !important;letter-spacing:.01em !important;text-transform:none !important;
   color:color-mix(in srgb,var(--st-accent-lift) 70%,var(--st-ink-3)) !important}
@@ -3601,14 +3512,7 @@ body.st-live-on main::after{content:"";display:block;height:70px}
 :root[data-nxp-motion="reduced"] .toast.st-island{animation:none !important}
 
 /* ---- Weight chart lift: the latest trend value glows, the scrub beam is a column of light ---------------- */
-#weightPage .st-comet-halo{fill:rgba(167,139,250,.22);transform-box:fill-box;transform-origin:center}
-#weightPage .st-comet-ring{fill:none;stroke:rgba(214,200,255,.65);stroke-width:1.2}
-#weightPage .st-comet-core{fill:#fff;filter:drop-shadow(0 0 6px rgba(214,200,255,.95)) drop-shadow(0 0 14px rgba(139,92,246,.85))}
-@media (prefers-reduced-motion:no-preference){#weightPage .st-comet-halo{animation:st-comet 2.8s ease-in-out infinite}}
 @keyframes st-comet{0%,100%{transform:scale(.7);opacity:.9}50%{transform:scale(1.35);opacity:.25}}
-:root[data-nxp-motion="reduced"] #weightPage .st-comet-halo{animation:none !important}
-#weightPage #st-scan{filter:drop-shadow(0 0 10px rgba(167,139,250,.55))}
-#weightPage #n99-chart-active{filter:drop-shadow(0 0 7px rgba(214,200,255,.95))}
 
 /* ---- Liquid Glass dock ------------------------------------------------------------------------------------
    Thicker glass with a specular rim, a glint of light on the edge above the active tab, and a pill that
@@ -3925,13 +3829,12 @@ body.st-live-on main::after{height:76px}
 /* ---- D94 · Depth while scrolling: cards recede as they pass under the frosted top bar ---------------------------- */
 @supports (animation-timeline: view()){
   @media (prefers-reduced-motion:no-preference){
-    #homePage:not(.st-enter) .st-bento>*,#homePage:not(.st-enter) .st-quick,#weightPage:not(.st-enter) .vn-weight,#weightPage:not(.st-enter) .vn-journey,
-    #historyPage:not(.st-enter) .vn-hist-calendar,#historyPage:not(.st-enter) .vn-hist-day,#morePage:not(.st-enter) .vn-set-group,#morePage:not(.st-enter) .vn-set-block{
+    #homePage:not(.st-enter) .st-bento>*,#homePage:not(.st-enter) .st-quick,#weightPage:not(.st-enter) .vn-journey,#historyPage:not(.st-enter) .vn-hist-calendar,#historyPage:not(.st-enter) .vn-hist-day,#morePage:not(.st-enter) .vn-set-group,#morePage:not(.st-enter) .vn-set-block{
       animation:st-recede linear none;animation-timeline:view();animation-range:exit 0% exit 100%;transform-origin:50% 100%}
   }
 }
 @keyframes st-recede{from{opacity:1;transform:none}to{opacity:.18;transform:translateY(10px) scale(.94)}}
-:root[data-nxp-motion="reduced"] .st-bento>*,:root[data-nxp-motion="reduced"] .vn-weight,:root[data-nxp-motion="reduced"] .vn-hist-calendar,:root[data-nxp-motion="reduced"] .vn-set-group,:root[data-nxp-motion="reduced"] .vn-set-block{animation-timeline:auto}
+:root[data-nxp-motion="reduced"] .st-bento>*,:root[data-nxp-motion="reduced"] .vn-hist-calendar,:root[data-nxp-motion="reduced"] .vn-set-group,:root[data-nxp-motion="reduced"] .vn-set-block{animation-timeline:auto}
 
 /* ---- D93 · The Observatory ------------------------------------------------------------------------------------- */
 #historyPage .vn-hist-chrome{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
@@ -4005,7 +3908,6 @@ body.st-live-on main::after{height:76px}
    card scrolls in after a tab change (bindView's st-rv-in); never on a repaint, never under reduced motion. */
 #weightPage .st-jr .vn-sect-head{margin:0;align-items:center;justify-content:flex-start;gap:10px}
 #weightPage .st-jr .vn-sect-head .vn-tiny{margin:0 auto 0 0 !important;padding-top:2px}
-#weightPage .vn-weight .st-jr .vn-sect-head .vn-h-sect{margin:0 !important}
 .st-share-b.is-icon{width:40px;height:40px;min-height:40px;padding:0;gap:0;justify-content:center;flex:none}
 .st-share-b.is-icon svg{width:17px;height:17px}
 #weightPage .st-jr-hero{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 14px;margin-top:14px}
@@ -4115,7 +4017,7 @@ body.st-live-on main::after{height:76px}
 #weightPage .st-jr.is-rewind .st-jr-big{background:linear-gradient(180deg,#F1EBFF 35%,#BBA3FF 100%);-webkit-background-clip:text;background-clip:text}
 #weightPage .st-jr.is-rewind .st-jr-sub,#weightPage .st-jr.is-rewind .st-jr-labs .is-now em{color:#D4C4FF}
 #weightPage .st-jr.is-rewind .st-jr-when{color:#DCD0FF !important}
-@media (max-width:359px){#weightPage .st-jr .st-jr-when{display:none}#weightPage .vn-weight .st-jr .vn-sect-head .vn-h-sect{margin:0 auto 0 0 !important}}
+@media (max-width:359px){#weightPage .st-jr .st-jr-when{display:none}}
 #weightPage .st-jr-labs em{font-style:normal}
 #weightPage .st-jr-ms{margin-top:16px}
 #weightPage .st-jr-mh{margin:0 0 8px;font:560 13px/1.2 var(--st-font);color:var(--st-ink-2)}
@@ -4355,7 +4257,6 @@ body.st-live-on main::after{height:76px}
 :root[data-nxp-motion="reduced"] #weightPage.st-enter .st-since-bar i{animation:none}
 
 /* ---- D100 · Notes on the weight chart ----------------------------------------------------------------------- */
-#weightPage .st-mh-l{display:flex;align-items:center;gap:8px;min-width:0}
 #weightPage .st-note-chip{position:relative;display:inline-flex;align-items:center;gap:6px;max-width:170px;min-height:26px;padding:0 10px;border:0;border-radius:999px;cursor:pointer;
   font:600 12px/1 var(--st-font-d);color:#E4DBFF;background:rgba(139,92,246,.16);box-shadow:inset 0 0 0 1px rgba(180,154,255,.38)}
 #weightPage .st-note-chip::after{content:"";position:absolute;left:-4px;right:-4px;top:-9px;bottom:-9px}
@@ -4376,7 +4277,6 @@ body.st-live-on main::after{height:76px}
 /* A note can be long: the tooltip's context line wraps inside a sensible width instead of running off the chart. */
 #weightPage .st-tip .st-tip-ctx{white-space:normal;max-width:min(230px,64vw);line-height:1.3;overflow-wrap:anywhere}
 /* I4: the reading's time label under the chart figure measured 4.15:1 on the chart card in ink-4; ink-3 clears AA. */
-#weightPage #vn-mhead #n99-chart-timing{color:var(--st-ink-3) !important}
 
 /* ---- D101 · Week by week -----------------------------------------------------------------------------------
    Newest first. The change on the week before leads as a bar (down in violet, up in a muted lilac with its +
@@ -4487,3 +4387,256 @@ body.st-live-on main::after{height:76px}
 :is(#morePage,#weightPage) .vn-evo-hist-edit{min-height:44px;padding:0 4px 0 12px;border:0;background:none;cursor:pointer;font:600 15px/1 var(--st-font);color:var(--st-accent-lift);-webkit-tap-highlight-color:transparent}
 :is(#morePage,#weightPage) .vn-evo-hist-sec:not(.is-editing) .vn-evo-hist-del{display:none}
 
+
+/* =============================================================================
+   Weight "Instrument" (spec §2–§7, §12, §14; D116, D118, D119)
+   The plate is the page's one lit edge above the fold: interpretation, readouts (the legend), the range row
+   with its fixed transport slot and Layers, the drawer, the plot on an opaque screen with the scale in a right
+   gutter, and the range summary in a fixed-height slot. Under it the highlights, the Cut journey and the
+   Analysis rows sit on the canvas as quiet surfaces: hairlines, no second lit edge, no nested card. Tokens are
+   scoped to #weightPage; everything else reuses --st-*, --fs-* and --fw-*. Chart text is drawn at 1 CSS px per
+   SVG unit (chartGeo 'page'), so nothing here scales a font with the viewBox.
+   ============================================================================= */
+#weightPage{
+  --wx-screen:#0A0912;--wx-screen-xv:#07070C;--wx-grid:rgba(var(--st-hl),.055);--wx-area:rgba(139,92,246,.16);
+  --wx-dot:rgba(220,213,238,.9);--wx-under:rgba(180,154,255,.18);--wx-gutter:42px;--wx-pad:14px;
+  --wx-hatch:repeating-linear-gradient(135deg,rgba(var(--st-hl),.07) 0 1px,transparent 1px 6px);
+  --wx-fs-h2:20px;--wx-fs-cap:var(--fs-label);--wx-fs-lab:var(--fs-label);--wx-fs-num:32px;--wx-fs-unit:15px;--wx-fs-sum:21px;--wx-fs-tick:11.5px;--wx-fs-tag:12.5px;
+}
+@media (max-width:359px){#weightPage{--wx-pad:10px}}
+
+/* ---- Masthead (D70, W7 / D116): the top padding absorbs the safe-area inset, so a notched phone gains the
+   14 px the inset used to add on top of the status reserve; a browser (inset 0) renders exactly as before.
+   With the status banner showing, the banner owns the inset and the masthead keeps its 6 px. ---------------- */
+#weightPage{--st-mast-mt:calc(6px - min(var(--nxt-safe-top,0px),14px))}
+body:has(.cloud-local-banner:not([hidden])) #weightPage{--st-mast-mt:6px}
+/* The masthead and tabs hold the spec's frame on all four Progress tabs: 64 px masthead, 8, a 44 px tab track
+   whose buttons are 36 (the pill is drawn 4 px inside) with the full 44 px hit area restored on each button. */
+#weightPage .nxp-progress .nxp-progress-chrome{padding-bottom:7px}
+#weightPage .nxp-progress .vn-progress-tabs{margin-bottom:8px}
+#weightPage .nxp-progress .vn-progress-tabs button{min-height:36px;padding-top:6px;padding-bottom:6px}
+#weightPage .nxp-progress .vn-progress-tabs button::after{content:"";position:absolute;left:0;right:0;top:-4px;bottom:-4px}
+
+/* ---- The plate ------------------------------------------------------------------------------------------------ */
+#weightPage .wx-plate{
+  position:relative;isolation:isolate;margin:0;padding:12px var(--wx-pad) 0;border-radius:var(--st-r);
+  background:radial-gradient(120% 40% at 0% 0%,rgba(139,92,246,.13),transparent 60%),linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.008)),rgba(16,15,25,.95);
+  box-shadow:var(--st-depth);
+}
+#weightPage .wx-plate::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;z-index:3;background:var(--st-edge);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+@media (prefers-reduced-transparency:reduce){#weightPage .wx-plate{background:rgba(18,17,27,.98)}}
+
+/* 3a · Interpretation: H2 20/24, the caption with the rate's own window (its short form below 360), the review
+   status chip (a word and a ◆, never colour alone) and Expand in the corner. */
+#weightPage .wx-int{display:flex;flex-wrap:wrap;align-items:flex-start;gap:0 10px;min-height:42px}
+#weightPage .wx-int-t{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0}
+#weightPage .wx-int>.wx-int-t{flex:1 1 0;order:1}
+#weightPage .wx-int>.wx-xbtn{order:2}
+#weightPage .wx-int>.wx-cap{order:3}
+#weightPage h2.wx-h2{margin:0;font:600 var(--wx-fs-h2)/24px var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink)}
+#weightPage .wx-cap{flex-basis:100%;margin:2px 0 0;font:450 var(--wx-fs-cap)/16px var(--st-font);color:var(--st-ink-3);display:flex;flex-wrap:wrap;gap:0 6px;min-width:0}
+#weightPage .wx-cap-s{display:none}
+@media (max-width:359px){#weightPage .wx-cap-l{display:none}#weightPage .wx-cap-s{display:inline}}
+#weightPage .wx-cap-tail{display:inline-flex;align-items:center;gap:5px;color:#E3B062;font-weight:520}
+#weightPage .wx-cap-tail i,#weightPage .wx-status i,#weightPage .wx-fresh i{font-style:normal;font-size:11.5px;line-height:1;transform:scale(.62);transform-origin:center}
+#weightPage .wx-status{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:999px;font:560 12px/1 var(--st-font);
+  color:#E3B062;background:rgba(184,132,42,.16);box-shadow:inset 0 0 0 1px rgba(184,132,42,.35)}
+#weightPage .wx-status.is-ok{color:#CDBBFF;background:rgba(139,92,246,.18);box-shadow:inset 0 0 0 1px rgba(180,154,255,.4)}
+#weightPage .wx-status.is-concern{color:#F58BAE;background:rgba(220,90,118,.14);box-shadow:inset 0 0 0 1px rgba(220,90,118,.35)}
+#weightPage .wx-xbtn{flex:none;width:44px;height:44px;margin:-6px -6px 0 0;padding:0;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+  color:var(--st-ink);background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);-webkit-tap-highlight-color:transparent}
+#weightPage .wx-xbtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* 3b · Readouts: the legend. ● Latest morning / vs trend / — Smoothed trend, fixed slots that never reflow on a
+   scrub. The post-workout cell exists only on a day that has one and takes the middle slot on phone. */
+#weightPage .wx-ro{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);column-gap:10px;align-items:start;margin-top:10px;min-height:69px}
+#weightPage .wx-cell{min-width:0}
+#weightPage .wx-lab{display:flex;align-items:center;gap:6px;font:560 var(--wx-fs-lab)/16px var(--st-font);color:var(--st-ink-2);white-space:nowrap}
+#weightPage .wx-lab .vn-key-raw{width:7px;height:7px;border-radius:50%;background:#DCD5EE;box-shadow:0 0 0 1.5px rgba(16,15,25,1);flex:none}
+#weightPage .wx-lab .vn-key-trend{width:14px;height:3px;border-radius:2px;background:linear-gradient(90deg,#7C5CFF,#E9E1FF);flex:none}
+#weightPage .wx-lab .vn-key-post{flex:none}
+#weightPage .wx-v{display:block;margin-top:2px;font:300 var(--wx-fs-num)/34px var(--st-font-d);letter-spacing:-.035em;white-space:nowrap;
+  background:linear-gradient(180deg,#fff 30%,#CBB8FF);-webkit-background-clip:text;background-clip:text;color:transparent}
+#weightPage .wx-v em{font:450 13px var(--st-font);font-style:normal;letter-spacing:0;color:var(--st-ink-3);-webkit-text-fill-color:var(--st-ink-3);margin-left:3px}
+#weightPage .wx-v.wx-v-t{background:none;-webkit-text-fill-color:var(--st-weight);color:var(--st-weight);text-shadow:0 0 16px rgba(180,154,255,.28)}
+#weightPage .wx-sub{display:flex;align-items:center;gap:6px;margin-top:1px;min-height:17px;font:500 12px/16px var(--st-font);color:var(--st-ink-3);white-space:nowrap;min-width:0}
+#weightPage .wx-sub>span{overflow:hidden;text-overflow:ellipsis}
+#weightPage .wx-ca .wx-sub>span{flex:none;overflow:visible}
+#weightPage .wx-plate[data-wx-timing="morning"] .wx-tm{display:none}
+#weightPage .wx-cc{text-align:right}
+#weightPage .wx-cc .wx-lab,#weightPage .wx-cc .wx-sub{justify-content:flex-end}
+#weightPage .wx-cb{text-align:center;padding:0 2px}
+#weightPage .wx-cb .wx-lab{justify-content:center;color:var(--st-ink-3);font-weight:500}
+#weightPage .wx-gap{display:block;margin-top:10px;font:450 var(--wx-fs-unit)/18px var(--st-font-d);font-variant-numeric:tabular-nums;color:var(--st-ink-2);white-space:nowrap}
+#weightPage .wx-fresh{display:inline-flex;align-items:center;gap:5px}
+#weightPage .wx-fresh i{color:var(--st-accent)}
+#weightPage .wx-fresh.is-old{color:#E3B062}
+#weightPage .wx-fresh.is-old i{color:#E3B062}
+#weightPage .wx-gapline{display:none}
+/* A historical selection: the trend cell names its day on the sub line (the date stays explicit) in place of the freshness word. */
+#weightPage .wx-on{display:none;color:var(--st-ink-2)}
+#weightPage .wx-plate.is-hist .wx-on:not([hidden]){display:inline}
+#weightPage .wx-plate.is-hist .wx-fresh{display:none}
+#weightPage .wx-cd{grid-column:2;grid-row:1;text-align:center;padding:0 2px}
+#weightPage .wx-cd[hidden]{display:none}
+#weightPage .wx-cd .wx-lab{justify-content:center}
+#weightPage .wx-cd b{display:block;margin-top:10px;font:450 var(--wx-fs-unit)/18px var(--st-font-d);font-variant-numeric:tabular-nums;color:var(--st-ink-2)}
+#weightPage .wx-cd small{display:block;font:500 11.5px/14px var(--st-font);color:var(--st-ink-3);white-space:nowrap}
+#weightPage .wx-ro:has(.wx-cd:not([hidden])) .wx-cb{display:none}
+#weightPage .wx-ro .st-note-chip{min-height:22px;padding:0 7px;margin:-3px 0;font:550 11.5px/22px var(--st-font);color:var(--st-ink-2);background:rgba(var(--st-hl),.06);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.08)}
+#weightPage .wx-ro .st-note-chip.has-note{color:#E4DBFF;background:rgba(139,92,246,.16);box-shadow:inset 0 0 0 1px rgba(180,154,255,.38)}
+/* Below 360 the readouts are two cells: the vs figure moves into the trend cell's sub line while the trend is
+   fresh; when it is aging or stale the freshness word wins the line. */
+@media (max-width:359px){
+  #weightPage .wx-ro{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  #weightPage .wx-cb{display:none}
+  #weightPage .wx-cd{grid-column:1 / -1;grid-row:2;text-align:left;padding:4px 0 0}
+  #weightPage .wx-cd .wx-lab{justify-content:flex-start}
+  #weightPage .wx-cd b{display:inline;margin:0 6px 0 0}
+  #weightPage .wx-cd small{display:inline}
+  #weightPage .wx-ro:has(.wx-cd:not([hidden])){min-height:0}
+  #weightPage .wx-fresh:not(.is-old){display:none}
+  #weightPage .wx-gapline{display:inline}
+  #weightPage .wx-fresh.is-old+.wx-gapline{display:none}
+  #weightPage .wx-plate.is-hist .wx-gapline{display:none}
+}
+
+/* 3c · Range row: the segmented range, one fixed transport slot (▶ Replay / ■ Stop / ↺ Latest, one button whose
+   state is data-wx-state) and Layers with its count badge. */
+#weightPage .wx-rr{display:flex;align-items:center;gap:6px;margin-top:10px;min-height:44px}
+#weightPage .wx-rr .wx-seg{flex:1;min-width:0}
+#weightPage .wx-seg button{min-height:38px;min-width:0;padding:0 2px}
+#weightPage .wx-tp{flex:none;position:relative;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;min-width:76px;padding:0 12px;border:0;border-radius:999px;cursor:pointer;
+  font:560 14px/1 var(--st-font-d);color:var(--st-ink);background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);-webkit-tap-highlight-color:transparent}
+#weightPage .wx-tp svg{width:13px;height:13px;fill:currentColor;flex:none}
+#weightPage .wx-tp .wx-tp-g,#weightPage .wx-tp .wx-tp-t{display:none}
+#weightPage .wx-tp[data-wx-state="idle"] .is-idle,#weightPage .wx-tp[data-wx-state="playing"] .is-playing,#weightPage .wx-tp[data-wx-state="historical"] .is-historical{display:inline-flex}
+#weightPage .wx-tp[data-wx-state="historical"]{color:#fff;background:linear-gradient(180deg,rgba(139,92,246,.5),rgba(124,58,237,.3));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 18px -10px rgba(139,92,246,.9)}
+#weightPage .wx-tp[data-wx-state="historical"] svg{fill:none}
+#weightPage .wx-tp[data-wx-state="playing"]{color:#fff;background:var(--st-accent);box-shadow:none}
+#weightPage .wx-lyb{flex:none;position:relative;width:44px;height:44px;padding:0;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+  color:var(--st-ink);background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);-webkit-tap-highlight-color:transparent}
+#weightPage .wx-lyb svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round}
+#weightPage .wx-lyb[aria-expanded="true"]{background:rgba(139,92,246,.32);box-shadow:inset 0 0 0 1px rgba(180,154,255,.45)}
+#weightPage .wx-badge{position:absolute;top:2px;right:0;min-width:16px;height:16px;padding:0 4px;border-radius:8px;font:650 11.5px/16px var(--st-font);background:var(--st-accent);color:#fff;text-align:center;font-style:normal}
+@media (max-width:359px){#weightPage .wx-tp{min-width:44px;width:44px;padding:0}#weightPage .wx-tp[data-wx-state] .wx-tp-t{display:none}#weightPage .wx-seg button{padding:0 1px;font-size:12px}}
+
+/* 3d · Layers drawer: one 48 px row of 36 px chips (44 hit), scrolling sideways on phone with an edge fade;
+   always in the DOM, hidden when closed. A disabled chip stays visible and says why (W5). */
+#weightPage .wx-layers{display:flex;align-items:center;gap:6px;height:48px;margin:0 calc(-1 * var(--wx-pad));padding:6px var(--wx-pad);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+  -webkit-mask:linear-gradient(90deg,transparent 0,#000 var(--wx-pad),#000 calc(100% - var(--wx-pad)),transparent 100%);mask:linear-gradient(90deg,transparent 0,#000 var(--wx-pad),#000 calc(100% - var(--wx-pad)),transparent 100%)}
+#weightPage .wx-layers::-webkit-scrollbar{display:none}
+#weightPage .wx-layers[hidden]{display:none}
+#weightPage .wx-fixed{flex:none;display:inline-flex;align-items:center;gap:6px;font:500 12px/18px var(--st-font);color:var(--st-ink-3);white-space:nowrap;padding-right:4px}
+#weightPage .wx-fixed .vn-key-raw{width:7px;height:7px;border-radius:50%;background:#DCD5EE}
+#weightPage .wx-fixed .vn-key-trend{width:14px;height:3px;border-radius:2px;background:linear-gradient(90deg,#7C5CFF,#E9E1FF)}
+#weightPage .wx-lc{flex:none;position:relative;display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 12px 0 10px;border:0;border-radius:999px;cursor:pointer;
+  font:540 13px/1 var(--st-font);color:var(--st-ink-2);background:rgba(var(--st-hl),.04);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.09);white-space:nowrap;-webkit-tap-highlight-color:transparent}
+#weightPage .wx-lc::after{content:"";position:absolute;inset:-4px -2px}
+#weightPage .wx-lc[aria-pressed="true"]{color:#fff;background:rgba(139,92,246,.22);box-shadow:inset 0 0 0 1px rgba(180,154,255,.5)}
+#weightPage .wx-lc[aria-disabled="true"]{color:var(--st-ink-3);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.06);cursor:default}
+#weightPage .wx-lc small{font:450 11.5px/1 var(--st-font);color:var(--st-ink-3)}
+#weightPage .wx-lc small::before{content:"· "}
+#weightPage .wx-lc .vn-key-post,#weightPage .wx-lc .vn-key-proj,#weightPage .wx-lc .st-key-note{margin:0}
+#weightPage .wx-key-step{display:inline-block;width:14px;height:0;border-top:2px dashed rgba(244,242,250,.55)}
+#weightPage .wx-key-band{display:inline-block;width:14px;height:8px;border-radius:2px;background:rgba(180,154,255,.22);box-shadow:inset 0 0 0 1px rgba(180,154,255,.35)}
+
+/* 3e · The plot: edge to edge across the plate on an opaque screen; the wrap scrolls the page vertically and
+   scrubs horizontally (D111). The focus ring is the one lavender ring. */
+#weightPage .wx-plate .wx-wrap{position:relative;margin:8px calc(-1 * var(--wx-pad)) 0;padding:0;border-radius:0;touch-action:pan-y;user-select:none;-webkit-user-select:none;outline:none}
+#weightPage .wx-plate .wx-wrap:focus-visible{outline:2px solid #CDBBFF;outline-offset:-2px}
+#weightPage .wx-svg{display:block;width:100%;height:auto;overflow:visible}
+#weightPage .wx-screen{fill:var(--wx-screen)}
+#weightPage .wx-hair{stroke:rgba(var(--st-hl),.05);stroke-width:1}
+#weightPage .wx-grid{stroke:var(--wx-grid);stroke-width:1}
+#weightPage .wx-gapcol{fill:url(#wx-hatch)}
+#weightPage .wx-hatch-l{stroke:rgba(var(--st-hl),.07);stroke-width:1}
+#weightPage .wx-today{stroke:rgba(var(--st-hl),.12);stroke-width:1}
+#weightPage .wx-spread{fill:rgba(180,154,255,.1)}
+#weightPage .wx-under{fill:none;stroke:var(--wx-under);stroke-width:9;stroke-linecap:round;stroke-linejoin:round}
+#weightPage .wx-trend-pt{fill:#B49AFF}
+#weightPage .vn-raw-dot{fill:var(--wx-dot);stroke:var(--wx-screen);stroke-width:2.8;paint-order:stroke}
+#weightPage .wx-svg .vn-post-mark{fill:none;stroke:#7f74a8;stroke-width:1.5}
+#weightPage .wx-svg .vn-post-mark.is-off{fill:#7f74a8;stroke:none}
+#weightPage .wx-low{fill:none;stroke:rgba(244,242,250,.7);stroke-width:1.4}
+#weightPage .wx-cur{stroke:#B49AFF;stroke-opacity:.22;stroke-dasharray:3 4;stroke-width:1}
+#weightPage .wx-plate.is-hist .wx-cur{stroke-opacity:.5}
+#weightPage .wx-svg #n99-chart-active{fill:#fff;stroke:#8B5CF6;stroke-width:2.4}
+#weightPage .wx-svg .st-halo{fill:#8B5CF6;opacity:.2}
+#weightPage .wx-svg .st-stem{stroke:rgba(210,195,255,.8);stroke-width:1.6;stroke-linecap:round}
+/* The scale gutter: right-aligned ticks (the unit on the top one), one violet tag for the trend's end with a
+   dotted leader from the stroke; the x dates and gap labels in the bottom lane. */
+#weightPage .wx-svg .wx-scale{font:500 var(--wx-fs-tick) var(--st-font);fill:var(--st-ink-3);font-variant-numeric:tabular-nums}
+#weightPage .wx-svg .wx-x{font:500 var(--wx-fs-tick) var(--st-font);fill:var(--st-ink-3)}
+#weightPage .wx-svg .wx-gaplab{fill:var(--st-ink-3);font-weight:450}
+#weightPage .wx-tag rect{fill:#7C3AED;stroke:rgba(255,255,255,.22);stroke-width:1}
+#weightPage .wx-tag text{font:560 var(--wx-fs-tag) var(--st-font-d);font-variant-numeric:tabular-nums;fill:#fff}
+#weightPage .wx-leader{stroke:rgba(180,154,255,.55);stroke-width:1;stroke-dasharray:1.5 3}
+#weightPage .wx-svg .vn-proj-line{stroke:#B49AFF}
+#weightPage .wx-svg .st-bridge{stroke:rgba(205,187,255,.55);stroke-width:1.6;stroke-dasharray:1.5 3.5;stroke-linecap:round}
+#weightPage .wx-svg .st-pillg.is-goal rect{fill:rgba(20,18,30,.86);stroke:rgba(205,187,255,.45)}
+#weightPage .wx-svg .st-pillg.is-goal text{fill:var(--st-ink);font:590 10.5px var(--st-font)}
+/* Enter: the trend draws, the readings stagger in, the tag fades last; a range change replays a shorter draw.
+   Under reduced motion every mark is its final frame (the existing rules below cover the dots and steps). */
+#weightPage.st-enter .wx-tag,#weightPage .wx-svg.is-range-change .wx-tag{opacity:0;animation:st-fade .4s var(--st-out) 1s forwards}
+#weightPage.st-enter .wx-area,#weightPage .wx-svg.is-range-change .wx-area{opacity:0;animation:st-fade .4s var(--st-out) .2s forwards}
+@media (prefers-reduced-motion:reduce){#weightPage .wx-tag,#weightPage .wx-area,#weightPage .wx-under,#weightPage .wx-svg.is-range-change .wx-tag,#weightPage .wx-svg.is-range-change .wx-area,#weightPage.st-enter .wx-tag,#weightPage.st-enter .wx-area{animation:none;opacity:1}#weightPage .wx-svg .vn-trend-line,#weightPage .wx-svg.is-range-change .vn-trend-line,#weightPage.st-enter .wx-svg .vn-trend-line{animation:none;stroke-dasharray:none;stroke-dashoffset:0}}
+:root[data-nxp-motion="reduced"] #weightPage .wx-tag,:root[data-nxp-motion="reduced"] #weightPage .wx-area,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-range-change .wx-tag,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-range-change .wx-area{animation:none;opacity:1}
+:root[data-nxp-motion="reduced"] #weightPage .wx-svg .vn-trend-line,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-range-change .vn-trend-line{animation:none;stroke-dasharray:none;stroke-dashoffset:0}
+#weightPage .wx-plate .wx-wrap .st-tip{top:8px}
+
+/* 3f · The slot: the range summary (D50) on phone, a fixed height so the plate never jumps when the selection
+   bar or the Compare table takes its place. Values Geist 300 21, labels 12; a number is never ellipsised. */
+#weightPage .wx-slot{min-height:118px;padding:10px 0 12px}
+#weightPage .wx-sum-h{display:flex;align-items:center;gap:8px;margin:0;min-height:16px;font:550 12.5px/16px var(--st-font);color:var(--st-ink-2)}
+#weightPage .wx-sum-c{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:8px}
+#weightPage .wx-sum-c>div{min-width:0;padding-right:8px}
+#weightPage .wx-sum-c>div+div{padding-left:10px;border-left:1px solid rgba(var(--st-hl),.07)}
+#weightPage .wx-sum-c small{display:block;font:550 12px/15px var(--st-font);color:var(--st-ink-3);white-space:nowrap}
+#weightPage .wx-sum-c b{display:block;margin-top:2px;font:300 var(--wx-fs-sum)/24px var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink);white-space:nowrap}
+#weightPage .wx-sum-c b em{font:450 12px var(--st-font);font-style:normal;color:var(--st-ink-3);margin-left:2px;letter-spacing:0}
+#weightPage .wx-sum-c span{display:block;font:500 12px/15px var(--st-font);color:var(--st-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#weightPage .wx-sum-x{margin:8px 0 0;font:500 12px/15px var(--st-font);color:var(--st-ink-3)}
+#weightPage .wx-sum-x b{font:500 12px var(--st-font);color:var(--st-ink-2)}
+@media (max-width:359px){#weightPage .wx-sum-c small{font-size:11.5px}#weightPage .wx-sum-c b{font-size:19px}#weightPage .wx-sum-c>div+div{padding-left:8px}}
+
+/* Empty plate (spec §15): the same frame with its first step. */
+#weightPage .wx-plate.is-empty{padding-bottom:12px}
+#weightPage .wx-empty{padding:28px 8px 10px;text-align:center;color:var(--st-ink-2)}
+#weightPage .wx-empty h3{margin:0 0 6px}
+#weightPage .wx-empty p{margin:0 auto 16px;max-width:330px;font:450 14px/1.45 var(--st-font);color:var(--st-ink-3)}
+
+/* ---- Under the plate: highlights (W1) as quiet text chips with a glyph, then the slow-week note ------------- */
+#weightPage .wx-after{margin-top:12px}
+#weightPage .wx-hl{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0}
+#weightPage .wx-hl li{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px 0 10px;border-radius:999px;font:530 13px/1 var(--st-font);color:var(--st-ink-2);background:rgba(var(--st-hl),.04)}
+#weightPage .wx-hl li i{font-style:normal;color:var(--st-accent-lift);font-size:12px}
+#weightPage .wx-after .st-slow{margin:10px 2px 0;font:450 13px/18px var(--st-font);color:var(--st-ink-3)}
+/* The Cut journey keeps its own surface and now sits on the canvas, after the highlights. */
+#weightPage .wx-plate~.vn-journey,#weightPage .wx-after+.vn-journey{margin-top:14px}
+
+/* ---- Analysis: quiet 58 px disclosure rows; every summary is a fact. The open state is memory only. ---------- */
+#weightPage .wx-an{margin-top:22px;padding-top:4px;border-top:1px solid rgba(var(--st-hl),.07)}
+#weightPage h2.wx-an-h{margin:10px 0 2px}
+#weightPage .wx-row{border-top:1px solid rgba(var(--st-hl),.06)}
+#weightPage .wx-row:first-of-type{border-top:0}
+#weightPage .wx-row-b{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;padding:8px 2px;border:0;background:none;cursor:pointer;text-align:left;color:var(--st-ink);-webkit-tap-highlight-color:transparent;border-radius:12px}
+#weightPage .wx-row-l{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+#weightPage .wx-row-t{font:560 15.5px/20px var(--st-font);color:var(--st-ink)}
+#weightPage .wx-row-s{font:450 13px/17px var(--st-font);color:var(--st-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#weightPage .wx-chev{flex:none;font-style:normal;font-size:18px;color:var(--st-ink-3);transition:transform .2s var(--st-out)}
+#weightPage .wx-row.is-open .wx-chev{transform:rotate(90deg)}
+#weightPage .wx-row-p{padding:0 2px 14px}
+#weightPage .wx-row-p[hidden]{display:none}
+#weightPage .wx-row-p .vn-evidence{margin:0;padding:0;border:0;background:none;box-shadow:none}
+#weightPage .wx-row-p .st-weeks{margin:0;padding-top:0;border-top:0}
+#weightPage .wx-how .vn-tiny{font:450 13.5px/1.45 var(--st-font);color:var(--st-ink-2)}
+#weightPage .wx-how .vn-tiny b{font-weight:600;color:var(--st-ink)}
+#weightPage .wx-row.is-rate .vn-evidence>.vn-h-sect{display:none}
+/* "Each day vs its trend": the plot's own x positions, its own zero line, in Analysis (W2). */
+#weightPage .wx-dev-svg{display:block;width:100%;height:auto;margin:4px 0 8px}
+#weightPage .wx-dev-k{font:500 11.5px var(--st-font);fill:var(--st-ink-3)}
+#weightPage .wx-row-p .vn-tiny{margin:0;font:450 13px/1.45 var(--st-font);color:var(--st-ink-3)}
+@media (prefers-reduced-motion:reduce){#weightPage .wx-chev{transition:none}}
+:root[data-nxp-motion="reduced"] #weightPage .wx-chev{transition:none}

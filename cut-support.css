@@ -136,13 +136,6 @@ html,body { background:var(--n99-bg)!important; }
    circle for morning, a hollow SQUARE for post-workout, a bar for the average,
    a dashed rule for the projection, a hairline for the target. Shape does the
    work, so the key survives greyscale and colour-blindness. */
-.n99-legend { display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-top:1px solid var(--nxt-border-subtle);padding-top:14px;margin-top:4px;font-size:var(--nxt-type-label);color:var(--nxt-text-muted); }
-.n99-legend > span { display:flex;align-items:center;gap:6px; }
-.n99-legend i { width:15px;height:3px;border-radius:3px;background:var(--nxt-chart-ink); }
-.n99-legend i.raw { width:7px;height:7px;border-radius:50%;background:var(--nxt-chart-ink);opacity:.62; }
-.n99-legend i.post { width:7px;height:7px;border-radius:0;background:none;border:1.5px solid var(--nxt-chart-ink-secondary); }
-.n99-legend i.dash { width:15px;height:0;border-radius:0;background:none;border-top:2px dashed var(--nxt-chart-ink); }
-.n99-legend i.target { width:15px;height:0;border-radius:0;background:none;border-top:1px solid var(--nxt-text-muted); }
 /* Inspection guidance is help text, not a key entry. It sits outside the legend
    so the legend stays a list of marks. */
 .n99-chart-hint { margin:8px 0 0;font-size:var(--nxt-type-label);color:var(--nxt-text-muted); }
