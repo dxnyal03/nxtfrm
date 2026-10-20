@@ -516,7 +516,7 @@ const STRATA = (() => {
     if (!root) return;
     const sync = () => {
       const sheet = root.querySelector(".n99-modal .sheet");
-      document.documentElement.classList.toggle("st-sheet-open", !!sheet);
+      document.documentElement.classList.toggle("st-sheet-open", !!sheet); if (sheet) document.documentElement.style.setProperty("--st-sy", String(Math.round(window.scrollY || 0)));
       if (!sheet || sheet.__stDrag) return;
       sheet.__stDrag = true;
       let y0 = null, dy = 0, t0 = 0;
@@ -1625,7 +1625,7 @@ const STRATA = (() => {
   function bindParallax() {
     let raf = 0;
     const set = () => { raf = 0; document.documentElement.style.setProperty("--st-sy", String(Math.round(window.scrollY || 0))); };
-    window.addEventListener("scroll", () => { if (!raf && !reduced()) raf = requestAnimationFrame(set); }, { passive: true });
+    if (!(window.CSS && CSS.supports && CSS.supports("animation-timeline", "scroll()"))) window.addEventListener("scroll", () => { if (!raf && !reduced()) raf = requestAnimationFrame(set); }, { passive: true });
   }
   /* ---- D87 · Touch light ---------------------------------------------------------------------------
      The tap ripple (D38), made continuous: glass catches light under the finger, the light follows it
