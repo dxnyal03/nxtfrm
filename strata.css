@@ -3637,7 +3637,6 @@ body .toast.st-island.is-quiet{position:fixed !important;width:1px !important;he
 :root[data-st-morph]::view-transition-group(st-mo-3){z-index:2}
 
 /* ---- Chart: the day behind a reading ------------------------------------------------------------------------- */
-.st-tip .st-tip-ctx{order:9;margin-top:3px;padding-top:4px;border-top:1px solid rgba(255,255,255,.08);color:#d9ccff;font-weight:560;font-size:11px}
 
 /* ---- D85 · Share your cut ------------------------------------------------------------------------------------- */
 .vn-journey .vn-sect-head{display:flex;align-items:center;gap:10px}
@@ -4275,7 +4274,6 @@ body.st-live-on main::after{height:76px}
 .st-note-f .st-note-k input:checked+span{color:#FFFFFF;background:linear-gradient(170deg,rgba(139,92,246,.55),rgba(109,40,217,.38));box-shadow:inset 0 1px 0 rgba(255,255,255,.25),inset 0 0 0 1px rgba(196,181,253,.6)}
 .st-note-f .st-note-k input:focus-visible+span{outline:2px solid rgba(180,154,255,.85);outline-offset:2px}
 /* A note can be long: the tooltip's context line wraps inside a sensible width instead of running off the chart. */
-#weightPage .st-tip .st-tip-ctx{white-space:normal;max-width:min(230px,64vw);line-height:1.3;overflow-wrap:anywhere}
 /* I4: the reading's time label under the chart figure measured 4.15:1 on the chart card in ink-4; ink-3 clears AA. */
 
 /* ---- D101 · Week by week -----------------------------------------------------------------------------------
@@ -4484,6 +4482,7 @@ body:has(.cloud-local-banner:not([hidden])) #weightPage{--st-mast-mt:6px}
 #weightPage .wx-cd b{display:block;margin-top:10px;font:450 var(--wx-fs-unit)/18px var(--st-font-d);font-variant-numeric:tabular-nums;color:var(--st-ink-2)}
 #weightPage .wx-cd small{display:block;font:500 11.5px/14px var(--st-font);color:var(--st-ink-3);white-space:nowrap}
 #weightPage .wx-ro:has(.wx-cd:not([hidden])) .wx-cb{display:none}
+#weightPage .wx-ro .st-note-chip::after{content:"";position:absolute;inset:-11px 0}
 #weightPage .wx-ro .st-note-chip{min-height:22px;padding:0 7px;margin:-3px 0;font:550 11.5px/22px var(--st-font);color:var(--st-ink-2);background:rgba(var(--st-hl),.06);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.08)}
 #weightPage .wx-ro .st-note-chip.has-note{color:#E4DBFF;background:rgba(139,92,246,.16);box-shadow:inset 0 0 0 1px rgba(180,154,255,.38)}
 /* Below 360 the readouts are two cells: the vs figure moves into the trend cell's sub line while the trend is
@@ -4506,7 +4505,8 @@ body:has(.cloud-local-banner:not([hidden])) #weightPage{--st-mast-mt:6px}
    state is data-wx-state) and Layers with its count badge. */
 #weightPage .wx-rr{display:flex;align-items:center;gap:6px;margin-top:10px;min-height:44px}
 #weightPage .wx-rr .wx-seg{flex:1;min-width:0}
-#weightPage .wx-seg button{min-height:38px;min-width:0;padding:0 2px}
+#weightPage .wx-seg button{position:relative;min-height:38px;min-width:0;padding:0 2px}
+#weightPage .wx-seg button::after{content:"";position:absolute;inset:-3px 0}
 #weightPage .wx-tp{flex:none;position:relative;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;min-width:76px;padding:0 12px;border:0;border-radius:999px;cursor:pointer;
   font:560 14px/1 var(--st-font-d);color:var(--st-ink);background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);-webkit-tap-highlight-color:transparent}
 #weightPage .wx-tp svg{width:13px;height:13px;fill:currentColor;flex:none}
@@ -4640,3 +4640,75 @@ body:has(.cloud-local-banner:not([hidden])) #weightPage{--st-mast-mt:6px}
 #weightPage .wx-row-p .vn-tiny{margin:0;font:450 13px/1.45 var(--st-font);color:var(--st-ink-3)}
 @media (prefers-reduced-motion:reduce){#weightPage .wx-chev{transition:none}}
 :root[data-nxp-motion="reduced"] #weightPage .wx-chev{transition:none}
+
+/* ---- Inspector (spec §8.3–§8.6, w3) --------------------------------------------------------------------------
+   The lane: the date only, in the top lane or flipped to the bottom lane, never over a mark (NXT.lanePlace). It
+   fades 120 ms with a 2 px rise and its x follows over 80 ms; in place under reduced motion. */
+#weightPage .wx-plate .wx-wrap .st-tip{top:auto;min-width:0;padding:5px 10px;border-radius:10px;gap:0;transition:left .08s var(--st-out),top .08s var(--st-out);animation:wx-lane .12s var(--st-out)}
+#weightPage .wx-plate .wx-wrap .st-tip b{font:600 12px/16px var(--st-font);color:var(--st-ink)}
+#weightPage .wx-plate .wx-wrap .st-tip span{font:500 11.5px/15px var(--st-font);color:var(--st-ink-3)}
+@keyframes wx-in{from{opacity:0}}
+@keyframes wx-lane{from{opacity:0;transform:translate(-50%,2px)}to{opacity:1;transform:translate(-50%,0)}}
+/* The selection bar (phone): takes the slot while a day is selected, a 160 ms crossfade; the range summary while not. */
+#weightPage .wx-slot{position:relative}
+#weightPage .wx-slot .wx-sel{display:none}
+#weightPage .wx-slot[data-wx-slot="select"] .wx-sum{display:none}
+#weightPage .wx-slot[data-wx-slot="select"] .wx-sel{display:flex;animation:wx-in .16s var(--st-out)}
+#weightPage .wx-slot[data-wx-slot="summary"] .wx-sum{animation:wx-in .16s var(--st-out)}
+#weightPage .wx-sel{flex-direction:column;gap:4px;min-height:98px}
+#weightPage .wx-sel-r1{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:28px}
+#weightPage .wx-sel-h{font:550 12.5px/16px var(--st-font);color:var(--st-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#weightPage .wx-sel-h b{font-weight:600;color:var(--st-ink)}
+#weightPage .wx-sel-x{flex:none;position:relative;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:44px;height:44px;margin:-8px -8px -8px 0;padding:0;border:0;border-radius:50%;cursor:pointer;
+  color:var(--st-ink-2);background:none;-webkit-tap-highlight-color:transparent}
+#weightPage .wx-sel-x svg{width:18px;height:18px}
+#weightPage .wx-sel-x:focus-visible{outline:2px solid #CDBBFF;outline-offset:-2px}
+#weightPage .wx-sel-ctx{position:relative;display:flex;align-items:center;gap:6px;min-height:28px;margin:0 -2px;padding:0 2px;border:0;border-radius:8px;background:none;cursor:pointer;text-align:left;
+  font:560 14.5px/20px var(--st-font);color:var(--st-ink);-webkit-tap-highlight-color:transparent;max-width:100%}
+#weightPage .wx-sel-ctx::after{content:"";position:absolute;inset:-8px 0}
+#weightPage .wx-sel-ctx>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#weightPage .wx-sel-ctx i{font-style:normal;color:var(--st-ink-3);flex:none}
+#weightPage .wx-sel-ctx.is-quiet{color:var(--st-ink-4);font-weight:500}
+#weightPage .wx-sel-ctx:focus-visible{outline:2px solid #CDBBFF;outline-offset:2px}
+#weightPage .wx-sel-r3{display:flex;align-items:center;gap:8px;min-height:32px;margin-top:2px}
+#weightPage .wx-sel .st-note-chip,#weightPage .wx-insp .st-note-chip{position:relative;min-height:32px;max-width:190px;padding:0 11px;font:550 12.5px/32px var(--st-font);color:var(--st-ink-2);background:rgba(var(--st-hl),.06);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.08)}
+#weightPage .wx-sel .st-note-chip::after,#weightPage .wx-insp .st-note-chip::after{content:"";position:absolute;inset:-6px 0}
+#weightPage .wx-sel .st-note-chip.has-note,#weightPage .wx-insp .st-note-chip.has-note{color:#E4DBFF;background:rgba(139,92,246,.16);box-shadow:inset 0 0 0 1px rgba(180,154,255,.38)}
+#weightPage .wx-sel-open{position:relative;display:inline-flex;align-items:center;gap:2px;min-height:32px;padding:0 13px;border:0;border-radius:999px;cursor:pointer;font:560 12.5px/32px var(--st-font);
+  color:var(--st-ink);background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);-webkit-tap-highlight-color:transparent;white-space:nowrap}
+#weightPage .wx-sel-open::after{content:"";position:absolute;inset:-6px 0}
+#weightPage .wx-sel-open i{font-style:normal;color:var(--st-ink-3)}
+#weightPage .wx-sel-open:focus-visible{outline:2px solid #CDBBFF;outline-offset:2px}
+/* The inspector strip (wide): persistent under the plot, one 64 px row; ↺ Back to latest only while historical. */
+#weightPage .wx-insp{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;min-height:64px;margin:0;padding:8px 0;border-top:1px solid rgba(var(--st-hl),.06)}
+#weightPage .wx-insp .wx-sel-r1{flex:none;min-width:0}
+#weightPage .wx-insp .wx-sel-ctx{flex:1 1 200px;min-width:0}
+#weightPage .wx-insp .wx-sel-r3{margin-left:auto}
+#weightPage .wx-insp .wx-sel-k{font:550 12.5px/20px var(--st-font);color:var(--st-ink-3);flex:none}
+#weightPage .wx-insp .wx-sel-k::after{content:" ·"}
+#weightPage .wx-insp .wx-sel-r3{flex:none}
+#weightPage .wx-insp .wx-sel-x{width:auto;height:32px;margin:0;padding:0 12px 0 10px;border-radius:999px;font:560 12.5px/32px var(--st-font);color:#fff;
+  background:linear-gradient(180deg,rgba(139,92,246,.5),rgba(124,58,237,.3));box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+#weightPage .wx-insp .wx-sel-x::after{content:"";position:absolute;inset:-6px 0}
+#weightPage .wx-insp .wx-sel-x svg{width:13px;height:13px}
+#weightPage .wx-insp .wx-sel-x[hidden]{display:none}
+#weightPage .wx-plate.is-wide .wx-slot{min-height:60px;padding-top:8px;border-top:1px solid rgba(var(--st-hl),.06)}
+/* Week on the chart: the Mon–Sun band, the week's step with the layer off, the picked row and the reverse link. */
+#weightPage .st-weeksel.is-preview{fill:rgba(139,92,246,.08);stroke:none}
+#weightPage .st-weeksel-step{stroke-dasharray:3 4}
+#weightPage .wk-row[aria-current="true"]{box-shadow:inset 3px 0 0 -1px var(--st-accent)}
+/* Layer toggles: the layer's own marks fade in 160 ms (the plot's other marks are their final frame). */
+#weightPage .wx-svg.is-layer-change .wx-spread,#weightPage .wx-svg.is-layer-change .st-wstep,#weightPage .wx-svg.is-layer-change .st-band,#weightPage .wx-svg.is-layer-change .vn-post-mark,#weightPage .wx-svg.is-layer-change .st-nflag,#weightPage .wx-svg.is-layer-change .vn-proj-line,#weightPage .wx-svg.is-layer-change .st-pillg{animation:wx-in .16s var(--st-out)}
+#weightPage .wx-svg.is-layer-change .wx-spread{transform-box:fill-box;transform-origin:center;animation:wx-band .22s var(--st-out)}
+@keyframes wx-band{from{opacity:0;transform:scaleY(.2)}to{opacity:1;transform:scaleY(1)}}
+/* ‹ Weight: History's return capsule, in the day header. */
+#historyPage .wx-ret{display:inline-flex;align-items:center;gap:3px;min-height:32px;margin:0 0 8px;padding:0 12px 0 9px;border:0;border-radius:999px;cursor:pointer;position:relative;
+  font:560 13px/32px var(--st-font);color:#E4DBFF;background:rgba(139,92,246,.16);box-shadow:inset 0 0 0 1px rgba(180,154,255,.38);-webkit-tap-highlight-color:transparent}
+#historyPage .wx-ret::after{content:"";position:absolute;inset:-6px 0}
+#historyPage .wx-ret i{font-style:normal;font-size:16px;line-height:1;color:#CDBBFF}
+#historyPage .wx-ret:focus-visible{outline:2px solid #CDBBFF;outline-offset:2px}
+/* Reduced motion (OS or in-app): nothing in the lane, the slot swap, the layers or the week band moves. */
+@media (prefers-reduced-motion:reduce){
+  #weightPage .wx-plate .wx-wrap .st-tip,#weightPage .wx-slot[data-wx-slot="select"] .wx-sel,#weightPage .wx-slot[data-wx-slot="summary"] .wx-sum,#weightPage .wx-svg.is-layer-change .wx-spread,#weightPage .wx-svg.is-layer-change .st-wstep,#weightPage .wx-svg.is-layer-change .st-band,#weightPage .wx-svg.is-layer-change .vn-post-mark,#weightPage .wx-svg.is-layer-change .st-nflag,#weightPage .wx-svg.is-layer-change .vn-proj-line,#weightPage .wx-svg.is-layer-change .st-pillg{animation:none;transition:none}
+}
+:root[data-nxp-motion="reduced"] #weightPage .wx-plate .wx-wrap .st-tip,:root[data-nxp-motion="reduced"] #weightPage .wx-slot[data-wx-slot="select"] .wx-sel,:root[data-nxp-motion="reduced"] #weightPage .wx-slot[data-wx-slot="summary"] .wx-sum,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-layer-change .wx-spread,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-layer-change .st-wstep,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-layer-change .st-band,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-layer-change .vn-post-mark,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-layer-change .st-nflag,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-layer-change .vn-proj-line,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-layer-change .st-pillg{animation:none;transition:none}

@@ -81,7 +81,7 @@ function loadNXT(fx, els) {
   };
   for (let attempt = 0; attempt < 120; attempt++) {
     const ctx = vm.createContext(build());
-    try { vm.runInContext(SRC, ctx, { filename: "cut-support.js" }); return ctx.__NXT__; }
+    try { vm.runInContext(SRC, ctx, { filename: "cut-support.js" }); const N = ctx.__NXT__; Object.defineProperty(N, "__sandbox", { value: ctx, enumerable: false }); return N; }
     catch (err) {
       const miss = /(\w+) is not defined/.exec(String(err && err.message));
       if (!miss) throw err;
@@ -622,6 +622,187 @@ test("the deleted markup is gone from the chart HTML and from the stylesheets (d
   for (const c of ["vn-mhead", "vn-metric-v", "vn-trend-val", "st-range-row", "st-wchips", "st-csum-d", "vn-togs", "vn-legend", "n99-legend", "st-rread", "vn-weighins", "aria-live=\"polite\" class=\"vn-mhead"]) assert.strictEqual(html.indexOf(c), -1, c);
   const css = fs.readFileSync(path.join(ROOT, "strata.css"), "utf8") + fs.readFileSync(path.join(ROOT, "vnext.css"), "utf8");
   for (const c of [".vn-mhead", ".vn-metric-v", ".vn-trend-val", ".st-wchips", ".vn-togs", ".vn-legend", "#weightPage .vn-weight", ".st-rread", ".st-comet", ".st-hc-start", ".is-start-ref", "#vn-chart-wrap{margin-inline"]) assert.strictEqual(css.indexOf(c), -1, c);
+});
+
+
+/* =========================================================================
+   Commits 6–7 · inspector and layers (w3)
+   ========================================================================= */
+function inspectorPage(fx) {
+  const page = chartPage(fx);
+  for (const id of ["wx-sel", "wx-sel-d", "wx-sel-l", "wx-sel-ctx", "wx-sel-ctxt", "wx-sel-note-h", "wx-sel-open", "wx-sel-x"]) page.els[id] = makeElement(id);
+  page.els["wx-sel-x"].querySelector = () => null; /* the phone bar's × (no text span): never hidden */
+  return page;
+}
+
+test("lanePlace: the lane sits in the top lane, flips to the bottom lane over a mark, and hides when both collide (spec §8.3)", () => {
+  const { N } = chartPage(); const m = N.ui.chart, base = m.H - m.bottom, plotR = m.W - m.right;
+  const w = 78, h = 26;
+  let top = 0, bottom = 0, hidden = 0;
+  for (let i = 0; i < m.points.length; i++) {
+    const L = N.lanePlace(m, i, w, h);
+    if (!L.lane) { hidden += 1; continue; }
+    if (L.lane === "top") { top += 1; assert.strictEqual(L.y, m.top + 6); } else { bottom += 1; assert.strictEqual(L.y, base - 6 - h); }
+    assert.ok(L.x - w / 2 >= m.left + 10 - 1e-9 && L.x + w / 2 <= plotR - 10 + 1e-9, "clamped 10 px from the edges");
+    /* No reading's dot (with its keyline) sits inside the lane's rect. */
+    const r = { x: L.x - w / 2, y: L.y, w, h };
+    for (const q of m.points) assert.ok(!(q.x + 4.4 > r.x && q.x - 4.4 < r.x + r.w && q.y + 4.4 > r.y && q.y - 4.4 < r.y + r.h), `reading ${q.date} under the lane at ${i}`);
+  }
+  assert.ok(top > 0, "some readings use the top lane");
+  /* A lane as tall as the plot can fit nowhere: hidden, never placed over the marks. */
+  assert.strictEqual(N.lanePlace(m, 3, w, base - m.top).lane, null);
+  /* A point whose dot is high in the plot pushes the lane down; the bottom lane is the answer, not a collision. */
+  const hi = m.points.reduce((a, q, i) => q.y < m.points[a].y ? i : a, 0);
+  const Lhi = N.lanePlace(m, hi, w, Math.max(h, m.points[hi].y - m.top));
+  assert.notStrictEqual(Lhi.lane, "top");
+});
+
+test("weekBand: the band spans that Monday to Sunday on the model's x scale (clamped) and carries the week's step with the layer off", () => {
+  const { N } = chartPage(); N.ui.range = 30; N.ui.chart = N.chartModel(); const m = N.ui.chart;
+  assert.strictEqual(N.ui.showWeekly, false);
+  const st = N.weekStart(N.dateAdd(m.points.at(-1).date, -10)), b = N.weekBand(m, st);
+  assert.ok(b, "a week inside the range");
+  assert.strictEqual(b.st, st); assert.strictEqual(b.en, N.dateAdd(st, 6));
+  assert.strictEqual(b.x1, Math.max(m.left, m.x(st))); assert.strictEqual(b.x2, Math.min(m.W - m.right, m.x(b.en)));
+  assert.ok(b.step && b.step.st === st && Number.isFinite(b.step.y), "the step is found while the Weekly layer is off");
+  assert.strictEqual(m.points[b.last].date <= b.en && m.points[b.last].date >= st, true, "selects the week's last reading");
+  /* The first (clipped) week starts at the plot's left edge; a week entirely outside the range is null. */
+  const first = N.weekBand(m, N.weekStart(m.points[0].date));
+  assert.ok(first && first.x1 === m.left);
+  assert.strictEqual(N.weekBand(m, N.dateAdd(st, -140)), null);
+});
+
+test("layerState: every chip carries its name, default and (when unavailable) the engine's reason (W5 / D115)", () => {
+  const { N } = chartPage(); N.ui.range = 30; N.ui.chart = N.chartModel();
+  const ls = N.layerState(N.ui.chart), by = Object.fromEntries(ls.map(l => [l.k, l]));
+  assert.strictEqual(ls.map(l => l.k).join(), "weekly,spread,post,notes,forecast");
+  assert.strictEqual(by.weekly.name, "Weekly averages"); assert.strictEqual(by.spread.name, "Day-to-day spread"); assert.strictEqual(by.post.name, "Post-workout");
+  assert.ok(/^Notes · \d+$/.test(by.notes.name)); assert.strictEqual(by.forecast.name, "Projection");
+  assert.strictEqual(by.post.why, "No post-workout readings in this range", "the cut fixture has no post-workout rows");
+  assert.strictEqual(by.weekly.why, ""); assert.strictEqual(by.spread.why, "");
+  /* Two weeks of mornings: the spread's 14-day rule holds, no projection without a confirmed goal. */
+  const thin = cutFixture(); thin.state.bws = thin.state.bws.filter(r => r.date >= "2026-10-15"); thin.settings.cutSupport.targetConfirmed = false;
+  const { N: T } = chartPage(thin); T.ui.range = 14; T.ui.chart = T.chartModel();
+  const tb = Object.fromEntries(T.layerState(T.ui.chart).map(l => [l.k, l]));
+  assert.strictEqual(tb.spread.why, "Needs 7 mornings in 14 days");
+  assert.strictEqual(tb.weekly.why, "Needs 2 weeks with 3 mornings");
+  assert.strictEqual(tb.forecast.why, "Needs a confirmed goal");
+  /* The chip markup: aria-pressed on every chip; a disabled one says why, aria-disabled and described by it. */
+  const html = N.chartHTML();
+  for (const k of ["weekly", "spread", "post", "notes", "forecast"]) assert.ok(new RegExp(`data-wx-layer="${k}" aria-pressed="(true|false)"`).test(html), k);
+  assert.ok(/data-wx-layer="post" aria-pressed="false" aria-disabled="true" aria-describedby="wx-why-post"[^>]*>[\s\S]*?<small id="wx-why-post">No post-workout readings in this range<\/small>/.test(html));
+});
+
+test("the selection bar (phone) is in the slot, the strip (wide) under the plot, never both; × is named Back to latest", () => {
+  const { N } = chartPage(); N.ui.range = 30;
+  N.ui.wxWide = false; let html = N.chartHTML();
+  assert.ok(html.indexOf('class="wx-sel" id="wx-sel"') !== -1 && html.indexOf("wx-insp") === -1, "phone: the bar");
+  assert.ok(html.indexOf('<div class="wx-slot" id="wx-slot" data-wx-slot="summary">') !== -1);
+  assert.ok(html.indexOf('aria-label="Back to latest" onclick="NXT.backToLatest()"') !== -1);
+  assert.ok(html.indexOf('id="wx-sel-open" data-date="') !== -1 && html.indexOf('onclick="NXT.openChartDay(this.dataset.date)"') !== -1);
+  assert.ok(html.indexOf('id="wx-sel-note"') !== -1 && html.indexOf('id="st-note-chip"') !== -1, "both note chips, two ids");
+  N.ui.wxWide = true; html = N.chartHTML();
+  assert.ok(html.indexOf('class="wx-insp" id="wx-sel"') !== -1 && html.indexOf('class="wx-sel"') === -1, "wide: the strip");
+  assert.ok(html.indexOf('<span id="wx-sel-l">Latest · </span>') !== -1, "Selected · Latest · at the latest reading");
+  assert.ok(/id="wx-sel-x" aria-label="Back to latest"[^>]* hidden>/.test(html), "↺ hidden while at latest");
+  assert.ok(html.indexOf("wx-plate n99-chart is-wide") !== -1);
+  /* The plate still holds no nested section and none of the banned words. */
+  const plate = html.slice(0, html.indexOf("</section>"));
+  assert.strictEqual((plate.match(/<section/g) || []).length, 1);
+  assert.strictEqual(/certainty|confidence|probability|likelihood|accuracy/i.test(plate), false);
+  N.ui.wxWide = false;
+});
+
+test("dayContext: NXP.dayState words (D105) with the records as the fallback; selectPoint writes the bar", () => {
+  const page = inspectorPage(); const { N, els } = page; const pts = N.ui.chart.points, n = pts.length;
+  const same = (a, b) => assert.strictEqual(JSON.stringify(a), JSON.stringify(b)); /* values cross the vm realm */
+  same(N.dayContext(pts[3].date), { text: "No training logged", quiet: true, k: "none" });
+  const sandboxNXP = { dayState(d) { return d === pts[5].date ? { k: "progress", w: "In progress", label: "Full Body A", lift: true, recorded: { workingSets: 6, cardioMin: 0, floorball: 0, any: true }, detail: "6 of 15 sets" }
+    : d === pts[6].date ? { k: "rest", w: "Rest", label: "Rest", lift: false, recorded: { workingSets: 0, cardioMin: 0, floorball: 0, any: false } }
+    : d === pts[7].date ? { k: "finished", w: "Workout finished", label: "Full Body B", lift: true, recorded: { workingSets: 15, cardioMin: 0, floorball: 0, any: true }, finished: { at: 1 }, detail: "15 of 15 sets" }
+    : d === pts[8].date ? { k: "done", w: "Done", label: "Zone 2", lift: false, recorded: { workingSets: 0, cardioMin: 40, floorball: 0, any: true } }
+    : { k: "missed", w: "Not logged", label: "Full Body C", lift: true, recorded: { workingSets: 0, cardioMin: 0, floorball: 0, any: false } }; } };
+  /* The engine reads NXP from its own global scope: the loader's sandbox is that scope. */
+  const sb = N.__sandbox; if (sb) sb.NXP = sandboxNXP;
+  if (sb) {
+    assert.strictEqual(N.dayContext(pts[5].date).text, "Full Body A · In progress · 6 of 15 sets");
+    assert.strictEqual(N.dayContext(pts[6].date).text, "Rest day");
+    assert.strictEqual(N.dayContext(pts[7].date).text, "Full Body B · Finished · 15 of 15 sets");
+    assert.strictEqual(N.dayContext(pts[8].date).text, "Zone 2 · Done");
+    same(N.dayContext(pts[9].date), { text: "No training logged", quiet: true, k: "missed" });
+    N.selectPoint(5);
+    assert.strictEqual(els["wx-sel-ctxt"].textContent, "Full Body A · In progress · 6 of 15 sets");
+    assert.strictEqual(els["wx-sel-ctx"].dataset.date, pts[5].date);
+    assert.strictEqual(els["wx-sel-ctx"].getAttribute("aria-label"), "Full Body A · In progress · 6 of 15 sets. Open in History");
+  }
+  N.selectPoint(5);
+  assert.ok(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} [A-Z][a-z]+$/.test(els["wx-sel-d"].textContent), els["wx-sel-d"].textContent);
+  assert.strictEqual(els["wx-sel-l"].hidden, true);
+  assert.strictEqual(els["wx-sel-open"].dataset.date, pts[5].date);
+  assert.ok(els["wx-sel-note-h"].innerHTML.indexOf('id="wx-sel-note"') !== -1 && els["wx-sel-note-h"].innerHTML.indexOf(`data-date="${pts[5].date}"`) !== -1);
+  assert.strictEqual(els["wx-slot"].getAttribute("data-wx-slot"), "select");
+  N.backToLatest();
+  assert.strictEqual(N.ui.selected, null);
+  assert.strictEqual(els["wx-sel-l"].hidden, false, "Selected · Latest at the latest reading");
+  assert.ok(els["wx-sel-d"].textContent.endsWith(N.shortDate(pts[n - 1].date)), "the latest reading's date");
+  assert.strictEqual(els["wx-slot"].getAttribute("data-wx-slot"), "summary");
+  assert.strictEqual(els["nxp-progress-latest"].getAttribute("data-wx-state"), "idle");
+});
+
+test("returnTo round trip: Open day stores range, selection, layers and scrollY; ‹ Weight restores them and clears the memory", () => {
+  const page = inspectorPage(); const { N, els } = page;
+  const sb = N.__sandbox; const tabs = []; let scrolled = null; const timers = [];
+  /* The settle step waits for the restore render through setTimeout: queued here and run by hand. */
+  if (sb) { sb.switchTab = t => { tabs.push(t); }; sb.window.scrollY = 310; sb.window.scrollTo = (x, y) => { scrolled = y; }; sb.setTimeout = f => { timers.push(f); }; }
+  const flush = () => { while (timers.length) timers.shift()(); };
+  N.ui.range = 90; N.ui.chart = N.chartModel(); N.ui.showSpread = true; N.ui.showNotes = false;
+  const pts = N.ui.chart.points;
+  N.selectPoint(4);
+  N.openChartDay(pts[4].date);
+  const r = N.ui.returnTo;
+  assert.strictEqual(JSON.stringify(r), JSON.stringify({ view: "overview", range: 90, selected: pts[4].date, layers: { showWeekly: false, showSpread: true, showNotes: false, showPost: false, showForecast: false }, compare: null, expanded: false, scrollY: sb ? 310 : 0 }));
+  if (sb) assert.strictEqual(tabs.join(), "history");
+  /* Something else moves the UI while in History. */
+  N.ui.range = 14; N.ui.showSpread = false; N.ui.showNotes = true; N.ui.selected = null; N.ui.chart = N.chartModel();
+  assert.strictEqual(N.returnToWeight(), true);
+  assert.strictEqual(N.ui.returnTo, null, "the memory is cleared once used");
+  assert.strictEqual(N.ui.range, 90); assert.strictEqual(N.ui.showSpread, true); assert.strictEqual(N.ui.showNotes, false); assert.strictEqual(N.ui.view, "overview");
+  if (sb) assert.strictEqual(tabs.join(), "history,weight");
+  /* The restore render (progress()) clears N.ui.restoring; here it is done by hand and the selection settles. */
+  assert.strictEqual(N.ui.restoring && N.ui.restoring.selected, pts[4].date, "restoring until the render lands");
+  N.ui.chart = N.chartModel(); N.ui.restoring = null; flush();
+  assert.strictEqual(N.ui.selected, pts[4].date);
+  if (sb) assert.strictEqual(scrolled, 310);
+  assert.strictEqual(els["wx-slot"].getAttribute("data-wx-slot"), "select");
+  assert.strictEqual(N.returnToWeight(), false, "nothing to return to twice");
+});
+
+test("toggleLayers: the drawer is always in the DOM, hidden when closed, aria-expanded on the button; setLayer marks a layer change for the plot", () => {
+  const { N, els, repaints } = chartPage();
+  els["wx-layers"] = makeElement("wx-layers"); els["wx-lyb"] = makeElement("wx-lyb"); els["wx-layers"].closest = () => null;
+  assert.strictEqual(N.toggleLayers(), true); assert.strictEqual(els["wx-layers"].hidden, false); assert.strictEqual(els["wx-lyb"].getAttribute("aria-expanded"), "true");
+  assert.strictEqual(N.toggleLayers(), false); assert.strictEqual(els["wx-layers"].hidden, true); assert.strictEqual(els["wx-lyb"].getAttribute("aria-expanded"), "false");
+  let after = 0; N.setLayer("spread", true, () => { after += 1; });
+  assert.strictEqual(N.ui.chartAnim, "layer"); assert.strictEqual(repaints(), 1); assert.strictEqual(after, 1, "focus restore runs after the repaint");
+  const html = N.chartHTML();
+  assert.ok(html.indexOf("wx-svg is-layer-change") !== -1, "the plot's layer marks fade in"); assert.strictEqual(N.ui.chartAnim, null, "consumed once");
+  assert.ok(html.indexOf('id="wx-layers" role="group" aria-label="Chart layers" hidden>') !== -1, "closed: hidden, still in the DOM");
+  for (const w of ["Morning readings", "Smoothed trend", "Projection", "Post-workout"]) assert.ok(html.indexOf(w) !== -1, w);
+  N.ui.showSpread = false;
+});
+
+test("the lane and the week band are wired in strata.js: no touch auto-hide, lanePlace drives the st-tip, Show on chart uses weekBand", () => {
+  const st = fs.readFileSync(path.join(ROOT, "strata.js"), "utf8");
+  assert.strictEqual(st.indexOf('const t = w.querySelector(".st-tip"); if (t) t.hidden = true; }, 1400)'), -1, "the 1.4 s auto-hide is gone");
+  assert.ok(st.indexOf("NXT.lanePlace(m, index, w, h)") !== -1);
+  assert.ok(st.indexOf('tip.setAttribute("data-lane", place.lane)') !== -1);
+  assert.ok(st.indexOf("NXT.weekBand(mm, li.dataset.a)") !== -1);
+  assert.ok(st.indexOf('st-weeksel-step') !== -1 && st.indexOf("!NXT.ui.showWeekly") !== -1, "the week's step draws with the layer off");
+  assert.ok(st.indexOf('r.setAttribute("aria-current", "true")') !== -1, "reverse row highlight");
+  assert.ok(st.indexOf('document.getElementById("wx-dev")') !== -1, "the deviation bars are found in Analysis");
+  const pu = fs.readFileSync(path.join(ROOT, "premium-ui.js"), "utf8");
+  assert.ok(pu.indexOf('class="wx-ret" onclick="NXT.returnToWeight()"') !== -1, "History's ‹ Weight capsule");
+  assert.ok(pu.indexOf("if(N.ui.restoring)N.ui.restoring=null;else N.ui.returnTo=null;") !== -1, "a stale memory is dropped on an ordinary visit");
 });
 
 console.log((failed ? "FAILED  " : "OK  ") + passed + " passed, " + failed + " failed");

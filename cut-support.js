@@ -1645,7 +1645,7 @@ Object.assign(NXT, (()=>{
     const latestKey=visible.length?visible.at(-1).date+':'+visible.at(-1).weight:'';
     const grew=!!(N.ui.lastPlotted&&latestKey&&latestKey!==N.ui.lastPlotted);
     N.ui.lastPlotted=latestKey;
-    const animClass=N.ui.chartAnim==='range'?' is-range-change':grew?' is-new-point':'';
+    const animClass=N.ui.chartAnim==='range'?' is-range-change':N.ui.chartAnim==='layer'?' is-layer-change':grew?' is-new-point':'';
     N.ui.chartAnim=null;
     /* Weight "Instrument" (spec §2): the plate (interpretation, readouts, range row, layers, plot, slot) is the
        page's first section and holds no nested section, then the highlights, the Cut journey and Analysis. The
@@ -1844,8 +1844,8 @@ Object.assign(NXT, (()=>{
   /* The plate (spec §2): the only lit edge above the fold. No nested <section>: the contract reads the chart
      HTML up to the first </section>. */
   function plateHTML(model,idx,animClass) {
-    const p=model.points[idx],n=model.points.length,isLatest=idx===n-1;
-    return `<section class="wx-plate n99-chart${isLatest?'':' is-hist'}" id="vn-weight" aria-labelledby="wx-h" data-wx-timing="${pointTiming(p)==='Morning'?'morning':'other'}">
+    const p=model.points[idx],n=model.points.length,isLatest=idx===n-1,wide=!!N.ui.wxWide;
+    return `<section class="wx-plate n99-chart${isLatest?'':' is-hist'}${wide?' is-wide':''}" id="vn-weight" aria-labelledby="wx-h" data-wx-timing="${pointTiming(p)==='Morning'?'morning':'other'}">
       ${interpretationHTML(model)}
       ${readoutsHTML(model,idx)}
       ${rangeRowHTML(model,idx)}
@@ -1853,11 +1853,124 @@ Object.assign(NXT, (()=>{
         aria-valuemin="0" aria-valuemax="${n-1}" aria-valuenow="${idx}" aria-valuetext="${esc(pointWords(p))}" aria-describedby="wx-sr-sum"
         onpointerdown="NXT.scrub(event)" onpointermove="NXT.scrub(event)" onpointerup="NXT.scrubUp(event)" onpointercancel="NXT.scrubCancel(event)"
         onkeydown="NXT.chartKey(event)">${plotHTML(model,{idx,animClass})}</div>
+      ${wide?selectionHTML(model,idx,true):''}
       <p class="st-sr" id="wx-sr-sum">${esc(srSummary(model))}</p>
       <p class="st-sr" id="wx-sel-sr" aria-live="polite"></p>
-      <div class="wx-slot" id="wx-slot" data-wx-slot="${N.ui.selected&&!isLatest?'select':'summary'}">${rangeReadHTML(model)}</div>
+      <div class="wx-slot" id="wx-slot" data-wx-slot="${N.ui.selected&&!isLatest?'select':'summary'}">${rangeReadHTML(model)}${wide?'':selectionHTML(model,idx,false)}</div>
       <input type="hidden" id="n99-chart-slider" value="${idx}" aria-hidden="true">
     </section>`;
+  }
+  /* The inspector (spec §8.4, §4). On a phone the plate's slot swaps from the range summary to this bar while a
+     day is selected: the selected date with × (Back to latest), the day's context from NXP.dayState (D105) as a
+     link to the day, then + Note and Open day. On a wide layout the same content is a persistent strip under the
+     plot, which at the latest reading reads "Selected · Latest · Mon 19 Oct" and carries ↺ Back to latest only
+     while historical. One of the two is in the DOM at a time (a render-time choice), so the ids are unique and
+     selectPoint writes to whichever exists. */
+  function selectionHTML(model,idx,strip) {
+    const p=model.points[idx],isLatest=idx===model.points.length-1,ctx=dayContext(p.date);
+    const x=`<button type="button" class="wx-sel-x" id="wx-sel-x" aria-label="Back to latest" onclick="NXT.backToLatest()"${strip&&isLatest?' hidden':''}>${strip?'<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 1 0 1.5-3.5M3 2.6v2.6h2.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Back to latest</span>':'<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'}</button>`;
+    return `<div class="${strip?'wx-insp':'wx-sel'}" id="wx-sel" role="group" aria-label="Selected day">
+        <div class="wx-sel-r1"><span class="wx-sel-h">Selected · <span id="wx-sel-l"${isLatest?'':' hidden'}>Latest · </span><b id="wx-sel-d">${esc(dayDate(p.date))}</b></span>${strip?'':x}</div>
+        <button type="button" class="wx-sel-ctx${ctx.quiet?' is-quiet':''}" id="wx-sel-ctx" data-date="${p.date}" onclick="NXT.openChartDay(this.dataset.date)" aria-label="${esc((strip?'That day: ':'')+ctx.text)}. Open in History">${strip?'<span class="wx-sel-k">That day</span>':''}<span id="wx-sel-ctxt">${esc(ctx.text)}</span><i aria-hidden="true">›</i></button>
+        <div class="wx-sel-r3"><span id="wx-sel-note-h">${noteChipHTML(p.date,'wx-sel-note')}</span><button type="button" class="wx-sel-open" id="wx-sel-open" data-date="${p.date}" onclick="NXT.openChartDay(this.dataset.date)">Open day<i aria-hidden="true"> ›</i></button>${strip?x:''}</div>
+      </div>`;
+  }
+  /* The day's context for the inspector: the D105 state from NXP.dayState ("Full Body A · In progress · 6 of 15
+     sets"), "Rest day", or the quiet "No training logged"; without NXP (node) the records themselves. */
+  const DS_SHORT={finished:'Finished',complete:'Sets complete',progress:'In progress',partial:'Partly logged',done:'Done',addon:'Add-on logged'};
+  function dayContext(date) {
+    const nxp=typeof NXP==='object'&&NXP&&typeof NXP.dayState==='function'?NXP:null;
+    let ds=null;try{ds=nxp?nxp.dayState(date,null,null):null;}catch(_){ds=null;}
+    const did=dayDidText(date);
+    if(ds){
+      if(ds.k==='rest'&&!ds.recorded.any)return {text:'Rest day',quiet:false,k:ds.k};
+      if(ds.lift&&(ds.recorded.workingSets>0||ds.finished)){
+        const sets=ds.detail||`${ds.recorded.workingSets} ${N.plural(ds.recorded.workingSets,'set')}`;
+        return {text:`${ds.label} · ${DS_SHORT[ds.k]||ds.w||'Logged'} · ${sets}`,quiet:false,k:ds.k};
+      }
+      if(ds.recorded.any)return {text:`${ds.label} · ${DS_SHORT[ds.k]||ds.w||'Done'}${did?' · '+did:''}`,quiet:false,k:ds.k};
+      if(ds.k==='excused'||ds.k==='moved')return {text:`${ds.label} · ${ds.w}`,quiet:false,k:ds.k};
+      if(ds.k==='today'||ds.k==='planned')return {text:`${ds.label} · ${ds.w}`,quiet:false,k:ds.k};
+      return {text:'No training logged',quiet:true,k:ds.k};
+    }
+    return did?{text:did,quiet:false,k:'records'}:{text:'No training logged',quiet:true,k:'none'};
+  }
+  function dayDidText(date) {
+    try{
+      const sets=(state.logs||[]).filter(r=>r&&r.date===date&&r.setType!=='warmup'),bits=[];
+      if(sets.length){const t=sets[0].dayType;bits.push((t?N.label(t):'Lifted')+' · '+sets.length+' '+N.plural(sets.length,'set'));}
+      const mins=(state.cardio||[]).filter(r=>r&&r.date===date).reduce((a,r)=>a+(Number(r.duration||r.minutes)||0),0);
+      if(mins>0)bits.push(Math.round(mins)+' min cardio');
+      return bits.join(' · ');
+    }catch(_){return '';}
+  }
+  /* Lane placement (spec §8.3): the date lane sits in the top lane (plot top + 6), centred on the cursor and
+     clamped 10 px from the plot's edges; if any plotted mark falls inside it, it flips to the bottom lane (above
+     the x-axis); if both lanes collide it is hidden, and the readouts carry the date. w and h are the lane's own
+     size in chart units. Pure geometry over the model's own marks, so a test can place every reading. */
+  function laneMarks(m,idx) {
+    const {points,segments,top,W,H,right,bottom}=m,base=H-bottom,plotR=W-right,n=points.length,out=[];
+    const dotR=(n>90?1.8:n>45?2.4:3)+1.4;
+    points.forEach((p,i)=>out.push({x:p.x,y:p.y,r:i===idx?6:dotR}));
+    segments.forEach(seg=>{for(let i=0;i<seg.length;i++){out.push({x:seg[i].x,y:seg[i].y,r:5});if(i)out.push({x:(seg[i].x+seg[i-1].x)/2,y:(seg[i].y+seg[i-1].y)/2,r:5});}});
+    (m.post||[]).forEach(pt=>out.push({x:pt.x,y:pt.y<top?top+5:pt.y>base?base-5:pt.y,r:5}));
+    if(N.ui.showNotes!==false&&n>=2){const a=points[0],b=points[n-1],t0=N.dateMs(a.date),t1=N.dateMs(b.date);
+      Object.keys(N.chartNotes()).filter(d=>d>=a.date&&d<=b.date).forEach(d=>out.push({x:a.x+(N.dateMs(d)-t0)/Math.max(1,t1-t0)*(b.x-a.x),y:top+6,r:6}));}
+    if(N.ui.showWeekly)weeklySteps(m).forEach(s=>{for(let x=s.x1;x<=s.x2;x+=8)out.push({x,y:s.y,r:1.5});});
+    if(m.forecast){const f=m.forecast.mid,len=Math.hypot(f.x2-f.x1,f.y2-f.y1)||1;for(let t=0;t<=len;t+=8)out.push({x:f.x1+(f.x2-f.x1)*t/len,y:f.y1+(f.y2-f.y1)*t/len,r:1.5});
+      if(m.forecast.endpoint)out.push({x:m.forecast.endpoint.x,y:m.forecast.endpoint.y,r:4});
+      const fv=m.forecastView;if(fv&&fv.showArrival){const t='Goal range · ~'+N.shortDate(fv.arrivalDate),w=18+t.length*5.9;out.push({x:plotR-w/2-4,y:top+14,r:0,w,h:20});}}
+    if(n>=7){const low=points.reduce((a,q)=>q.weight<a.weight?q:a,points[0]);if(low!==points[n-1])out.push({x:low.x,y:low.y,r:7});}
+    return out;
+  }
+  function lanePlace(m,idx,w,h) {
+    const p=m.points[idx];if(!p)return {lane:null};
+    const plotR=m.W-m.right,base=m.H-m.bottom;
+    const cx=Math.min(Math.max(p.x,m.left+10+w/2),plotR-10-w/2);
+    const marks=laneMarks(m,idx);
+    const hit=(r,k)=>{const rw=k.w||0,rh=k.h||0;return k.x+rw/2+k.r>r.x&&k.x-rw/2-k.r<r.x+r.w&&k.y+rh/2+k.r>r.y&&k.y-rh/2-k.r<r.y+r.h;};
+    for(const L of [{lane:'top',y:m.top+6},{lane:'bottom',y:base-6-h}]){
+      const rect={x:cx-w/2,y:L.y,w,h};
+      if(!marks.some(k=>hit(rect,k)))return {lane:L.lane,x:cx,y:L.y,w,h};
+    }
+    return {lane:null,x:cx,w,h};
+  }
+  /* A week on the chart (spec §8.6): the band spans that Monday to Sunday on the model's own x scale (clamped to
+     the plot), and the week's step is the same figure weeklySteps draws, found whether or not the layer is on. */
+  function weekBand(m,st) {
+    if(!m||!m.points||!m.points.length)return null;
+    const en=N.dateAdd(st,6),left=m.left,right=m.W-m.right;
+    const x1=Math.max(left,m.x(st)),x2=Math.min(right,m.x(en));
+    if(!(x2>x1))return null;
+    const inWk=m.points.map((q,i)=>({q,i})).filter(o=>o.q.date>=st&&o.q.date<=en);
+    const step=weeklySteps(m).find(s=>s.st===st)||null;
+    return {st,en,x1,x2,top:m.top,bottom:m.H-m.bottom,step,last:inWk.length?inWk[inWk.length-1].i:-1,n:inWk.length};
+  }
+  /* Back to latest (spec §8.6): the selection bar's ×, the strip's ↺ and the transport share this. The glide is
+     the presentation layer's (opts.glide), a jump under reduced motion. */
+  function backToLatest() {
+    const m=N.ui.chart;if(!m||!m.points||!m.points.length)return;
+    N.selectPoint(m.points.length-1,{clear:true,glide:true});
+  }
+  /* ‹ Weight (spec §8.6): History's day header returns to where Weight was: the range, the layers, Compare and
+     the selected day are restored before the tab renders; the selection and the scroll position after it. The
+     memory is cleared once used, and progress() drops it when Weight is reached any other way. */
+  function returnToWeight() {
+    const r=N.ui.returnTo;if(!r)return false;
+    N.ui.returnTo=null;N.ui.restoring=r;
+    N.ui.view=r.view||'overview';N.ui.range=r.range;N.ui.selected=r.selected;N.ui.compare=r.compare||null;
+    if(r.layers)for(const k of Object.keys(r.layers))if(k in N.ui)N.ui[k]=r.layers[k];
+    if(typeof switchTab==='function')switchTab('weight');
+    let tries=0;
+    const settle=()=>{
+      const m=N.ui.chart;
+      if(N.ui.restoring&&tries++<40){setTimeout(settle,25);return;}
+      N.ui.restoring=null;
+      if(m&&m.points&&m.points.length){const i=r.selected?m.points.findIndex(p=>p.date===r.selected):-1;N.selectPoint(i>=0?i:m.points.length-1,i>=0?{}:{clear:true});}
+      if(typeof window!=='undefined'&&window.scrollTo)window.scrollTo(0,Number(r.scrollY)||0);
+    };
+    settle();
+    return true;
   }
   /* The plot (spec §7.3), back to front: screen, grid, week bands, spread, area, post-workout, trend, readings,
      weekly steps, notes, projection, lowest ring, selection, and the scale gutter with one trend tag. */
@@ -2026,15 +2139,15 @@ Object.assign(NXT, (()=>{
   function toggleLayers(force) {
     N.ui.layersOpen=force===undefined?!N.ui.layersOpen:!!force;
     const d=typeof document!=='undefined'&&document.getElementById('wx-layers'),b=d&&document.getElementById('wx-lyb');
-    if(d)d.hidden=!N.ui.layersOpen;
-    if(b)b.setAttribute('aria-expanded',String(N.ui.layersOpen));
+    const apply=()=>{if(d)d.hidden=!N.ui.layersOpen;if(b)b.setAttribute('aria-expanded',String(N.ui.layersOpen));};
+    /* The drawer opens and closes as one movement (STRATA.morph, 240 ms; a plain change under reduced motion). */
+    const plate=d&&d.closest?d.closest('.wx-plate'):null;
+    if(plate&&typeof STRATA==='object'&&STRATA&&typeof STRATA.morph==='function')STRATA.morph(plate,apply);else apply();
     return N.ui.layersOpen;
   }
   function layerChip(name,el) {
     if(el&&el.getAttribute('aria-disabled')==='true'){const why=el.querySelector('small');if(why&&typeof toast==='function')toast(why.textContent);return;}
-    N.setLayer(name);
-    const again=typeof document!=='undefined'&&document.querySelector(`[data-wx-layer="${name}"]`);
-    if(again&&again.focus)again.focus({preventScroll:true});
+    N.setLayer(name,undefined,()=>{const again=typeof document!=='undefined'&&document.querySelector(`[data-wx-layer="${name}"]`);if(again&&again.focus)again.focus({preventScroll:true});});
   }
   /* Defined after chartHTML on purpose: the release gate reads chartModel…chartHTML as the weight chart's
      model, and this separate chart has its own axes. */
@@ -2133,6 +2246,17 @@ Object.assign(NXT, (()=>{
     const words=pointWords(p),wrap=document.getElementById('vn-chart-wrap');
     if(wrap&&wrap.getAttribute('role')==='slider'){wrap.setAttribute('aria-valuenow',index);wrap.setAttribute('aria-valuetext',words);}
     if(opts&&opts.announce)text('wx-sel-sr',words);
+    /* The inspector (spec §8.4): the selection bar on a phone or the strip on a wide layout, whichever is in the DOM. */
+    if(document.getElementById('wx-sel')){
+      const ctx=dayContext(p.date),cb=document.getElementById('wx-sel-ctx');
+      text('wx-sel-d',dayDate(p.date));
+      const lat=document.getElementById('wx-sel-l');if(lat)lat.hidden=!isLatest;
+      if(cb){cb.dataset.date=p.date;cb.classList.toggle('is-quiet',!!ctx.quiet);cb.setAttribute('aria-label',(cb.querySelector('.wx-sel-k')?'That day: ':'')+ctx.text+'. Open in History');}
+      text('wx-sel-ctxt',ctx.text);
+      html('wx-sel-note-h',noteChipHTML(p.date,'wx-sel-note'));
+      const ob=document.getElementById('wx-sel-open');if(ob)ob.dataset.date=p.date;
+      const xb=document.getElementById('wx-sel-x');if(xb&&xb.querySelector('span'))xb.hidden=isLatest;
+    }
   }
   /* "Monday 28 September: morning 83.1 kilograms, smoothed trend 83.7, 0.6 below trend." The screen-reader form of
      the readouts; every figure is the point's own (1 dp, D107). */
@@ -2227,7 +2351,7 @@ Object.assign(NXT, (()=>{
     if(key==='ArrowRight')go(Math.min(n-1,idx+1));
     else if(key==='ArrowLeft')go(Math.max(0,idx-1));
     else if(key==='Home')go(0);
-    else if(key==='End'||key==='Escape')go(n-1,{clear:true});
+    else if(key==='End'||key==='Escape')go(n-1,{clear:true,glide:true});
     else if(key==='PageUp')go(stepDays(m.points,idx,-7));
     else if(key==='PageDown')go(stepDays(m.points,idx,7));
     else if(key==='Enter'){event.preventDefault();openChartDay(m.points[idx].date);}
@@ -2252,11 +2376,16 @@ Object.assign(NXT, (()=>{
   /* Chart layers (spec §9; D111): one memory-only flag each, no storage key. setPostVisible and setForecastVisible
      stay as the wrappers they were. */
   const LAYERS={weekly:'showWeekly',spread:'showSpread',notes:'showNotes',post:'showPost',forecast:'showForecast'};
-  function setLayer(name,on) {
+  function setLayer(name,on,after) {
     const key=LAYERS[name];if(!key)return false;
     const next=on===undefined?!N.ui[key]:!!on;
     if(N.ui[key]===next)return next;
-    N.ui[key]=next;N.repaint();
+    N.ui[key]=next;N.ui.chartAnim='layer';
+    /* The plot updates in place: the repaint runs inside STRATA.morph where it exists (instant under reduced
+       motion); the layer's own marks fade in through the is-layer-change class. */
+    const wrap=typeof document!=='undefined'&&document.getElementById('vn-chart-wrap');
+    const paint=()=>{N.repaint();if(typeof after==='function')after();};
+    if(wrap&&typeof STRATA==='object'&&STRATA&&typeof STRATA.morph==='function')STRATA.morph(wrap,paint);else paint();
     return next;
   }
   function setPostVisible(on) {setLayer('post',!!on);}
@@ -2284,10 +2413,10 @@ Object.assign(NXT, (()=>{
   }
   /* D100 · The chart header's note chip for the shown day, and a faint flag on the plot for each note in range
      (one colour for every kind: the kind is a word in the chip and the tooltip, never a colour, I6). */
-  function noteChipHTML(date) {
+  function noteChipHTML(date,id='st-note-chip') {
     const n=N.chartNotes()[date];
     const label=n?`Note on ${N.shortDate(date)}: ${N.noteLabel(n.kind)}${n.text?', '+n.text:''}. Edit`:`Add a note for ${N.shortDate(date)}`;
-    return `<button type="button" class="st-note-chip${n?' has-note':''}" id="st-note-chip" data-date="${date}" onclick="NXT.openNote(this.dataset.date)" aria-label="${esc(label)}">${n?`<i aria-hidden="true"></i><span>${esc(N.noteLabel(n.kind))}${n.text?' · '+esc(n.text):''}</span>`:'<span>+ Note</span>'}</button>`;
+    return `<button type="button" class="st-note-chip${n?' has-note':''}" id="${id}" data-date="${date}" onclick="NXT.openNote(this.dataset.date)" aria-label="${esc(label)}">${n?`<i aria-hidden="true"></i><span>${esc(N.noteLabel(n.kind))}${n.text?' · '+esc(n.text):''}</span>`:'<span>+ Note</span>'}</button>`;
   }
   function noteFlags(points,top,baseline) {
     if(!points||points.length<2)return '';
@@ -2410,7 +2539,7 @@ Object.assign(NXT, (()=>{
     if(!(await ask))return;
     state.bws=state.bws.filter(x=>x!==r);N.commit('Weigh-in deleted');
   }
-  return {signed,smoothPath,chartGeo,chartGeoChanged,chartModel,chartHTML,plotHTML,weeklySteps,journeyHTML,wxRow,toggleLayers,layerChip,selectPoint,pointWords,scrub,scrubUp,scrubCancel,chartKey,openChartDay,setLayer,openNote,saveNote,removeNote,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
+  return {signed,smoothPath,chartGeo,chartGeoChanged,chartModel,chartHTML,plotHTML,weeklySteps,layerState,lanePlace,weekBand,dayContext,backToLatest,returnToWeight,journeyHTML,wxRow,toggleLayers,layerChip,selectPoint,pointWords,scrub,scrubUp,scrubCancel,chartKey,openChartDay,setLayer,openNote,saveNote,removeNote,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
 })());
 
 Object.assign(NXT, (()=>{
