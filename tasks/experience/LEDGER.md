@@ -17,12 +17,12 @@ main or deploy. RELEASE 163. Phone first (320–430 px); desktop layouts withdra
 | Weight w2 plate + plot (D118–D119) | builder / Fable 5.1 | done | `682edc4` | 27 suites, 709 tests; §19 1–6, 8–10, 12–14 pass | — |
 | Weight w3 inspector + Layers (D130–D133) | builder / Fable 5.1 | done | `e59b765` | 27 suites, 717 tests; §19 15–19, 25–26 pass | — |
 | Weight w4 Expand, Compare, Journey/Rate copy (D134–D139) | builder / Fable 5.1 | done | `1dce7d8` | 27 suites; §19 20–24, 26 pass | — |
-| Weight w5 phone polish (remove wide-width paths, motion, Larger text) | nxtfrm-weight-builder / Sonnet | queued | — | — | after w4 |
+| Weight w5 phone polish (D144–D146) | builder / Sonnet 5.5 medium | done | `46f3878` | 28 suites, 0 FAIL; 0 overflow at 320–1280; reduced motion/transparency 0 offenders | — |
 | Today t1 picker + focus card (D120–D127) | builder / Fable 5.1 | done | `fa4aa01` | 27 suites, 691 tests | — |
 | Today t2 log strip, lead, digest (D128–D129) | builder / Fable 5.1 | done | `076ae8d` | 27 suites, 691 tests; §16 partial | — |
 | Today t3 dock hand-off, CSS sweep, fit (D140–D143) | builder / Fable 5.1 | done | `7b49339` strata.css, strata.js, verify-151/152 | 27 suites green; §16 pass except page height 1338 vs 1300 and strip bottom +1.7 px | check run (Haiku) at 7b49339; merge into experience-upgrade after w4 lands |
 | Integration (merge experience-today) | coordinator / Fable 5.1 | done | merge commit (see git log) | 28 suites, 737 tests, 0 failed; smoke render 0 errors | w5 on the merged tree, then checkpoint |
-| Checkpoint: fixtures, phone shots, preview 8766, simulator | coordinator + nxtfrm-check-runner / Haiku | queued | — | — | then one Sonnet review |
-| Cross-review | nxtfrm-reviewer / Sonnet high | queued | — | — | builders fix, re-review changed areas |
+| Checkpoint: fixtures, phone shots, preview 8766, simulator | coordinator | in progress | fixtures `ad0756f`…`961defc`; capture → cache `experience/checkpoint/` | capture running; simulator notes `checkpoint/webkit-notes.md` | report after the review |
+| Cross-review | reviewer / Sonnet 5.5 high (running) | in progress | HEAD 46f3878 | — | builders fix, re-review changed areas |
 | Stage 7 proposals (EWMA, rate range, arrival) | owner decision; nxtfrm-analysis-specialist / Opus only for a bounded question | pending owner | ANALYTICS-STUDY.md, cache patches | reviewed by skeptics | ask the owner; implement with Sonnet |
 | Stage 6 remaining pages | builders / Sonnet | queued | — | — | after the checkpoint is reviewable |
