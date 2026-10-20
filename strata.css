@@ -530,12 +530,14 @@ button.st-tile:active{transform:scale(.985)}
 #weightPage .st-halo{opacity:.2;transform-box:fill-box;transform-origin:center;animation:st-halo 1.6s var(--st-out) 2}/* pulses twice on entry, then rests (nothing in the plate loops) */
 #weightPage .vn-chart-svg.is-range-change .vn-trend-line,#weightPage.st-enter .vn-chart-svg .vn-trend-line{stroke-dasharray:1;stroke-dashoffset:1;animation:st-draw 1.3s var(--st-glide) .15s forwards}
 #weightPage .vn-chart-wrap.is-replaying #n99-chart-cursor,#weightPage .vn-chart-wrap.is-replaying #n99-chart-active{opacity:0}
+/* Quiet surfaces (spec §5.1, w4): the Journey and Evidence sit on the canvas with a hairline, no lit edge and no
+   bloom; the plate is the only lit object above the fold. */
 #weightPage .vn-journey,#weightPage .vn-evidence{
-  margin-top:14px;padding:20px 18px;border-radius:var(--st-r);border:1px solid var(--st-tile-line);
-  background:var(--st-tile),var(--st-tile-bg);box-shadow:var(--st-tile-hl),var(--st-shadow);
+  margin-top:14px;padding:18px 16px;border-radius:var(--st-r);border:1px solid var(--st-tile-line);
+  background:none;box-shadow:none;
 }
-#weightPage .vn-journey-travel{background:linear-gradient(90deg,var(--st-accent-deep),var(--st-accent-lift)) !important;box-shadow:0 0 14px rgba(139,92,246,.6)}
-#weightPage .vn-journey-now{box-shadow:0 0 0 4px rgba(139,92,246,.25),0 0 16px rgba(180,154,255,.8) !important}
+#weightPage .vn-journey-travel{background:linear-gradient(90deg,var(--st-accent-deep),var(--st-accent-lift)) !important;box-shadow:none}
+#weightPage .vn-journey-now{box-shadow:0 0 0 3px rgba(139,92,246,.22) !important}
 .st-compmap{margin-top:14px}
 .st-cm{margin:8px -4px 4px;min-height:200px}
 .st-cm svg{display:block;overflow:visible}
@@ -3937,15 +3939,13 @@ body.st-live-on main::after{height:76px}
 @media (max-width:359px){#weightPage .st-jr-labs i{display:block}#weightPage .st-jr-labs i::before{content:none}}
 @media (max-width:359px){#weightPage .st-ev-zl .is-steady{display:none}}
 
+/* The Rate card's inner tiles are quiet surfaces (spec §5.1, D119's ladder; w4): a hairline on a faint fill, no
+   glass, no status bloom; the status word keeps its pill and ◆. */
 #weightPage .st-ev-rate,#weightPage .st-ev-t{position:relative;min-width:0;border-radius:22px;
-  background:linear-gradient(160deg,rgba(255,255,255,.075),rgba(255,255,255,.02) 60%,rgba(124,77,255,.05));
-  -webkit-backdrop-filter:blur(12px) saturate(1.25);backdrop-filter:blur(12px) saturate(1.25);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(var(--st-hl),.08)}
+  background:rgba(var(--st-hl),.025);box-shadow:inset 0 0 0 1px var(--st-tile-line)}
 #weightPage .st-ev-rate{padding:16px 16px 15px}
-#weightPage .st-ev-rate.is-watch{background:radial-gradient(120% 100% at 0% 0%,rgba(184,132,42,.2),transparent 62%),linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,.02) 60%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(184,132,42,.36)}
-#weightPage .st-ev-rate.is-ok{background:radial-gradient(120% 100% at 0% 0%,rgba(139,92,246,.2),transparent 62%),linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,.02) 60%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(139,92,246,.32)}
+#weightPage .st-ev-rate.is-watch{box-shadow:inset 0 0 0 1px rgba(184,132,42,.3)}
+#weightPage .st-ev-rate.is-ok{box-shadow:inset 0 0 0 1px rgba(139,92,246,.26)}
 #weightPage .st-ev-rt{display:flex;align-items:center;justify-content:space-between;gap:10px}
 #weightPage .st-ev-rt p,#weightPage .st-ev-t>p{margin:0;font:560 13px/1.25 var(--st-font);color:var(--st-ink-3)}
 #weightPage .st-ev-rt p{color:var(--st-ink-2)}/* it sits on the status glow: ink-3 measured 4.1:1 there (I4) */
@@ -3984,9 +3984,8 @@ body.st-live-on main::after{height:76px}
 #weightPage .st-ev-t>span{display:block;margin-top:8px;font:450 12.5px/1.42 var(--st-font);color:var(--st-ink-3)}
 #weightPage .st-ev-meter{display:flex;gap:4px;margin-top:10px}
 #weightPage .st-ev-meter i{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.1)}
-#weightPage .st-ev-meter i.on{background:var(--st-accent-lift);box-shadow:0 0 8px rgba(167,139,250,.6)}
+#weightPage .st-ev-meter i.on{background:var(--st-accent-lift)}
 @media (max-width:359px){#weightPage .st-ev-two{grid-template-columns:minmax(0,1fr)}}
-@media (prefers-reduced-transparency:reduce){#weightPage .st-ev-rate,#weightPage .st-ev-t{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(40,36,60,.9)}}
 #weightPage .st-jr.st-rv-in .vn-journey-travel{animation:st-jr-grow 1.1s var(--st-glide) .2s both}
 #weightPage .st-jr.st-rv-in .st-jr-ahead{animation:st-jr-fade .6s var(--st-out) 1.05s both}
 #weightPage .st-jr.st-rv-in .vn-journey-now{animation:st-jr-pop .55s var(--st-out) 1s both}
@@ -4052,11 +4051,6 @@ body.st-live-on main::after{height:76px}
 #weightPage .st-ev-gkl{position:absolute;bottom:calc(100% + 6px);transform:translateX(-50%);padding:4px 9px;border-radius:9px;background:#7C4DFF;font:650 12.5px/1.2 var(--st-font-d);color:#FFFFFF;white-space:nowrap;pointer-events:none;box-shadow:0 8px 16px -8px rgba(0,0,0,.8)}
 #weightPage .st-ev-trail{position:absolute;top:9px;height:2px;border-radius:1px;background:linear-gradient(90deg,rgba(214,200,255,.95),rgba(214,200,255,.25));pointer-events:none}
 #weightPage .st-ev-hint{margin:10px 0 0;font:500 12px/1.3 var(--st-font);color:var(--st-ink-2)}
-#weightPage .st-ev-wi{margin-top:12px;padding:12px 13px;border-radius:15px;background:rgba(139,92,246,.15);box-shadow:inset 0 0 0 1px rgba(180,154,255,.38);transition:opacity .35s ease}
-#weightPage .st-ev-wi.is-out{opacity:0}
-#weightPage .st-ev-wi p{margin:0;font:650 11px/1.2 var(--st-font-d);letter-spacing:.14em;text-transform:uppercase;color:#D9CCFF}
-#weightPage .st-ev-wi b{display:block;margin-top:5px;font:520 19px/1.2 var(--st-font-d);letter-spacing:-.015em;color:var(--st-ink)}
-#weightPage .st-ev-wi span{display:block;margin-top:4px;font:450 12.5px/1.42 var(--st-font);color:var(--st-ink-2)}
 #weightPage .st-ev.is-whatif .st-ev-note{opacity:.45}
 #weightPage .st-ev-g.is-what{margin-top:30px}
 
@@ -4100,14 +4094,14 @@ body.st-live-on main::after{height:76px}
   #weightPage .st-jr-rail .vn-journey-travel::after,#weightPage .st-ev.st-rv-in .st-ev-mk,#weightPage .st-ev.st-rv-in .st-ev-meter i.on,#weightPage .st-weeks.st-rv-in .wk-bar i,
   #weightPage .st-ev.st-rv-in .st-rax-line,#weightPage .st-ev.st-rv-in .st-rax-dot,#weightPage .st-ev.st-rv-in .st-rax-halo{animation:none !important}
   #weightPage .st-jr-rail .vn-journey-travel::after{opacity:0}
-  #weightPage .st-ev-gk,#weightPage .st-jr-rail .vn-journey-now,#weightPage .st-ev-wi,#weightPage .st-weeks.is-replay .wk-row{transition:none !important}
+  #weightPage .st-ev-gk,#weightPage .st-jr-rail .vn-journey-now,#weightPage .st-weeks.is-replay .wk-row{transition:none !important}
 }
 :root[data-nxp-motion="reduced"] #weightPage .st-jr-rail .vn-journey-travel::after,:root[data-nxp-motion="reduced"] #weightPage .st-ev.st-rv-in .st-ev-mk,
 :root[data-nxp-motion="reduced"] #weightPage .st-ev.st-rv-in .st-ev-meter i.on,:root[data-nxp-motion="reduced"] #weightPage .st-weeks.st-rv-in .wk-bar i,
 :root[data-nxp-motion="reduced"] #weightPage .st-ev.st-rv-in .st-rax-line,:root[data-nxp-motion="reduced"] #weightPage .st-ev.st-rv-in .st-rax-dot,
 :root[data-nxp-motion="reduced"] #weightPage .st-ev.st-rv-in .st-rax-halo{animation:none !important}
 :root[data-nxp-motion="reduced"] #weightPage .st-jr-rail .vn-journey-travel::after{opacity:0}
-:root[data-nxp-motion="reduced"] #weightPage .st-ev-gk,:root[data-nxp-motion="reduced"] #weightPage .st-jr-rail .vn-journey-now,:root[data-nxp-motion="reduced"] #weightPage .st-ev-wi{transition:none !important}
+:root[data-nxp-motion="reduced"] #weightPage .st-ev-gk,:root[data-nxp-motion="reduced"] #weightPage .st-jr-rail .vn-journey-now{transition:none !important}
 
 /* ---- D99 · Play your cut, and Goal reached -------------------------------------------------------------------
    Full-screen, above everything but sheets and toasts. Each chapter's parts rise in on entry; the bar fills, the
@@ -4712,3 +4706,157 @@ body:has(.cloud-local-banner:not([hidden])) #weightPage{--st-mast-mt:6px}
   #weightPage .wx-plate .wx-wrap .st-tip,#weightPage .wx-slot[data-wx-slot="select"] .wx-sel,#weightPage .wx-slot[data-wx-slot="summary"] .wx-sum,#weightPage .wx-svg.is-layer-change .wx-spread,#weightPage .wx-svg.is-layer-change .st-wstep,#weightPage .wx-svg.is-layer-change .st-band,#weightPage .wx-svg.is-layer-change .vn-post-mark,#weightPage .wx-svg.is-layer-change .st-nflag,#weightPage .wx-svg.is-layer-change .vn-proj-line,#weightPage .wx-svg.is-layer-change .st-pillg{animation:none;transition:none}
 }
 :root[data-nxp-motion="reduced"] #weightPage .wx-plate .wx-wrap .st-tip,:root[data-nxp-motion="reduced"] #weightPage .wx-slot[data-wx-slot="select"] .wx-sel,:root[data-nxp-motion="reduced"] #weightPage .wx-slot[data-wx-slot="summary"] .wx-sum,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-layer-change .wx-spread,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-layer-change .st-wstep,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-layer-change .st-band,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-layer-change .vn-post-mark,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-layer-change .st-nflag,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-layer-change .vn-proj-line,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-layer-change .st-pillg{animation:none;transition:none}
+
+/* ---- w4 · Expand, Compare, Journey summary, Simulation (spec §10–§13) --------------------------------------
+   The Expand dialog is a child of #weightPage, so every rule above applies to the nodes it re-hosts; these rules
+   give it its own frame. Full-screen on a phone; a wider viewport keeps one column, so the dialog caps at 720. */
+#weightPage .wx-ph{width:100%}
+#weightPage .wx-xv{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;border-radius:0;
+  background:radial-gradient(90% 34% at 0% 0%,rgba(139,92,246,.14),transparent 60%),var(--wx-screen-xv);color:var(--st-ink);overflow:hidden}
+#weightPage .wx-xv[open]{display:flex;flex-direction:column}
+#weightPage .wx-xv::backdrop{background:rgba(7,7,12,.72)}
+@media (min-width:760px){#weightPage .wx-xv{width:min(720px,94vw);height:min(900px,92svh);inset:0;margin:auto;border-radius:var(--st-r);box-shadow:var(--st-depth)}}
+#weightPage .wx-xv-top{flex:none;display:flex;align-items:center;gap:8px;min-height:52px;padding:max(6px,var(--nxt-safe-top,0px)) 10px 4px 8px;touch-action:none;user-select:none;-webkit-user-select:none}
+#weightPage .wx-xv-x{flex:none;width:44px;height:44px;padding:0;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--st-ink);background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);-webkit-tap-highlight-color:transparent}
+#weightPage .wx-xv-x svg{width:18px;height:18px}
+#weightPage .wx-xv-x:focus-visible,#weightPage .wx-xv-tb:focus-visible{outline:2px solid #CDBBFF;outline-offset:2px}
+#weightPage h2.wx-xv-h{flex:1;min-width:0;margin:0;font:600 17px/20px var(--st-font-d);letter-spacing:-.01em;color:var(--st-ink)}
+#weightPage .wx-xv-r{display:block;font:450 12px/15px var(--st-font);color:var(--st-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#weightPage .wx-xv-tb{flex:none;position:relative;min-height:32px;padding:0 12px;border:0;border-radius:999px;cursor:pointer;font:560 12.5px/32px var(--st-font);color:var(--st-ink);background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);white-space:nowrap;-webkit-tap-highlight-color:transparent}
+#weightPage .wx-xv-tb::after{content:"";position:absolute;inset:-6px 0}
+#weightPage .wx-xv-tb[aria-pressed="true"]{color:#fff;background:rgba(139,92,246,.32);box-shadow:inset 0 0 0 1px rgba(180,154,255,.45)}
+#weightPage .wx-xv-body{flex:1;min-height:0;display:flex;flex-direction:column;padding:0 var(--wx-pad);overflow:auto;overscroll-behavior:contain}
+#weightPage .wx-xv-body .wx-ro{margin-top:2px;min-height:0}
+#weightPage .wx-xv .wx-wrap{position:relative;margin:6px calc(-1 * var(--wx-pad)) 0;padding:0;border-radius:0;touch-action:pan-y;user-select:none;-webkit-user-select:none;outline:none}
+#weightPage .wx-xv .wx-wrap:focus-visible{outline:2px solid #CDBBFF;outline-offset:-2px}
+#weightPage .wx-xv .wx-wrap[hidden]{display:none}
+#weightPage .wx-xv .wx-wrap .st-tip{top:8px}
+#weightPage .wx-xv .wx-slot{min-height:0;padding:8px 0 6px}
+#weightPage .wx-xv-foot{flex:none;padding:4px var(--wx-pad) max(10px,var(--nxt-safe-bottom,0px))}
+#weightPage .wx-xv-foot .wx-rr{margin-top:0}
+#weightPage .wx-xv-table{flex:1;min-height:0;overflow:auto;padding:4px var(--wx-pad) 10px}
+#weightPage .wx-xv-table[hidden]{display:none}
+#weightPage .wx-tbl{width:100%;border-collapse:collapse;font:450 13.5px/18px var(--st-font);color:var(--st-ink);font-variant-numeric:tabular-nums}
+#weightPage .wx-tbl caption{padding:4px 0 8px;text-align:left;font:550 12.5px/16px var(--st-font);color:var(--st-ink-2)}
+#weightPage .wx-tbl th,#weightPage .wx-tbl td{padding:7px 6px;text-align:right;border-top:1px solid rgba(var(--st-hl),.07);vertical-align:top}
+#weightPage .wx-tbl th[scope="row"],#weightPage .wx-tbl th:first-child{text-align:left;font-weight:500;color:var(--st-ink-2)}
+#weightPage .wx-tbl thead th{font:560 12px/15px var(--st-font);color:var(--st-ink-3);border-top:0}
+/* Expand is a View Transition on the plot alone (280 ms, --st-out); the page itself does not fade. */
+:root[data-st-xv]::view-transition-old(root),:root[data-st-xv]::view-transition-new(root){animation:none}
+:root[data-st-xv]::view-transition-group(wx-plot){animation-duration:.28s;animation-timing-function:var(--st-out)}
+:root[data-st-xv]::view-transition-old(wx-plot),:root[data-st-xv]::view-transition-new(wx-plot){animation-duration:.28s;height:100%;object-fit:fill}
+
+/* Compare (spec §11, §12): the capsule in the summary head; the slot grows to the table while comparing. */
+#weightPage .wx-sum-h>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#weightPage .wx-cmp-b{flex:none;position:relative;display:inline-flex;align-items:center;gap:5px;min-height:28px;padding:0 11px 0 9px;border:0;border-radius:999px;cursor:pointer;
+  font:560 12.5px/28px var(--st-font);color:var(--st-ink);background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);white-space:nowrap;-webkit-tap-highlight-color:transparent}
+#weightPage .wx-cmp-b::after{content:"";position:absolute;inset:-8px 0}
+#weightPage .wx-cmp-b i{font-style:normal;font-size:13px;color:var(--st-ink-2)}
+#weightPage .wx-cmp-b:focus-visible,#weightPage .wx-cmp-done:focus-visible{outline:2px solid #CDBBFF;outline-offset:2px}
+#weightPage .wx-cmp-b.is-off{color:var(--st-ink-3);cursor:default;background:rgba(var(--st-hl),.04);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.06)}
+#weightPage .wx-cmp-off{flex:none;display:inline-flex;align-items:center;gap:6px;min-width:0}
+#weightPage .wx-cmp-off small{font:450 11.5px/14px var(--st-font);color:var(--st-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+#weightPage .wx-slot.is-cmp{min-height:0}
+#weightPage .wx-cmp-h{display:flex;align-items:center;gap:8px}
+#weightPage .wx-cmp-h .wx-sum-h{flex:1;min-width:0}
+#weightPage .wx-cmp-done{flex:none;position:relative;min-height:28px;padding:0 12px;border:0;border-radius:999px;cursor:pointer;font:600 12.5px/28px var(--st-font-d);color:#fff;
+  background:linear-gradient(180deg,rgba(139,92,246,.5),rgba(124,58,237,.3));box-shadow:inset 0 1px 0 rgba(255,255,255,.18);-webkit-tap-highlight-color:transparent}
+#weightPage .wx-cmp-done::after{content:"";position:absolute;inset:-8px 0}
+#weightPage .wx-cmp-k{height:44px;padding-top:4px;padding-bottom:4px;margin-top:2px}
+#weightPage .wx-cmp-k+.wx-cmp-k{margin-top:0}
+#weightPage .wx-cmp-k .wx-lc{height:32px}
+#weightPage .wx-cmp-t{width:100%;margin-top:6px;border-collapse:collapse;font:450 12.5px/16px var(--st-font);color:var(--st-ink-2);font-variant-numeric:tabular-nums}
+#weightPage .wx-cmp-t th,#weightPage .wx-cmp-t td{padding:7px 4px;text-align:right;vertical-align:top;border-top:1px solid rgba(var(--st-hl),.07)}
+#weightPage .wx-cmp-t thead th{font:550 11.5px/14px var(--st-font);color:var(--st-ink-3);border-top:0;padding-top:2px}
+#weightPage .wx-cmp-t th[scope="row"]{text-align:left;font:560 13px/16px var(--st-font);color:var(--st-ink)}
+#weightPage .wx-cmp-t th[scope="row"] small{display:block;font:450 11.5px/14px var(--st-font);color:var(--st-ink-3)}
+#weightPage .wx-cmp-t th[scope="row"] small.wx-cmp-st{color:#E3B062}
+#weightPage .wx-cmp-t td small{color:var(--st-ink-3)}
+#weightPage .wx-cmp-t td.vn-num{font:300 var(--wx-fs-sum)/24px var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink);white-space:nowrap}
+#weightPage .wx-cmp-t tr.is-chg th,#weightPage .wx-cmp-t tr.is-chg td{border-top:1px solid rgba(var(--st-hl),.14)}
+#weightPage .wx-cmp-t tr.is-chg td.vn-num b{font-weight:400;color:var(--st-weight)}
+#weightPage .wx-cmp-f{margin:8px 0 0;font:450 12px/15px var(--st-font);color:var(--st-ink-3)}
+#weightPage .wx-cmp-f.is-why{display:flex;gap:6px;color:#E3B062;font-weight:520}
+#weightPage .wx-cmp-f.is-why i{font-style:normal;font-size:11.5px;line-height:15px;transform:scale(.62)}
+#weightPage .wx-cmp-t td{white-space:nowrap}
+@media (max-width:359px){#weightPage .wx-cmp-t td.vn-num{font-size:17px}#weightPage .wx-cmp-t th,#weightPage .wx-cmp-t td{padding:6px 3px}#weightPage .wx-cmp-t td small{display:none}}
+/* On the plot: "Before" on the hatch, "This range" on a faint wash, an uncompared stretch dimmed; the veil over
+   the before window lowers the marks' emphasis without redrawing them. */
+#weightPage .wx-cmp-before{fill:url(#wx-hatch)}
+#weightPage .wx-cmp-cur{fill:rgba(139,92,246,.07)}
+#weightPage .wx-cmp-gap{fill:rgba(var(--st-hl),.02)}
+#weightPage .wx-cmp-veil{fill:var(--wx-screen);fill-opacity:.42}
+#weightPage .wx-cmp-veil.is-gap{fill-opacity:.6}
+#weightPage .wx-svg .wx-cmp-l{font-weight:550}
+#weightPage .wx-svg.is-compare-change{animation:wx-in .32s var(--st-out)}
+/* The legend row under the plot: present only while an opt-in band is drawn. */
+#weightPage .wx-leg{display:flex;flex-wrap:wrap;gap:4px 14px;margin:6px 0 0;font:500 12px/16px var(--st-font);color:var(--st-ink-3)}
+#weightPage .wx-leg>span{display:inline-flex;align-items:center;gap:6px}
+#weightPage .wx-leg[hidden]{display:none}
+#weightPage .wx-key-before{display:inline-block;width:14px;height:8px;border-radius:2px;background:var(--wx-hatch),rgba(var(--st-hl),.03);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.14)}
+#weightPage .wx-key-cur{display:inline-block;width:14px;height:8px;border-radius:2px;background:rgba(139,92,246,.18);box-shadow:inset 0 0 0 1px rgba(180,154,255,.35)}
+
+/* Journey summary (spec §13.1–13.2): hero, rail, three stacked labels, ▶ Play your cut · ⌄ Details; the rest
+   opens in place. The rail's hit area is the 40 px rail plus 10 px above and below (60 px). */
+#weightPage .st-jr.is-sum .st-jr-big{font-size:48px}
+#weightPage .st-jr.is-sum .st-jr-hero{margin-top:10px}
+#weightPage .st-jr.is-sum .st-jr-rail{margin-top:14px}
+#weightPage .st-jr-labs.is-sum{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr) minmax(0,1fr);margin-top:6px}
+#weightPage .st-jr-labs.is-sum span{display:flex;flex-direction:column;gap:1px;font:500 12px/15px var(--st-font);color:var(--st-ink-3)}
+#weightPage .st-jr-labs.is-sum span:nth-child(2){align-items:center;text-align:center}
+#weightPage .st-jr-labs.is-sum span:nth-child(3){align-items:flex-end;text-align:right}
+#weightPage .st-jr-labs.is-sum em{font-style:normal;font-weight:560;color:var(--st-ink-2);white-space:normal}
+#weightPage .st-jr-labs.is-sum em i{display:block;font-weight:500;color:var(--st-ink-3);white-space:nowrap}
+#weightPage .st-jr-labs.is-sum i::before{content:none}
+#weightPage .st-jr-labs.is-sum i{white-space:nowrap}
+#weightPage .st-jr-labs.is-sum b{margin-bottom:0}
+#weightPage .st-jr-est{display:inline-block;margin-top:3px;padding:0 7px;border-radius:999px;font:560 10.5px/16px var(--st-font);letter-spacing:.04em;text-transform:uppercase;text-decoration:none;color:#D4C4FF;box-shadow:inset 0 0 0 1px rgba(196,181,253,.45)}
+#weightPage .st-jr-acts{display:flex;align-items:center;gap:8px;margin-top:12px}
+#weightPage .st-jr-act{position:relative;display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 13px 0 11px;border:0;border-radius:999px;cursor:pointer;
+  font:560 13px/36px var(--st-font);color:var(--st-ink);background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);-webkit-tap-highlight-color:transparent}
+#weightPage .st-jr-act::after{content:"";position:absolute;inset:-4px 0}
+#weightPage .st-jr-act svg{width:14px;height:14px;fill:currentColor}
+#weightPage .st-jr-act i{font-style:normal;font-size:15px;line-height:1;color:var(--st-ink-3);transition:transform .2s var(--st-out)}
+#weightPage .st-jr-det{margin-left:auto}
+#weightPage .st-jr-det[aria-expanded="true"] i{transform:rotate(180deg)}
+#weightPage .st-jr-act:focus-visible{outline:2px solid #CDBBFF;outline-offset:2px}
+#weightPage .st-jr-more{margin-top:4px}
+#weightPage .st-jr-more[hidden]{display:none}
+#weightPage .st-jr-more .st-jr-ms{margin-top:12px}
+#weightPage .st-jr-more .st-jr-mh+ul+.st-jr-mh{margin-top:12px}
+/* Five kinds of fact: recorded (solid, ✓), on the estimated level (dashed outline, ◌), the next-kg estimate
+   (dashed, "estimate", existing .is-est), the rewind capsule (◷) and the Simulation box (hatched). */
+#weightPage .st-jr-mc i{display:inline-grid;place-items:center;width:14px;height:14px;font-style:normal;font-size:11px;line-height:1;background:none;box-shadow:none;border-radius:50%}
+#weightPage .st-jr-mc.is-rec i{color:#0B0A12;background:#E4DBFF}
+#weightPage .st-jr-mc.is-lvl{background:none;box-shadow:none;outline:1.5px dashed rgba(196,181,253,.55);outline-offset:-1.5px;color:#DCD0FF}
+#weightPage .st-jr-mc.is-lvl i{color:#C4B5FD}
+#weightPage .st-jr-rw{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 10px;margin-top:10px}
+#weightPage .st-jr-rw[hidden]{display:none}
+#weightPage .st-jr-rwc{display:inline-block;min-height:30px;padding:0 12px 0 10px;border-radius:999px;font:560 12.5px/30px var(--st-font);color:#DCD0FF;background:rgba(139,92,246,.14);box-shadow:inset 0 0 0 1px rgba(180,154,255,.38);white-space:nowrap}
+#weightPage .st-jr-rwc i{margin-right:6px}
+#weightPage .st-jr-rwc i{font-style:normal;font-size:13px;color:#C4B5FD}
+#weightPage .st-jr-rwc b{font-weight:600;color:var(--st-ink)}
+#weightPage .st-jr-rw .st-jr-back{margin-top:0;min-height:32px;line-height:32px;padding:0 13px;white-space:nowrap}
+#weightPage .st-jr-rw .st-jr-back[hidden]{display:none}
+#weightPage .wx-current{display:flex;align-items:center;gap:6px;margin:0 0 10px;min-height:26px;padding:0 10px;border-radius:999px;font:560 12.5px/26px var(--st-font);color:#DCD0FF;background:rgba(139,92,246,.14);box-shadow:inset 0 0 0 1px rgba(180,154,255,.38);width:max-content;max-width:100%}
+#weightPage .wx-current i{font-style:normal;color:#C4B5FD}
+#weightPage .wx-current[hidden]{display:none}
+/* Simulation · What if: a hatched neutral box with a dashed border, never violet fill or goal styling. */
+#weightPage .wx-sim{margin-top:12px;padding:12px 13px 12px;border-radius:15px;background:var(--wx-hatch),rgba(var(--st-hl),.02);border:1.5px dashed rgba(var(--st-hl),.26)}
+#weightPage .wx-sim-h{display:flex;align-items:center;gap:7px;margin:0;font:650 11px/1.2 var(--st-font);letter-spacing:.14em;text-transform:uppercase;color:var(--st-ink-2)}
+#weightPage .wx-sim-h i{font-style:normal;font-size:13px;letter-spacing:0;color:var(--st-ink-3)}
+#weightPage .wx-sim b{display:block;margin-top:6px;font:520 18px/1.25 var(--st-font-d);letter-spacing:-.015em;color:var(--st-ink)}
+#weightPage .wx-sim-s{display:block;margin-top:5px;font:450 12.5px/1.42 var(--st-font);color:var(--st-ink-2)}
+#weightPage .wx-sim-fast{display:inline-flex;align-items:center;gap:6px;margin-top:8px;height:22px;padding:0 9px;border-radius:999px;font:560 12px/1 var(--st-font);color:#E3B062;background:rgba(184,132,42,.16);box-shadow:inset 0 0 0 1px rgba(184,132,42,.35)}
+#weightPage .wx-sim-fast[hidden]{display:none}
+#weightPage .wx-sim-fast i{font-style:normal;font-size:11.5px;transform:scale(.62)}
+#weightPage .wx-sim-reset{position:relative;display:block;margin-top:10px;min-height:32px;padding:0 14px;border:0;border-radius:999px;cursor:pointer;font:600 12.5px/32px var(--st-font-d);color:var(--st-ink);background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);-webkit-tap-highlight-color:transparent}
+#weightPage .wx-sim-reset::after{content:"";position:absolute;inset:-6px 0}
+#weightPage .wx-sim-reset:focus-visible{outline:2px solid #CDBBFF;outline-offset:2px}
+/* Reduced motion (OS or in-app): nothing in Expand, the compare crossfade or the Journey details moves. */
+@media (prefers-reduced-motion:reduce){
+  #weightPage .wx-svg.is-compare-change,#weightPage .wx-xv,#weightPage .wx-xv *{animation:none;transition:none}
+  #weightPage .st-jr-act i{transition:none}
+  :root::view-transition-group(wx-plot),:root::view-transition-old(wx-plot),:root::view-transition-new(wx-plot){animation:none}
+}
+:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-compare-change,:root[data-nxp-motion="reduced"] #weightPage .wx-xv,:root[data-nxp-motion="reduced"] #weightPage .wx-xv *,:root[data-nxp-motion="reduced"] #weightPage .st-jr-act i{animation:none;transition:none}

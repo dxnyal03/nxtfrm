@@ -795,6 +795,8 @@ const STRATA = (() => {
       return out;
     }
     navLast = to;
+    /* Leaving Weight runs the Expand restore list (spec §10): the chart goes back to its page before the tab changes. */
+    if (typeof NXT === "object" && NXT.ui && NXT.ui.expanded && typeof NXT.collapseChart === "function") NXT.collapseChart({ focus: false, rerender: false, scroll: false, silent: true });
     scrollMemo[shown] = window.scrollY || 0;
     const swap = () => {
       const target = navLast;
@@ -1902,10 +1904,15 @@ const STRATA = (() => {
     const q = sel => sec.querySelector(sel);
     const set = (sel, t) => { const el = q(sel); if (el && t != null) { stopCount(el); el.textContent = t; } };
     const rail = q(".st-jr-rail"), dot = q(".vn-journey-now"), trav = q(".vn-journey-travel"), fut = q(".st-jr-fut"), today = q(".st-jr-today"), back = q(".st-jr-back"), when = q(".st-jr-when");
+    /* Rewind labelling (spec §13.2): the ◷ capsule with Back to today, and the Rate card's "Current analysis · as
+       of <date>" line, since rewinding replays the journey and not the model. */
+    const rw = q(".st-jr-rw"), cur = document.querySelector("#weightPage [data-wx-current]");
     const L = date ? jrAt(d, date) : null, last = d.pts[d.pts.length - 1][0];
     const isToday = !L || L.date >= last;
     sec.classList.toggle("is-rewind", !isToday);
     rtCursor(isToday ? null : L.date);
+    if (rw) rw.hidden = isToday;
+    if (cur) { cur.hidden = isToday; if (!isToday && !cur.firstChild) cur.innerHTML = `<i aria-hidden="true">◷</i>Current analysis · as of ${esc(cur.getAttribute("data-wx-current") || "")}`; }
     if (isToday) {
       JR.at = null; JR.k = null;
       const b = JR.base;
@@ -1927,6 +1934,7 @@ const STRATA = (() => {
     if (q("[data-st-jr-togo]")) { set("[data-st-jr-togo]", Math.max(0, togo).toFixed(1)); set("[data-st-jr-togol]", togo > 0 ? "to go that day" : "in your range that day"); }
     set("[data-st-jr-nowv]", v.toFixed(1)); jrWord("Then", ds);
     if (when) when.textContent = (d.first ? shortDate(d.first) : shortDate(d.pts[0][0])) + " \u2192 " + ds;
+    if (rw) { const rd = rw.querySelector("[data-st-jr-rwd]"), rk = rw.querySelector("[data-st-jr-rwk]"); if (rd) rd.textContent = ds; if (rk) rk.textContent = `${Math.abs(done).toFixed(1)} kg ${done >= .05 ? "down" : done <= -.05 ? "up" : "no change"}`; }
     const pv = jrPct(d, v), ps = jrPct(d, d.seed), pn = jrPct(d, d.now);
     dot.style.left = pv + "%";
     trav.classList.toggle("is-back", v > d.seed + .05);
@@ -2041,41 +2049,54 @@ const STRATA = (() => {
     let d; try { d = JSON.parse(g.getAttribute("data-st-ev")); } catch (e) { return; }
     if (!d || !(d.now > d.hi) || !(d.ref > 0)) return;
     const sec = g.closest(".st-ev"), knob = g.querySelector(".st-ev-gk"), lab = g.querySelector(".st-ev-gkl"), trail = g.querySelector(".st-ev-trail"), z = g.querySelector(".st-ev-z");
-    const wi = sec.querySelector(".st-ev-wi"), hint = sec.querySelector(".st-ev-hint");
-    if (!knob || !lab || !trail || !z || !wi) return;
+    const hint = sec.querySelector(".st-ev-hint");
+    if (!knob || !lab || !trail || !z) return;
     const mkPct = Math.min(d.axis, Math.max(0, -d.rate) / d.ref * 100), mkAt = mkPct / d.axis * 100;
     const base = { vt: g.getAttribute("aria-valuetext"), now: g.getAttribute("aria-valuenow") };
     const hiTxt = Number.isInteger(d.hi) ? String(d.hi) : Number(d.hi).toFixed(1), flatKg = d.flat / 100 * d.ref;
-    let cur = null, drag = false, t = 0, lastStep = null;
+    let cur = null, drag = false, lastStep = null, wi = null;
+    /* The Simulation box (spec §13.3, W8 / D117) exists only once the gauge has been dragged: a hatched neutral box
+       with its assumption, a Reset capsule and, past the 1% line, a review-toned ◆ word. It stays until Reset, Esc
+       or the tab is left (the page re-render drops it); never in a default render. */
+    function box() {
+      if (wi && wi.isConnected) return wi;
+      const after = hint || g;
+      after.insertAdjacentHTML("afterend", `<div class="wx-sim" role="group" aria-label="Simulation, what if"><p class="wx-sim-h"><i aria-hidden="true">◌</i>Simulation · What if</p><b></b><span class="wx-sim-s"></span><span class="wx-sim-fast" hidden><i aria-hidden="true">◆</i>faster than the 1% line</span><button type="button" class="wx-sim-reset">Reset</button></div>`);
+      wi = after.nextElementSibling;
+      wi.querySelector(".wx-sim-reset").addEventListener("click", () => { reset(); g.focus({ preventScroll: true }); });
+      return wi;
+    }
     function show(p) {
-      clearTimeout(t);
       p = Math.max(0, Math.min(d.axis, p)); cur = p;
-      const kg = p / 100 * d.ref, at = p / d.axis * 100;
-      g.classList.remove("is-back"); sec.classList.add("is-whatif");
-      knob.hidden = false; lab.hidden = false; trail.hidden = false; wi.hidden = false; wi.classList.remove("is-out"); if (hint) hint.hidden = true;
+      const kg = p / 100 * d.ref, at = p / d.axis * 100, w = box();
+      sec.classList.add("is-whatif");
+      knob.hidden = false; lab.hidden = false; trail.hidden = false; if (hint) hint.hidden = true;
       knob.style.left = at + "%"; lab.style.left = Math.max(10, Math.min(90, at)) + "%";
       trail.style.left = Math.min(at, mkAt) + "%"; trail.style.width = Math.abs(mkAt - at) + "%";
       lab.textContent = "−" + kg.toFixed(2) + " kg/wk";
-      const b = wi.querySelector("b"), sp = wi.querySelector("span");
+      const b = w.querySelector("b"), sp = w.querySelector(".wx-sim-s"), fast = w.querySelector(".wx-sim-fast");
+      fast.hidden = !(p > 1);
+      const nowName = d.nowName || "estimated level";
       let vt;
       if (kg <= flatKg) {
         b.textContent = "No arrival at this pace";
-        sp.textContent = `Under ${flatKg.toFixed(2)} kg a week the trend reads as flat. A what-if, not a forecast.`;
+        sp.textContent = `Under ${flatKg.toFixed(2)} kg a week the trend reads as flat. A what-if, not a forecast or a target.`;
         vt = `What if ${kg.toFixed(2)} kilograms a week: no arrival, the trend reads as flat`;
       } else {
         /* D104: counted from the day Now is measured (d.base), which can be before today. */
-        const from = d.base || d.today, on = from < d.today ? "on " + shortDate(from) : "now";
+        const from = d.base || d.today;
         /* The date runs from d.base; "About N weeks" counts from today to that date, as weeksRemaining does, so the
            what-if and the Projection tile on one card count weeks the same way (verification of D104). */
         const weeks = (d.now - d.hi) / kg, date = NXT.dateAdd(from, Math.max(1, Math.round(weeks * 7)));
         const wk = Math.max(1, Math.round((Date.parse(date + "T12:00:00") - Date.parse(d.today + "T12:00:00")) / 864e5 / 7));
+        const assume = `At −${kg.toFixed(2)} kg/wk from your ${nowName} of ${Number(d.now).toFixed(1)} kg on ${shortDate(from)}`;
         if (date <= d.today) {
           b.textContent = "Already past at this pace";
-          sp.textContent = `At −${kg.toFixed(2)} kg/wk from ${Number(d.now).toFixed(1)} kg ${on}, ${hiTxt} kg would fall before today. Weigh in to see where you are. A what-if, not a forecast.`;
+          sp.textContent = `${assume}, the top of your goal range (${hiTxt} kg) would have come before today. Weigh in to see where you are. A what-if, not a forecast or a target.`;
           vt = `What if ${kg.toFixed(2)} kilograms a week: ${hiTxt} kilograms would fall before today`;
         } else {
-          b.textContent = `${hiTxt} kg around ${shortDate(date)}`;
-          sp.textContent = `About ${wk} ${wk === 1 ? "week" : "weeks"} at −${kg.toFixed(2)} kg/wk from ${Number(d.now).toFixed(1)} kg ${on}${p > 1 ? ", past the 1% line" : ""}. A what-if, not a forecast.`;
+          b.textContent = `${hiTxt} kg around ${shortDate(date)} · about ${wk} ${wk === 1 ? "week" : "weeks"}`;
+          sp.textContent = `${assume}, the top of your goal range (${hiTxt} kg) would come around ${shortDate(date)}. A what-if, not a forecast or a target.`;
           vt = `What if ${kg.toFixed(2)} kilograms a week: ${hiTxt} kilograms around ${shortDate(date)}`;
         }
       }
@@ -2084,31 +2105,28 @@ const STRATA = (() => {
       if (drag && lastStep !== null && step !== lastStep) haptic("tick");
       lastStep = step;
     }
-    function reset(delay) {
-      clearTimeout(t);
-      t = setTimeout(() => {
-        if (cur === null) return;
-        cur = null; lastStep = null;
-        g.classList.add("is-back"); knob.style.left = mkAt + "%"; lab.hidden = true; trail.hidden = true; wi.classList.add("is-out");
-        g.setAttribute("aria-valuetext", base.vt); g.setAttribute("aria-valuenow", base.now);
-        t = setTimeout(() => { knob.hidden = true; wi.hidden = true; wi.classList.remove("is-out"); g.classList.remove("is-back"); sec.classList.remove("is-whatif"); if (hint) hint.hidden = false; }, reduced() ? 0 : 520);
-      }, delay);
+    function reset() {
+      if (cur === null) return;
+      cur = null; lastStep = null;
+      knob.style.left = mkAt + "%"; lab.hidden = true; trail.hidden = true; knob.hidden = true;
+      g.setAttribute("aria-valuetext", base.vt); g.setAttribute("aria-valuenow", base.now);
+      sec.classList.remove("is-whatif"); if (hint) hint.hidden = false;
+      if (wi) { wi.remove(); wi = null; }
     }
     const fromX = x => { const r = z.getBoundingClientRect(); return Math.max(0, Math.min(1, (x - r.left) / r.width)) * d.axis; };
     g.addEventListener("pointerdown", e => { if (e.button > 0) return; drag = true; g.classList.add("is-drag"); try { g.setPointerCapture(e.pointerId); } catch (_) {} show(fromX(e.clientX)); });
     g.addEventListener("pointermove", e => { if (drag) show(fromX(e.clientX)); });
-    const up = () => { if (!drag) return; drag = false; g.classList.remove("is-drag"); reset(1800); };
+    const up = () => { if (!drag) return; drag = false; g.classList.remove("is-drag"); };
     g.addEventListener("pointerup", up); g.addEventListener("pointercancel", up);
     g.addEventListener("keydown", e => {
       const stepPct = 0.05 / d.ref * 100;
       let p = cur === null ? mkPct : cur;
       if (e.key === "ArrowRight" || e.key === "ArrowUp") p += stepPct;
       else if (e.key === "ArrowLeft" || e.key === "ArrowDown") p -= stepPct;
-      else if (e.key === "Escape" && cur !== null) { e.preventDefault(); reset(0); return; }
+      else if (e.key === "Escape" && cur !== null) { e.preventDefault(); reset(); return; }
       else return;
       e.preventDefault(); show(p);
     });
-    g.addEventListener("blur", () => { if (cur !== null) reset(700); });
   }
 
   /* ---- D99 · Play your cut ---------------------------------------------------------------------------------
@@ -2327,7 +2345,9 @@ const STRATA = (() => {
     if (!reduced()) requestAnimationFrame(() => { el.classList.add("is-in"); el.querySelectorAll("[data-st-num]").forEach(countNum); });
     else el.classList.add("is-in", "is-still");
   }
-  return { observatory, closeObservatory, hydrate, install, odoSet, stopReplay, sky, haptic, story, storyClose, goalMoment, goalCheck, moment, morph, glance: () => { glTouch = 0; showGlance(); }, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
+  /* The chart re-drawn in place (Expand, w4): the lane host, deviation strip and width watch for the new svg. */
+  function dressChart() { const pg = document.getElementById("weightPage"); if (pg) dressProgress(pg); }
+  return { observatory, closeObservatory, hydrate, install, odoSet, stopReplay, dressChart, sky, haptic, story, storyClose, goalMoment, goalCheck, moment, morph, glance: () => { glTouch = 0; showGlance(); }, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
 })();
 STRATA.install();
 if (typeof NXT === "object" && NXT && typeof NXT.repaint === "function" && document.readyState !== "loading") {

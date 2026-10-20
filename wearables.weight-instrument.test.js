@@ -502,9 +502,11 @@ test("chartKey: ← → Home End PageUp PageDown Esc (back to latest clears, F8)
   assert.strictEqual(els["n99-chart-date"].textContent, "Latest morning");
   assert.strictEqual(els["n99-chart-weight"].innerHTML, pts[n - 1].weight.toFixed(1) + "<em>kg</em>");
   assert.strictEqual(key("x").prevented, undefined, "other keys pass through");
-  assert.strictEqual(key("f").prevented, undefined, "F waits for Expand");
+  /* Adapted for w4: Expand exists now (NXT.expandChart), so F opens it in either case; same intent (F is the
+     Expand key, other keys pass through). */
   let expanded = 0; N.expandChart = () => { expanded += 1; };
-  assert.ok(key("F").prevented); assert.strictEqual(expanded, 1);
+  assert.ok(key("f").prevented); assert.strictEqual(expanded, 1, "f opens Expand");
+  assert.ok(key("F").prevented); assert.strictEqual(expanded, 2);
   key("ArrowLeft"); key("Enter");
   assert.deepStrictEqual(Object.keys(N.ui.returnTo).sort(), ["compare", "expanded", "layers", "range", "scrollY", "selected", "view"]);
   assert.strictEqual(N.ui.returnTo.selected, pts[n - 2].date);
@@ -803,6 +805,261 @@ test("the lane and the week band are wired in strata.js: no touch auto-hide, lan
   const pu = fs.readFileSync(path.join(ROOT, "premium-ui.js"), "utf8");
   assert.ok(pu.indexOf('class="wx-ret" onclick="NXT.returnToWeight()"') !== -1, "History's ‹ Weight capsule");
   assert.ok(pu.indexOf("if(N.ui.restoring)N.ui.restoring=null;else N.ui.returnTo=null;") !== -1, "a stale memory is dropped on an ordinary visit");
+});
+
+
+/* =========================================================================
+   Commits 8–10 · Expand, Compare UI, Journey summary, Rate copy, Simulation (w4)
+   ========================================================================= */
+const BANNED_CMP = ["significant", "p-value", "real change", "confidence"];
+/* The cut fixture lifted 2.5 kg: still above the goal range on 19 Oct, so a projection and a next-kilogram estimate exist. */
+function aboveGoalFixture() { const fx = cutFixture(); fx.state.bws.forEach(r => { r.weight = Math.round((r.weight + 2.5) * 10) / 10; }); return fx; }
+function roundingFixture() {
+  const bws = []; let ts = 1;
+  const put = (from, n, values) => { for (let i = 0; i < n; i++) bws.push({ id: "x" + ts, date: new Date(Date.parse(from + "T12:00:00Z") + i * 864e5).toISOString().slice(0, 10), weight: values[i % values.length], timeOfDay: "Morning", ts: ts++ }); };
+  put("2026-08-21", 30, [84.44, 84.44]); put("2026-09-20", 30, [82.76, 82.76]);
+  return baseState(bws, "2026-10-19");
+}
+function slotOf(html) { const i = html.indexOf('id="wx-slot"'); return html.slice(i, html.indexOf("</section>", i)); }
+
+test("Compare: the capsule sits in the summary head; on it the slot is the table (caption, scope), the x-window spans both windows, the plot marks Before / This range", () => {
+  const { N, repaints } = chartPage(); N.ui.range = 30;
+  const off = N.chartHTML();
+  assert.ok(/<p class="wx-sum-h"><span>Last month · [^<]+<\/span><button type="button" class="wx-cmp-b" id="wx-cmp-b" aria-pressed="false"/.test(off), "Compare capsule in the head row");
+  assert.strictEqual(off.indexOf("wx-cmp-t"), -1, "no table while off");
+  N.setCompare({}); assert.strictEqual(JSON.stringify(N.ui.compare), '{"kind":"previous","quantity":"avg"}'); assert.strictEqual(N.ui.chartAnim, "compare"); assert.strictEqual(repaints(), 1);
+  const html = N.chartHTML(), slot = slotOf(html), m = N.ui.chart, cv = m.compare;
+  assert.ok(cv && cv.ok && cv.cp.ok, "the seed compares on 1M");
+  assert.strictEqual(m.start, cv.cw.before.from, "the x-window opens on the Before window");
+  assert.ok(html.indexOf("wx-svg is-compare-change") !== -1, "the x rescale crossfade class, consumed once"); assert.strictEqual(N.ui.chartAnim, null);
+  assert.ok(/<table class="wx-cmp-t"><caption class="st-sr">Average morning in two windows/.test(slot), "caption");
+  assert.ok((slot.match(/scope="col"/g) || []).length === 3 && (slot.match(/scope="row"/g) || []).length === 3, "scoped headers: 3 columns, Before / This range / Change rows");
+  const a = cv.cp.a, b = cv.cp.b;
+  assert.ok(slot.indexOf(`${a.n} of ${a.days}<small> · ${Math.round(a.coverage * 100)}%</small>`) !== -1, "mornings n of N · % for Before, from comparePeriods");
+  assert.ok(slot.indexOf(`${b.n} of ${b.days}<small>`) !== -1, "mornings for This range");
+  assert.ok(slot.indexOf(`${a.avg.toFixed(1)} kg`) !== -1 && slot.indexOf(`${b.avg.toFixed(1)} kg`) !== -1, "averages at 1 dp");
+  assert.ok(slot.indexOf(`<b>${N.signedFixed(cv.cp.diff, 1, "−")} kg</b>`) !== -1, "the change from the unrounded averages, 1 dp, U+2212");
+  assert.ok(slot.indexOf("A difference between two averages of your mornings, not a test.") !== -1, "base footnote");
+  assert.strictEqual(slot.indexOf("Averages are rounded to 0.1 kg") !== -1, cv.cp.roundingNote, "the rounding footnote only when the printed values do not reconcile");
+  assert.ok(/aria-pressed="true"[^>]*onclick="NXT.setCompare\({kind:'previous'}/.test(slot.replace(/data-wx-cmp-kind="previous" /, "")) || /data-wx-cmp-kind="previous" aria-pressed="true"/.test(slot), "the kind capsule is pressed");
+  assert.ok(/data-wx-cmp-q="avg" aria-pressed="true"/.test(slot) && /data-wx-cmp-q="trendChange" aria-pressed="false"/.test(slot), "quantity capsules");
+  assert.ok(slot.indexOf('id="wx-cmp-done"') !== -1 && slot.indexOf("event.key==='Escape'") !== -1 && slot.indexOf("NXT.setCompare(null)") !== -1, "Done and Esc exit");
+  assert.strictEqual(slot.indexOf('data-wx-cmp-kind="firstLast"'), -1, "First vs last 4 weeks is Cut only");
+  const svg = html.slice(html.indexOf('<svg id="n99-chart-svg"'), html.indexOf("</svg>", html.indexOf('<svg id="n99-chart-svg"')));
+  for (const c of ["wx-cmp-before", "wx-cmp-cur", "wx-cmp-veil"]) assert.ok(svg.indexOf(`class="${c}"`) !== -1, c);
+  assert.ok(/wx-cmp-l[^>]*>Before/.test(svg) && /wx-cmp-l[^>]*>This range/.test(svg), "window labels in the bottom lane");
+  assert.strictEqual(svg.indexOf("vn-raw-dot") === -1, false, "the same morning dots are drawn in both windows");
+  assert.ok(/<p class="wx-leg"[^>]*>.*Before.*This range/.test(html), "legend entries for the two windows");
+  for (const w of BANNED_CMP) assert.strictEqual((slot + svg).toLowerCase().indexOf(w), -1, w);
+  /* D2 while comparing: the domain is data-only over what is drawn, and layers do not move it. */
+  const dom = [m.low, m.high]; N.ui.showSpread = true; N.ui.showForecast = true; N.ui.showPost = true;
+  const m2 = N.chartModel(undefined, undefined, undefined, N.chartGeo(), cv.win); assert.deepStrictEqual([m2.low, m2.high], dom);
+  N.ui.showSpread = false; N.ui.showForecast = false; N.ui.showPost = false;
+  N.setCompare(null); assert.strictEqual(N.ui.compare, null); assert.strictEqual(repaints(), 2);
+  assert.strictEqual(slotOf(N.chartHTML()).indexOf("wx-cmp-t"), -1, "exit returns the summary");
+});
+
+test("Compare: 84.4 / 82.8 → −1.7 kg with the rounding footnote; 30 of 30 mornings for both windows", () => {
+  const N = loadNXT(roundingFixture()); N.ui.range = 30; N.repaint = () => {};
+  N.setCompare({ kind: "previous", quantity: "avg" });
+  const slot = slotOf(N.chartHTML());
+  assert.ok(slot.indexOf("84.4 kg") !== -1 && slot.indexOf("82.8 kg") !== -1 && slot.indexOf("<b>−1.7 kg</b>") !== -1, slot.slice(0, 600));
+  assert.ok(slot.indexOf("Averages are rounded to 0.1 kg; the change uses the unrounded averages.") !== -1, "footnote");
+  assert.ok((slot.match(/30 of 30<small> · 100%<\/small>/g) || []).length === 2, "mornings 30 of 30 twice");
+  assert.strictEqual(/(^|[\s>(])-\d/.test(slot.replace(/<[^>]+>/g, " ")), false, "no hyphen-minus before a figure");
+  N.setCompare({ quantity: "low" }); assert.strictEqual(JSON.stringify(N.ui.compare), '{"kind":"previous","quantity":"low"}');
+  assert.ok(slotOf(N.chartHTML()).indexOf("A difference between your lowest mornings in two windows, not a test.") !== -1);
+});
+
+test("Compare: an insufficient window is disabled with its reason (W5), never hidden; nothing is interpolated", () => {
+  /* Mornings only in the last 20 days: every kind's Before window is empty. */
+  const bws = []; let ts = 1;
+  for (let i = 0; i < 20; i++) bws.push({ id: "s" + i, date: new Date(Date.parse("2026-09-30T12:00:00Z") + i * 864e5).toISOString().slice(0, 10), weight: 83 - i * 0.05, timeOfDay: "Morning", ts: ts++ });
+  const N = loadNXT(baseState(bws, "2026-10-19")); N.ui.range = 30; N.repaint = () => {};
+  const a = N.compareAvail(); assert.strictEqual(a.ok, false); assert.ok(/too few to compare/.test(a.why), a.why);
+  const off = N.chartHTML();
+  assert.ok(/class="wx-cmp-b is-off" id="wx-cmp-b" aria-pressed="false" aria-disabled="true" aria-describedby="wx-cmp-why"/.test(off), "disabled capsule");
+  assert.ok(/<small id="wx-cmp-why">0 mornings in [^<]+ — too few to compare<\/small>/.test(off), "its reason");
+  N.setCompare({});
+  const html = N.chartHTML(), slot = slotOf(html);
+  assert.ok(/data-wx-cmp-kind="previous" aria-pressed="true" aria-disabled="true" aria-describedby="wx-cmp-why-previous"/.test(slot), "the kind stays visible, disabled with its reason");
+  assert.ok(slot.indexOf("<b>—</b>") !== -1 || slot.indexOf("<td class=\"vn-num\"><b>—</b>") !== -1, "no change printed");
+  assert.ok(/wx-cmp-f is-why[^>]*><i aria-hidden="true">◆<\/i>0 mornings in/.test(slot), "the reason under the table");
+  assert.strictEqual(N.ui.chart.compare.ok && N.ui.chart.compare.cp.ok, false);
+  assert.ok(html.indexOf("wx-cmp-before") !== -1 && html.indexOf("vn-raw-dot") !== -1, "the empty Before window is still shown on the hatch, with the real readings only (nothing interpolated)");
+  for (const w of BANNED_CMP) assert.strictEqual(slot.toLowerCase().indexOf(w), -1, w);
+  N.setCompare(null);
+});
+
+/* A small tree DOM for Expand: parentNode, insertBefore, appendChild, remove, querySelector by #id / .class. */
+function treeDom() {
+  const all = [];
+  const find = (root, sel) => { const byId = sel[0] === "#", key = sel.slice(1); const walk = n => { for (const c of n.children) { if (byId ? c.id === key : c.classList.contains(key)) return c; const r = walk(c); if (r) return r; } return null; }; return walk(root); };
+  const mk = (tag, id, cls, top, h) => {
+    const n = { tag, id: id || "", className: cls || "", children: [], parentNode: null, hidden: false, style: {}, attrs: {}, top: top || 0, h: h || 0, innerHTML: "", textContent: "", offsetHeight: h || 0, clientHeight: 800, clientWidth: 390, open: false, isConnected: true, focused: 0, shown: 0, closed: 0, type: "",
+      classList: { contains(c) { return n.className.split(" ").includes(c); }, add(c) { if (!n.classList.contains(c)) n.className += " " + c; }, remove(c) { n.className = n.className.split(" ").filter(x => x !== c).join(" "); }, toggle(c, on) { on ? n.classList.add(c) : n.classList.remove(c); } },
+      setAttribute(k, v) { n.attrs[k] = String(v); }, getAttribute(k) { return k in n.attrs ? n.attrs[k] : null; }, removeAttribute(k) { delete n.attrs[k]; },
+      appendChild(c) { if (c.parentNode) c.parentNode.removeChild(c); c.parentNode = n; n.children.push(c); return c; },
+      insertBefore(c, ref) { if (c.parentNode) c.parentNode.removeChild(c); c.parentNode = n; const i = ref ? n.children.indexOf(ref) : -1; if (i < 0) n.children.push(c); else n.children.splice(i, 0, c); return c; },
+      removeChild(c) { const i = n.children.indexOf(c); if (i >= 0) n.children.splice(i, 1); c.parentNode = null; return c; },
+      remove() { if (n.parentNode) n.parentNode.removeChild(n); },
+      querySelector(sel) { return find(n, sel); }, querySelectorAll() { return []; }, addEventListener() {}, closest() { return null; },
+      focus() { n.focused += 1; }, getBoundingClientRect() { return { top: n.top, bottom: n.top + n.h, left: 0, right: 390, width: 390, height: n.h }; },
+      showModal() { n.open = true; n.shown += 1; }, close() { n.open = false; n.closed += 1; }, setPointerCapture() {}, releasePointerCapture() {} };
+    all.push(n); return n;
+  };
+  return { mk, find, all };
+}
+function expandPage() {
+  const D = treeDom(), page = D.mk("div", "weightPage"), plate = D.mk("section", "vn-weight", "wx-plate");
+  page.appendChild(plate);
+  const parts = [["div", "", "wx-int", 0, 42], ["button", "", "wx-xbtn", 0, 44], ["div", "", "wx-ro", 52, 69], ["div", "", "wx-rr", 131, 44], ["div", "wx-layers", "wx-layers", 175, 0], ["div", "vn-chart-wrap", "vn-chart-wrap wx-wrap", 183, 337], ["p", "wx-sr-sum", "st-sr", 520, 0], ["p", "wx-sel-sr", "st-sr", 520, 0], ["div", "wx-slot", "wx-slot", 520, 118]];
+  const els = {}; for (const [t, id, cls, top, h] of parts) { const n = D.mk(t, id, cls, top, h); plate.appendChild(n); if (id) els[id] = n; }
+  els["n99-chart-svg"] = makeElement("n99-chart-svg");
+  const N = loadNXT(cutFixture(), els);
+  const doc = N.__sandbox.document;
+  doc.getElementById = id => (id === "weightPage" ? page : D.find(page, "#" + id)) || els[id] || null;
+  doc.createElement = tag => D.mk(tag);
+  doc.querySelector = sel => (sel[0] === "#" || sel[0] === ".") && sel.indexOf(" ") === -1 ? D.find(page, sel) : null;
+  const scrolls = []; N.__sandbox.scrollTo = (x, y) => scrolls.push(y); N.__sandbox.scrollY = 140;
+  N.repaint = () => {};
+  N.ui.range = 30; N.ui.chart = N.chartModel();
+  return { N, D, page, plate, els, scrolls, wrap: els["vn-chart-wrap"], xbtn: D.find(plate, ".wx-xbtn") };
+}
+
+test("Expand: the SAME wrap node moves into a <dialog> (showModal), a placeholder of the block's height stays behind, range / selection / layers / compare carry over (spec §10)", () => {
+  const { N, page, plate, wrap, xbtn, D } = expandPage();
+  const before = plate.children.slice();
+  N.ui.showWeekly = true; N.ui.selected = N.ui.chart.points[4].date; N.selectPoint(4);
+  assert.strictEqual(N.expandChart(), true);
+  const d = D.find(page, "#wx-xv");
+  assert.ok(d && d.tag === "dialog" && d.open && d.shown === 1 && d.getAttribute("aria-labelledby") === "wx-xv-h", "a modal dialog inside #weightPage");
+  assert.strictEqual(wrap.parentNode, D.find(d, "#wx-xv-body"), "the same node, re-hosted (identity)");
+  assert.strictEqual(D.find(d, "#wx-slot").id, "wx-slot"); assert.strictEqual(D.find(d, "#wx-xv-foot").children.map(c => c.className.split(" ")[0]).join(","), "wx-rr,wx-layers", "range row and Layers at the bottom");
+  const ph = D.find(plate, "#wx-ph"); assert.ok(ph, "placeholder"); assert.strictEqual(plate.children.indexOf(ph), 2, "where the readouts were");
+  assert.strictEqual(ph.style.height, (520 + 118 - 52) + "px", "the moved block's height");
+  assert.strictEqual(plate.children.filter(c => c.id === "vn-chart-wrap").length, 0, "not cloned");
+  assert.deepStrictEqual([N.ui.expanded, N.ui.chartKind, N.ui.range, N.ui.selected, N.ui.showWeekly, N.ui.compare], [true, "expand", 30, N.ui.chart.points[4].date, true, null], "state preserved");
+  assert.ok(wrap.innerHTML.indexOf("<svg") !== -1 && wrap.getAttribute("aria-valuenow") === "4", "re-rendered in place with the selection");
+  assert.strictEqual(D.find(d, "#wx-xv-x").focused, 1, "× takes first focus");
+  assert.ok(/Last month · /.test(D.find(d, "#wx-xv-r").textContent), "the range in words");
+  /* Show as table: the plot swaps for a plain table with a caption and scoped headers. */
+  assert.strictEqual(N.xvToggleTable(), true); assert.strictEqual(wrap.hidden, true);
+  const tbl = D.find(d, "#wx-xv-table"); assert.strictEqual(tbl.hidden, false);
+  assert.ok(/<table class="wx-tbl"><caption>Morning readings and smoothed trend, kg · Last month/.test(tbl.innerHTML) && (tbl.innerHTML.match(/scope="col"/g) || []).length === 4, tbl.innerHTML.slice(0, 200));
+  assert.strictEqual((tbl.innerHTML.match(/scope="row"/g) || []).length, N.ui.chart.points.length, "one row per morning");
+  assert.ok(tbl.innerHTML.indexOf("−") !== -1 && !/(^|[\s>(])-\d/.test(tbl.innerHTML.replace(/<[^>]+>/g, " ")), "U+2212");
+  assert.strictEqual(D.find(d, "#wx-xv-tb").getAttribute("aria-pressed"), "true");
+  /* The restore list, on × : nodes back in order, placeholder gone, page geometry, scroll, focus on Expand, flag. */
+  assert.strictEqual(N.collapseChart(), true);
+  assert.deepStrictEqual(plate.children, before, "every node back in its place; the placeholder removed");
+  assert.strictEqual(wrap.parentNode, plate); assert.strictEqual(wrap.hidden, false, "the table alternative is undone");
+  assert.deepStrictEqual([N.ui.expanded, N.ui.chartKind, N.ui.xvTable, d.open, d.closed, xbtn.focused, N.ui.xvRestores], [false, "page", false, false, 1, 1, 1]);
+  assert.ok(wrap.innerHTML.indexOf("<svg") !== -1, "re-rendered for the page");
+  N.ui.showWeekly = false; N.selectPoint(N.ui.chart.points.length - 1, { clear: true });
+});
+
+test("Expand: the restore list runs on every exit path — Open day (no focus return), a tab switch, a re-render rehost — and never twice", () => {
+  const { N, plate, wrap, xbtn, scrolls, D, page } = expandPage();
+  assert.strictEqual(N.collapseChart(), false, "nothing to restore while closed");
+  N.expandChart(); assert.strictEqual(scrolls.length, 0);
+  N.openChartDay(N.ui.chart.points[3].date);
+  assert.deepStrictEqual([N.ui.expanded, wrap.parentNode === plate, xbtn.focused, N.ui.returnTo.expanded, N.ui.returnTo.selected], [false, true, 0, false, null], "Open day restores without returning focus");
+  N.ui.returnTo = null;
+  /* The tab-switch path (strata.js navigate) and the re-render path (premium-ui progress) are called with the same options. */
+  N.expandChart(); const d = D.find(page, "#wx-xv");
+  assert.strictEqual(N.collapseChart({ focus: false, rerender: false, scroll: false, silent: true }), true);
+  assert.deepStrictEqual([N.ui.expanded, wrap.parentNode === plate, D.find(plate, "#wx-ph"), scrolls.length, xbtn.focused], [false, true, null, 0, 0]);
+  /* × restores the scroll the page had when Expand opened. */
+  N.__sandbox.scrollY = 260; N.expandChart(); N.__sandbox.scrollY = 0; N.collapseChart();
+  assert.deepStrictEqual(scrolls, [260]); assert.strictEqual(xbtn.focused, 1);
+  /* A rehost re-uses the one dialog (closed and shown again) and moves the fresh nodes in. */
+  N.expandChart(); assert.strictEqual(d.shown, 4); N.expandChart({ rehost: true }); assert.strictEqual(d.shown, 5); assert.strictEqual(d.closed, 4);
+  assert.strictEqual(N.expandChart(), true, "already open: a no-op"); assert.strictEqual(d.shown, 5);
+  N.collapseChart();
+  const st = fs.readFileSync(path.join(ROOT, "strata.js"), "utf8"), pu = fs.readFileSync(path.join(ROOT, "premium-ui.js"), "utf8");
+  assert.ok(st.indexOf('NXT.collapseChart({ focus: false, rerender: false, scroll: false, silent: true })') !== -1, "strata.js navigate runs the restore list before a tab switch");
+  assert.ok(st.indexOf("dressChart") !== -1, "the re-drawn plot is dressed (lane host, width watch)");
+  assert.ok(pu.indexOf("N.expandChart({rehost:true})") !== -1 && pu.indexOf("xv.parentNode.removeChild(xv)") !== -1, "premium-ui keeps the dialog across a Weight re-render and re-hosts the fresh nodes");
+  assert.strictEqual(/history\.(pushState|back|go)\(/.test(fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8")), false, "no history entry is pushed");
+});
+
+test("Journey summary: Start weight / Estimated level (estimate tag) / Goal range, ▶ Play · ⌄ Details, the recorded vs estimated-level milestone split, the rewind capsule; the default mode is unchanged", () => {
+  const N = loadNXT(aboveGoalFixture()); N.ui.range = 30; N.repaint = () => {};
+  const j = N.journeyHTML(undefined, undefined, { mode: "summary" }), fv = N.forecastView();
+  assert.ok(fv.showArrival, "the fixture carries a current projection");
+  assert.ok(/^<section class="vn-journey st-jr is-sum" aria-label="Cut journey" data-st-jr=/.test(j), j.slice(0, 120));
+  assert.ok(/<em>Start weight<\/em><i>22 Jul<\/i>/.test(j), "Start weight, the saved setting, dated");
+  assert.ok(/<em data-st-jr-noww>Estimated level<i>\d+ \w+<\/i><\/em><u class="st-jr-est">estimate<\/u>/.test(j), "Estimated level, marked as an estimate");
+  assert.ok(/<em>Goal range<\/em><i>~\d+ \w+ · \d+(–\d+)? wk<\/i>/.test(j) === fv.showArrival, "the goal is dated from forecastView while current");
+  const nl = N.nowLevel(); assert.ok(nl.value > 82 ? j.indexOf("to go to the top of 80–82") !== -1 : j.indexOf("<b>In range</b>") !== -1, "to go to the top of the goal range, or In range");
+  assert.ok(/<button type="button" class="st-jr-act st-jr-play" data-st-story>.*Play your cut/.test(j) && /class="st-jr-act st-jr-det" id="st-jr-det" aria-expanded="false" aria-controls="st-jr-more"/.test(j), "actions");
+  assert.ok(/<div class="st-jr-more" id="st-jr-more" hidden>/.test(j), "closed by default");
+  assert.ok(/<p class="st-jr-mh">Recorded<\/p><ul><li><button type="button" class="st-jr-mc is-rec" data-st-jr-go="[\d-]+"><i aria-hidden="true">✓<\/i>Lowest weigh-in \d+\.\d/.test(j), "a recorded weigh-in: solid chip, ✓");
+  assert.ok(/<p class="st-jr-mh">Milestones · on your estimated level<\/p><ul>(<li><button type="button" class="st-jr-mc is-lvl"[^>]*><i aria-hidden="true">◌<\/i>(First kg down|Halfway|5% of your start) <em>[^<]+<\/em><\/button><\/li>)+/.test(j), "computed milestones: dashed chips under their own heading");
+  assert.ok(j.indexOf('class="st-jr-mc is-est"') !== -1 && /\d+ kg <em>~[^<]+ · estimate<\/em>/.test(j), "the next-kilogram estimate, dashed and named an estimate");
+  assert.ok(/<div class="st-jr-rw" hidden><span class="st-jr-rwc"><i aria-hidden="true">◷<\/i>Rewound · <b data-st-jr-rwd><\/b> · <span data-st-jr-rwk><\/span><\/span><button type="button" class="st-jr-back" hidden>Back to today<\/button><\/div>/.test(j), "the rewind capsule with Back to today, hidden until a rewind");
+  assert.strictEqual(j.indexOf("First reading"), -1, "the Journey never calls the saved start the first reading (W6)");
+  assert.strictEqual(j.indexOf("as of"), -1, '"as of" is the aging forecast\'s word (D104)');
+  const full = N.journeyHTML();
+  assert.ok(full.indexOf("is-sum") === -1 && /<b class="vn-num">\d+\.\d<\/b>Start<i>/.test(full) && /80–82<\/b>Goal/.test(full), "the default mode is unchanged (weight-contract reads it)");
+  const page = N.chartHTML();
+  assert.ok(page.indexOf('class="vn-journey st-jr is-sum"') !== -1, "the Weight page shows the summary");
+  assert.ok(page.indexOf("Start weight") !== -1 && page.indexOf("First reading") === -1, "on 1M: Start weight in the Journey, no First reading cell");
+  N.ui.range = "cut"; const cut = N.chartHTML(), plate = cut.slice(0, cut.indexOf("</section>"));
+  assert.ok(plate.indexOf("First reading") !== -1 && plate.indexOf("Start weight") === -1 && cut.indexOf("Start weight") !== -1, "Cut: First reading in the plate, Start weight in the Journey, never one name");
+  N.ui.range = 30;
+  assert.strictEqual(N.jrToggle(), true); assert.ok(/st-jr is-sum is-open/.test(N.chartHTML()) && /id="st-jr-more">/.test(N.chartHTML()), "Details opens in place, memory only");
+  N.jrToggle(false);
+  const st = fs.readFileSync(path.join(ROOT, "strata.js"), "utf8");
+  assert.ok(st.indexOf('const rw = q(".st-jr-rw"), cur = document.querySelector("#weightPage [data-wx-current]")') !== -1 && st.indexOf("Current analysis · as of") !== -1, "a rewind shows the capsule and the Rate card's Current analysis line");
+});
+
+test("Journey summary and Rate while paused: no dated projection anywhere; Compare still reads the mornings that exist", () => {
+  const fx = cutFixture(); fx.state.bws = fx.state.bws.filter(r => r.date <= "2026-09-29");
+  const N = loadNXT(fx); N.ui.range = 30; N.repaint = () => {};
+  const fv = N.forecastView(); assert.ok(fv.freshness === "stale" || fv.freshness === "expired", fv.freshness);
+  const j = N.journeyHTML(undefined, undefined, { mode: "summary" });
+  assert.ok(/<em>Goal range<\/em><\/span>/.test(j), "no date on the goal label");
+  assert.strictEqual(j.indexOf("~"), -1, "no ~date anywhere in the summary");
+  assert.strictEqual(j.indexOf("is-est"), -1, "no next-kilogram estimate while paused");
+  const html = N.chartHTML(), rate = html.slice(html.indexOf('data-wx-row="rate"'), html.indexOf('data-wx-row="rax"') > 0 ? html.indexOf('data-wx-row="rax"') : html.indexOf('data-wx-row="dev"'));
+  assert.ok(/<p>Projection<\/p><b>Paused<\/b>/.test(rate), "Projection paused");
+  assert.strictEqual(rate.indexOf("Projection range"), -1, "no Projection range while paused");
+  assert.strictEqual(/around \d+ \w+/.test(rate), false, "no arrival date");
+  assert.strictEqual(html.indexOf("wx-sim"), -1, "no Simulation box in a default render");
+  N.setCompare({}); const slot = slotOf(N.chartHTML());
+  assert.ok(slot.indexOf("wx-cmp-t") !== -1 && /\d+ of \d+<small>/.test(slot), "Compare reads the mornings in each window");
+  N.setCompare(null);
+});
+
+test("Rate and Projection copy (CONTRACTS §3, §4): Rate range, Rate precision, Projection range; the retired words are gone; the Simulation box is absent from a default render", () => {
+  const N = loadNXT(aboveGoalFixture()); N.ui.range = 30;
+  const html = N.chartHTML(), i = html.indexOf('data-wx-row="rate"'), rate = html.slice(i, html.indexOf('data-wx-row="', i + 20));
+  const pl = N.detectPlateau(), rs = N.rateSpan(pl), fv = N.forecastView();
+  assert.ok(pl.ok && rs.full, "the fixture carries a 4-week rate");
+  assert.ok(/<b>Rate range<\/b> · Likely between [−+]?\d\.\d\d and [−+]?\d\.\d\d kg\/wk over the last four weeks\./.test(rate), "Rate range copy");
+  assert.ok(/The 4-week rate is likely within ±\d\.\d\d kg a week\./.test(rate), "Rate precision copy");
+  assert.ok(/<p>Rate precision<\/p><b>(High|Medium|Low)<\/b>/.test(rate), "Rate precision, the categorical value kept (W6)");
+  assert.ok(/Rate precision (High|Medium|Low)/.test(rate), "the row summary names it");
+  assert.ok(fv.showArrival && /<b>Projection range<\/b> · Likely between \d+ \w+ and \d+ \w+\. /.test(rate), "Projection range as two dates: " + rate.slice(rate.indexOf("Projection"), rate.indexOf("Projection") + 400));
+  assert.ok(rate.indexOf("An estimate, not a promise.") !== -1, "an estimate, not a promise");
+  assert.ok(/<p class="wx-current" data-wx-current="\d+ \w+" hidden><\/p>/.test(rate), "the Current analysis hook, empty until a rewind");
+  for (const w of ["known to within", "95%", "9 in 10", "not a measurement", "confidence", "certainty", "accuracy", "probability", "likelihood", "SIMULATION", "wx-sim", "st-ev-wi"]) assert.strictEqual(rate.toLowerCase().indexOf(w.toLowerCase()), -1, w);
+  assert.ok(/data-st-ev="[^"]*nowName/.test(rate), "the gauge names what the what-if starts from");
+  assert.ok(/[−]\d\.\d\d kg\/wk/.test(rate.replace(/<[^>]+>/g, "")) && !/(^|[\s>(])-\d/.test(rate.replace(/<[^>]+>/g, " ")), "rates at 2 dp with U+2212");
+  const st = fs.readFileSync(path.join(ROOT, "strata.js"), "utf8");
+  assert.ok(st.indexOf('after.insertAdjacentHTML("afterend", `<div class="wx-sim"') !== -1 && st.indexOf('<i aria-hidden="true">◌</i>Simulation · What if') !== -1 && st.indexOf('class="wx-sim-reset">Reset<') !== -1, "the box is built on the first drag, with Reset");
+  assert.strictEqual(st.indexOf("reset(1800)"), -1, "no spring-back: it persists (W8 / D117)");
+  assert.ok(st.indexOf('e.key === "Escape" && cur !== null') !== -1, "Esc resets");
+  assert.ok(st.indexOf("A what-if, not a forecast or a target.") !== -1 && st.indexOf("faster than the 1% line") !== -1);
+  const css = fs.readFileSync(path.join(ROOT, "strata.css"), "utf8");
+  assert.strictEqual(css.indexOf(".st-ev-wi"), -1, "the retired what-if box CSS is deleted, not overridden");
+  assert.ok(css.indexOf("#weightPage .wx-sim{") !== -1 && /\.wx-sim\{[^}]*var\(--wx-hatch\)[^}]*dashed/.test(css), "hatched, dashed, neutral");
+  /* Day-to-day spread: its own legend entry wherever the band is drawn. */
+  N.ui.showSpread = true; const on = N.chartHTML();
+  assert.ok(/<p class="wx-leg" id="wx-leg" aria-label="Chart legend"><span><i class="wx-key-band" aria-hidden="true"><\/i>Day-to-day spread<\/span><\/p>/.test(on) && on.indexOf('class="wx-spread"') !== -1, "legend row with the band");
+  N.ui.showSpread = false; assert.strictEqual(N.chartHTML().indexOf('id="wx-leg"'), -1, "no legend row without a band");
 });
 
 console.log((failed ? "FAILED  " : "OK  ") + passed + " passed, " + failed + " failed");

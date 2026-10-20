@@ -2268,7 +2268,12 @@ const NXP = (() => {
     const cs=settings.cutStart&&Number.isFinite(N.dateMs(settings.cutStart))&&settings.cutStart<=state.date?settings.cutStart:(N.cfg().targetConfirmed&&N.weights()[0]?N.weights()[0].date:null);
     const ctx=cs?`Cut · week ${Math.floor(Math.round((N.dateMs(state.date)-N.dateMs(cs))/864e5)/7)+1}`:'Since your first weigh-in';
     const chrome=`<header class="nxp-heading nxp-progress-chrome vn-progress-chrome"><div><h1>Progress</h1><p>${esc(ctx)}</p></div>${button('+ Weight','apx95OpenQuickWeight()',true)}</header>`;
-    document.getElementById('weightPage').innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${N.chartHTML()}${N.features&&N.features.calories?`<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details>`:''}</div>`;
+    /* Expand (spec §10): the dialog lives inside #weightPage so the plate's stylesheet applies. A re-render keeps
+       it: it is lifted out before the page is rebuilt and the fresh plate's nodes are re-hosted into it. */
+    const pg=document.getElementById('weightPage'),xv=N.ui.expanded?document.getElementById('wx-xv'):null;
+    if(xv&&xv.parentNode)xv.parentNode.removeChild(xv);
+    pg.innerHTML=`<div class="n99 nxp nxp-progress nxp-progress-weight vn-progress">${chrome}${tabs}${N.chartHTML()}${N.features&&N.features.calories?`<details class="nxp-progress-tdee nxp-disclosure vn-more-block"><summary>Energy estimate</summary>${N.tdeeCardHTML()}</details>`:''}</div>`;
+    if(xv){pg.appendChild(xv);if(typeof N.expandChart==='function')N.expandChart({rehost:true});}
   }
   /* Engine vocabulary only (I12). The word is the status; colour and shape follow it. */
   const PERF_NOTE='Estimated 1RM is a comparison aid, not a tested maximum or proof of muscle retention. Technique, effort and equipment setup affect it.';

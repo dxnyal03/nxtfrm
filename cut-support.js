@@ -1447,7 +1447,7 @@ Object.assign(NXT, (()=>{
      its date and both of its inputs (where the last three weeks put you today, and their pace), so the
      weeks add up on the card; the rate leads with its share of body weight and the word review() already
      uses; confidence says what it measures; a plateau only takes a card when there is one. */
-  function journeyHTML(forecastRead,view) {
+  function journeyHTML(forecastRead,view,opts={}) {
     if(!N.cfg().targetConfirmed)return '';
     const rows=N.weights(),fv=view||N.forecastView(rows),fw=N.forecastWords(fv);
     const startW=N.finite(typeof START_WEIGHT!=='undefined'?START_WEIGHT:null);
@@ -1523,6 +1523,57 @@ Object.assign(NXT, (()=>{
     const payload={seed:+seed.toFixed(2),first:first||null,lo,hi,max:+max.toFixed(3),span:+span.toFixed(3),today:state.date,now:+cur.toFixed(2),nowWord,
       pts:lv.map(q=>[q.date,+q.value.toFixed(2)])};
     const sum=`Start ${seed.toFixed(1)} kilograms${first?' on '+N.shortDate(first):''}, ${nowName.toLowerCase()} ${cur.toFixed(1)} on ${nowWord}, goal ${lo} to ${hi}${arrive?', projected around '+arrive+(fw.asOf?' '+fw.asOf:''):''}.`;
+    const railHTML=`<div class="vn-journey-rail st-jr-rail" ${canRewind?`role="slider" tabindex="0" aria-label="Rewind your cut" aria-valuemin="0" aria-valuemax="${days}" aria-valuenow="${days}" aria-valuetext="${esc(`${nowName}, ${nowWord}: ${cur.toFixed(1)} kilograms, ${Math.abs(done).toFixed(1)} ${dir}`)}" aria-describedby="st-jr-sum"`:`role="img" aria-label="${esc(sum)}"`}>
+        <div class="vn-journey-track"></div>
+        <div class="vn-journey-band" style="left:${leftBand}%;width:${Math.max(2,widthBand)}%"></div>
+        <div class="vn-journey-travel${back?' is-back':''}" style="left:${leftTrav}%;width:${Math.max(0,widthTrav)}%"></div>
+        <div class="st-jr-fut" hidden></div>
+        ${aheadW>0&&!beads.some(x=>!x.date)?`<div class="st-jr-ahead" style="left:${aheadFrom}%;width:${aheadW}%"></div>`:''}
+        ${beads.map(x=>`<i class="st-jr-bead${x.date?' is-on':''}" style="left:${pct(x.k)}%" data-k="${x.k}"></i>`).join('')}
+        <i class="st-jr-today" hidden style="left:${pct(cur)}%"></i>
+        <div class="vn-journey-now" style="left:${pct(cur)}%"></div>
+      </div>`;
+    /* Summary mode (spec §13.1, w4): the quiet surface the Weight page shows, closed by default; ⌄ Details opens
+       the rest in place (NXT.jrToggle, STRATA.morph). The default mode below is unchanged. Five kinds of fact stay
+       visibly distinct (§13.2): a recorded weigh-in (solid, ✓), a milestone reached on the estimated level (dashed
+       outline, under its own heading), the model's next-kilogram estimate (dashed, "estimate"), the rewind snapshot
+       (◷ capsule + Back to today, the Rate card gaining "Current analysis · as of <date>") and the Simulation box
+       (Evidence). "Start weight" is the saved setting; the plate's "First reading" is never called that (W6). */
+    if(opts&&opts.mode==='summary'){
+      const open=!!N.ui.jrOpen;
+      const wk=remain>0&&fv.showArrival&&fv.weeksRemaining!==undefined&&fv.weeksRemaining!==null?(fv.lowWeeksRemaining!==undefined&&fv.lowWeeksRemaining!==fv.highWeeksRemaining?`${fv.lowWeeksRemaining}–${fv.highWeeksRemaining} wk`:`${fv.weeksRemaining} wk`):'';
+      const goalWhen=arrive?`~${arrive}${wk?' · '+wk:''}`:'';
+      const sinceLine=`${dir}${first&&elapsed>0?` in ${sinceTxt}`:''}`;
+      const togo=remain>0?`<b class="vn-num"><span data-st-jr-togo data-st-num>${remain.toFixed(1)}</span> kg</b><span data-st-jr-togol>to go to the top of ${lo}–${esc(hiTxt)}</span>`:cur>=lo?'<b>In range</b><span>your goal range</span>':`<b class="vn-num">${(lo-cur).toFixed(1)} kg</b><span>below your goal range</span>`;
+      const startLabS=`<span class="is-start"><b class="vn-num">${seed.toFixed(1)}</b><em>Start weight</em>${first?`<i>${esc(N.shortDate(first))}</i>`:''}</span>`;
+      const nowLabS=`<span class="is-now"><b class="vn-num" data-st-jr-nowv>${cur.toFixed(1)}</b><em data-st-jr-noww>${nowName}<i>${esc(nowWord)}</i></em>${nl?'<u class="st-jr-est">estimate</u>':''}</span>`;
+      const goalLabS=`<span class="is-goal"><b class="vn-num">${lo}–${hi}</b><em>Goal range</em>${goalWhen?`<i>${esc(goalWhen)}</i>`:''}</span>`;
+      const recorded=ms.filter(x=>x.low),onLevel=ms.filter(x=>!x.low);
+      const chip=(x,cls,glyph)=>`<li><button type="button" class="st-jr-mc ${cls}"${canRewind?` data-st-jr-go="${x.d}"`:''}><i aria-hidden="true">${glyph}</i>${esc(x.t)} <em>${esc(N.shortDate(x.d))}</em></button></li>`;
+      const msHTML=(recorded.length||onLevel.length||next)?`<div class="st-jr-ms">
+          ${recorded.length?`<p class="st-jr-mh">Recorded</p><ul>${recorded.map(x=>chip(x,'is-rec','✓')).join('')}</ul>`:''}
+          ${onLevel.length||next?`<p class="st-jr-mh">Milestones · on your estimated level</p><ul>${onLevel.map(x=>chip(x,'is-lvl','◌')).join('')}${next?`<li><span class="st-jr-mc is-est"><i aria-hidden="true"></i>${next.k} kg <em>~${esc(N.shortDate(next.d))} · estimate</em></span></li>`:''}</ul>`:''}
+        </div>`:'';
+      const playB=lv.length>=7?'<button type="button" class="st-jr-act st-jr-play" data-st-story><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 4.6v10.8L15.2 10z" fill="currentColor" stroke="none"/></svg><span>Play your cut</span></button>':'';
+      const detB=`<button type="button" class="st-jr-act st-jr-det" id="st-jr-det" aria-expanded="${open}" aria-controls="st-jr-more" onclick="NXT.jrToggle()"><span>Details</span><i aria-hidden="true">⌄</i></button>`;
+      return `<section class="vn-journey st-jr is-sum${open?' is-open':''}" aria-label="Cut journey"${canRewind?` data-st-jr="${esc(JSON.stringify(payload))}"`:''}>
+      <div class="vn-sect-head"><p class="vn-h-sect">Cut journey</p>
+        <span class="vn-tiny st-jr-when">${first?esc(N.shortDate(first)):'Start'} → now</span>${share}</div>
+      <div class="st-jr-hero">
+        <div><div class="st-jr-big vn-num"><span data-st-jr-done data-st-num>${Math.abs(done).toFixed(1)}</span><small>kg</small></div><p class="st-jr-sub" data-st-jr-sub>${sinceLine}</p></div>
+        <div class="st-jr-togo">${togo}</div>
+      </div>
+      ${canRewind?'<div class="st-jr-rw" hidden><span class="st-jr-rwc"><i aria-hidden="true">◷</i>Rewound · <b data-st-jr-rwd></b> · <span data-st-jr-rwk></span></span><button type="button" class="st-jr-back" hidden>Back to today</button></div>':''}
+      ${railHTML}
+      ${canRewind?`<p class="st-sr" id="st-jr-sum">${esc(sum)} Drag along the bar, or use the arrow keys, to rewind to an earlier day.</p>`:''}
+      <div class="st-jr-labs is-sum" aria-hidden="true">${back?nowLabS+startLabS:startLabS+nowLabS}${goalLabS}</div>
+      <div class="st-jr-acts">${playB}${detB}</div>
+      <div class="st-jr-more" id="st-jr-more"${open?'':' hidden'}>
+        ${nowNoteTxt?`<p class="vn-tiny st-jr-note">${esc(nowNoteTxt)}</p>`:''}
+        ${msHTML}
+      </div>
+    </section>`;
+    }
     return `<section class="vn-journey st-jr" aria-label="Cut journey"${canRewind?` data-st-jr="${esc(JSON.stringify(payload))}"`:''}>
       <div class="vn-sect-head"><p class="vn-h-sect">Cut journey</p>
         <span class="vn-tiny st-jr-when">${first?esc(N.shortDate(first)):'Start'} → now</span>${lv.length>=7?play:''}${share}</div>
@@ -1586,8 +1637,8 @@ Object.assign(NXT, (()=>{
          paused, since Now is then too old to start from. */
       const nl=N.nowLevel(),nowV=nl?nl.value:null,canWhat=N.cfg().targetConfirmed&&fv.current&&nowV!==null&&nowV>goalHigh()+.05;
       const gl=`${rate<0?'Losing':'Gaining'} ${Math.abs(pct).toFixed(1)} percent of body weight a week; the 1 percent line is where losing quickly starts`;
-      const wdata={axis:+axis.toFixed(3),ref:+ref.toFixed(3),flat:+flat.toFixed(4),now:nowV===null?null:+nowV.toFixed(3),hi:goalHigh(),rate:+rate.toFixed(3),today:state.date,base:nl?nl.date:state.date};
-      gauge=`<div class="st-ev-g${canWhat?' is-what':''}" ${canWhat?`role="slider" tabindex="0" aria-label="What-if pace" aria-valuemin="0" aria-valuemax="${(axis*ref/100).toFixed(2)}" aria-valuenow="${Math.max(0,-rate).toFixed(2)}" aria-valuetext="${esc(`Your ${N.rateSpan(plateau).label}, ${Math.abs(rate).toFixed(2)} kilograms a week. Arrow keys try another pace.`)}" data-st-ev="${esc(JSON.stringify(wdata))}"`:`role="img" aria-label="${esc(gl)}"`}><div class="st-ev-z"><i class="z-flat" style="width:${w(flat)}%"></i><i class="z-steady" style="width:${(w(1)-w(flat)).toFixed(2)}%"></i><i class="z-fast" style="flex:1"></i></div><i class="st-ev-mk" style="left:${w(Math.max(0,-pct))}%"></i>${canWhat?'<i class="st-ev-trail" hidden></i><i class="st-ev-gk" hidden></i><span class="st-ev-gkl" hidden></span>':''}<div class="st-ev-zl" aria-hidden="true"><span>Flat</span>${axis<=2.2?`<span class="is-mid is-steady" style="left:${w((flat+1)/2)}%">Steady</span>`:''}<span class="is-mid" style="left:${w(1)}%">1% line</span><span>Fast</span></div></div>${canWhat?'<p class="st-ev-hint" aria-hidden="true">Drag the marker to try another pace</p><div class="st-ev-wi" hidden><p>What if</p><b></b><span></span></div>':''}`;
+      const wdata={axis:+axis.toFixed(3),ref:+ref.toFixed(3),flat:+flat.toFixed(4),now:nowV===null?null:+nowV.toFixed(3),hi:goalHigh(),rate:+rate.toFixed(3),today:state.date,base:nl?nl.date:state.date,nowName:nl?'estimated level':'latest morning'};
+      gauge=`<div class="st-ev-g${canWhat?' is-what':''}" ${canWhat?`role="slider" tabindex="0" aria-label="What-if pace" aria-valuemin="0" aria-valuemax="${(axis*ref/100).toFixed(2)}" aria-valuenow="${Math.max(0,-rate).toFixed(2)}" aria-valuetext="${esc(`Your ${N.rateSpan(plateau).label}, ${Math.abs(rate).toFixed(2)} kilograms a week. Arrow keys try another pace.`)}" data-st-ev="${esc(JSON.stringify(wdata))}"`:`role="img" aria-label="${esc(gl)}"`}><div class="st-ev-z"><i class="z-flat" style="width:${w(flat)}%"></i><i class="z-steady" style="width:${(w(1)-w(flat)).toFixed(2)}%"></i><i class="z-fast" style="flex:1"></i></div><i class="st-ev-mk" style="left:${w(Math.max(0,-pct))}%"></i>${canWhat?'<i class="st-ev-trail" hidden></i><i class="st-ev-gk" hidden></i><span class="st-ev-gkl" hidden></span>':''}<div class="st-ev-zl" aria-hidden="true"><span>Flat</span>${axis<=2.2?`<span class="is-mid is-steady" style="left:${w((flat+1)/2)}%">Steady</span>`:''}<span class="is-mid" style="left:${w(1)}%">1% line</span><span>Fast</span></div></div>${canWhat?'<p class="st-ev-hint" aria-hidden="true">Drag the marker to try another pace</p>':''}`;
     }
     const plateauLine=!ok?esc((plateau&&plateau.reason)||''):plateau.plateau?'':plateau.status==='losing'?'No plateau: still trending down.':esc(plateau.reason||'');
     const plateauTile=ok&&plateau.plateau?`<div class="st-ev-t is-wide is-watch"><p>Plateau</p><b>${esc(String(plateau.plateauDays))} days</b><span>${esc(plateau.reason||'')}</span></div>`:'';
@@ -1613,7 +1664,11 @@ Object.assign(NXT, (()=>{
         const lvl=N.finite(fv.originLevel),nl=N.nowLevel(),same=lvl!==null&&nl&&Math.abs(nl.value-lvl)<.05;
         const on=fv.freshness==='aging'?'on '+N.shortDate(fv.modelOriginDate):'';
         const basis=pace===null?"At your last 3 weeks' pace":same?`From ${lvl.toFixed(1)} kg ${on||'now'}, at your last 3 weeks' pace of ${sgn(pace)} kg/wk`:lvl!==null?`Your last 3 weeks: ${lvl.toFixed(1)} kg ${on||'today'}, ${sgn(pace)} kg/wk`:`At your last 3 weeks' pace, ${sgn(pace)} kg/wk`;
-        proj=`<b class="vn-num">~<span data-st-num>${wk}</span> wk${range}</b><em>around ${esc(d)}${fw.asOf?` · ${esc(fw.asOf)}`:''}</em><span>${basis}.${fw.restart?' '+esc(fw.restart):''} An estimate, not a measurement.</span>`;
+        /* Projection range (CONTRACTS §3, W6): the arrival window as two dates, "Likely between", never a
+           percentage, and "an estimate, not a promise". Nothing here is dated while the forecast is paused (the
+           branch above prints no future date). */
+        const pr=fv.arrivalLow&&fv.arrivalHigh&&fv.arrivalLow!==fv.arrivalHigh?`<b>Projection range</b> · Likely between ${esc(N.shortDate(fv.arrivalLow))} and ${esc(N.shortDate(fv.arrivalHigh))}. `:'';
+        proj=`<b class="vn-num">~<span data-st-num>${wk}</span> wk${range}</b><em>around ${esc(d)}${fw.asOf?` · ${esc(fw.asOf)}`:''}</em><span>${pr}${basis}.${fw.restart?' '+esc(fw.restart):''} An estimate, not a promise.</span>`;
       }
     } else proj=`<b>Unavailable</b><span>${esc((forecastRead&&forecastRead.reason)||'Not enough recent weigh-ins for a projection.')}</span>`;
     /* D107: this word is detectPlateau's half-width bucket, i.e. how tightly the rate is pinned down, so it is
@@ -1621,15 +1676,24 @@ Object.assign(NXT, (()=>{
     const rs=N.rateSpan(plateau);
     const conf=plateau&&plateau.confidence&&plateau.confidence!=='none'?plateau.confidence:null;
     const steps=conf==='high'?3:conf==='medium'?2:conf==='low'?1:0;
-    const confTxt=band?`The ${rs.label} is known to within ±${band.half.toFixed(2)} kg a week.${conf==='high'?'':' More mornings and steadier readings tighten it.'}`:'How tightly the rate is known, from your morning readings.';
+    /* Rate range and Rate precision copy (CONTRACTS §4, W6): "Likely between A and B kg/wk over the last four
+       weeks." and "The 4-week rate is likely within ±X kg a week." No frequency is printed ("known to within",
+       "95%" and "9 in 10" are retired). An N-day rate names its own span in place of "four weeks". */
+    const over=rs.full?'four weeks':`${rs.days} days`;
+    const confTxt=band?`The ${rs.label} is likely within ±${band.half.toFixed(2)} kg a week.${conf==='high'?'':' More mornings and steadier readings tighten it.'}`:'How tightly the rate is pinned down, from your morning readings.';
+    const rangeTxt=band?`<b>Rate range</b> · Likely between ${Math.abs(band.hi)<=Math.abs(band.lo)?`${sgn(band.hi)} and ${sgn(band.lo)}`:`${sgn(band.lo)} and ${sgn(band.hi)}`} kg/wk over the last ${over}. `:'';
+    /* Rewind (spec §13.2): the journey replays the past, the analysis does not; while rewound this line reads
+       "Current analysis · as of <date>" (strata.js composes and unhides it with the journey's capsule, so the
+       words are not in a default render). */
+    const current=`<p class="wx-current" data-wx-current="${esc(N.shortDate(state.date))}" hidden></p>`;
     return `<section class="vn-evidence st-ev">
-      <p class="vn-h-sect">Evidence</p>
+      <p class="vn-h-sect">Evidence</p>${current}
       <div class="st-ev-rate ${tone}">
         <div class="st-ev-rt"><p>${ok?esc(rs.label):'4-week rate'}</p>${word?`<span class="st-ev-pill ${tone}"><i aria-hidden="true"></i>${esc(word)}</span>`:''}</div>
         <div class="st-ev-rv vn-num"><span data-st-num>${rateV}</span>${rate===null?'':'<small> kg/wk</small>'}</div>
         ${pct!==null?`<p class="st-ev-pct">${pct>0?'+':''}${Math.abs(pct).toFixed(1)}% of body weight a week</p>`:''}
         ${gauge}
-        ${band||plateauLine?`<p class="st-ev-note">${band?`Likely between ${Math.abs(band.hi)<=Math.abs(band.lo)?`${sgn(band.hi)} and ${sgn(band.lo)}`:`${sgn(band.lo)} and ${sgn(band.hi)}`} kg/wk. `:''}${plateauLine}</p>`:''}
+        ${band||plateauLine?`<p class="st-ev-note">${rangeTxt}${plateauLine}</p>`:''}
       </div>
       ${opts.rax===false?'':rateTrendHTML(sgn)}
       ${plateauTile}
@@ -1640,12 +1704,15 @@ Object.assign(NXT, (()=>{
     </section>`;
   }
   function chartHTML() {
-    const model=chartModel();N.ui.chart=model;
+    /* Compare (spec §11): the x-window widens over both compared windows; the model carries the view for the
+       plot's bands and the slot's table. The builders live after chartHTML. */
+    const cv=N.ui.compare?compareView():null;
+    const model=chartModel(undefined,undefined,undefined,chartGeo(),cv&&cv.ok?cv.win:null);model.compare=cv;N.ui.chart=model;
     const {visible}=model;
     const latestKey=visible.length?visible.at(-1).date+':'+visible.at(-1).weight:'';
     const grew=!!(N.ui.lastPlotted&&latestKey&&latestKey!==N.ui.lastPlotted);
     N.ui.lastPlotted=latestKey;
-    const animClass=N.ui.chartAnim==='range'?' is-range-change':N.ui.chartAnim==='layer'?' is-layer-change':grew?' is-new-point':'';
+    const animClass=N.ui.chartAnim==='range'?' is-range-change':N.ui.chartAnim==='layer'?' is-layer-change':N.ui.chartAnim==='compare'?' is-compare-change':grew?' is-new-point':'';
     N.ui.chartAnim=null;
     /* Weight "Instrument" (spec §2): the plate (interpretation, readouts, range row, layers, plot, slot) is the
        page's first section and holds no nested section, then the highlights, the Cut journey and Analysis. The
@@ -1656,7 +1723,7 @@ Object.assign(NXT, (()=>{
     const idx=sel>=0?sel:points.length-1;
     const after=typeof N.highlightsHTML==='function'?N.highlightsHTML():'';
     return `${plateHTML(model,idx,animClass)}${after}
-      ${journeyHTML(forecastRead,model.forecastView)}
+      ${journeyHTML(forecastRead,model.forecastView,{mode:'summary'})}
       ${analysisHTML(model,plateau)}`;
   }
   /* ---- Weight "Instrument" builders (spec §2–§7, §12, §14; proposed D118, D119) ------------------------------
@@ -1826,7 +1893,7 @@ Object.assign(NXT, (()=>{
         <div><small>Lowest</small><b class="vn-num">${low.weight.toFixed(1)}<em>kg</em></b><span>${esc(N.shortDate(low.date))}</span></div>
         <div><small>Weighed</small><b class="vn-num">${pts.length}<em> of ${days}</em></b><span>${Math.round(pts.length/days*100)}%</span></div>`;
     return `<div class="wx-sum" role="group" aria-label="This range">
-        <p class="wx-sum-h">${esc(rangeName())} · ${esc(spanText(model.start,state.date))}</p>
+        <p class="wx-sum-h"><span>${esc(rangeName())} · ${esc(spanText(model.start,state.date))}</span>${compareButtonHTML()}</p>
         <div class="wx-sum-c">${cells}</div>
         ${isCut&&ch!==null?`<p class="wx-sum-x">Trend change <b class="vn-num">${kgSigned(ch)} kg</b> over ${over} ${N.plural(over,'day')}</p>`:''}
       </div>`;
@@ -1853,10 +1920,11 @@ Object.assign(NXT, (()=>{
         aria-valuemin="0" aria-valuemax="${n-1}" aria-valuenow="${idx}" aria-valuetext="${esc(pointWords(p))}" aria-describedby="wx-sr-sum"
         onpointerdown="NXT.scrub(event)" onpointermove="NXT.scrub(event)" onpointerup="NXT.scrubUp(event)" onpointercancel="NXT.scrubCancel(event)"
         onkeydown="NXT.chartKey(event)">${plotHTML(model,{idx,animClass})}</div>
+      ${legendHTML(model)}
       ${wide?selectionHTML(model,idx,true):''}
       <p class="st-sr" id="wx-sr-sum">${esc(srSummary(model))}</p>
       <p class="st-sr" id="wx-sel-sr" aria-live="polite"></p>
-      <div class="wx-slot" id="wx-slot" data-wx-slot="${N.ui.selected&&!isLatest?'select':'summary'}">${rangeReadHTML(model)}${wide?'':selectionHTML(model,idx,false)}</div>
+      <div class="wx-slot${model.compare?' is-cmp':''}" id="wx-slot" data-wx-slot="${N.ui.selected&&!isLatest?'select':'summary'}">${model.compare?compareHTML(model):rangeReadHTML(model)}${wide?'':selectionHTML(model,idx,false)}</div>
       <input type="hidden" id="n99-chart-slider" value="${idx}" aria-hidden="true">
     </section>`;
   }
@@ -2034,6 +2102,20 @@ Object.assign(NXT, (()=>{
     const low=n>=7?points.reduce((a,q)=>q.weight<a.weight?q:a,points[0]):null;
     const lowRing=low&&low!==points.at(-1)?`<circle class="wx-low" cx="${px(low.x)}" cy="${px(low.y)}" r="6.5"/>`:'';
     const hasStem=p.ty!==null&&p.ty!==undefined&&Math.abs(p.y-p.ty)>3;
+    /* Compare (spec §11): "Before" on the hatch, "This range" on a faint violet wash, an uncompared stretch between
+       them dimmed; the same marks are drawn in both windows (nothing shifted, nothing interpolated) and a veil
+       over the "before" window lowers their emphasis. The window labels take the bottom lane. */
+    const cv=m.compare&&m.compare.ok?m.compare:null;
+    let cmpBands='',cmpVeil='',cmpLabs='';
+    if(cv){
+      const A=cv.cw.before,B=cv.cw.current,bTo=B.to>state.date?state.date:B.to;
+      const xa1=Math.max(left,m.x(A.from)-3),xa2=Math.min(plotR,m.x(A.to)+3),xb1=Math.max(left,m.x(B.from)-3),xb2=Math.min(plotR,m.x(bTo)+3);
+      const band=(cls,x1,x2)=>x2-x1>1?`<rect class="${cls}" x="${px(x1)}" y="${top}" width="${px(x2-x1)}" height="${px(base-top)}"/>`:'';
+      cmpBands=band('wx-cmp-before',xa1,xa2)+band('wx-cmp-cur',xb1,xb2)+(xb1-xa2>4?band('wx-cmp-gap',xa2,xb1):'');
+      cmpVeil=band('wx-cmp-veil',xa1,xa2)+(xb1-xa2>4?band('wx-cmp-veil is-gap',xa2,xb1):'');
+      const lab=(x1,x2,t,short)=>{const w=x2-x1,full=t.length*5.9+6;return `<text class="wx-x wx-cmp-l" x="${px((x1+x2)/2)}" y="${xY}" text-anchor="middle">${esc(full<=w?t:short)}</text>`;};
+      cmpLabs=lab(xa1,xa2,`Before · ${spanText(A.from,A.to)}`,'Before')+lab(xb1,xb2,'This range','Now');
+    }
     return `<svg id="n99-chart-svg" class="n99-chart-svg vn-chart-svg wx-svg${o.animClass||''}${n>45?' is-busy':''}" viewBox="0 0 ${W} ${H}" aria-hidden="true" focusable="false">
         <defs>
           <clipPath id="vn-chart-clip"><rect id="vn-chart-clip-r" x="${left}" y="${top}" width="${W-left-right}" height="${base-top}"/></clipPath>
@@ -2046,14 +2128,14 @@ Object.assign(NXT, (()=>{
         <line class="wx-hair" x1="${left}" x2="${plotR}" y1="${top}" y2="${top}"/><line class="wx-hair" x1="${left}" x2="${plotR}" y1="${px(base)}" y2="${px(base)}"/>
         ${grid}
         <g clip-path="url(#vn-chart-clip)" pointer-events="none">
-          ${weekBands}${gapCols}${today}${cone}${spread}${area}${notes}${postSeries}${trend}${projLine}${dots}${stepMarks}${lowRing}
+          ${cmpBands}${weekBands}${gapCols}${today}${cone}${spread}${area}${notes}${postSeries}${trend}${projLine}${dots}${stepMarks}${lowRing}${cmpVeil}
           <line id="n99-chart-cursor" class="wx-cur" x1="${px(p.x)}" x2="${px(p.x)}" y1="${top}" y2="${px(base)}"/>
           <line id="st-stem" class="st-stem" x1="${px(p.x)}" x2="${px(p.x)}" y1="${px(p.y)}" y2="${hasStem?px(p.ty):px(p.y)}" visibility="${hasStem&&idx!==n-1?'visible':'hidden'}"/>
         </g>
         ${anchor&&forecast?`<circle cx="${px(anchor.x)}" cy="${px(anchor.y)}" r="4" fill="${CHART.ink}" stroke="${CHART.activeRing}" stroke-width="2" pointer-events="none"/>`:''}
         <circle id="st-chart-halo" class="st-halo" cx="${px(p.x)}" cy="${px(p.y)}" r="11" pointer-events="none"/>
         <circle id="n99-chart-active" cx="${px(p.x)}" cy="${px(p.y)}" r="5" pointer-events="none"/>
-        ${goalPill}${tickTxt}${tag}${xLabs}
+        ${goalPill}${tickTxt}${tag}${cv?cmpLabs:xLabs}
       </svg>`;
   }
   /* Empty plate (spec §15): the same frame with its first step. Contextual-only weigh-ins (D14) are not denied:
@@ -2148,6 +2230,259 @@ Object.assign(NXT, (()=>{
   function layerChip(name,el) {
     if(el&&el.getAttribute('aria-disabled')==='true'){const why=el.querySelector('small');if(why&&typeof toast==='function')toast(why.textContent);return;}
     N.setLayer(name,undefined,()=>{const again=typeof document!=='undefined'&&document.querySelector(`[data-wx-layer="${name}"]`);if(again&&again.focus)again.focus({preventScroll:true});});
+  }
+  /* ---- Compare periods, presentation (spec §11, §12; D110 engine; w4) ----------------------------------------
+     N.ui.compare is memory only: null, or {kind, quantity}. compareView() reads the engine's windows and figures;
+     the plot takes its x-window from it and the slot shows the table. No significance language anywhere. */
+  const CMP_KINDS=[['previous','Previous'],['sameDays','Same days last month'],['completed','Completed'],['firstLast','First vs last 4 weeks']];
+  const CMP_QTY=[['avg','Average morning'],['trendChange','Trend change'],['low','Lowest morning']];
+  const RANGE_SHORT={14:'2W',30:'1M',90:'3M'};
+  function cmpRange() { return N.ui.range==='cut'||!N.ui.range?'cut':N.ui.range; }
+  function compareView(kind,quantity) {
+    const c=N.ui.compare||{};kind=kind||c.kind||'previous';quantity=quantity||c.quantity||'avg';
+    const range=cmpRange(),cw=N.compareWindows(range,kind,state.date);
+    if(!cw.ok)return {ok:false,kind,quantity,range,reason:cw.reason||'Not available',cw,cp:null,win:null};
+    const cp=N.comparePeriods(N.weights(),cw.before,cw.current,quantity);
+    return {ok:true,kind,quantity,range,cw,cp,win:{from:cw.before.from,to:cw.current.to},reason:cp.ok?'':cp.reason};
+  }
+  /* The first kind that compares on this range decides whether the capsule is live; the reason comes from the
+     default kind (W5 / D115: disabled with its reason, never hidden). */
+  function compareAvail() {
+    let why='';
+    for(const [k] of CMP_KINDS){const v=compareView(k,'avg');if(v.ok&&v.cp.ok)return {ok:true,kind:k,why:''};if(!why)why=v.reason;}
+    return {ok:false,kind:null,why:why||'Not enough mornings to compare'};
+  }
+  function compareButtonHTML() {
+    const on=!!N.ui.compare;
+    if(on)return '';
+    const a=compareAvail();
+    if(a.ok)return `<button type="button" class="wx-cmp-b" id="wx-cmp-b" aria-pressed="false" onclick="NXT.toggleCompare()"><i aria-hidden="true">⇄</i>Compare</button>`;
+    return `<span class="wx-cmp-off"><button type="button" class="wx-cmp-b is-off" id="wx-cmp-b" aria-pressed="false" aria-disabled="true" aria-describedby="wx-cmp-why" onclick="NXT.layerChip('compare',this)"><i aria-hidden="true">⇄</i>Compare</button><small id="wx-cmp-why">${esc(a.why)}</small></span>`;
+  }
+  function cmpKindWord(kind,range) {
+    const r=range==='cut'?'cut':RANGE_SHORT[range]||`${range} days`;
+    if(kind==='previous')return `Previous ${range==='cut'?'span':r}`;
+    if(kind==='completed')return Math.round(Number(range))<28?'Completed weeks':'Completed months';
+    return CMP_KINDS.find(k=>k[0]===kind)[1];
+  }
+  function cmpValue(s,quantity) {
+    if(!s)return '—';
+    if(quantity==='low')return s.low?`${s.low.weight.toFixed(1)} kg · ${N.shortDate(s.low.date)}`:'—';
+    if(quantity==='trendChange')return s.trendChange===null?'—':`${kgSigned(s.trendChange)} kg`;
+    return s.avg===null||s.avg===undefined?'—':`${s.avg.toFixed(1)} kg`;
+  }
+  function compareHTML(model) {
+    const cv=model.compare||compareView(),range=cv.range,qName=CMP_QTY.find(q=>q[0]===cv.quantity)[1];
+    const kinds=CMP_KINDS.filter(([k])=>k!=='firstLast'||range==='cut').map(([k])=>{
+      const v=k===cv.kind?cv:compareView(k,cv.quantity),live=v.ok&&v.cp.ok,why=live?'':(v.reason||'Not available'),rid=`wx-cmp-why-${k}`;
+      return `<button type="button" class="wx-lc${live?'':' is-off'}" data-wx-cmp-kind="${k}" aria-pressed="${k===cv.kind}"${live?'':` aria-disabled="true" aria-describedby="${rid}"`} onclick="NXT.setCompare({kind:'${k}'},this)"><span>${esc(cmpKindWord(k,range))}</span>${live?'':`<small id="${rid}">${esc(why)}</small>`}</button>`;
+    }).join('');
+    const qtys=CMP_QTY.map(([q,name])=>`<button type="button" class="wx-lc" data-wx-cmp-q="${q}" aria-pressed="${q===cv.quantity}" onclick="NXT.setCompare({quantity:'${q}'},this)"><span>${esc(name)}</span></button>`).join('');
+    const head=`<div class="wx-cmp-h"><p class="wx-sum-h"><span>${esc(rangeName())} vs ${esc(cmpKindWord(cv.kind,range).replace(/^(Previous|Completed|Same|First)/,m=>m.toLowerCase()))}</span></p><button type="button" class="wx-cmp-done" id="wx-cmp-done" onclick="NXT.setCompare(null)">Done</button></div>`;
+    let table='',foot='';
+    if(cv.cw&&cv.cw.before&&cv.cw.current){
+      const A=cv.cp?cv.cp.a:null,B=cv.cp?cv.cp.b:null,wa=cv.cw.before,wb=cv.cw.current;
+      const status=s=>s?(s.partial&&s.elapsed?`In progress · ${s.elapsed} of ${s.total} days`:s.completed?'Completed':''):'';
+      const row=(name,w,s)=>`<tr><th scope="row">${esc(name)}<small>${esc(spanText(w.from,w.to>state.date?state.date:w.to))}</small>${status(s)?`<small class="wx-cmp-st">${esc(status(s))}</small>`:''}</th><td>${s?`${s.n} of ${s.days}<small> · ${Math.round(s.coverage*100)}%</small>`:'—'}</td><td class="vn-num">${esc(cmpValue(s,cv.quantity))}</td></tr>`;
+      const ok=!!(cv.cp&&cv.cp.ok),diff=ok?cv.cp.diff:null;
+      table=`<table class="wx-cmp-t"><caption class="st-sr">${esc(qName)} in two windows: ${esc(wa.label||spanText(wa.from,wa.to))} and ${esc(wb.label||spanText(wb.from,wb.to))}.</caption>
+          <thead><tr><th scope="col">Window</th><th scope="col">Mornings</th><th scope="col">${esc(qName)}</th></tr></thead>
+          <tbody>${row('Before',wa,A)}${row('This range',wb,B)}
+          <tr class="is-chg"><th scope="row">Change</th><td></td><td class="vn-num"><b>${ok?esc(kgSigned(diff))+' kg':'—'}</b></td></tr></tbody></table>`;
+      const base=cv.quantity==='low'?'A difference between your lowest mornings in two windows, not a test.':cv.quantity==='trendChange'?'A difference between two changes in your smoothed trend, not a test.':'A difference between two averages of your mornings, not a test.';
+      foot=`<p class="wx-cmp-f">${base}</p>${ok&&cv.cp.roundingNote?'<p class="wx-cmp-f">Averages are rounded to 0.1 kg; the change uses the unrounded averages.</p>':''}${ok?'':`<p class="wx-cmp-f is-why"><i aria-hidden="true">◆</i>${esc(cv.cp?cv.cp.reason:cv.reason)}</p>`}`;
+    } else foot=`<p class="wx-cmp-f is-why"><i aria-hidden="true">◆</i>${esc(cv.reason||'Not available')}</p>`;
+    return `<div class="wx-cmp" id="wx-cmp" role="group" aria-label="Compare periods" onkeydown="if(event.key==='Escape'){event.preventDefault();event.stopPropagation();NXT.setCompare(null);}">
+        ${head}
+        <div class="wx-cmp-k wx-layers" role="group" aria-label="Comparison">${kinds}</div>
+        <div class="wx-cmp-k wx-layers" role="group" aria-label="Quantity">${qtys}</div>
+        ${table}${foot}
+      </div>`;
+  }
+  /* Compare on / off and its kind / quantity: memory only; the plot's x rescale crossfades 320 ms (is-compare-change),
+     instant under reduced motion. Focus returns to the control that was pressed, as a layer chip does. */
+  function setCompare(patch,el) {
+    if(el&&el.getAttribute&&el.getAttribute('aria-disabled')==='true'){const why=el.querySelector&&el.querySelector('small');if(why&&typeof toast==='function')toast(why.textContent);return N.ui.compare;}
+    const was=N.ui.compare;
+    if(patch===null)N.ui.compare=null;
+    else {const a=!was?compareAvail():null;N.ui.compare={kind:patch.kind||(was&&was.kind)||(a&&a.kind)||'previous',quantity:patch.quantity||(was&&was.quantity)||'avg'};}
+    if(!!was!==!!N.ui.compare){N.ui.selected=null;N.ui.chartAnim='compare';}
+    const after=()=>{
+      if(typeof document==='undefined')return;
+      const back=N.ui.compare?(patch&&patch.kind?`[data-wx-cmp-kind="${patch.kind}"]`:patch&&patch.quantity?`[data-wx-cmp-q="${patch.quantity}"]`:'#wx-cmp-done'):'#wx-cmp-b';
+      const el2=document.querySelector(back);if(el2&&el2.focus)el2.focus({preventScroll:true});
+    };
+    const wrap=typeof document!=='undefined'&&document.getElementById('vn-chart-wrap');
+    const paint=()=>{N.repaint();after();};
+    if(wrap&&typeof STRATA==='object'&&STRATA&&typeof STRATA.morph==='function')STRATA.morph(wrap,paint);else paint();
+    return N.ui.compare;
+  }
+  function toggleCompare() { return setCompare(N.ui.compare?null:{}); }
+  /* The plot's legend row under the chart, present only while an opt-in band is drawn: "Day-to-day spread" has
+     its own entry whenever the band is on (CONTRACTS §5); Compare names its two windows. */
+  function legendHTML(model) {
+    const items=[];
+    if(N.ui.showSpread&&model.bands&&model.bands.length)items.push('<span><i class="wx-key-band" aria-hidden="true"></i>Day-to-day spread</span>');
+    if(model.compare&&model.compare.ok)items.push('<span><i class="wx-key-before" aria-hidden="true"></i>Before</span><span><i class="wx-key-cur" aria-hidden="true"></i>This range</span>');
+    return items.length?`<p class="wx-leg" id="wx-leg" aria-label="Chart legend">${items.join('')}</p>`:'';
+  }
+  /* ---- Expand (spec §10; w4) ------------------------------------------------------------------------------
+     A <dialog> inside #weightPage (so the plate's stylesheet applies) re-hosts the SAME nodes, never a clone: the
+     readouts, range row, Layers drawer, chart wrap, legend, sr summaries and the slot move into it and one
+     placeholder of their height is left behind. The plot is re-rendered with chartGeo('expand') for the dialog's
+     remaining height. The restore list runs on every exit (×, Esc / cancel, swipe down on the top bar, Open day,
+     a tab switch, a page re-render): nodes back before the placeholder, placeholder removed, the plot re-rendered
+     for the page, scroll restored, focus on Expand, N.ui.expanded = false. No history entry. A View Transition
+     when available, an instant swap under reduced motion. "Show as table" swaps the plot for a plain table. */
+  const XV_MOVE=['.wx-ro','.wx-rr','#wx-layers','#vn-chart-wrap','#wx-leg','#wx-sr-sum','#wx-sel-sr','#wx-slot'];
+  const XV={nodes:null,parent:null,scrollY:0,btn:null,busy:false,d:null};
+  function reducedMotion() {
+    try{const de=document.documentElement;if(de&&de.getAttribute('data-nxp-motion')==='reduced')return true;return !!(typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(_){return false;}
+  }
+  function el(tag,cls,id) { const e=document.createElement(tag);if(cls)e.className=cls;if(id)e.id=id;return e; }
+  function xvDialog() {
+    let d=XV.d&&XV.d.isConnected!==false?XV.d:null;
+    if(d)return d;
+    d=el('dialog','wx-xv','wx-xv');d.setAttribute('aria-labelledby','wx-xv-h');
+    const top=el('div','wx-xv-top','wx-xv-top'),x=el('button','wx-xv-x','wx-xv-x'),h=el('h2','wx-xv-h','wx-xv-h'),r=el('span','wx-xv-r','wx-xv-r'),tb=el('button','wx-xv-tb','wx-xv-tb');
+    x.type='button';x.setAttribute('aria-label','Close');x.innerHTML='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+    h.textContent='Weight';h.appendChild(r);
+    tb.type='button';tb.setAttribute('aria-pressed','false');tb.textContent='Show as table';
+    top.appendChild(x);top.appendChild(h);top.appendChild(tb);
+    const body=el('div','wx-xv-body','wx-xv-body'),table=el('div','wx-xv-table','wx-xv-table'),foot=el('div','wx-xv-foot','wx-xv-foot');
+    table.hidden=true;
+    d.appendChild(top);d.appendChild(body);d.appendChild(table);d.appendChild(foot);
+    XV.d=d;XV.top=top;XV.body=body;XV.foot=foot;XV.table=table;XV.x=x;XV.tb=tb;XV.r=r;
+    if(d.addEventListener){
+      x.addEventListener('click',()=>collapseChart());
+      tb.addEventListener('click',()=>xvToggleTable());
+      d.addEventListener('cancel',e=>{e.preventDefault();collapseChart();});
+      /* A close the app did not run itself (e.g. the browser's close watcher). Lifting an open dialog out of the DOM
+         for a re-render also queues a close event; by the time it lands the dialog is open again, so it is ignored. */
+      d.addEventListener('close',()=>{if(!XV.busy&&N.ui.expanded&&!d.open)collapseChart({silent:true});});
+      /* Swipe down on the top bar closes (bindSheets' rule: 120 px, or 40 px fast). */
+      let y0=null,t0=0;
+      top.addEventListener('pointerdown',e=>{if(e.target&&e.target.closest&&e.target.closest('button'))return;y0=e.clientY;t0=Date.now();try{top.setPointerCapture(e.pointerId);}catch(_){}});
+      top.addEventListener('pointermove',e=>{if(y0===null)return;const dy=e.clientY-y0;if(dy>120||(dy>40&&dy/Math.max(1,Date.now()-t0)>.6)){y0=null;collapseChart();}});
+      const end=()=>{y0=null;};top.addEventListener('pointerup',end);top.addEventListener('pointercancel',end);
+    }
+    const host=document.getElementById('weightPage')||document.body;
+    if(host&&host.appendChild)host.appendChild(d);
+    return d;
+  }
+  function xvRangeWords() { const m=N.ui.chart;return m&&m.start?`${rangeName()} · ${spanText(m.start,state.date)}`:rangeName(); }
+  /* The plot takes the dialog's remaining height: everything else in the dialog measured, the rest to the plot. */
+  function xvFit() {
+    const d=XV.d,wrap=document.getElementById('vn-chart-wrap');if(!d||!wrap)return;
+    const hh=e=>e&&Number(e.offsetHeight)||0;
+    const dh=Number(d.clientHeight)||chartSvh()||844;
+    const others=hh(XV.top)+hh(XV.foot)+[...(XV.body.children||[])].filter(c=>c!==wrap).reduce((s,c)=>s+hh(c),0);
+    const avail=dh-others-24;
+    N.ui.expandH=Math.max(232,Math.round(avail-(6+11+26)));
+    const w=Math.round(Number(wrap.clientWidth)||0);N.ui.chartW=N.ui.chartW||{};if(w>0)N.ui.chartW.expand=w;
+  }
+  /* Re-render the plot in place for the current kind (page or expand), keeping the model, selection and lane. */
+  function repaintPlot() {
+    const wrap=typeof document!=='undefined'&&document.getElementById('vn-chart-wrap');if(!wrap)return null;
+    const cv=N.ui.compare?compareView():null;
+    const model=chartModel(undefined,undefined,undefined,chartGeo(),cv&&cv.ok?cv.win:null);model.compare=cv;N.ui.chart=model;
+    const pts=model.points||[];if(!pts.length)return model;
+    const sel=N.ui.selected?pts.findIndex(p=>p.date===N.ui.selected):-1,idx=sel>=0?sel:pts.length-1;
+    wrap.innerHTML=plotHTML(model,{idx});
+    wrap.setAttribute('aria-valuemax',pts.length-1);wrap.setAttribute('aria-valuenow',idx);
+    if(typeof STRATA==='object'&&STRATA&&typeof STRATA.dressChart==='function')STRATA.dressChart();
+    if(sel>=0)N.selectPoint(sel);
+    return model;
+  }
+  function expandChart(opts={}) {
+    if(typeof document==='undefined')return false;
+    const plate=document.getElementById('vn-weight'),wrap=document.getElementById('vn-chart-wrap');
+    const m=N.ui.chart;if(!plate||!wrap||!wrap.parentNode||!m||!m.points||!m.points.length)return false;
+    const rehost=!!opts.rehost;
+    if(N.ui.expanded&&!rehost)return true;
+    const nodes=XV_MOVE.map(s=>plate.querySelector?plate.querySelector(s):null).filter(Boolean);
+    if(!nodes.includes(wrap))nodes.splice(Math.min(3,nodes.length),0,wrap);
+    const d=xvDialog(),old=XV.nodes||[];
+    XV.nodes=nodes;XV.parent=nodes[0].parentNode;XV.btn=plate.querySelector?plate.querySelector('.wx-xbtn'):null;
+    if(!rehost)XV.scrollY=typeof window!=='undefined'&&Number(window.scrollY)||0;
+    const ph=el('div','wx-ph','wx-ph');ph.setAttribute('aria-hidden','true');
+    const r1=nodes[0].getBoundingClientRect?nodes[0].getBoundingClientRect():null,r2=nodes.at(-1).getBoundingClientRect?nodes.at(-1).getBoundingClientRect():null;
+    ph.style.height=Math.max(0,Math.round(r1&&r2?r2.bottom-r1.top:0))+'px';
+    const pick=sel=>nodes.find(n=>n.id===sel.slice(1)||(n.classList&&n.classList.contains&&n.classList.contains(sel.slice(1))));
+    const run=()=>{
+      /* A rehost replaces what the dialog held: the previous render's nodes are dropped first. */
+      if(rehost)for(const n of old)if(n&&n.parentNode&&!nodes.includes(n))n.parentNode.removeChild(n);
+      XV.parent.insertBefore(ph,nodes[0]);
+      for(const s of ['.wx-ro','#vn-chart-wrap','#wx-leg','#wx-sr-sum','#wx-sel-sr','#wx-slot']){const n=pick(s);if(n)XV.body.appendChild(n);}
+      for(const s of ['.wx-rr','#wx-layers']){const n=pick(s);if(n)XV.foot.appendChild(n);}
+      N.ui.expanded=true;N.ui.chartKind='expand';
+      /* A re-render detached and re-appended the dialog (premium-ui progress()), which drops it from the top
+         layer while the open attribute stays, so a rehost closes and shows it again. */
+      XV.busy=true;try{if(rehost&&d.open&&typeof d.close==='function')d.close();if(!d.open&&typeof d.showModal==='function')d.showModal();}catch(_){}XV.busy=false;
+      if(XV.r)XV.r.textContent=xvRangeWords();
+      xvFit();repaintPlot();
+      if(N.ui.xvTable)xvTableSync();
+    };
+    const vt=!rehost&&!reducedMotion()&&typeof document.startViewTransition==='function';
+    if(vt){
+      wrap.style.viewTransitionName='wx-plot';document.documentElement.setAttribute('data-st-xv','');
+      const done=()=>{wrap.style.viewTransitionName='';document.documentElement.removeAttribute('data-st-xv');};
+      try{const t=document.startViewTransition(run);t.finished.then(done,done);if(t.ready&&t.ready.catch)t.ready.catch(()=>{});}catch(_){done();run();}
+    } else run();
+    if(!rehost&&XV.x&&XV.x.focus)XV.x.focus({preventScroll:true});
+    return true;
+  }
+  function collapseChart(opts={}) {
+    if(typeof document==='undefined'||!N.ui.expanded)return false;
+    const d=XV.d,ph=document.getElementById('wx-ph'),nodes=XV.nodes||[],parent=ph&&ph.parentNode?ph.parentNode:XV.parent;
+    const wrap=document.getElementById('vn-chart-wrap');
+    const run=()=>{
+      /* 1 · the nodes back where the placeholder stands, the placeholder removed */
+      if(parent&&parent.insertBefore)for(const n of nodes)if(n)parent.insertBefore(n,ph&&ph.parentNode===parent?ph:null);
+      if(ph&&ph.remove)ph.remove();
+      /* 5 · the flag, first, so a render in step 2 sees the page state */
+      N.ui.expanded=false;N.ui.chartKind='page';
+      if(N.ui.xvTable){N.ui.xvTable=false;if(wrap)wrap.hidden=false;const lg=document.getElementById('wx-leg');if(lg)lg.hidden=false;if(XV.table){XV.table.hidden=true;XV.table.innerHTML='';}if(XV.tb)XV.tb.setAttribute('aria-pressed','false');}
+      XV.busy=true;try{if(d&&d.open&&typeof d.close==='function')d.close();}catch(_){}XV.busy=false;
+      /* 2 · the plot for the page */
+      if(opts.rerender!==false)repaintPlot();
+      /* 3 · the page's scroll */
+      if(opts.scroll!==false&&typeof window!=='undefined'&&window.scrollTo)window.scrollTo(0,XV.scrollY||0);
+      /* 4 · focus on Expand (skipped when leaving to History) */
+      if(opts.focus!==false){const b=(document.querySelector&&document.querySelector('#vn-weight .wx-xbtn'))||XV.btn;if(b&&b.focus)b.focus({preventScroll:true});}
+      XV.nodes=null;N.ui.xvRestores=(N.ui.xvRestores||0)+1;
+    };
+    const vt=!opts.silent&&!reducedMotion()&&typeof document.startViewTransition==='function'&&wrap;
+    if(vt){
+      wrap.style.viewTransitionName='wx-plot';document.documentElement.setAttribute('data-st-xv','');
+      const done=()=>{if(wrap)wrap.style.viewTransitionName='';document.documentElement.removeAttribute('data-st-xv');};
+      try{const t=document.startViewTransition(run);t.finished.then(done,done);if(t.ready&&t.ready.catch)t.ready.catch(()=>{});}catch(_){done();run();}
+    } else run();
+    return true;
+  }
+  /* Show as table (spec §10, §17): the range's mornings as a plain table — date, morning reading, smoothed trend
+     and the gap to it — with a caption and scoped headers; kg at 1 dp, U+2212. */
+  function chartTableHTML(model=N.ui.chart) {
+    const pts=model&&model.points?model.points:[];
+    const rows=[...pts].reverse().map(p=>`<tr><th scope="row">${esc(dayDate(p.date))}</th><td>${p.weight.toFixed(1)}</td><td>${p.avg===null||p.avg===undefined?'—':p.avg.toFixed(1)}</td><td>${p.avg===null||p.avg===undefined?'—':kgSigned(p.weight-p.avg)}</td></tr>`).join('');
+    return `<table class="wx-tbl"><caption>Morning readings and smoothed trend, kg · ${esc(xvRangeWords())}</caption>
+        <thead><tr><th scope="col">Date</th><th scope="col">Morning</th><th scope="col">Smoothed trend</th><th scope="col">vs trend</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  function xvTableSync() {
+    const wrap=document.getElementById('vn-chart-wrap'),lg=document.getElementById('wx-leg'),on=!!N.ui.xvTable;
+    if(XV.table){XV.table.hidden=!on;XV.table.innerHTML=on?chartTableHTML():'';}
+    if(wrap)wrap.hidden=on;if(lg)lg.hidden=on;
+    if(XV.tb){XV.tb.setAttribute('aria-pressed',String(on));XV.tb.textContent=on?'Show as chart':'Show as table';}
+  }
+  function xvToggleTable(force) { if(!N.ui.expanded)return false;N.ui.xvTable=force===undefined?!N.ui.xvTable:!!force;xvTableSync();return N.ui.xvTable; }
+  /* ⌄ Details on the Cut journey (spec §13.1–13.2): opens the rest in place, memory only (N.ui.jrOpen). */
+  function jrToggle(force) {
+    N.ui.jrOpen=force===undefined?!N.ui.jrOpen:!!force;
+    const more=typeof document!=='undefined'&&document.getElementById('st-jr-more'),b=more&&document.getElementById('st-jr-det');
+    const sec=more&&more.closest?more.closest('.st-jr'):null;
+    const apply=()=>{if(more)more.hidden=!N.ui.jrOpen;if(b)b.setAttribute('aria-expanded',String(N.ui.jrOpen));if(sec&&sec.classList)sec.classList.toggle('is-open',N.ui.jrOpen);};
+    if(sec&&typeof STRATA==='object'&&STRATA&&typeof STRATA.morph==='function')STRATA.morph(sec,apply);else apply();
+    return N.ui.jrOpen;
   }
   /* Defined after chartHTML on purpose: the release gate reads chartModel…chartHTML as the weight chart's
      model, and this separate chart has its own axes. */
@@ -2351,7 +2686,9 @@ Object.assign(NXT, (()=>{
     if(key==='ArrowRight')go(Math.min(n-1,idx+1));
     else if(key==='ArrowLeft')go(Math.max(0,idx-1));
     else if(key==='Home')go(0);
-    else if(key==='End'||key==='Escape')go(n-1,{clear:true,glide:true});
+    else if(key==='End')go(n-1,{clear:true,glide:true});
+    /* Escape clears a selection; with nothing selected it is left to the host (inside Expand the dialog closes). */
+    else if(key==='Escape'){if(N.ui.selected)go(n-1,{clear:true,glide:true});}
     else if(key==='PageUp')go(stepDays(m.points,idx,-7));
     else if(key==='PageDown')go(stepDays(m.points,idx,7));
     else if(key==='Enter'){event.preventDefault();openChartDay(m.points[idx].date);}
@@ -2360,6 +2697,8 @@ Object.assign(NXT, (()=>{
   /* Open day (spec §8.6): remember where Weight was (memory only), then show that day in History. */
   function openChartDay(date) {
     if(!Number.isFinite(N.dateMs(date)))return;
+    /* Leaving to History runs the Expand restore list first (focus is not returned, spec §10). */
+    if(N.ui.expanded)collapseChart({focus:false,rerender:false,scroll:false});
     N.ui.returnTo={view:'overview',range:N.ui.range,selected:N.ui.selected,
       layers:{showWeekly:N.ui.showWeekly,showSpread:N.ui.showSpread,showNotes:N.ui.showNotes,showPost:N.ui.showPost,showForecast:N.ui.showForecast},
       compare:N.ui.compare,expanded:false,scrollY:typeof window!=='undefined'&&Number(window.scrollY)||0};
@@ -2539,7 +2878,7 @@ Object.assign(NXT, (()=>{
     if(!(await ask))return;
     state.bws=state.bws.filter(x=>x!==r);N.commit('Weigh-in deleted');
   }
-  return {signed,smoothPath,chartGeo,chartGeoChanged,chartModel,chartHTML,plotHTML,weeklySteps,layerState,lanePlace,weekBand,dayContext,backToLatest,returnToWeight,journeyHTML,wxRow,toggleLayers,layerChip,selectPoint,pointWords,scrub,scrubUp,scrubCancel,chartKey,openChartDay,setLayer,openNote,saveNote,removeNote,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
+  return {signed,smoothPath,chartGeo,chartGeoChanged,chartModel,chartHTML,plotHTML,weeklySteps,layerState,lanePlace,weekBand,dayContext,backToLatest,returnToWeight,journeyHTML,wxRow,toggleLayers,layerChip,compareView,compareAvail,compareHTML,setCompare,toggleCompare,legendHTML,expandChart,collapseChart,repaintPlot,chartTableHTML,xvToggleTable,jrToggle,selectPoint,pointWords,scrub,scrubUp,scrubCancel,chartKey,openChartDay,setLayer,openNote,saveNote,removeNote,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
 })());
 
 Object.assign(NXT, (()=>{
