@@ -3318,21 +3318,13 @@ html::after{content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;opa
 :root[data-nxp-motion="reduced"]::view-transition-group(*),:root[data-nxp-motion="reduced"]::view-transition-old(*),:root[data-nxp-motion="reduced"]::view-transition-new(*){animation:none !important}
 
 /* ---- D72 · Scroll-aware top chrome --------------------------------------------------------------------
-   A frosted strip behind the status bar once the page moves; a glass capsule with the tab's name when the
-   title has gone. Same material as the dock. --nxt-safe-top is the one place the inset is read. */
+   A capsule with the tab's name once the title has gone. The frosted strip behind the status bar is gone
+   (owner, 2026-10-20: "I don't want the blur at all"), and the capsule is solid for the same reason.
+   --nxt-safe-top is the one place the inset is read. */
 #stTop{position:fixed;left:0;right:0;top:0;z-index:62;pointer-events:none}
-#stTop .st-top-scrim{position:absolute;left:0;right:0;top:0;height:calc(var(--nxt-safe-top,0px) + 64px);
-  /* D154 · progressive blur: full frost at the edge, clear at the foot, so content melts into glass under the status bar. */
-  background:linear-gradient(180deg,rgba(7,6,11,.5) 0%,rgba(7,6,11,.28) 55%,rgba(7,6,11,0) 100%);
-  -webkit-backdrop-filter:blur(20px) saturate(1.4);backdrop-filter:blur(20px) saturate(1.4);
-  -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 45%,transparent 100%);mask-image:linear-gradient(to bottom,#000 0,#000 45%,transparent 100%);
-  opacity:0;transition:opacity .3s cubic-bezier(.32,.72,0,1)}/* at rest nothing is under it; the frost arrives with the first scroll and leaves during a workout (updateTop) */
-#stTop.is-scrolled .st-top-scrim{opacity:1}
-@media (prefers-reduced-transparency:reduce){#stTop .st-top-scrim{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(180deg,rgba(7,6,11,.96) 0%,rgba(7,6,11,.8) 55%,rgba(7,6,11,0) 100%)}}
 #stTop .st-top-bar{position:absolute;left:50%;top:calc(var(--nxt-safe-top,0px) + 8px);height:34px;padding:0 18px;border-radius:999px;border:0;margin:0;
-  background:linear-gradient(180deg,rgba(46,40,70,.62),rgba(24,21,36,.62));
+  background:linear-gradient(180deg,#2E2846,#181524);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(255,255,255,.06),0 10px 26px -12px rgba(0,0,0,.85),0 0 22px -10px rgba(139,92,246,.55);
-  -webkit-backdrop-filter:blur(22px) saturate(1.7);backdrop-filter:blur(22px) saturate(1.7);
   font:620 15px/34px var(--st-font-d);letter-spacing:-.01em;color:var(--st-ink);white-space:nowrap;
   opacity:0;transform:translate(-50%,-8px) scale(.94);transition:opacity .22s ease,transform .38s cubic-bezier(.32,.72,0,1);pointer-events:none}
 #stTop.is-compact .st-top-bar{opacity:1;transform:translate(-50%,0) scale(1);pointer-events:auto}
