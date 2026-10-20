@@ -341,7 +341,6 @@ button.st-tile:active{transform:scale(.985)}
 .st-today{padding-bottom:12px}
 .st-train-row{display:flex;align-items:center;justify-content:space-between;gap:14px}
 .st-train-id{min-width:0}
-.st-t-train .st-meta{margin-top:6px}
 .st-t-dec.vn-tone-watch{--c:var(--vn-review,#B8842A)}
 .st-evid{display:flex;flex-wrap:wrap;gap:8px 18px;font:450 13.5px var(--st-font);color:var(--st-ink-3)}
 .st-evid b{margin-left:6px;color:var(--st-ink);font-weight:550}
@@ -1637,7 +1636,6 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 
 .st-slow{margin:0 0 16px}
 #weightPage .st-slow{font:450 14px/1.45 var(--st-font) !important;color:var(--st-ink-3) !important}
-.st-tweek-top{margin-top:16px;margin-bottom:14px}
 
 /* Week strip: a glass rail with a glowing today. Same markup; styling only. */
 #homePage .st-tweek{border-top:0;padding-top:0}
@@ -2403,7 +2401,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 
 /* ---- Signature 1 · Today hero: the training card is lit in its session hue --- */
 #homePage .st-t-train{
-  padding:22px 20px 20px !important;
+  padding:var(--tf-pad,22px 20px 20px) !important;
   background:
     radial-gradient(140% 85% at 15% -10%,color-mix(in srgb,var(--c) 42%,transparent),transparent 62%),
     radial-gradient(80% 60% at 110% 10%,color-mix(in srgb,var(--c) 18%,transparent),transparent 70%),
@@ -2414,6 +2412,133 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
   background:linear-gradient(180deg,#fff 40%,color-mix(in srgb,var(--c) 45%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent}
 #homePage .st-t-train .st-cta{box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 14px 30px -12px rgba(124,58,237,.85),0 0 0 1px rgba(255,255,255,.08) inset !important}
 #homePage .st-head .st-h1{font-size:34px !important}
+
+/* ---- Today brief (stage 5) · masthead context line and the focus card ------------------------------
+   Every selector is #homePage .tf-* (or the cue sheet's own .tf-anat-s). Type scales with --tf-s (larger
+   text, F8), rhythm with --tf-gap; compact = max-height 740px, narrow = max-width 359px. No !important. */
+#homePage{--tf-s:1;--tf-gap:12px;--tf-pad:18px 20px 18px;--tf-cap:54px;--tf-cta:54px}
+:root[data-nxp-size="large"] #homePage{--tf-s:1.12}
+@media (max-height:740px){#homePage{--tf-gap:10px;--tf-pad:16px;--tf-cap:46px;--tf-cta:50px}}
+@media (max-width:359px){#homePage{--tf-gap:8px;--tf-pad:13px 16px 14px;--tf-cta:48px}}
+/* One line, never wrapped or cut: a fragment that does not fit wraps onto the hidden second row. */
+#homePage .tf-ctx{display:flex;flex-wrap:wrap;height:20px;overflow:hidden;margin:6px 0 0;font:450 calc(14px*var(--tf-s))/20px var(--st-font);color:var(--st-ink-2)}
+#homePage .tf-f{white-space:nowrap}
+#homePage .tf-f b{font-weight:600;color:var(--st-ink)}
+#homePage .tf-sep{white-space:pre;color:var(--st-ink-4)}
+@media (max-width:359px){#homePage .tf-ctx{height:18px;font-size:calc(13px*var(--tf-s));line-height:18px}}
+
+#homePage .tf-head{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;margin-bottom:4px}
+#homePage .tf-state{display:flex;align-items:center;gap:7px;min-width:0;margin:0;font:560 calc(12.5px*var(--tf-s))/16px var(--st-font-d);color:var(--st-ink-2)}
+#homePage .tf-state span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#homePage .tf-sh{flex:none;width:12px;height:12px;color:var(--c)}
+#homePage .tf-cap{position:relative;flex:none;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:0;border-radius:999px;cursor:pointer;
+  background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);color:var(--btn-ink);font:560 calc(13px*var(--tf-s))/1 var(--st-font-d);white-space:nowrap}
+#homePage .tf-cap::after{content:"";position:absolute;inset:-6px -2px}
+#homePage .tf-cap span{opacity:.75}
+#homePage .tf-h{margin:0;font:inherit}
+#homePage .tf-card .tf-title{position:relative;display:inline-flex;align-items:center;gap:10px;max-width:100%;padding:0;border:0;text-align:left}
+#homePage .tf-card button.tf-title{cursor:pointer}
+#homePage .tf-card button.tf-title::after{content:"";position:absolute;inset:-4px -6px}
+#homePage .tf-chev{display:grid;place-items:center;flex:none;width:18px;height:18px;border-radius:50%;background:rgba(var(--st-hl),.1);color:var(--st-ink-2)}
+#homePage .tf-chev svg{width:12px;height:12px}
+@media (max-width:359px){#homePage .tf-card .tf-title{font-size:30px}}
+
+/* The tape: one cell per planned working set. */
+#homePage .tf-tape{display:flex;gap:6px;height:7px;margin-top:var(--tf-gap)}
+#homePage .tf-tg{display:flex;gap:3px;min-width:0}
+#homePage .tf-tg i{flex:1 1 0;min-width:2px;height:100%;border-radius:2px;background:rgba(var(--st-hl),.13)}
+#homePage .tf-tg i.is-on{background:var(--c);box-shadow:0 0 8px color-mix(in srgb,var(--c) 55%,transparent)}
+#homePage .tf-tg.is-cur i:not(.is-on){background:transparent;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 85%,#fff)}
+#homePage .tf-tg.is-bar{border-radius:2px;background:rgba(var(--st-hl),.13);overflow:hidden}
+#homePage .tf-tg.is-bar i{display:block;min-width:0;background:var(--c)}
+@keyframes tf-lit{from{opacity:.15;transform:scaleY(.4)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:no-preference){
+  :root:not([data-nxp-motion="reduced"]) #homePage.st-enter .tf-tg i.is-on{animation:tf-lit 180ms var(--st-out) both;animation-delay:calc(var(--i,0)*16ms)}
+}
+#homePage .tf-tl{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:16px;margin-top:6px}
+/* The count's second fragment drops whole when it has no room (never cut mid-word). */
+#homePage .tf-count{display:flex;flex-wrap:wrap;min-width:0;height:16px;overflow:hidden;font:500 calc(12.5px*var(--tf-s))/16px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-count>span{white-space:pre}
+#homePage .tf-count b{font-weight:600;color:var(--st-ink)}
+#homePage .tf-plan-tg{position:relative;flex:none;display:inline-flex;align-items:center;gap:3px;padding:0;border:0;background:none;cursor:pointer;
+  color:var(--btn-text);font:600 calc(12.5px*var(--tf-s))/16px var(--st-font-d)}
+#homePage .tf-plan-tg::after{content:"";position:absolute;inset:-14px -10px}
+#homePage .tf-plan-tg i{font-style:normal;transition:transform .18s var(--st-out)}
+#homePage .tf-plan-tg[aria-expanded="true"] i{transform:rotate(90deg)}
+#homePage .tf-plan{margin:8px 0 0;padding:0;list-style:none}
+#homePage .tf-plan li{display:flex;justify-content:space-between;gap:12px;font:450 calc(13.5px*var(--tf-s))/20px var(--st-font);color:var(--st-ink-2)}
+#homePage .tf-plan li b{flex:none;font:560 calc(12px*var(--tf-s))/20px var(--st-font-d);color:color-mix(in srgb,var(--c) 55%,#fff)}
+
+/* L1 insets inside the card: the cue, the now well, the receipt, the next session. */
+#homePage .tf-well,#homePage .tf-receipt,#homePage .tf-next{border-radius:var(--r-card);background:rgba(var(--st-hl),.045);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.07)}
+#homePage .tf-well{display:flex;align-items:center;gap:6px;margin-top:var(--tf-gap)}
+#homePage .tf-well-b{display:flex;flex-direction:column;align-items:flex-start;flex:1;min-width:0;min-height:44px;padding:7px 14px;border:0;border-radius:inherit;background:none;color:inherit;text-align:left;cursor:pointer}
+#homePage .tf-well-b>span{max-width:100%}
+#homePage .tf-k{font:500 calc(12px*var(--tf-s))/16px var(--st-font);color:var(--st-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#homePage .tf-wt{font:600 calc(15px*var(--tf-s))/20px var(--st-font-d);letter-spacing:-.01em;color:var(--st-ink)}
+#homePage .tf-cue .tf-wt{font-size:calc(14.5px*var(--tf-s))}
+#homePage .tf-now .tf-wt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* One line of note keeps the card inside its budget (A-2, A-7); the whole note stays in the button's name. */
+#homePage .tf-wn{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden;font:450 calc(12.5px*var(--tf-s))/17px var(--st-font);color:var(--st-ink-3)}
+@media (max-width:359px){#homePage .tf-cue .tf-wn{display:none}}
+#homePage .tf-rest{position:relative;flex:none;display:grid;place-content:center;justify-items:center;width:52px;height:52px;margin-right:8px;padding:0;border:0;border-radius:50%;background:none;color:var(--st-ink);cursor:pointer}
+#homePage .tf-rest svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+#homePage .tf-rest circle{fill:none;stroke-width:3}
+#homePage .tf-rest .t{stroke:rgba(var(--st-hl),.12)}
+#homePage .tf-rest .a{stroke:var(--c);stroke-linecap:round;stroke-dasharray:1 1;stroke-dashoffset:calc(1 - var(--tf-rest-pct,0))}
+@media (prefers-reduced-motion:no-preference){:root:not([data-nxp-motion="reduced"]) #homePage .tf-rest .a{transition:stroke-dashoffset 1s linear}}
+#homePage .tf-rest b{font:500 calc(14px*var(--tf-s))/16px var(--st-font-d);font-variant-numeric:tabular-nums}
+#homePage .tf-rest small{font:500 11px/12px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-note{margin:var(--tf-gap) 0 0;font:450 calc(13px*var(--tf-s))/18px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-receipt{margin-top:var(--tf-gap);padding:10px 14px}
+#homePage .tf-oc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none}
+#homePage .tf-oc li{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:6px;min-width:0}
+#homePage .tf-oc b{font:300 calc(26px*var(--tf-s))/28px var(--st-font-d);font-variant-numeric:tabular-nums;color:var(--st-ink)}
+#homePage .tf-oc span{display:flex;align-items:center;gap:5px;font:500 calc(12px*var(--tf-s))/16px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-oc i{font-style:normal;font-size:11px;color:var(--c)}
+#homePage .tf-oc .is-below i{color:var(--st-ink-3)}
+#homePage .tf-rc-cap{margin:6px 0 0;font:450 calc(12.5px*var(--tf-s))/17px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-moment{display:flex;gap:6px;margin:4px 0 0;font:560 calc(13px*var(--tf-s))/18px var(--st-font-d);color:var(--st-ink)}
+#homePage .tf-moment i{font-style:normal;color:var(--c)}
+/* Narrow: counters stack evenly and the moment (a celebration) yields its two lines to the task. */
+@media (max-width:359px){#homePage .tf-oc li{flex-direction:column}#homePage .tf-moment{display:none}}
+#homePage .tf-meter{display:flex;flex-direction:column;gap:8px;margin-top:var(--tf-gap)}
+#homePage .tf-meter>span{display:block;height:6px;border-radius:3px;background:rgba(var(--st-hl),.1);overflow:hidden}
+#homePage .tf-meter>span i{display:block;height:100%;border-radius:inherit;background:var(--c)}
+#homePage .tf-meter b{font:300 calc(26px*var(--tf-s))/28px var(--st-font-d);font-variant-numeric:tabular-nums;color:var(--st-ink)}
+#homePage .tf-meter small{margin-left:3px;font:500 calc(13px*var(--tf-s))/1 var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-next{display:flex;flex-direction:column;align-items:flex-start;width:100%;margin-top:var(--tf-gap);padding:11px 14px;border:0;color:inherit;text-align:left;cursor:pointer}
+#homePage .tf-next .tf-k i{display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;background:var(--st-lift);vertical-align:1px}
+#homePage .tf-opts{display:flex;flex-wrap:wrap;gap:8px;margin-top:var(--tf-gap)}
+#homePage .tf-opts .tf-opt{padding:0 14px;font-size:calc(14px*var(--tf-s))}
+@media (max-width:359px){#homePage .tf-opts .tf-opt{padding:0 12px;font-size:calc(13px*var(--tf-s))}}
+#homePage .tf-addon{display:flex;align-items:center;gap:7px;margin:10px 0 0;font:500 calc(12.5px*var(--tf-s))/16px var(--st-font);color:var(--st-ink-2)}
+
+/* The rail stays the D48 capsules; the card owns its header and the conditional legend. */
+#homePage .tf-card .tf-rail{margin-top:14px}
+#homePage .tf-card .st-tweek [data-rail] .st-cap{height:var(--tf-cap)}
+#homePage .tf-rail-h{min-height:18px;margin-bottom:8px}
+#homePage .tf-rail-h .vn-text{position:relative;min-height:18px;line-height:18px}
+#homePage .tf-rail-h .vn-text::after{content:"";position:absolute;inset:-13px -8px}
+/* "today in progress" drops whole when the header has no room for it, never wrapping the count. */
+#homePage .tf-rh{display:flex;flex-wrap:wrap;min-width:0;height:18px;overflow:hidden;line-height:18px}
+#homePage .tf-rh>span{white-space:nowrap}
+@media (max-width:359px){#homePage .tf-ip{display:none}}
+#homePage .tf-legend{display:flex;flex-wrap:wrap;gap:4px 12px;margin:8px 0 0;font:500 calc(11px*var(--tf-s))/14px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-legend span{display:inline-flex;align-items:center;gap:5px}
+#homePage .tf-lg-m{width:11px;height:11px;color:var(--st-ink-2)}
+
+/* The button, always last: the page's only primary, or glass when the task is a review. */
+#homePage .tf-card .tf-cta{min-height:var(--tf-cta)}
+:is(#homePage,.tf-anat-s) .tf-glass{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border:0;border-radius:999px;cursor:pointer;
+  background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);color:var(--btn-ink);font:600 calc(15px*var(--tf-s,1))/1 var(--st-font-d)}
+#homePage .tf-glass.tf-cta{width:100%;margin-top:16px;font-size:calc(16px*var(--tf-s))}
+#homePage .tf-glass span[aria-hidden]{font-size:18px;opacity:.8}
+
+/* The cue sheet: the carried insight's evidence, suggestion and what it rests on. */
+.tf-anat-s .tf-anat{display:grid;gap:12px;margin:14px 0}
+.tf-anat-s .tf-anat dt{font:600 11.5px/14px var(--st-font-d);color:var(--st-ink-3)}
+.tf-anat-s .tf-anat dd{margin:4px 0 0;font:500 13.5px/18px var(--st-font);color:var(--st-ink-2)}
 
 /* ---- Signature 2 · the dock's active tab is a lit capsule ------------------ */
 .tabs .tabs-inner.st-dock::before{
@@ -2525,7 +2650,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #homePage .st-t-train .st-ghost{right:-34px !important;top:-30px !important;font-size:150px !important;opacity:.32 !important;
   background:linear-gradient(215deg,color-mix(in srgb,var(--c) 55%,transparent) 10%,transparent 60%) !important;-webkit-background-clip:text !important;background-clip:text !important}
 @media (max-width:359px){#homePage .st-t-train .st-ghost{font-size:120px !important}}
-@media (max-width:359px){#homePage .st-t-train{padding:20px 14px 18px !important}}
+@media (max-width:359px){#homePage .st-t-train{padding:var(--tf-pad,20px 14px 18px) !important}}
 
 /* =============================================================================
    D56 · Buttons: one capsule family

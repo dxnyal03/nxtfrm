@@ -67,12 +67,144 @@ const NXP = (() => {
     const v=(document.getElementById('nxp-name')?.value||'').replace(/\s+/g,' ').trim().slice(0,24);
     settings.name=v;N.commit('Name saved');
   }
+  /* ---- Stage 5 · Today briefing: pure reads ------------------------------------------------------
+     pickToday(), todayLine() and cueFor() decide what Today says, from structured engine output only.
+     No DOM, nothing written, no sentence composed: every string they return is an engine field, a
+     count, a name or a date, or one of a few fixed labels. home() lays out what they return. */
+  /* Evidence rows on a strength insight are named by lift; these labels are the engine's other rows. */
+  const TF_META=new Set(['Decision','Next planned','Rate precision','Plateau','Cardio this week']);
+  function tfLifts(it){
+    return (Array.isArray(it&&it.evidence)?it.evidence:[]).map(e=>e&&e.label).filter(l=>typeof l==='string'&&l&&!TF_META.has(l));
+  }
+  const tfIsCardioWeek=it=>!!it&&typeof it.id==='string'&&it.id.indexOf('cardio.week')===0;
+  /* The coach pool Today shows: the engine's ranked list minus weight.review (the Decision says it), first 3 (D61). */
+  function tfPool(list){
+    if(!Array.isArray(list))return [];
+    const all=Array.isArray(list.all)&&list.all.length?list.all:list;
+    return all.filter(it=>it&&it.id&&it.id!=='weight.review').slice(0,3);
+  }
+  /* The exercise the session is on: the selected one while it has sets left, else the first with sets
+     left (strata's resumeExercise rule). */
+  function tfCurrent(template,done,selected){
+    const left=e=>e&&(Number(done&&done[e.name])||0)<Number(e.sets);
+    const list=Array.isArray(template)?template:[];
+    return (list.find(e=>e&&e.name===selected&&left(e))||list.find(left)||null);
+  }
+  /* pickToday({review, insights, week, mode, dayType, template:[names], current, button})
+       carried  the insight the focus card's cue carries (strength act|watch on today's lifts, or this
+                week's cardio insight on a walk day)
+       lead     {kind:'decision'|'insight', variant:'watch'|'act'|'calm', place:'afterFocus'|'afterLog',
+                 item?, index?, hideAction}
+       digest   [{kind:'insight', item, index} | {kind:'decision'} | {kind:'week', item}] in engine order
+     Every pool item appears exactly once across carried, lead and digest; info never leads. */
+  function pickToday(input){
+    const i=input||{},pool=tfPool(i.insights),names=new Set(Array.isArray(i.template)?i.template:[]);
+    const mode=i.mode,walk=i.dayType==='Zone2';
+    let carried=null;
+    if(walk)carried=pool.find(tfIsCardioWeek)||null;
+    else if(mode==='today'||mode==='moved'||mode==='progress'){
+      carried=pool.find(it=>{
+        if(it.domain!=='strength'||(it.severity!=='act'&&it.severity!=='watch'))return false;
+        const L=tfLifts(it);
+        if(!L.length||!L.every(n=>names.has(n)))return false;
+        return mode==='progress'?!!i.current&&L.indexOf(i.current)!==-1:true;
+      })||null;
+    }
+    const rest=pool.filter(it=>it!==carried);
+    const r=i.review||null;
+    let lead;
+    if(r&&r.tone==='watch')lead={kind:'decision',variant:'watch',place:'afterFocus'};
+    else{
+      const w=rest.find(it=>it.severity==='watch'),a=w?null:rest.find(it=>it.severity==='act'),it=w||a;
+      lead=it?{kind:'insight',variant:w?'watch':'act',place:w?'afterFocus':'afterLog',item:it,index:pool.indexOf(it)}
+        :{kind:'decision',variant:'calm',place:'afterLog'};
+    }
+    /* An action that opens Train repeats the focus button while it says Start, Resume or Finish. */
+    const btn=String(i.button||'').toLowerCase();
+    const opensTrain=lead.item&&lead.item.action&&lead.item.action.payload&&lead.item.action.payload.tab==='train';
+    lead.hideAction=!!opensTrain&&/^(start|resume|finish)/.test(btn);
+    const digest=rest.filter(it=>it!==lead.item).map(it=>({kind:'insight',item:it,index:pool.indexOf(it)}));
+    if(lead.kind==='insight')digest.push({kind:'decision'});
+    if(i.week&&!i.week.seen)digest.push({kind:'week',item:i.week});
+    return {pool,carried,carriedIndex:carried?pool.indexOf(carried):-1,lead,digest,count:digest.length};
+  }
+  /* todayLine(facts) → [{t, strong?}] with .variant ('plain'|'watch'), .watchTitle and .cutWeek.
+     Fixed fragments (counts, names, dates); never a weight, a rate, a trend direction or a future date.
+     facts: {date, k, dayType, lift, week:[{date,type,lift,k}], gym, finishedAt ('10:00'), movedFrom,
+             cardioMin, cardioTarget, next:{label,date}, reason, cutStart, lead:{variant,title}} */
+  function todayLine(facts){
+    const f=facts||{},out=[],week=Array.isArray(f.week)?f.week:[];
+    const ord=keep=>{
+      const days=week.filter(keep).filter(x=>x.k!=='excused'&&x.k!=='moved'),n=days.length,k=days.findIndex(x=>x.date===f.date)+1;
+      return n&&k?{k,n}:null;
+    };
+    if(f.k==='excused'){
+      out.push({t:'Excused'+(f.reason&&f.reason!=='other'?' · '+f.reason:'')});
+    }else if(f.lift){
+      const o=ord(x=>x.lift),pos=o?{t:`Lifting day ${o.k} of ${o.n}`,strong:true}:null;
+      if(f.movedFrom&&coDate(f.movedFrom)&&f.movedFrom<=f.date){out.push({t:'Moved from '+coDayShort(f.movedFrom)});if(pos)out.push(pos);}
+      else{
+        if(pos)out.push(pos);
+        if(f.k==='finished'&&f.finishedAt)out.push({t:'finished '+f.finishedAt,strong:true});
+        else if(f.gym)out.push({t:String(f.gym)});
+      }
+    }else if(f.dayType==='Zone2'){
+      const o=ord(x=>x.type==='Zone2');
+      out.push({t:o?`Walk day ${o.k} of ${o.n}`:'Walk day',strong:!!o});
+      const m=coNum(f.cardioMin),tg=coNum(f.cardioTarget);
+      if(m!==null&&tg)out.push({t:`${Math.round(m)}/${Math.round(tg)} cardio min this week`,strong:true});
+    }else if(f.dayType==='Floorball'){
+      out.push({t:'Floorball day'});
+    }else{
+      out.push({t:'Rest day'});
+      if(f.next&&f.next.label&&coDate(f.next.date))out.push({t:`Next: ${f.next.label} ${coDow(f.next.date)}`});
+    }
+    const cs=N.dateMs(f.cutStart),dm=N.dateMs(f.date);
+    out.cutWeek=Number.isFinite(cs)&&Number.isFinite(dm)&&dm>=cs?Math.floor((dm-cs)/(7*864e5))+1:null;
+    const watch=f.lead&&f.lead.variant==='watch'&&f.lead.title;
+    out.variant=watch?'watch':'plain';
+    out.watchTitle=watch?String(f.lead.title):null;
+    return out;
+  }
+  /* The Lifts evidence reads the last completed lift session, never today's open one: a past day with
+     working sets, or today once it is finished. dates: the days with working sets (any order). */
+  function lastLiftSession(dates,today,todayFinished){
+    const ok=(Array.isArray(dates)?dates:[]).filter(d=>coDate(d)&&(d<today||(d===today&&!!todayFinished)));
+    return ok.length?ok.sort().at(-1):null;
+  }
+  /* cueFor({mode, dayType, template:[{name,sets}], done:{name:n}, selected, carried, advice})
+     → {kind:'cue'|'now'|'cardio', ex, index, setNo, sets, headline, note, target, hold, insight} | null.
+     The only text source is advice(ex) (coachAdvice: trainAdvice with the coordinator's hold), or the
+     carried cardio insight's own title and canDo. Nothing to say: null, and no cue well is drawn. */
+  function cueFor(m){
+    if(!m)return null;
+    const tpl=Array.isArray(m.template)?m.template:[],done=m.done||{},adv=typeof m.advice==='function'?m.advice:()=>null;
+    if(m.dayType==='Zone2'){
+      const c=m.carried;
+      return tfIsCardioWeek(c)?{kind:'cardio',ex:null,index:-1,headline:c.title,note:(c.why&&c.why.canDo)||'',target:null,hold:false,insight:c}:null;
+    }
+    let ex=null,kind;
+    if(m.mode==='progress'){kind='now';ex=tfCurrent(tpl,done,m.selected);}
+    else if(m.mode==='today'||m.mode==='moved'){
+      kind='cue';
+      const L=m.carried?tfLifts(m.carried):[];
+      ex=(L.length&&tpl.find(e=>e&&e.name===L[0]))||tpl[0]||null;
+    }else return null;
+    if(!ex)return null;
+    let a=null;try{a=adv(ex.name);}catch(e){a=null;}
+    if(!a||!a.headline)return null;
+    const n=Number(done[ex.name])||0,set=Array.isArray(a.sets)?a.sets[n]||null:null;
+    const L=m.carried?tfLifts(m.carried):[];
+    return {kind,ex:ex.name,index:tpl.indexOf(ex),setNo:Math.min(n+1,Number(ex.sets)||n+1),sets:Number(ex.sets)||0,
+      headline:String(a.headline),note:a.note?String(a.note):'',
+      target:set&&set.weight!==undefined&&set.reps!==undefined?{weight:set.weight,reps:set.reps}:null,
+      hold:!!(a.coordinated&&a.coordinated.hold),insight:m.carried&&L.indexOf(ex.name)!==-1?m.carried:null};
+  }
   function home() {
     applyAppearance();
     syncTrainNav(false);
     const list=template(),lift=!['Rest','Zone2','Floorball'].includes(state.dayType),finished=N.planDone();
     const s=N.trendStats(),r=N.review(),cal=N.finite(N.cfg().calories);
-    const action=lift?"startWorkoutNow()":state.dayType==='Zone2'?"showCardioSheet()":state.dayType==='Floorball'?"startWorkoutNow()":"apx96OpenReadiness()";
     const dayMs=N.dateMs(state.date);
     const weekday=Number.isFinite(dayMs)?new Date(dayMs).toLocaleDateString('en-SG',{weekday:'long',timeZone:'UTC'}):'';
     const dateLine=Number.isFinite(dayMs)?new Date(dayMs).toLocaleDateString('en-SG',{day:'numeric',month:'long',timeZone:'UTC'}):N.shortDate(state.date);
@@ -89,7 +221,7 @@ const NXP = (() => {
     const mean=s.current.avg===null?'—':s.current.avg.toFixed(2);
     const weekly=s.change===null?'Building':N.signed(s.change,2);
     const work=N.workRows();
-    const lastLift=[...new Set(work.map(row=>row.date))].sort().at(-1);
+    const lastLift=lastLiftSession([...new Set(work.map(row=>row.date))],state.date,!!N.planDone());
     const lastLiftRow=lastLift?work.find(row=>row.date===lastLift):null;
     const plateau=N.detectPlateau();
     /* D107 — the chip is named for the number it prints: the rate over its real span ("4-week rate", "15-day
@@ -100,7 +232,6 @@ const NXP = (() => {
     const toneClass=r.tone==='watch'?' vn-tone-watch':'';
     const support=r.message||r.reason||'';
     const morning=N.timingRows('Morning').find(row=>row.date===state.date)||null;
-    const sets=list.reduce((a,e)=>a+Number(e.sets),0);
     const nextDate=N.dateAdd(state.date,1);
     /* Ascension — the rail and its header read the coach's statuses, so an excused or moved
        day is neither "not logged" nor counted as a planned lift (NXT.coach.context().week).
@@ -132,13 +263,14 @@ const NXP = (() => {
         default:return '';
       }
     };
-    const weekStrip=`<div class="vn-week" data-rail="capsule" role="list">${dsWeek.map((x,i)=>{
+    const rove=Math.max(0,dsWeek.findIndex(x=>x&&x.today));/* the rail is one Tab stop: today's capsule, else Monday */
+    const weekStrip=`<div class="vn-week" data-rail="capsule" role="list" aria-label="This week" onkeydown="NXP.railKey(event)">${dsWeek.map((x,i)=>{
       const d=x.date,t=x.type,isToday=x.today,k=x.k;
       const short=k==='moved'?'Moved':weekShort[t]||String(t).slice(0,3);
       const day=Number.isFinite(N.dateMs(d))?new Date(N.dateMs(d)).toLocaleDateString('en-SG',{weekday:'narrow',timeZone:'UTC'}):['M','T','W','T','F','S','S'][i];
       const words=[isToday&&k!=='today'?'Today':'',k==='rest'?'':x.w,x.detail,x.addOn&&k!=='addon'?'add-on logged':''].filter(Boolean).join(' · ');
       const kind=({FullA:'full',FullB:'full',FullC:'full',Push:'push',Pull:'pull',Legs:'legs',Pump:'legs',Zone2:'walk',Floorball:'fb',Rest:'rest'})[t]||(liftDays(t)?'full':'rest');
-      return `<button type="button" class="vn-week-c${isToday?' is-today':''}${liftDays(t)?' is-lift':''}${k==='finished'||k==='done'?' is-done':''}${['missed','excused','moved','progress','complete','partial','addon','other'].includes(k)?' is-'+k:''}${d>state.date?' is-future':''} is-k-${kind}" data-ds="${k}" role="listitem" onclick="NXT.openDay('${d}')" aria-label="${esc(N.shortDate(d)+' · '+N.label(t)+(words?' · '+words:''))}" ${isToday?'aria-current="date"':''}><span class="st-cap"><span class="vn-week-d">${esc(day)}</span>${railMark(x)}</span><span class="vn-week-t">${esc(short)}</span></button>`;
+      return `<button type="button" class="vn-week-c${isToday?' is-today':''}${liftDays(t)?' is-lift':''}${k==='finished'||k==='done'?' is-done':''}${['missed','excused','moved','progress','complete','partial','addon','other'].includes(k)?' is-'+k:''}${d>state.date?' is-future':''} is-k-${kind}" data-ds="${k}" role="listitem" tabindex="${i===rove?0:-1}" onclick="NXT.openDay('${d}')" aria-label="${esc(N.shortDate(d)+' · '+N.label(t)+(words?' · '+words:''))}" ${isToday?'aria-current="date"':''}><span class="st-cap"><span class="vn-week-d">${esc(day)}</span>${railMark(x)}</span><span class="vn-week-t">${esc(short)}</span></button>`;
     }).join('')}</div>`;
     function liftDays(t){return !['Rest','Zone2','Floorball'].includes(t);}
     /* D105 — the header keeps the engine's count (liftsDone: every day this week with working sets)
@@ -146,41 +278,40 @@ const NXP = (() => {
     const addOnDays=dsWeek.filter(x=>x&&x.addOn&&x.date<=state.date).length,planLogged=Math.max(0,weekLogged-addOnDays);
     const weekHead=(planLift?`${planLogged} of ${planLift} planned ${N.plural(planLift,"lift")}`:'No planned lifts')+(addOnDays?` <span class="st-tweek-ao">· +${addOnDays} ${N.plural(addOnDays,'add-on')}</span>`:'');/* the add-on count wraps whole, never mid-word */
     const textAct=(label,fn,mute)=>`<button type="button" class="vn-text${mute?' is-mute':''}" onclick="${esc(fn)}">${label}</button>`;
-    const logged=list.reduce((a,e)=>a+Math.min(N.done(e.name),Number(e.sets)),0);
-    /* D105 — the tile says what the rail says: finished, planned sets complete, in progress. A session
+    /* Stage 5 — the focus card adapts to the day's one state (D105): before, in progress, planned sets
+       complete, finished, a walk day, a rest day, excused. The button says what the rail says; a session
        starts with its first working set, so warm-ups alone still offer Start (as Train does). */
-    const title=finished?'Review workout':lift?(dsToday&&dsToday.inProgress?'Resume workout':'Start workout'):state.dayType==='Zone2'?'Log cardio':state.dayType==='Floorball'?'Open session':'Recovery check-in';
-    const liftCat=finished?'Workout finished':dsToday&&dsToday.k==='complete'?'Planned sets complete':dsToday&&dsToday.k==='progress'?'In progress':'Today’s training';
-    const trainTile=lift?`
-      <article class="st-tile st-t-train" style="--c:var(--st-lift)"><span class="st-ghost" aria-hidden="true">${esc(weekShort[state.dayType]||N.label(state.dayType))}</span>
-        <div class="st-tile-head"><span class="st-cat">${esc(liftCat)}</span>${textAct('Change','showSessionSheet()',true)}</div>
-        <div class="st-train-row">
-          <div class="st-train-id">
-            <h2 class="st-h2">${esc(N.label(state.dayType))}</h2>
-            <p class="st-meta">${list.length} ${N.plural(list.length,"exercise")} · ${sets} working ${N.plural(sets,"set")}</p>
-          </div>
-          ${logged?ringHTML(logged,sets,'sets','var(--st-lift)'):''}
-        </div>
-        <div class="st-tweek st-tweek-top"><div class="st-tweek-h"><span>This week · ${weekHead}</span>${textAct('Edit plan',"NXT.more('training')",true)}</div>${weekStrip}</div>
-        <button type="button" class="st-cta" onclick="${esc(finished?"switchTab('train')":action)}">${esc(title)}<span aria-hidden="true">›</span></button>
-      </article>`:`
-      <article class="st-tile st-t-train" style="--c:${state.dayType==='Zone2'?'var(--st-cardio)':state.dayType==='Floorball'?'var(--st-floor)':'var(--st-rest)'}"><span class="st-ghost" aria-hidden="true">${esc(state.dayType==='Zone2'?'Walk':state.dayType==='Floorball'?'Floorball':N.label(state.dayType))}</span>
-        <div class="st-tile-head"><span class="st-cat">${dsToday&&dsToday.k==='addon'?'Today · add-on logged':'Today'}</span>${textAct('Change','showSessionSheet()',true)}</div>
-        <h2 class="st-h2">${esc(N.label(state.dayType))}</h2>
-        <p class="st-body st-mt2">${state.dayType==='Rest'?'A planned recovery day. Nothing is scheduled.':state.dayType==='Zone2'?'An easy, conversational effort. No lifting session is due.':'Hard conditioning day. Log duration and effort.'}</p>
-        ${state.dayType==='Rest'?'':`<button type="button" class="st-cta" onclick="${esc(action)}">${esc(title)}<span aria-hidden="true">›</span></button>`}
-        ${addOnEligible()?`<div class="vn-rows st-mt3">
-          <button type="button" class="vn-row" onclick="NXP.addOnPick()">
-            <span class="vn-row-l"><span class="vn-row-t">Add optional lifting</span>
-            <span class="vn-row-s">Kept as an add-on — today’s plan is unchanged</span></span>
-            <i class="vn-chev" aria-hidden="true">›</i>
-          </button>
-        </div>`:''}
-        <div class="st-tweek"><div class="st-tweek-h"><span>This week · ${weekHead}</span>${textAct('Edit plan',"NXT.more('training')",true)}</div>${weekStrip}</div>
-      </article>`;
+    const doneMap={};list.forEach(e=>{if(e&&e.name)doneMap[e.name]=N.done(e.name);});
+    const k=dsToday?dsToday.k:'today',isFin=!!finished||k==='finished';
+    const cardioToday=Math.round(dsx.cardio.get(state.date)||0);
+    const title=isFin?'View session':lift?(dsToday&&dsToday.setsComplete&&!dsToday.finished?'Finish workout':dsToday&&dsToday.inProgress?'Resume workout':'Start workout'):state.dayType==='Zone2'?(cardioToday?'Log another session':'Log cardio'):state.dayType==='Floorball'?'Open session':'';
+    const btnFn={'View session':'NXT.openFinishSummary()','Finish workout':'NXT.finish()','Resume workout':'NXP.enterTrain()','Start workout':'startWorkoutNow()','Log cardio':'showCardioSheet()','Log another session':'showCardioSheet()','Open session':'startWorkoutNow()'}[title];
+    const btn=k==='excused'?{label:'Remove excuse',fn:`NXP.excuseSheet('${state.date}')`,primary:false}
+      :lift&&!list.length&&!isFin?{label:'Set up routine',fn:"NXT.more('training')",primary:false}
+      :title?{label:title,fn:btnFn,primary:title!=='View session'&&title!=='Log another session'}:null;
+    /* One engine cue, and the coach insight it carries (pickToday, pure). */
+    const coIns=coachCall('insights'),cur=lift?tfCurrent(list,doneMap,state.exercise):null;
+    const dcToday=cxDay[state.date]||null,movedFrom=dcToday&&dcToday.movedFrom||null;
+    const mode=k==='today'&&movedFrom?'moved':k;
+    const pick=pickToday({review:r,insights:coIns,week:null,mode,dayType:state.dayType,template:list.map(e=>e&&e.name),current:cur&&cur.name,button:btn&&btn.label});
+    ui.carriedIndex=pick.carriedIndex;
+    const cue=cueFor({mode,dayType:state.dayType,template:list,done:doneMap,selected:state.exercise,carried:pick.carried,advice:coachAdvice});
+    const cardioRow=(Array.isArray(state.cardio)?state.cardio:[]).filter(x=>x&&x.date===state.date&&Number(x.ts)>0).sort((x,y)=>Number(y.ts)-Number(x.ts))[0];
+    const trainTile=focusHTML({ds:dsToday,k:k==='today'&&isFin?'finished':k,lift,type:state.dayType,list,done:doneMap,cur,cue,weekHead,weekStrip,dsWeek,textAct,btn,
+      ghost:lift?(weekShort[state.dayType]||N.label(state.dayType)):state.dayType==='Zone2'?'Walk':state.dayType==='Floorball'?'Floorball':N.label(state.dayType),
+      locked:lift&&(isFin||!!(dsToday&&dsToday.recorded&&dsToday.recorded.workingSets>0&&dsToday.plan&&dsToday.plan.gym===(state.gym||'Gym A'))),
+      movedFrom,addOnOk:addOnEligible(),cardioToday,cardioMins,cardioTarget,cardioAt:cardioRow?tfClock(cardioRow.ts):'',
+      daysLeft:cxWeek&&Number(cxWeek.daysLeft)>0?Number(cxWeek.daysLeft):0});
+    /* The masthead's context line: fixed fragments, never a sentence (todayLine, pure). */
+    const nextLift=lift?null:tfNextLift(state.date);
+    const ctx=todayLine({date:state.date,k:k==='today'&&isFin?'finished':k,dayType:state.dayType,lift,gym:state.gym,
+      week:dsWeek.filter(Boolean).map(x=>({date:x.date,type:x.type,lift:x.plan.lift,k:x.k})),
+      finishedAt:dsToday&&dsToday.finished?tfClock(dsToday.finished.at):'',movedFrom,reason:dsToday&&dsToday.reason,
+      cardioMin:cardioMins,cardioTarget,next:nextLift,cutStart:settings.cutStart,lead:null});
+    const ctxHTML=ctx.length?`<p class="tf-ctx">${ctx.map((f,i)=>`${i?'<span class="tf-sep" aria-hidden="true"> · </span>':''}<span class="tf-f${f.strong?' is-s':''}">${f.strong?esc(f.t).replace(/\d+(?:[/:]\d+)?/g,'<b>$&</b>'):esc(f.t)}</span>`).join('')}</p>`:'';
     /* Ascension — the Coach stack and the Week in review. D103 places them after the minis and, when
        there are two or more, inside the coach deck (one child of .st-bento, so it reveals on scroll). */
-    const coStack=coachStackHTML(),coReview=reviewTileHTML();
+    const coStack=coachStackHTML(pick.carried&&pick.carried.id),coReview=reviewTileHTML();
     /* A warning verdict leads Today (it used to sit ~2,000px down, under every coach note); a calm one
        keeps its place after the minis. Same card, same words — only its position changes. */
     const decUp=r.tone==='watch';
@@ -199,7 +330,7 @@ const NXP = (() => {
     /* D103 — the coach notes and last week's review fold into one deck when there are two or more:
        the top note on glass with the rest stacked beneath; a tap fans them out (and back). Every note,
        its evidence, actions, Why and Dismiss are unchanged inside. Open/closed is memory only. */
-    const coCount=(ui.coachList||[]).length+(coReview?1:0);
+    const coCount=(ui.coachList||[]).length-(pick.carried?1:0)+(coReview?1:0);
     const coDeck=coCount>=2?`<section class="st-codeck${ui.coDeckOpen?' is-open':''}" aria-label="Coach">
           <div class="st-codeck-h"><h2 class="st-codeck-t">Coach<span class="st-codeck-n">${coCount}</span></h2><button type="button" class="vn-text st-codeck-tg" aria-expanded="${ui.coDeckOpen?'true':'false'}" onclick="NXP.coachDeck()">${ui.coDeckOpen?'Show less':'Show all'}</button></div>
           <div class="st-codeck-b">${coStack}${coReview}<button type="button" class="st-codeck-open" onclick="NXP.coachDeck()" aria-label="${esc(`Show all ${coCount} coach notes`)}"></button></div>
@@ -208,11 +339,11 @@ const NXP = (() => {
       <div class="vn-pad">
         <header class="st-head">
           <div>
-            <p class="st-eyebrow">${esc(weekday)} · ${esc(dateLine)}</p>
+            <p class="st-eyebrow">${esc(weekday)} · ${esc(dateLine)}${ctx.cutWeek?` · Week ${ctx.cutWeek} of your cut`:''}</p>
             <h1 class="st-h1">${esc(greeting())}</h1>
+            ${ctxHTML}
             ${weighPill}
           </div>
-          ${lift?`<button type="button" class="st-chip" onclick="cycleGym()">${esc(state.gym||'Gym')}<span aria-hidden="true">⇄</span></button>`:''}
         </header>
         <div class="st-bento">
           ${trainTile}${decUp?decTile:''}
@@ -262,6 +393,200 @@ const NXP = (() => {
         </div>
       </details>`:''}
     </div>`;
+  }
+  /* ---- Stage 5 · Today's focus card ----------------------------------------------------------------
+     One card, one task: the state line, the session title (Dusk hue), the tape of planned working sets,
+     one engine cue, the week rail and the button, always last (D32). Every state reads dayState() (D105);
+     nothing here computes a state, a target or a sentence of its own. */
+  const tfClock=ms=>Number(ms)>0?new Date(Number(ms)).toLocaleTimeString('en-SG',{hour:'2-digit',minute:'2-digit',hour12:false}):'';
+  function tfFirstSet(){
+    const ts=N.sessionLogs().filter(r=>r&&r.setType!=='warmup').map(r=>Number(r.ts)).filter(t=>t>0);
+    return ts.length?Math.min(...ts):null;
+  }
+  function tfNextLift(from){
+    for(let i=1;i<=14;i++){const d=N.dateAdd(from,i),t=N.typeFor(d);if(coIsLift(t))return {date:d,type:t,label:N.label(t)};}
+    return null;
+  }
+  function tfDuration(a,b){
+    const m=Math.round((Number(b)-Number(a))/6e4);
+    if(!(m>0)||m>600)return '';
+    return m<60?`${m} min`:`${Math.floor(m/60)} h ${String(m%60).padStart(2,'0')} min`;
+  }
+  /* The tape: one cell per planned working set, grouped by exercise, logged cells capped per exercise
+     (the ring's rule). Past 24 cells each exercise becomes one proportional bar. */
+  function tapeHTML(list,done,cur){
+    const total=list.reduce((a,e)=>a+Math.max(0,Number(e.sets)||0),0);
+    if(!total)return '';
+    const bars=total>24,lg=e=>Math.min(Number(done[e.name])||0,Number(e.sets)||0),logged=list.reduce((a,e)=>a+lg(e),0);
+    let idx=0;
+    const groups=list.map(e=>{
+      const n=Math.max(0,Number(e.sets)||0),l=lg(e),on=cur&&cur.name===e.name?' is-cur':'';
+      if(!n)return '';
+      if(bars)return `<span class="tf-tg is-bar${on}" style="flex:${n} 1 0"><i style="width:${(l/n*100).toFixed(0)}%"></i></span>`;
+      return `<span class="tf-tg${on}" style="flex:${n} 1 0">${Array.from({length:n},(_,j)=>`<i${j<l?` class="is-on" style="--i:${idx++}"`:''}></i>`).join('')}</span>`;
+    }).join('');
+    const label=`${logged} of ${total} working sets logged. `+list.map(e=>`${e.name} ${lg(e)} of ${Number(e.sets)||0}`).join(', ');
+    return `<div class="tf-tape" role="img" aria-label="${esc(label)}">${groups}</div>`;
+  }
+  function tapeLabelHTML(list,done){
+    const total=list.reduce((a,e)=>a+Math.max(0,Number(e.sets)||0),0);
+    if(!total)return '';
+    const lg=e=>Math.min(Number(done[e.name])||0,Number(e.sets)||0),logged=list.reduce((a,e)=>a+lg(e),0);
+    const exDone=list.filter(e=>Number(e.sets)>0&&lg(e)>=Number(e.sets)).length;
+    const count=logged
+      ?`<span><b data-st-odo="${logged}">${logged}</b> of ${total} working ${N.plural(total,'set')}</span><span> · ${exDone} of ${list.length} ${N.plural(list.length,'exercise')}</span>`
+      :`<span>${total} working ${N.plural(total,'set')}</span><span> · ${list.length} ${N.plural(list.length,'exercise')}</span>`;
+    const open=!!ui.planOpen;
+    const rows=list.map(e=>`<li><span>${esc(e.name)}</span><b class="vn-num">${lg(e)?lg(e)+'/':''}${Number(e.sets)||0} ${N.plural(Number(e.sets)||0,'set')}</b></li>`).join('');
+    return `<div class="tf-tl"><span class="tf-count">${count}</span><button type="button" class="tf-plan-tg" aria-expanded="${open}" aria-controls="tf-plan" onclick="NXP.todayPlan()">Plan<i aria-hidden="true">›</i></button></div>
+        <ol class="tf-plan" id="tf-plan" aria-label="Today's plan"${open?'':' hidden'}>${rows}</ol>`;
+  }
+  /* The plan list folds in place; open/closed is memory only. Focus stays on the toggle. */
+  function todayPlan(){
+    ui.planOpen=!ui.planOpen;
+    const l=document.getElementById('tf-plan'),t=document.querySelector('#homePage .tf-plan-tg');
+    if(l){if(ui.planOpen)l.removeAttribute('hidden');else l.setAttribute('hidden','');}
+    if(t)t.setAttribute('aria-expanded',String(ui.planOpen));
+  }
+  /* One cue, from coachAdvice() only (or the carried cardio insight's own words). */
+  function cueHTML(cue){
+    if(!cue)return '';
+    const tap=cue.insight?'NXP.cueSheet()':cue.index>=0?`NXT.selectExercise(${cue.index});NXP.enterTrain()`:'';
+    const hold=cue.hold?' is-hold':'';
+    if(cue.kind==='now'){
+      const tgt=cue.target?` · Target ${trimNum(cue.target.weight)} × ${cue.target.reps}`:'';
+      const left=typeof apx96RestRemaining==='function'?Number(apx96RestRemaining())||0:0,total=ui.restTotal||90;
+      const mmss=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+      const ring=left>0?`<button type="button" class="tf-rest" role="timer" aria-live="off" aria-label="${esc(`Rest, ${Math.floor(left/60)} minute${Math.floor(left/60)===1?'':'s'} ${Math.floor(left%60)} seconds left`)}" onclick="NXP.enterTrain()" style="--tf-rest-pct:${Math.max(0,Math.min(1,left/total)).toFixed(3)}"><svg viewBox="0 0 52 52" aria-hidden="true" focusable="false"><circle class="t" cx="26" cy="26" r="23"/><circle class="a" cx="26" cy="26" r="23" pathLength="1"/></svg><b data-tf-rest>${mmss(left)}</b><small>rest</small></button>`:'';
+      return `<div class="tf-well tf-now${hold}">
+          <button type="button" class="tf-well-b" onclick="${esc(tap)}" aria-label="${esc(`Now, set ${cue.setNo} of ${cue.sets}: ${cue.ex}${tgt}. ${cue.headline}. Open Train`)}"><span class="tf-k">Now · set ${cue.setNo} of ${cue.sets}</span><span class="tf-wt">${esc(cue.ex+tgt)}</span><span class="tf-wn">${esc(cue.headline)}</span></button>${ring}
+        </div>`;
+    }
+    const kick=cue.kind==='cardio'?'Cardio this week':cue.ex;
+    return `<div class="tf-well tf-cue${hold}">
+          <button type="button" class="tf-well-b" onclick="${esc(tap)}"${cue.insight?' aria-haspopup="dialog"':''}><span class="tf-k">${esc(kick)}</span><span class="tf-wt">${esc(cue.headline)}</span>${cue.note?`<span class="tf-wn">${esc(cue.note)}</span>`:''}</button>
+        </div>`;
+  }
+  /* The carried insight in full: observation, evidence, suggestion and what it rests on, engine fields only. */
+  function cueSheet(){
+    const i=ui.carriedIndex,it=ui.coachList&&ui.coachList[i];
+    if(!it)return;
+    const ev=(Array.isArray(it.evidence)?it.evidence:[]).filter(e=>e&&e.label&&e.value!==undefined&&String(e.value)!=='').slice(0,3);
+    const w=it.why||{},dates=(Array.isArray(it.evidence)?it.evidence:[]).map(e=>e&&e.date).filter(coDate).sort();
+    const opener=document.activeElement;
+    const act=it.action&&it.action.label?`<button type="button" class="tf-glass" onclick="closeModal();NXP.coachAct(${i})">${esc(it.action.label)}<span aria-hidden="true">›</span></button>`:'';
+    N.modal(it.title,`<div class="co-sheet tf-anat-s">
+      ${it.body?`<p class="co-lead">${esc(it.body)}</p>`:''}
+      <dl class="tf-anat">
+        ${ev.length?`<div><dt>Evidence</dt><dd><ul class="co-chips">${ev.map(e=>`<li class="co-chip"><span class="co-chip-l">${esc(e.label)}</span><span class="co-chip-d" aria-hidden="true">·</span><b class="co-chip-v">${esc(e.value)}</b></li>`).join('')}</ul></dd></div>`:''}
+        ${w.canDo?`<div><dt>Suggested</dt><dd>${esc(w.canDo)}</dd></div>`:''}
+        ${dates.length?`<div><dt>Based on</dt><dd>${esc('Your session on '+coDayShort(dates.at(-1)))}</dd></div>`:''}
+      </dl>
+      <div class="n99-stack">${act}<button type="button" class="n99-button secondary" onclick="closeModal();NXP.coachDismiss(${i})">Dismiss</button></div>
+    </div>`);
+    /* Focus returns to the cue when the sheet closes (the modal restores its opener when it can). */
+    ui.cueOpener=opener;
+  }
+  /* The rail is one Tab stop; ←/→/Home/End move between capsules (roving tabindex). */
+  function railKey(e){
+    const keys=['ArrowLeft','ArrowRight','Home','End'];
+    if(!e||keys.indexOf(e.key)===-1)return;
+    const rail=e.currentTarget||(e.target&&e.target.closest&&e.target.closest('.vn-week'));
+    if(!rail)return;
+    const caps=[...rail.querySelectorAll('.vn-week-c')],at=caps.indexOf(document.activeElement);
+    if(!caps.length)return;
+    e.preventDefault();
+    const i=e.key==='Home'?0:e.key==='End'?caps.length-1:Math.max(0,Math.min(caps.length-1,(at<0?0:at)+(e.key==='ArrowLeft'?-1:1)));
+    caps.forEach((c,j)=>c.setAttribute('tabindex',j===i?'0':'-1'));
+    caps[i].focus();
+  }
+  /* The legend names only the marks the week shows on days other than today (none on a clean week). */
+  function railLegendHTML(days){
+    const W={missed:'Not logged',partial:'Partly logged',excused:'Excused',moved:'Moved',addon:'Add-on logged',complete:'Planned sets complete'};
+    const seen=[];
+    days.forEach(x=>{if(x&&!x.today&&W[x.k]&&seen.indexOf(x.k)===-1)seen.push(x.k);});
+    if(!seen.length)return '';
+    return `<p class="tf-legend" aria-hidden="true">${seen.map(k=>`<span>${coMark(k,'tf-lg-m')}${W[k]}</span>`).join('')}</p>`;
+  }
+  /* The card. m is home()'s model: everything it shows was read there. */
+  function focusHTML(m){
+    const ds=m.ds,k=m.k,hue=m.lift?'var(--st-lift)':m.type==='Zone2'?'var(--st-cardio)':m.type==='Floorball'?'var(--st-floor)':'var(--st-rest)';
+    const stLine=(shape,word)=>`<p class="tf-state" id="tf-state">${coMark(shape,'tf-sh')}<span>${esc(word)}</span></p>`;
+    const ghost=`<span class="st-ghost" aria-hidden="true">${esc(m.ghost)}</span>`;
+    /* D35: once sets are logged the session is locked, so the title is a heading, not a picker. */
+    const name=N.label(m.type);
+    const titleEl=m.locked
+      ?`<h2 class="st-h2 tf-title" id="tf-title">${esc(name)}</h2>`
+      :`<h2 class="tf-h"><button type="button" class="st-h2 tf-title" id="tf-title" onclick="showSessionSheet()" aria-label="${esc(name+'. Change today’s session')}">${esc(name)}<i class="tf-chev" aria-hidden="true"><svg viewBox="0 0 12 12" focusable="false"><path d="M3 4.6 6 7.6 9 4.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></i></button></h2>`;
+    const gymCap=m.lift?`<button type="button" class="tf-cap" onclick="cycleGym()" aria-label="${esc(`Gym: ${state.gym||'Gym'}. Switch gym`)}">${esc(state.gym||'Gym')}<span aria-hidden="true">⇄</span></button>`
+      :m.type==='Zone2'&&m.addOnOk&&!(ds&&ds.addOn)?`<button type="button" class="tf-cap" onclick="NXP.addOnPick()">＋ Optional lifting</button>`:'';
+    const head=(line)=>`<div class="tf-head">${line}${gymCap}</div>`;
+    const rail=`<div class="st-tweek tf-rail"><div class="st-tweek-h tf-rail-h"><span class="tf-rh"><span>This week · ${m.weekHead}</span>${k==='progress'?'<span class="tf-ip">&nbsp;· today in progress</span>':''}</span>${m.textAct('Edit plan',"NXT.more('training')",true)}</div>${m.weekStrip}${railLegendHTML(m.dsWeek)}</div>`;
+    const cta=m.btn?`<button type="button" class="${m.btn.primary?'st-cta ':'tf-glass '}tf-cta" onclick="${esc(m.btn.fn)}">${esc(m.btn.label)}<span aria-hidden="true">›</span></button>`:'';
+    const addonRow=ds&&ds.addOn?`<p class="tf-addon">${coMark('addon','tf-sh')}<span>Optional lifting · ${ds.recorded.workingSets} ${N.plural(ds.recorded.workingSets,'set')}</span></p>`:'';
+    let line,body='',tape='';
+    if(m.lift&&k!=='excused'){
+      tape=m.list.length?tapeHTML(m.list,m.done,k==='progress'?m.cur:null)+tapeLabelHTML(m.list,m.done):'';
+      if(k==='finished'){
+        const at=ds&&ds.finished&&ds.finished.at,oc=liftOutcome(state.date,state.gym||'Gym A'),first=tfFirstSet();
+        const dur=at&&first?tfDuration(first,at):'',nx=tfNextLift(state.date);
+        const when=nx?(N.dateAdd(state.date,1)===nx.date?'tomorrow':coDow(nx.date)):'';
+        const cap=[dur,nx?`Next: ${nx.label} ${when}`:''].filter(Boolean).join(' · ');
+        const mo=(sessionMoments()[0]||null);
+        line=stLine('finished','Finished'+(at?' · '+tfClock(at):''));
+        body=`<div class="tf-receipt">
+          ${oc.compared?`<ul class="tf-oc" aria-label="${esc(`Best set against last time: ${oc.up} beat, ${oc.same} matched, ${oc.down} below`)}">
+            <li class="is-beat"><b class="vn-num">${oc.up}</b><span><i aria-hidden="true">●</i>beat</span></li>
+            <li class="is-same"><b class="vn-num">${oc.same}</b><span><i aria-hidden="true">■</i>matched</span></li>
+            <li class="is-below"><b class="vn-num">${oc.down}</b><span><i aria-hidden="true">▼</i>below</span></li></ul>`:''}
+          ${cap?`<p class="tf-rc-cap">${esc(cap)}</p>`:''}
+          ${mo?`<p class="tf-moment"><i aria-hidden="true">★</i>${esc(mo.t)}</p>`:''}
+        </div>`;
+      }else if(k==='complete'){
+        line=stLine('complete',`All ${ds.plan.plannedSets} planned sets logged`);
+        body=`<p class="tf-note">Finish saves the session. Extra sets stay possible in Train.</p>`;
+      }else if(k==='progress'){
+        const since=tfClock(tfFirstSet());
+        line=stLine('progress','In progress'+(since?' · since '+since:''));
+        body=cueHTML(m.cue);
+      }else{
+        const moved=m.movedFrom&&coDate(m.movedFrom);
+        line=moved?stLine('moved','Moved here from '+coDayShort(m.movedFrom)):stLine('other','Today’s training');
+        body=m.list.length?cueHTML(m.cue):`<p class="tf-note">No exercises are queued for this session</p>`;
+      }
+    }else if(k==='excused'){
+      line=stLine('excused',ds.w);
+      body=`<p class="tf-note">It does not count as missed. Your plan and your logged records do not change.</p>`;
+    }else if(m.type==='Zone2'){
+      const done=m.cardioToday>0,pct=m.cardioTarget?Math.min(100,m.cardioMins/m.cardioTarget*100):0;
+      line=done?stLine('done',`Activity recorded · ${m.cardioToday} min`):stLine('other','Today · Cardio');
+      const daysLeft=m.daysLeft;
+      body=`<div class="tf-meter" role="img" aria-label="${esc(`Cardio this week, ${m.cardioMins} of ${m.cardioTarget} minutes`)}"><span><i style="width:${pct.toFixed(0)}%"></i></span><b class="vn-num">${m.cardioMins}<small>/${m.cardioTarget} min this week</small></b></div>
+          <p class="tf-note">${done?esc(`✓ ${m.cardioToday} min logged${m.cardioAt?' · '+m.cardioAt:''}`):'Today · nothing logged yet'}${daysLeft?esc(` · ${daysLeft} ${N.plural(daysLeft,'day')} left this week`):''}</p>
+          ${cueHTML(m.cue)}${addonRow}`;
+    }else if(m.type==='Floorball'){
+      line=stLine(k==='done'?'done':'other',k==='done'?'Activity recorded':'Today');
+      body=`<p class="tf-note">Hard conditioning day. Log duration and effort.</p>${addonRow}`;
+    }else{
+      const nx=tfNextLift(state.date);
+      let inset='';
+      if(nx){
+        let tpl=[];try{tpl=N.templateFor(nx.type,state.gym)||[];}catch(e){tpl=[];}
+        const sets=tpl.reduce((a,e)=>a+(Number(e&&e.sets)||0),0);
+        inset=`<button type="button" class="tf-next" onclick="NXT.openDay('${nx.date}')"><span class="tf-k"><i aria-hidden="true"></i>Next session · ${esc(coDayShort(nx.date))}</span><span class="tf-wt">${esc(nx.label)}</span>${tpl.length?`<span class="tf-wn">${esc(`${tpl.length} ${N.plural(tpl.length,'exercise')} · ${sets} working ${N.plural(sets,'set')} · ${state.gym||'Gym A'}`)}</span>`:''}</button>`;
+      }
+      line=stLine('rest','Today · Rest');
+      body=`<p class="tf-note">A planned recovery day. Nothing is scheduled.</p>${inset}${addonRow}
+        <div class="tf-opts"><button type="button" class="tf-glass tf-opt" onclick="showCardioSheet()">＋ Log cardio</button>${m.addOnOk&&!(ds&&ds.addOn)?'<button type="button" class="tf-glass tf-opt" onclick="NXP.addOnPick()">＋ Optional lifting</button>':''}</div>`;
+    }
+    return `<article class="st-tile st-t-train tf-card is-${esc(k)}${m.lift?'':' is-k-'+esc(String(m.type).toLowerCase())}" style="--c:${hue}" aria-labelledby="tf-title" aria-describedby="tf-state">${ghost}
+        ${head(line)}
+        ${titleEl}
+        ${tape}
+        ${body}
+        ${rail}
+        ${cta}
+      </article>`;
   }
   /* D103 · The coach deck folds and fans out in place (STRATA.morph animates it when it can). */
   function coachDeck() {
@@ -465,13 +790,14 @@ const NXP = (() => {
      NXT.coach.insights(): at most three, ranked by the engine. weight.review repeats the
      Decision card's headline directly below, so it is not stacked here (engine report,
      integration note 3); the next-ranked insight takes its place. */
-  function coachStackHTML() {
+  function coachStackHTML(skipId) {
     ui.coachList=[];
     const list=coachCall('insights');
     if(!Array.isArray(list))return '';
-    const pool=(Array.isArray(list.all)&&list.all.length?list.all:list).filter(it=>it&&it.id&&it.id!=='weight.review').slice(0,3);
+    const pool=tfPool(list);
     ui.coachList=pool;
-    return pool.map(coachTileHTML).join('');
+    /* Stage 5: the insight the focus card's cue carries is shown there, not again here (each once). */
+    return pool.map((it,i)=>skipId&&it.id===skipId?'':coachTileHTML(it,i)).join('');
   }
   function coachTileHTML(it,i) {
     const dom=CO_DOM[it.domain]?it.domain:'data';
@@ -3758,7 +4084,7 @@ const NXP = (() => {
   }
   bindSteppers();
   bindKeyboardDock();
-  return {shareProgress,shareToggle,shareSend,ask,finishScene,actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,useLast,coachDeck,weighReplay,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen,dayState};
+  return {shareProgress,shareToggle,shareSend,ask,finishScene,actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,useLast,coachDeck,weighReplay,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen,dayState,pickToday,todayLine,cueFor,lastLiftSession,todayPlan,cueSheet,railKey};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;
