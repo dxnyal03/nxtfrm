@@ -827,7 +827,7 @@ const STRATA = (() => {
     topEl = document.createElement("div");
     topEl.id = "stTop";
     topEl.setAttribute("aria-hidden", "true");
-    topEl.innerHTML = '<i class="st-top-scrim"></i><button type="button" class="st-top-bar" tabindex="-1"><span class="st-top-t"></span></button>';
+    topEl.innerHTML = '<button type="button" class="st-top-bar" tabindex="-1"><span class="st-top-t"></span></button>';
     topEl.querySelector(".st-top-bar").addEventListener("click", () => window.scrollTo({ top: 0, behavior: reduced() ? "auto" : "smooth" }));
     document.body.appendChild(topEl);
     return topEl;
