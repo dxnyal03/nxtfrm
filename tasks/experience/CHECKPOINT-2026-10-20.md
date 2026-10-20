@@ -15,8 +15,8 @@ Preview: `.claude/launch.json` → `nxtfrm-experience` (http://localhost:8766). 
 - Fixtures, contracts, specs, study summary, ledger, review findings in `tasks/experience/`.
 
 ## Tested
-- Gate at `ca747ea`: 29 suites (Haiku run, see `checks/integrated-ca747ea.txt`); earlier at `2f3f148`: 28 suites,
-  759 tests, 0 failed; release-gate slice clean; RELEASE 163; no new storage keys (D152's `form` flag is the one
+- Gate at `ca747ea`: 29 suites, every exit 0, 0 failed (Haiku run, `checks/integrated-ca747ea.txt`); `node --test
+  *.test.js` 29 pass, 0 fail (exit 0); earlier at `2f3f148`: 28 suites, 759 tests, 0 failed; release-gate slice clean; RELEASE 163; no new storage keys (D152's `form` flag is the one
   record-field addition, pending the owner's yes).
 - Chrome, five phone widths (320/375/390/393/430), fixed clock, seven fixtures: 70 captures, 0 app errors
   (`checkpoint/capture.json`, contact sheets `final-*.png`).
