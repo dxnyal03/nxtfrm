@@ -516,7 +516,7 @@ test("selectPoint: vs-trend cell (U+2212, kg), label switch, transport state, sl
   const i = pts.findIndex((p, k) => k < n - 1 && p.avg !== null && p.weight < p.avg - 0.06);
   N.selectPoint(i);
   const p = pts[i];
-  assert.strictEqual(els["wx-gap"].textContent, "−" + Math.abs(p.weight - p.avg).toFixed(1) + " kg");
+  assert.strictEqual(els["wx-gap"].textContent, Math.abs(p.weight - p.avg).toFixed(1) + " kg below trend");  /* D148: the gap is words on the reading's sub line */
   assert.strictEqual(els["wx-lab-a"].textContent, "Morning reading");
   /* D118 (amends D111): the trend cell keeps its name and its sub line names the day, so the time stays explicit
      without the label overflowing the vs cell on a phone. */
@@ -567,7 +567,8 @@ test("the plate is the first section, holds no nested <section>, and the banned 
   assert.strictEqual((plate.match(/<section/g) || []).length, 1, "no nested section inside the plate");
   for (const w of ["certainty", "confidence", "probability", "likelihood", "accuracy"]) assert.strictEqual(plate.toLowerCase().indexOf(w), -1, w);
   assert.strictEqual(plate.indexOf("Estimated level"), -1, "the Estimated level belongs to the Journey");
-  for (const w of ["Latest morning", "vs trend", "Smoothed trend", "Morning readings", "Post-workout", "Projection", "Day-to-day spread", "Weekly averages"]) assert.ok(plate.indexOf(w) !== -1, w);
+  for (const w of ["Latest morning", "Smoothed trend", "Morning readings", "Post-workout", "Projection", "Day-to-day spread", "Weekly averages"]) assert.ok(plate.indexOf(w) !== -1, w);
+  assert.ok(/id="wx-gap">(\d\.\d kg (below|above)|on) trend</.test(plate), "the vs-trend gap is in the readouts, as words (D148)");
   assert.ok(/data-wx-state="idle"/.test(plate) && /id="nxp-progress-latest"/.test(plate), "the transport slot renders idle on the latest reading");
   assert.ok(/id="wx-layers"[^>]*hidden/.test(plate), "the Layers drawer is in the DOM and hidden");
   assert.ok(html.indexOf('<section class="wx-an"') !== -1 && /Each day vs its trend/.test(html) && /How these numbers are made/.test(html), "Analysis rows follow the plate");
@@ -820,7 +821,7 @@ function slotOf(html) { const i = html.indexOf('id="wx-slot"'); return html.slic
 test("Compare: the capsule sits in the summary head; on it the slot is the table (caption, scope), the x-window spans both windows, the plot marks Before / This range", () => {
   const { N, repaints } = chartPage(); N.ui.range = 30;
   const off = N.chartHTML();
-  assert.ok(/<p class="wx-sum-h"><span>Last month · [^<]+<\/span><button type="button" class="wx-cmp-b" id="wx-cmp-b" aria-pressed="false"/.test(off), "Compare capsule in the head row");
+  assert.ok(/<p class="wx-sum-h"><span>Last month<\/span><button type="button" class="wx-cmp-b" id="wx-cmp-b" aria-pressed="false"/.test(off), "Compare capsule in the head row");
   assert.strictEqual(off.indexOf("wx-cmp-t"), -1, "no table while off");
   N.setCompare({}); assert.strictEqual(JSON.stringify(N.ui.compare), '{"kind":"previous","quantity":"avg"}'); assert.strictEqual(N.ui.chartAnim, "compare"); assert.strictEqual(repaints(), 1);
   const html = N.chartHTML(), slot = slotOf(html), m = N.ui.chart, cv = m.compare;

@@ -120,4 +120,4 @@ them: no verdict, no summary, no count. Settings and Progress › Body count sca
 | Forecast, Projection range, next-kilogram estimate, Estimated level, what-if pace, "Rate across your cut" end marker once not fresh | the model origin (last trend-ready morning) |
 | Latest morning | the newest reading |
 
-Any new surface must say which base it uses in its own caption ("22 Sept–19 Oct", "as of 18 Oct").
+Any new surface must say which base it uses in its own caption ("22 Sept–19 Oct", "to 20 Oct", "as of 18 Oct").

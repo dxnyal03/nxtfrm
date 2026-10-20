@@ -2034,7 +2034,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 }
 .st-h1{font-size:32px !important;line-height:1.05 !important}
 #weightPage h1,#historyPage h1,#morePage h1{font-size:calc(36px*var(--wx-sn)) !important;line-height:1.05 !important}
-.st-h2,.st-h3,.vn-perf-name,#trainPage .st-next .st-h3,#weightPage .wx-h2,#weightPage .wx-v,#weightPage .wx-gap,#weightPage .wx-cd b,#weightPage .wx-tp,#weightPage .wx-sum-c b{font-family:var(--st-font-d) !important;letter-spacing:-.025em !important}
+.st-h2,.st-h3,.vn-perf-name,#trainPage .st-next .st-h3,#weightPage .wx-h2,#weightPage .wx-v,#weightPage .wx-cd b,#weightPage .wx-tp,#weightPage .wx-sum-c b{font-family:var(--st-font-d) !important;letter-spacing:-.025em !important}
 .st-h2{font-weight:620 !important}.st-h3{font-weight:600 !important}
 .st-eyebrow,.st-head .st-eyebrow{font-family:var(--st-font-d) !important;font-weight:520 !important;letter-spacing:.01em !important;color:color-mix(in srgb,var(--st-accent-lift) 70%,var(--st-ink-3)) !important}
 .st-odo,.st-od,.st-od-s i,#weightPage .st-perf-best,.st-count-v b,#weightPage .st-jr-big,#trainPage .st-cmeter-h .vn-num b{
@@ -2228,7 +2228,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 /* Log strip (D149): two separate lit-glass cards, Weight and Cardio, a Today tile gap (12 px) apart; each card is a
    Zone A (log / replay) over a Zone B (explain, open Progress) with its own radius, edge, shadow and hue bloom. */
 #homePage .tf-log{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
-#homePage .tf-lc{display:grid;grid-template-rows:auto 1fr;min-width:0;overflow:hidden;border-radius:var(--st-r);
+#homePage .tf-lc{display:grid;grid-row:span 2;grid-template-rows:subgrid;row-gap:0;min-width:0;overflow:hidden;border-radius:var(--st-r);
   background:radial-gradient(110% 80% at 100% 0%,color-mix(in srgb,var(--c) 12%,transparent),transparent 60%),var(--st-tile),var(--st-tile-bg);box-shadow:var(--st-tile-hl),var(--st-shadow)}
 #homePage .tf-za,#homePage .tf-zb{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;width:100%;margin:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit}
 #homePage .tf-za{gap:1px;min-height:80px;padding:8px 12px 7px}
@@ -2239,7 +2239,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
    the row with a soft halo, since the global 3 px outside offset is cut off by the tile's overflow. */
 #homePage .tf-za:focus-visible,#homePage .tf-zb:focus-visible,#homePage .tf-dig-row:focus-visible,#homePage .tf-well-b:focus-visible,#homePage .tf-next:focus-visible{outline-offset:-4px;border-radius:14px;box-shadow:inset 0 0 0 8px rgba(205,187,255,.14)}
 /* The unlogged Weight zone is lit (the D103 pill's job, D121): a hue corner bloom and a hue edge on this zone only. */
-#homePage .tf-za.is-lit{background:radial-gradient(120% 110% at 0% 0%,color-mix(in srgb,var(--c) 58%,transparent),transparent 64%),linear-gradient(180deg,color-mix(in srgb,var(--c) 12%,transparent),transparent 70%);box-shadow:inset 0 0 44px -10px color-mix(in srgb,var(--c) 55%,transparent),inset 0 1px 0 color-mix(in srgb,var(--c) 45%,rgba(255,255,255,.3))}
+#homePage .tf-za.is-lit{background:radial-gradient(120% 110% at 0% 0%,color-mix(in srgb,var(--c) 38%,#14121f),transparent 64%),linear-gradient(180deg,color-mix(in srgb,var(--c) 12%,transparent),transparent 70%);box-shadow:inset 0 0 44px -10px color-mix(in srgb,var(--c) 40%,transparent),inset 0 1px 0 color-mix(in srgb,var(--c) 45%,rgba(255,255,255,.3))}
 #homePage .tf-za.is-lit::before{content:"";position:absolute;inset:0;padding:1px;border-radius:var(--st-r) 0 0 0;pointer-events:none;
   background:linear-gradient(155deg,color-mix(in srgb,var(--c) 88%,#fff),color-mix(in srgb,var(--c) 55%,transparent) 48%,color-mix(in srgb,var(--c) 18%,transparent) 80%);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
@@ -2248,7 +2248,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #homePage .tf-ll i{width:6px;height:6px;border-radius:50%;background:var(--c)}
 #homePage .tf-ls{display:inline-flex;align-items:center;gap:4px;min-width:0;overflow:hidden;white-space:nowrap;font:600 calc(11px*var(--tf-s))/14px var(--st-font);color:var(--st-ink-3)}
 #homePage .tf-ls.is-ok{color:var(--st-accent-lift)}
-#homePage .tf-za.is-lit .tf-ls{color:var(--st-ink-2)}/* ink-3 measures 3.8:1 on the lit bloom */
+#homePage .tf-za.is-lit .tf-ls{color:var(--st-ink)}/* ink-3 measures 3.8:1 on the lit bloom */
 #homePage .tf-tick,#homePage .tf-lsm{flex:none;width:11px;height:11px}
 #homePage .tf-lv{display:flex;align-items:baseline;gap:3px;margin-top:2px;color:var(--st-ink)}
 #homePage .tf-lv b{font:300 calc(28px*var(--tf-s))/30px var(--st-font-d);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
@@ -2274,12 +2274,12 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 /* Larger text under 430px, and any width under 360px: the cards stack, each card's zones side by side. */
 @media (max-width:429px){
   :root[data-nxp-size="large"] #homePage .tf-log{grid-template-columns:minmax(0,1fr)}
-  :root[data-nxp-size="large"] #homePage .tf-lc{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
+  :root[data-nxp-size="large"] #homePage .tf-lc{grid-row:auto;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
   :root[data-nxp-size="large"] #homePage .tf-zb{box-shadow:inset 1px 0 0 var(--st-tile-line)}
 }
 @media (max-width:359px){
   #homePage .tf-log{grid-template-columns:minmax(0,1fr)}
-  #homePage .tf-lc{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
+  #homePage .tf-lc{grid-row:auto;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
   #homePage .tf-zb{box-shadow:inset 1px 0 0 var(--st-tile-line)}
   #homePage .tf-za{padding:10px 11px 8px}#homePage .tf-zb{padding:7px 11px 8px}
   #homePage .tf-lv b{font-size:calc(25px*var(--tf-s))}
@@ -2335,8 +2335,10 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 @media (max-width:359px){#homePage .tf-lead{padding:12px 14px}}
 
 /* The concern line (D122): ◆ Watch · title · Read below ↓, one line; the trailing words drop first. */
-#homePage button.tf-ctx{position:relative;width:100%;padding:0;border:0;background:none;cursor:pointer;text-align:left;color:var(--st-ink)}
-#homePage button.tf-ctx::after{content:"";position:absolute;inset:-12px 0}
+#homePage button.tf-ctx{position:relative;z-index:1;display:block;width:100%;height:auto;overflow:visible;padding:0;border:0;background:none;cursor:pointer;text-align:left;color:var(--st-ink)}
+#homePage button.tf-ctx::after{content:"";position:absolute;inset:-12px 0}/* 20 + 24 = a 44 px hit area; the clip lives on .tf-ci so it cannot cut this off */
+#homePage .tf-ci{display:flex;flex-wrap:wrap;height:20px;overflow:hidden}
+@media (max-width:359px){#homePage .tf-ci{height:18px}}
 #homePage .tf-ctx .tf-w{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:color-mix(in srgb,var(--st-review) 38%,#fff)}/* the word lightens on the haze; the ◆ keeps the full amber */
 #homePage .tf-ctx .tf-wt-t{white-space:normal;font-weight:600}
 #homePage .tf-ctx .tf-rb{color:var(--st-ink)}
@@ -2384,9 +2386,9 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #homePage .tf-sc-r{font:400 calc(13px*var(--tf-s))/18px var(--st-font);color:var(--st-ink-2);text-wrap:balance}
 #homePage .tf-sc-g{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 #homePage .tf-sc-c{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;padding:10px 8px;border-radius:14px;background:rgba(var(--st-hl),.04)}
-#homePage .tf-sc-c small{font:500 calc(11px*var(--tf-s))/14px var(--st-font);color:var(--c)}
+#homePage .tf-sc-c small{min-width:0;overflow-wrap:anywhere;font:500 calc(11px*var(--tf-s))/14px var(--st-font);color:var(--c)}
 #homePage .tf-sc-c b{font:300 calc(19px*var(--tf-s))/1.1 var(--st-font-d);letter-spacing:-.02em}
-#homePage .tf-sc-c b em{margin-left:1px;font:450 calc(10.5px*var(--tf-s)) var(--st-font);font-style:normal;color:var(--st-ink-3)}
+#homePage .tf-sc-c b em{margin-left:1px;font:450 calc(11px*var(--tf-s)) var(--st-font);font-style:normal;color:var(--st-ink-3)}
 #homePage .tf-sc-c .wx-chip{margin-top:6px;padding:3px 7px 3px 5px;font-size:calc(12px*var(--tf-s))}
 @media (max-width:359px){#homePage .tf-sc-c{padding:9px 6px}#homePage .tf-sc-c b{font-size:calc(16px*var(--tf-s))}#homePage .tf-sc-c .wx-chip{padding:3px 5px 3px 4px}}
 @media (prefers-reduced-motion:reduce){#homePage .tf-sc{transition:none}#homePage .tf-sc:active{transform:none}}
@@ -4409,10 +4411,12 @@ body:has(.cloud-local-banner:not([hidden])) #weightPage{--st-mast-mt:6px}
   color:var(--st-ink);background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);-webkit-tap-highlight-color:transparent}
 #weightPage .wx-xbtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 
-/* 3b · Readouts: the legend. ● Latest morning / vs trend / — Smoothed trend, fixed slots that never reflow on a
-   scrub. The post-workout cell exists only on a day that has one and takes the middle slot on phone. */
-#weightPage .wx-ro{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);column-gap:10px;align-items:start;margin-top:10px;min-height:69px}
+/* 3b · Readouts: the legend (D148). ● Latest morning (with its date and the gap to trend in words) / — Smoothed
+   trend, two fixed slots that never reflow on a scrub. The post-workout cell exists only on a day that has one
+   and takes a row of its own. */
+#weightPage .wx-ro{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);column-gap:10px;align-items:start;margin-top:10px;min-height:69px}
 #weightPage .wx-cell{min-width:0}
+#weightPage .wx-lr{display:flex;align-items:center;flex-wrap:wrap;column-gap:6px;min-width:0}
 #weightPage .wx-lab{display:flex;align-items:center;gap:6px;font:560 var(--wx-fs-lab)/calc(16px*var(--wx-s)) var(--st-font);color:var(--st-ink-2);white-space:nowrap}
 #weightPage .wx-lab .vn-key-raw{width:7px;height:7px;border-radius:50%;background:#DCD5EE;box-shadow:0 0 0 1.5px rgba(16,15,25,1);flex:none}
 #weightPage .wx-lab .vn-key-trend{width:14px;height:3px;border-radius:2px;background:linear-gradient(90deg,#7C5CFF,#E9E1FF);flex:none}
@@ -4427,42 +4431,25 @@ body:has(.cloud-local-banner:not([hidden])) #weightPage{--st-mast-mt:6px}
 #weightPage .wx-plate[data-wx-timing="morning"] .wx-tm{display:none}
 #weightPage .wx-cc{text-align:right}
 #weightPage .wx-cc .wx-lab,#weightPage .wx-cc .wx-sub{justify-content:flex-end}
-#weightPage .wx-cb{text-align:center;padding:0 2px}
-#weightPage .wx-cb .wx-lab{justify-content:center;color:var(--st-ink-3);font-weight:500}
-#weightPage .wx-gap{display:block;margin-top:10px;font:450 var(--wx-fs-unit)/calc(18px*var(--wx-s)) var(--st-font-d);font-variant-numeric:tabular-nums;color:var(--st-ink-2);white-space:nowrap}
 #weightPage .wx-fresh{display:inline-flex;align-items:center;gap:5px}
 #weightPage .wx-fresh i{color:var(--st-accent)}
+#weightPage .wx-gap{color:var(--st-ink-2)}
+#weightPage .wx-gap:not(:empty)::before{content:" · ";white-space:pre}
 #weightPage .wx-fresh.is-old{color:#E3B062}
 #weightPage .wx-fresh.is-old i{color:#E3B062}
-#weightPage .wx-gapline{display:none}
 /* A historical selection: the trend cell names its day on the sub line (the date stays explicit) in place of the freshness word. */
 #weightPage .wx-on{display:none;color:var(--st-ink-2)}
 #weightPage .wx-plate.is-hist .wx-on:not([hidden]){display:inline}
 #weightPage .wx-plate.is-hist .wx-fresh{display:none}
-#weightPage .wx-cd{grid-column:2;grid-row:1;text-align:center;padding:0 2px}
+#weightPage .wx-cd{grid-column:1 / -1;grid-row:2;text-align:left;padding:4px 0 0}
 #weightPage .wx-cd[hidden]{display:none}
-#weightPage .wx-cd .wx-lab{justify-content:center}
-#weightPage .wx-cd b{display:block;margin-top:10px;font:450 var(--wx-fs-unit)/calc(18px*var(--wx-s)) var(--st-font-d);font-variant-numeric:tabular-nums;color:var(--st-ink-2)}
-#weightPage .wx-cd small{display:block;font:500 calc(11.5px*var(--wx-s))/calc(14px*var(--wx-s)) var(--st-font);color:var(--st-ink-3);white-space:nowrap}
-#weightPage .wx-ro:has(.wx-cd:not([hidden])) .wx-cb{display:none}
+#weightPage .wx-cd .wx-lab{justify-content:flex-start}
+#weightPage .wx-cd b{display:inline;margin:0 6px 0 0;font:450 var(--wx-fs-unit)/calc(18px*var(--wx-s)) var(--st-font-d);font-variant-numeric:tabular-nums;color:var(--st-ink-2)}
+#weightPage .wx-cd small{display:inline;font:500 calc(11.5px*var(--wx-s))/calc(14px*var(--wx-s)) var(--st-font);color:var(--st-ink-3);white-space:nowrap}
 #weightPage .wx-ro .st-note-chip::after{content:"";position:absolute;inset:-11px 0}
 #weightPage .wx-ro .st-note-chip{min-height:22px;padding:0 7px;margin:-3px 0;font:550 calc(11.5px*var(--wx-s))/calc(22px*var(--wx-s)) var(--st-font);color:var(--st-ink-2);background:rgba(var(--st-hl),.06);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.08)}
 #weightPage .wx-ro .st-note-chip.has-note{color:#E4DBFF;background:rgba(139,92,246,.16);box-shadow:inset 0 0 0 1px rgba(180,154,255,.38)}
-/* Below 360 the readouts are two cells: the vs figure moves into the trend cell's sub line while the trend is
-   fresh; when it is aging or stale the freshness word wins the line. */
-@media (max-width:359px){
-  #weightPage .wx-ro{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-  #weightPage .wx-cb{display:none}
-  #weightPage .wx-cd{grid-column:1 / -1;grid-row:2;text-align:left;padding:4px 0 0}
-  #weightPage .wx-cd .wx-lab{justify-content:flex-start}
-  #weightPage .wx-cd b{display:inline;margin:0 6px 0 0}
-  #weightPage .wx-cd small{display:inline}
-  #weightPage .wx-ro:has(.wx-cd:not([hidden])){min-height:0}
-  #weightPage .wx-fresh:not(.is-old){display:none}
-  #weightPage .wx-gapline{display:inline}
-  #weightPage .wx-fresh.is-old+.wx-gapline{display:none}
-  #weightPage .wx-plate.is-hist .wx-gapline{display:none}
-}
+#weightPage .wx-ro:has(.wx-cd:not([hidden])){min-height:0}
 
 /* 3c · Range row: the segmented range, one fixed transport slot (▶ Replay / ■ Stop / ↺ Latest, one button whose
    state is data-wx-state) and Layers with its count badge. */
@@ -4533,19 +4520,15 @@ body:has(.cloud-local-banner:not([hidden])) #weightPage{--st-mast-mt:6px}
 #weightPage .wx-svg .wx-scale{font:500 var(--wx-fs-tick) var(--st-font);fill:var(--st-ink-3);font-variant-numeric:tabular-nums}
 #weightPage .wx-svg .wx-x{font:500 var(--wx-fs-tick) var(--st-font);fill:var(--st-ink-3)}
 #weightPage .wx-svg .wx-gaplab{fill:var(--st-ink-3);font-weight:450}
-#weightPage .wx-tag rect{fill:#7C3AED;stroke:rgba(255,255,255,.22);stroke-width:1}
-#weightPage .wx-tag text{font:560 var(--wx-fs-tag) var(--st-font-d);font-variant-numeric:tabular-nums;fill:#fff}
-#weightPage .wx-leader{stroke:rgba(180,154,255,.55);stroke-width:1;stroke-dasharray:1.5 3}
 #weightPage .wx-svg .vn-proj-line{stroke:#B49AFF}
 #weightPage .wx-svg .st-bridge{stroke:rgba(205,187,255,.55);stroke-width:1.6;stroke-dasharray:1.5 3.5;stroke-linecap:round}
 #weightPage .wx-svg .st-pillg.is-goal rect{fill:rgba(20,18,30,.86);stroke:rgba(205,187,255,.45)}
 #weightPage .wx-svg .st-pillg.is-goal text{fill:var(--st-ink);font:590 calc(10.5px*var(--wx-s)) var(--st-font)}
-/* Enter: the trend draws, the readings stagger in, the tag fades last; a range change replays a shorter draw.
+/* Enter: the trend draws, the readings stagger in, a range change replays a shorter draw.
    Under reduced motion every mark is its final frame (the existing rules below cover the dots and steps). */
-#weightPage.st-enter .wx-tag,#weightPage .wx-svg.is-range-change .wx-tag{opacity:0;animation:st-fade .4s var(--st-out) 1s forwards}
 #weightPage.st-enter .wx-area,#weightPage .wx-svg.is-range-change .wx-area{opacity:0;animation:st-fade .4s var(--st-out) .2s forwards}
-@media (prefers-reduced-motion:reduce){#weightPage .wx-tag,#weightPage .wx-area,#weightPage .wx-under,#weightPage .wx-svg.is-range-change .wx-tag,#weightPage .wx-svg.is-range-change .wx-area,#weightPage.st-enter .wx-tag,#weightPage.st-enter .wx-area{animation:none;opacity:1}#weightPage .wx-svg .vn-trend-line,#weightPage .wx-svg.is-range-change .vn-trend-line,#weightPage.st-enter .wx-svg .vn-trend-line{animation:none;stroke-dasharray:none;stroke-dashoffset:0}}
-:root[data-nxp-motion="reduced"] #weightPage .wx-tag,:root[data-nxp-motion="reduced"] #weightPage .wx-area,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-range-change .wx-tag,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-range-change .wx-area{animation:none;opacity:1}
+@media (prefers-reduced-motion:reduce){#weightPage .wx-area,#weightPage .wx-under,#weightPage .wx-svg.is-range-change .wx-area,#weightPage.st-enter .wx-area{animation:none;opacity:1}#weightPage .wx-svg .vn-trend-line,#weightPage .wx-svg.is-range-change .vn-trend-line,#weightPage.st-enter .wx-svg .vn-trend-line{animation:none;stroke-dasharray:none;stroke-dashoffset:0}}
+:root[data-nxp-motion="reduced"] #weightPage .wx-area,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-range-change .wx-area{animation:none;opacity:1}
 :root[data-nxp-motion="reduced"] #weightPage .wx-svg .vn-trend-line,:root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-range-change .vn-trend-line{animation:none;stroke-dasharray:none;stroke-dashoffset:0}
 #weightPage .wx-plate .wx-wrap .st-tip{top:8px}
 
@@ -4818,3 +4801,9 @@ body:has(.cloud-local-banner:not([hidden])) #weightPage{--st-mast-mt:6px}
   :root::view-transition-group(wx-plot),:root::view-transition-old(wx-plot),:root::view-transition-new(wx-plot){animation:none}
 }
 :root[data-nxp-motion="reduced"] #weightPage .wx-svg.is-compare-change,:root[data-nxp-motion="reduced"] #weightPage .wx-xv,:root[data-nxp-motion="reduced"] #weightPage .wx-xv *,:root[data-nxp-motion="reduced"] #weightPage .st-jr-act i{animation:none;transition:none}
+
+/* Larger text (D149 follow-up, review M3): the one-line clips become wrapping lines, so no word is ever dropped (A-25, I6). */
+:root[data-nxp-size="large"] #homePage :is(.tf-ctx,.tf-ci,.tf-count,.tf-rh,.tf-lsub){height:auto;min-height:20px;overflow:visible}
+:root[data-nxp-size="large"] #homePage .tf-lsub{min-height:15px}
+:root[data-nxp-size="large"] #homePage .tf-count,:root[data-nxp-size="large"] #homePage .tf-rh{min-height:0}
+:root[data-nxp-size="large"] #homePage .tf-rh>span,:root[data-nxp-size="large"] #homePage .tf-count>span{white-space:normal}

@@ -1421,6 +1421,12 @@ Object.assign(NXT, (()=>{
     if(Math.abs(d)<0.05)return 'On trend';
     return Math.abs(d).toFixed(1)+' kg '+(d<0?'below':'above')+' trend';
   }
+  /* "0.7 kg below trend" / "on trend" / '' (no trend yet): the readouts' gap, as words (D148). */
+  function gapWords(p) {
+    if(!p||p.avg===null||p.avg===undefined||!Number.isFinite(p.weight))return '';
+    const d=p.weight-p.avg;
+    return Math.abs(d)<0.05?'on trend':Math.abs(d).toFixed(1)+' kg '+(d<0?'below':'above')+' trend';
+  }
   function pointTiming(p) {
     const t=String(p&&p.timeOfDay||'').trim();
     if(!t)return 'Timing not recorded';
@@ -1759,7 +1765,7 @@ Object.assign(NXT, (()=>{
     let full,short;
     if(pl&&pl.ok&&win.length){
       const rs=N.rateSpan(pl),n=win.length,m=`${n} ${N.plural(n,'morning')}`;
-      full=`${rs.label} · ${m}, ${spanText(win[0].date,win.at(-1).date)}`;
+      full=`${rs.label} · ${m} to ${N.shortDate(win.at(-1).date)}`;
       short=rs.full?`Last 4 weeks · ${m}`:`${rs.days} days · ${m}`;
     }else{
       const n=win.length,m=`${n} ${N.plural(n,'morning')}`;
@@ -1787,25 +1793,20 @@ Object.assign(NXT, (()=>{
   function readoutsHTML(model,idx) {
     const p=model.points[idx],isLatest=idx===model.points.length-1,fv=model.forecastView;
     const postRow=model.postByDate.get(p.date);
-    const gap=p.avg===null||p.avg===undefined?'—':kgSigned(p.weight-p.avg)+' kg';
-    const lastTrend=model.points.filter(q=>q.avg!==null).at(-1);
+    /* D148: the vs-trend gap is words on the reading's own sub line; the trend cell gets a sub line only when the
+       trend is not fresh or a past day is selected. */
     let fresh='';
     if(fv&&fv.freshness&&fv.freshness!=='fresh'&&fv.modelOriginDate)fresh=`<span class="wx-fresh is-old"><i aria-hidden="true">◆</i>As of ${esc(N.shortDate(fv.modelOriginDate))}</span>`;
-    else if(lastTrend)fresh=`<span class="wx-fresh"><i aria-hidden="true">●</i>Updated ${lastTrend.date===state.date?'today':esc(N.shortDate(lastTrend.date))}</span>`;
     return `<div class="wx-ro" role="group" aria-label="Selected day">
         <div class="wx-cell wx-ca">
-          <span class="wx-lab"><i class="vn-key-raw raw" aria-hidden="true"></i><span id="n99-chart-date">${isLatest?'Latest morning':'Morning reading'}</span></span>
+          <div class="wx-lr"><span class="wx-lab"><i class="vn-key-raw raw" aria-hidden="true"></i><span id="n99-chart-date">${isLatest?'Latest morning':'Morning reading'}</span></span>${noteChipHTML(p.date)}</div>
           <div class="wx-v vn-num" id="n99-chart-weight">${p.weight.toFixed(1)}<em>kg</em></div>
-          <div class="wx-sub"><span><span id="wx-date">${esc(dayDate(p.date))}</span><span class="wx-tm"> · <span id="n99-chart-timing">${esc(pointTiming(p))}</span></span></span>${noteChipHTML(p.date)}</div>
-        </div>
-        <div class="wx-cell wx-cb">
-          <span class="wx-lab">vs trend</span>
-          <b class="wx-gap vn-num" id="wx-gap">${gap}</b>
+          <div class="wx-sub"><span><span id="wx-date">${esc(dayDate(p.date))}</span><span class="wx-tm"> · <span id="n99-chart-timing">${esc(pointTiming(p))}</span></span><span class="wx-gap" id="wx-gap">${esc(gapWords(p))}</span></span></div>
         </div>
         <div class="wx-cell wx-cc">
           <span class="wx-lab"><i class="vn-key-trend" aria-hidden="true"></i><span id="wx-lab-c">Smoothed trend</span></span>
           <div class="wx-v wx-v-t vn-num" id="n99-chart-average">${p.avg===null?'—':p.avg.toFixed(1)}<em>kg</em></div>
-          <div class="wx-sub">${fresh}<span class="wx-on" id="wx-on"${isLatest?' hidden':''}>on ${esc(N.shortDate(p.date))}</span><span class="wx-gapline" id="n99-chart-coverage">${esc(gapLine(p))}</span></div>
+          <div class="wx-sub">${fresh}<span class="wx-on" id="wx-on"${isLatest?' hidden':''}>on ${esc(N.shortDate(p.date))}</span></div>
         </div>
         <div class="wx-cell wx-cd" id="n99-chart-post" ${postRow?'':'hidden'}>
           <span class="wx-lab"><i class="vn-key-post post" aria-hidden="true"></i>Post-workout</span>
@@ -1886,16 +1887,16 @@ Object.assign(NXT, (()=>{
     const pts=model.points,tr=pts.filter(q=>q.avg!==null),isCut=!N.ui.range||N.ui.range==='cut';
     const days=daysBetween(model.start,state.date)+1;
     const low=pts.reduce((m,q)=>q.weight<m.weight?q:m,pts[0]);
-    const ch=tr.length>=2?tr.at(-1).avg-tr[0].avg:null,over=tr.length>=2?daysBetween(tr[0].date,tr.at(-1).date):0;
-    const change=`<div><small>Trend change</small><b class="vn-num">${ch===null?'—':kgSigned(ch)}<em>kg</em></b><span>${ch===null?'building':`over ${over} ${N.plural(over,'day')}`}</span></div>`;
+    const ch=tr.length>=2?tr.at(-1).avg-tr[0].avg:null;
+    const change=`<div><small>Trend change</small><b class="vn-num">${ch===null?'—':kgSigned(ch)}<em>kg</em></b>${ch===null?'<span>building</span>':''}</div>`;
     const first=`<div><small>First reading</small><b class="vn-num">${pts[0].weight.toFixed(1)}<em>kg</em></b><span>${esc(N.shortDate(pts[0].date))}</span></div>`;
     const cells=`${isCut?first:change}
         <div><small>Lowest</small><b class="vn-num">${low.weight.toFixed(1)}<em>kg</em></b><span>${esc(N.shortDate(low.date))}</span></div>
-        <div><small>Weighed</small><b class="vn-num">${pts.length}<em> of ${days}</em></b><span>${Math.round(pts.length/days*100)}%</span></div>`;
+        <div><small>Weighed</small><b class="vn-num">${pts.length}<em> of ${days} days</em></b></div>`;
     return `<div class="wx-sum" role="group" aria-label="This range">
-        <p class="wx-sum-h"><span>${esc(rangeName())} · ${esc(spanText(model.start,state.date))}</span>${compareButtonHTML()}</p>
+        <p class="wx-sum-h"><span>${esc(rangeName())}</span>${compareButtonHTML()}</p>
         <div class="wx-sum-c">${cells}</div>
-        ${isCut&&ch!==null?`<p class="wx-sum-x">Trend change <b class="vn-num">${kgSigned(ch)} kg</b> over ${over} ${N.plural(over,'day')}</p>`:''}
+        ${isCut&&ch!==null?`<p class="wx-sum-x">Trend change <b class="vn-num">${kgSigned(ch)} kg</b></p>`:''}
       </div>`;
   }
   function srSummary(model) {
@@ -2037,7 +2038,7 @@ Object.assign(NXT, (()=>{
     return true;
   }
   /* The plot (spec §7.3), back to front: screen, grid, week bands, spread, area, post-workout, trend, readings,
-     weekly steps, notes, projection, lowest ring, selection, and the scale gutter with one trend tag. */
+     weekly steps, notes, projection, lowest ring, selection, and the scale gutter. */
   function plotHTML(m,o={}) {
     const {points,post,segments,ticks,bands,forecast,anchor,futureDays,todayX,W,H,left,right,top,bottom,geo}=m;
     const base=H-bottom,px=v=>Number(v).toFixed(2),plotR=W-right,gutterRight=!!(geo&&geo.gutter==='right');
@@ -2045,11 +2046,8 @@ Object.assign(NXT, (()=>{
     const dotR=n>90?1.8:n>45?2.4:3;
     let kept=ticks;while(kept.length>5)kept=kept.filter((_,i)=>(kept.length-1-i)%2===0);
     const grid=kept.map(t=>`<line class="wx-grid" x1="${left}" x2="${plotR}" y1="${px(t.y)}" y2="${px(t.y)}"/>`).join('');
-    /* The trend tag: the last smoothed value, in the gutter, tied to the stroke by a dotted leader. */
     const tail=segments.at(-1)?.at(-1)||null;
-    const tagY=tail?Math.min(base-10,Math.max(top+10,tail.y)):null;
-    const tag=gutterRight&&tail?`<g class="wx-tag" aria-hidden="true"><line class="wx-leader" x1="${px(tail.x+4)}" y1="${px(tail.y)}" x2="${px(plotR+2)}" y2="${px(tagY)}"/><rect x="${px(plotR+3)}" y="${px(tagY-9.5)}" width="${right-5}" height="19" rx="9.5"/><text x="${px(plotR+3+(right-5)/2)}" y="${px(tagY+4.4)}" text-anchor="middle">${tail.avg.toFixed(1)}</text></g>`:'';
-    const tickTxt=kept.filter(t=>!(tag&&Math.abs(t.y-tagY)<13)).map((t,i,arr)=>{
+    const tickTxt=kept.map(t=>{
       const v=Number(t.value.toFixed(1)),topTick=t===kept[kept.length-1]&&gutterRight;
       return gutterRight?`<text class="vn-ytick wx-scale" x="${W-6}" y="${px(t.y+4)}" text-anchor="end">${v}${topTick?'<tspan class="wx-unit"> kg</tspan>':''}</text>`
         :`<text class="vn-ytick" x="${left-7}" y="${px(t.y+3.8)}" text-anchor="end" fill="${CHART.axisText}" font-size="11">${v}</text>`;
@@ -2131,7 +2129,7 @@ Object.assign(NXT, (()=>{
         ${anchor&&forecast?`<circle cx="${px(anchor.x)}" cy="${px(anchor.y)}" r="4" fill="${CHART.ink}" stroke="${CHART.activeRing}" stroke-width="2" pointer-events="none"/>`:''}
         <circle id="st-chart-halo" class="st-halo" cx="${px(p.x)}" cy="${px(p.y)}" r="11" pointer-events="none"/>
         <circle id="n99-chart-active" cx="${px(p.x)}" cy="${px(p.y)}" r="5" pointer-events="none"/>
-        ${goalPill}${tickTxt}${tag}${cv?cmpLabs:xLabs}
+        ${goalPill}${tickTxt}${cv?cmpLabs:xLabs}
       </svg>`;
   }
   /* Empty plate (spec §15): the same frame with its first step. Contextual-only weigh-ins (D14) are not denied:
@@ -2172,7 +2170,7 @@ Object.assign(NXT, (()=>{
     const rows=N.weights(),has=!!(model.points&&model.points.length);
     const ev=has?evidenceParts(plateau,model.forecastRead,model.forecastView):null;
     const how=`<div class="wx-how">
-        <p class="vn-tiny">Dots are morning readings. The solid line is the smoothed trend, an average that weights recent mornings more, so it runs behind a moving weight. The tag at its end is the latest smoothed value. A hatched column marks four or more days without a morning reading.</p>
+        <p class="vn-tiny">Dots are morning readings. The solid line is the smoothed trend, an average that weights recent mornings more, so it runs behind a moving weight. A hatched column marks four or more days without a morning reading.</p>
         <p class="vn-tiny vn-mt3"><b>Day-to-day spread</b> is the scatter of your mornings around the trend. <b>Rate range</b> is where the four-week rate likely sits, about ±2 standard errors of its line. <b>Projection range</b> is the spread of the projected arrival, about 2 in 3.</p>
         ${nowNote()}${N.diagnosisCard()}${N.reviewCard()}${N.cfg().targetConfirmed?'<p class="vn-tiny vn-mt3">A weight range alone does not measure leanness.</p>':''}
       </div>`;
@@ -2567,7 +2565,6 @@ Object.assign(NXT, (()=>{
     text('wx-date',dayDate(p.date));
     html('n99-chart-weight',p.weight.toFixed(1)+'<em>kg</em>');
     html('n99-chart-average',p.avg===null?'—<em>kg</em>':p.avg.toFixed(1)+'<em>kg</em>');
-    text('n99-chart-coverage',gapLine(p));
     text('n99-chart-timing',pointTiming(p));
     const plate=document.getElementById('vn-weight');if(plate&&plate.classList){plate.classList.toggle('is-hist',!isLatest);plate.setAttribute('data-wx-timing',pointTiming(p)==='Morning'?'morning':'other');}
     const postRow=m.postByDate?m.postByDate.get(p.date):null,postBox=document.getElementById('n99-chart-post');
@@ -2582,7 +2579,7 @@ Object.assign(NXT, (()=>{
        the slider's value text. Each writes only where its element exists; the plate markup lands in a later commit,
        so today's chart is unchanged. opts.announce (pointer selections, once on pointerup) speaks the same words
        through the polite region; keyboard steps rely on aria-valuetext instead. */
-    text('wx-gap',p.avg===null||p.avg===undefined||!Number.isFinite(p.weight)?'—':N.signedFixed(p.weight-p.avg,1,'−')+' kg');
+    text('wx-gap',gapWords(p));
     text('wx-lab-a',isLatest?'Latest morning':'Morning reading');
     /* The trend cell keeps its name; on a historical day its sub line names the day ("on 28 Sept") in place of the
        freshness word, since the full label does not fit beside the vs cell on a phone (D118 amends D111 here). */
