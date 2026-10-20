@@ -692,7 +692,7 @@ test("layerState: every chip carries its name, default and (when unavailable) th
   /* The chip markup: aria-pressed on every chip; a disabled one says why, aria-disabled and described by it. */
   const html = N.chartHTML();
   for (const k of ["weekly", "spread", "post", "notes", "forecast"]) assert.ok(new RegExp(`data-wx-layer="${k}" aria-pressed="(true|false)"`).test(html), k);
-  assert.ok(/data-wx-layer="post" aria-pressed="false" aria-disabled="true" aria-describedby="wx-why-post"[^>]*>[\s\S]*?<small id="wx-why-post">No post-workout readings in this range<\/small>/.test(html));
+  assert.ok(/data-wx-layer="post" aria-pressed="false" aria-disabled="true" aria-describedby="wx-why-post"[^>]*>[\s\S]*?<small class="st-sr" id="wx-why-post">No post-workout readings in this range<\/small>/.test(html));
 });
 
 test("the selection bar is the only inspector, in the slot, at every width; × is named Back to latest", () => {
@@ -1062,7 +1062,7 @@ test("w5 · phone-first: no wide path, Layers trims the page plot 12 px, the rew
   const cs = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8"), st = fs.readFileSync(path.join(ROOT, "strata.js"), "utf8"), css = fs.readFileSync(path.join(ROOT, "strata.css"), "utf8");
   assert.ok(!/wxWide|wx-insp|is-wide\$\{/.test(cs + st) && !/wx-insp|\.wx-plate\.is-wide/.test(css), "the wide-width paths are gone");
   assert.strictEqual(withViewport(390, 844, n => n.chartGeo("page")).plotH, 300);
-  assert.strictEqual(withViewport(390, 844, n => { n.ui.layersOpen = true; return n.chartGeo("page"); }).plotH, 288, "Layers open: 12 px off the page plot (spec §19.6)");
+  assert.strictEqual(withViewport(390, 844, n => { n.ui.layersOpen = true; return n.chartGeo("page"); }).plotH, 210, "Layers open: 90 px off the page plot (spec §19.6; the two-row drawer, D148 fix)");
   assert.strictEqual(withViewport(390, 844, n => { n.ui.layersOpen = true; return n.chartGeo("expand"); }).plotH, withViewport(390, 844, n => n.chartGeo("expand")).plotH, "Expand fits itself instead");
   assert.ok(st.indexOf('jrWord("Estimated level", ds)') !== -1 && st.indexOf('jrWord("Then"') === -1, "a rewound level carries the contract name");
   assert.ok(/:root\[data-nxp-size="large"\] #weightPage\{--wx-s:1\.12;--wx-sn:1\.06\}/.test(css), "Larger text scales the Weight tokens ×1.12, numerals ×1.06");

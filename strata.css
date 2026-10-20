@@ -103,10 +103,11 @@
    No ids, fields or handlers change; swipe-to-close and the page recede are strata.js behaviours keyed to `.n99-modal`. */
 #modalRoot .modal:not(.n99-modal){-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);background:rgba(4,4,8,.55) !important;animation:nxt-dim-in var(--nxt-duration-fast) var(--nxt-ease-out) both}
 #modalRoot .modal:not(.n99-modal) .sheet{
-  max-width:580px !important;padding:12px 22px calc(24px + var(--nxt-safe-bottom,0px)) !important;
-  border:1px solid rgba(var(--st-hl),.08) !important;border-bottom:0 !important;border-radius:28px 28px 0 0 !important;
-  background:radial-gradient(90% 40% at 50% 0%,rgba(139,92,246,.14),transparent 70%),var(--st-surface) !important;
-  box-shadow:0 -20px 60px -20px rgba(0,0,0,.9) !important;color:var(--st-ink);
+  max-width:580px !important;padding:12px var(--st-gut,16px) calc(24px + var(--nxt-safe-bottom,0px)) !important;
+  border:1px solid var(--st-tile-line) !important;border-bottom:0 !important;border-radius:var(--st-r) var(--st-r) 0 0 !important;
+  background:radial-gradient(90% 40% at 50% 0%,rgba(139,92,246,.16),transparent 70%),var(--st-tile),color-mix(in srgb,var(--st-surface) 94%,transparent) !important;
+  -webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3);
+  box-shadow:var(--st-tile-hl),0 -20px 60px -20px rgba(0,0,0,.9) !important;color:var(--st-ink);
   overscroll-behavior:contain;touch-action:pan-y;transition:transform .35s var(--st-glide);
   animation:st-sheet-in .55s var(--st-spring-soft) both !important;
 }
@@ -116,7 +117,7 @@
 :root[data-nxp-motion="reduced"] #modalRoot .modal:not(.n99-modal),:root[data-nxp-motion="reduced"] #modalRoot .modal:not(.n99-modal) .sheet{animation:none !important}
 
 /* title, kicker, note and label onto the sheet type scale (the old 8.5–11px labels sat under the 11px floor) */
-#modalRoot .modal:not(.n99-modal) .sheet>.title,#modalRoot .modal:not(.n99-modal) .sheet .apx96-card-head .title{font:600 22px/1.2 var(--st-font) !important;letter-spacing:-.015em !important;color:var(--st-ink) !important}
+#modalRoot .modal:not(.n99-modal) .sheet>.title,#modalRoot .modal:not(.n99-modal) .sheet .apx96-card-head .title{font:590 20px/1.2 var(--st-font-d) !important;letter-spacing:-.015em !important;color:var(--st-ink) !important}
 #modalRoot .modal:not(.n99-modal) .sheet :is(.kicker,.apx95-card-kicker,.smart-section-label,.apx96-kicker,.coach-panel-title){font:560 13px/1.2 var(--st-font) !important;letter-spacing:0 !important;text-transform:none !important;color:var(--st-ink-2) !important}/* the calm label of .st-cat (D42): sentence case, no tracked caps */
 #modalRoot .modal:not(.n99-modal) .sheet :is(.sub,.apx96-soft,.apx95-sheet-note){font:450 13px/1.5 var(--st-font) !important;color:var(--st-ink-3) !important}
 #modalRoot .modal:not(.n99-modal) .sheet :is(label,.label){font:550 13px/1.3 var(--st-font) !important;letter-spacing:0 !important;text-transform:none !important;color:var(--st-ink-2) !important;margin-bottom:6px !important}
@@ -135,20 +136,21 @@
    field in a sheet and in Settings. The weigh-in big number (.st-qw-field) and its compact date row (.st-qw-date) are designed exceptions, as are the
    Train set numerals and steppers (#trainPage, untouched). Settings textareas keep their own min-height (the Evo scan box is 88px). */
 #modalRoot .sheet :where(input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=range]),select,textarea):not(.st-qw-field *,.st-qw-date *),
-#morePage :where(input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=range]):not([type=file]),select){min-height:52px !important}
+#morePage :where(input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=range]):not([type=file]),select){min-height:48px !important}
 #modalRoot .modal:not(.n99-modal) .sheet :where(input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=range]),select,textarea),
 #morePage :where(input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=range]):not([type=file]),select,textarea){
-  border-radius:var(--r-ctl) !important;background:rgba(255,255,255,.045) !important;border:1px solid rgba(var(--st-hl),.11) !important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.04) !important;color:var(--st-ink) !important;font:450 16px var(--st-font) !important;
+  border-radius:999px !important;padding-left:18px !important;padding-right:18px !important;background:var(--st-field,rgba(255,255,255,.055)) !important;border:1px solid rgba(var(--st-hl),.11) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05) !important;color:var(--st-ink) !important;font:450 16px var(--st-font-d) !important;font-variant-numeric:tabular-nums;
   transition:border-color .2s,background-color .2s,box-shadow .25s var(--st-out)}
-#modalRoot .modal:not(.n99-modal) .sheet :where(input,select,textarea):focus,#morePage :where(input,select,textarea):focus{outline:none !important;border-color:rgba(180,154,255,.6) !important;background:rgba(139,92,246,.09) !important;box-shadow:0 0 0 4px rgba(139,92,246,.18) !important}
-#modalRoot .modal:not(.n99-modal) .sheet ::placeholder,#morePage ::placeholder{color:rgba(var(--st-hl),.32)}
+#modalRoot .modal:not(.n99-modal) .sheet :where(textarea),#morePage :where(textarea){border-radius:20px !important;padding:12px 18px !important}
+#modalRoot .modal:not(.n99-modal) .sheet :where(input,select,textarea):focus,#morePage :where(input,select,textarea):focus{outline:none !important;border-color:rgba(180,154,255,.6) !important;background:rgba(139,92,246,.09) !important;box-shadow:0 0 0 3px rgba(139,92,246,.32) !important}
+#modalRoot .modal:not(.n99-modal) .sheet ::placeholder,#morePage ::placeholder{color:var(--st-ink-3)}/* ink-3 on the field fill is 5.6:1 */
 
 /* 3 · One button (D56). `.btn` is the primary capsule, `.btn.secondary` the glass capsule, `.btn.danger` glass with the rose word (I2), all in the n99 buttons' own type:
    Geist 16px, primary 620 and glass 560, the same tracking, no text-transform. Several labels are capitals in the markup itself (SAVE CHANGES, CANCEL, NICE, LOG ZONE 2 ...):
    CSS leaves them as written, so sentence case there is a copy edit in the index.html templates. */
 #modalRoot .modal:not(.n99-modal) .sheet .btn{
-  display:flex !important;align-items:center;justify-content:center;min-height:50px !important;padding:0 20px !important;
+  display:flex !important;align-items:center;justify-content:center;min-height:54px !important;padding:0 20px !important;
   border:0 !important;border-radius:999px !important;background:var(--btn-primary) !important;box-shadow:var(--btn-primary-shadow) !important;color:#fff !important;
   font:620 16px/24px var(--st-font-d) !important;letter-spacing:-.012em !important;text-transform:none !important;text-shadow:0 1px 1px rgba(46,16,101,.35)}
 #modalRoot .modal:not(.n99-modal) .sheet .btn.secondary,#modalRoot .modal:not(.n99-modal) .sheet .btn.danger{
@@ -739,10 +741,14 @@ button.st-refc:active{transform:scale(.97)}
 /* ---- SHEETS ------------------------------------------------------------------------- */
 .n99-modal{-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);background:rgba(4,4,8,.55) !important}
 .n99-modal .sheet{
-  border-radius:28px 28px 0 0 !important;border:1px solid rgba(var(--st-hl),.08) !important;border-bottom:0 !important;
-  background:radial-gradient(90% 40% at 50% 0%,rgba(139,92,246,.14),transparent 70%),#15141D !important;
-  box-shadow:0 -20px 60px -20px rgba(0,0,0,.9) !important;
+  /* D151 · the sheet is the tile material: --st-r top corners, lit top edge, --st-surface base, 16px gutters */
+  border-radius:var(--st-r) var(--st-r) 0 0 !important;border:1px solid var(--st-tile-line) !important;border-bottom:0 !important;
+  padding-left:var(--st-gut,16px) !important;padding-right:var(--st-gut,16px) !important;
+  background:radial-gradient(90% 40% at 50% 0%,rgba(139,92,246,.16),transparent 70%),var(--st-tile),color-mix(in srgb,var(--st-surface) 94%,transparent) !important;
+  -webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3);
+  box-shadow:var(--st-tile-hl),0 -20px 60px -20px rgba(0,0,0,.9) !important;
 }
+@media (prefers-reduced-transparency:reduce){#modalRoot .sheet{-webkit-backdrop-filter:none;backdrop-filter:none;background:radial-gradient(90% 40% at 50% 0%,rgba(139,92,246,.16),transparent 70%),var(--st-surface) !important}}
 
 /* ---- BUTTON SHAPES (one system) -------------------------------------------
    Icon buttons are circles, actions are capsules. */
@@ -1736,17 +1742,39 @@ html{caret-color:#B49AFF;-webkit-tap-highlight-color:transparent}
 /* ---- Today: the three mini tiles become one glass instrument strip ---- */
 
 /* ---- Sheets and forms: one field recipe everywhere ---- */
-.n99-modal #n99-modal-title{font:600 22px/1.2 var(--st-font) !important;letter-spacing:-.015em !important}
+.n99-modal #n99-modal-title{font:590 20px/1.2 var(--st-font-d) !important;letter-spacing:-.015em !important}
 .n99-modal .sheet :where(label){font:550 13px/1.3 var(--st-font) !important;color:var(--st-ink-2) !important;letter-spacing:0 !important}
 .n99-modal .sheet :where(input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=range]),select,textarea){
-  min-height:52px;border-radius:var(--r-ctl) !important;background:rgba(255,255,255,.045) !important;border:1px solid rgba(var(--st-hl),.11) !important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.04) !important;color:var(--st-ink) !important;font:450 16px var(--st-font) !important;
+  min-height:48px;border-radius:999px !important;padding-left:18px !important;padding-right:18px !important;background:var(--st-field,rgba(255,255,255,.055)) !important;border:1px solid rgba(var(--st-hl),.11) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05) !important;color:var(--st-ink) !important;font:450 16px var(--st-font-d) !important;font-variant-numeric:tabular-nums;text-align:left;
   transition:border-color .2s,background-color .2s,box-shadow .25s var(--st-out)}
-.n99-modal .sheet :where(input,select,textarea):focus{outline:none !important;border-color:rgba(180,154,255,.6) !important;background:rgba(139,92,246,.09) !important;box-shadow:0 0 0 4px rgba(139,92,246,.18) !important}
-.n99-modal .sheet ::placeholder{color:rgba(var(--st-hl),.32)}
+.n99-modal .sheet :where(textarea){border-radius:20px !important;padding:12px 18px !important}
+.n99-modal .sheet :where(input[type=date])::-webkit-date-and-time-value{text-align:left}
+.n99-modal .sheet :where(input,select,textarea):focus{outline:none !important;border-color:rgba(180,154,255,.6) !important;background:rgba(139,92,246,.09) !important;box-shadow:0 0 0 3px rgba(139,92,246,.32) !important}
+.n99-modal .sheet ::placeholder{color:var(--st-ink-3);opacity:1}
 .n99-modal .n99-icon{background:rgba(var(--st-hl),.08) !important;box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.1) !important}
 .n99-modal .n99-icon:focus:not(:focus-visible){outline:none !important}
 .n99-modal .n99-small{color:var(--st-ink-3) !important;font:450 13px/1.5 var(--st-font) !important}
+/* D151 · rhythm: 16px gutters (set on the sheet), labels 13px over a 6px gap, fields 14px apart, the primary the .st-cta capsule 54px tall */
+.n99-modal .sheet :where(label){margin:14px 0 0;gap:6px}
+.n99-modal .sheet :where(.n99-form-grid){gap:0 12px}
+.n99-modal .sheet :where(.n99-small){margin:14px 0 0}
+.n99-modal .sheet :where(.n99-button){min-height:54px;margin-top:16px;border-radius:999px}
+.n99-modal .sheet :where(.n99-button.secondary){margin-top:10px}
+.n99-modal .sheet :where(.n99-picker .n99-button,.n99-stack>.n99-button){margin-top:0}
+.n99-modal .sheet .n99-eyebrow{font:560 13px/1.2 var(--st-font);letter-spacing:0;text-transform:none;color:var(--st-ink-2)}/* the calm label, not tracked caps (D42) */
+.n99-sheet-foot{margin-top:10px}.n99-sheet-foot .n99-button{margin-top:0}
+.n99-modal .sheet .n99-sheet-foot .n99-button.secondary{color:var(--st-fat) !important}/* destructive: glass with the rose word (D56, I2) */
+/* D150 · the cardio "More details" fold: a 44px tier-3 row that opens the two stored-but-History-only fields */
+.n99-more{margin-top:6px}
+.n99 details.n99-more>summary{display:flex;align-items:center;justify-content:flex-start;gap:9px;min-height:44px;margin:0;cursor:pointer;list-style:none;color:var(--btn-text);font:560 14.5px/1 var(--st-font-d);letter-spacing:-.005em;-webkit-tap-highlight-color:transparent}
+.n99 details.n99-more>summary::-webkit-details-marker{display:none}
+.n99 details.n99-more>summary::after{content:"";width:7px;height:7px;margin:-3px 0 0;border:solid currentColor;border-width:0 1.6px 1.6px 0;transform:rotate(45deg);transition:transform .2s var(--st-out)}
+.n99 details.n99-more[open]>summary{margin-bottom:0}
+.n99 details.n99-more[open]>summary::after{content:"";transform:rotate(-135deg);margin-top:3px}
+.n99-more>summary:focus-visible{outline:2px solid #CDBBFF;outline-offset:3px;border-radius:999px}
+.n99-more>.n99-form-grid>label:first-child,.n99-more>.n99-form-grid>label:last-child{margin-top:0}
+@media (prefers-reduced-motion:reduce){.n99 details.n99-more>summary::after{transition:none}}
 
 /* ---- Weigh-in sheet (D44): big number, steppers, timing pill ---- */
 .st-qw-num{display:grid;grid-template-columns:56px minmax(0,1fr) 56px;align-items:center;gap:6px;margin:6px 0 2px}
@@ -3397,16 +3425,18 @@ body.st-live-on main::after{content:"";display:block;height:70px}
 /* ---- D76 · In-app questions ----------------------------------------------------------------------------- */
 .st-ask{position:fixed;inset:0;z-index:10060;display:flex;align-items:flex-end;justify-content:center;padding:0 10px calc(10px + var(--nxt-safe-bottom,0px))}
 .st-ask-scrim{position:absolute;inset:0;background:rgba(4,3,8,.5);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-.st-ask-sheet{position:relative;width:100%;max-width:420px;padding:22px 18px 14px;border-radius:30px;text-align:center;
-  background:linear-gradient(180deg,rgba(44,38,66,.92),rgba(22,20,33,.94));box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(255,255,255,.07),0 30px 70px -20px rgba(0,0,0,.9),0 0 60px -30px rgba(139,92,246,.6);
-  -webkit-backdrop-filter:blur(30px) saturate(1.6);backdrop-filter:blur(30px) saturate(1.6)}
-.st-ask-sheet h2{margin:0;font:640 20px/1.2 var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink)}
+/* D151 · the question is the sheet material (tile glass, --st-r, lit edge, 16px gutter) and its buttons are the two button tiers */
+.st-ask-sheet{position:relative;width:100%;max-width:420px;padding:22px 16px 16px;border-radius:var(--st-r);text-align:center;border:1px solid var(--st-tile-line);
+  background:radial-gradient(90% 60% at 50% 0%,rgba(139,92,246,.16),transparent 70%),var(--st-tile),color-mix(in srgb,var(--st-surface) 94%,transparent);box-shadow:var(--st-tile-hl),0 30px 70px -20px rgba(0,0,0,.9);
+  -webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3)}
+@media (prefers-reduced-transparency:reduce){.st-ask-sheet{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--st-surface)}}
+.st-ask-sheet h2{margin:0;font:590 20px/1.2 var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink)}
 .st-ask-sheet p{margin:8px 4px 0;font:450 14.5px/1.45 var(--st-font);color:var(--st-ink-2)}
 .st-ask-acts{display:grid;gap:8px;margin-top:20px}
-.st-ask-acts button{min-height:52px;border:0;border-radius:999px;font:620 16px/1 var(--st-font-d);cursor:pointer;-webkit-tap-highlight-color:transparent}
-.st-ask-ok{color:#fff;background:linear-gradient(180deg,#9b74ff,#6d33ea);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 12px 26px -12px rgba(124,58,237,.9)}
-.st-ask-ok.is-danger{background:linear-gradient(180deg,#e2708d,#b83c5d);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 12px 26px -12px rgba(220,90,118,.8)}
-.st-ask-no{color:var(--st-ink);background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.st-ask-acts button{min-height:54px;border:0;border-radius:999px;font:620 16px/1 var(--st-font-d);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.st-ask-ok{color:#fff;background:var(--btn-primary);box-shadow:var(--btn-primary-shadow);text-shadow:0 1px 1px rgba(46,16,101,.35)}
+.st-ask-ok.is-danger{background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);color:var(--st-fat);text-shadow:none;font-weight:600}/* D56 / I2: danger is glass with the rose word */
+.st-ask-no{color:var(--btn-ink);background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);font-weight:560}
 .st-ask-acts button:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:3px}
 @media (prefers-reduced-motion:no-preference){
   .st-ask-scrim{animation:st-vt-in .2s ease both}.st-ask-sheet{animation:st-ask-in .42s cubic-bezier(.32,.72,0,1) both}
@@ -4480,13 +4510,13 @@ body:has(.cloud-local-banner:not([hidden])) #weightPage{--st-mast-mt:6px}
 #weightPage .wx-layers{display:flex;flex-wrap:wrap;align-items:center;gap:0 6px;min-height:48px;margin:0 calc(-1 * var(--wx-pad));padding:0 var(--wx-pad);overflow:visible;
   }
 #weightPage .wx-layers>*{margin:6px 0}
-/* The Layers drawer on its own: two columns, no sideways scroll; a disabled chip's reason sits under its name. */
-#weightPage #wx-layers{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 8px;padding-bottom:6px}
-#weightPage #wx-layers .wx-lc{height:auto;min-height:36px;min-width:0;padding:6px 10px;white-space:normal;text-align:left;flex-wrap:wrap;row-gap:1px;align-content:center;margin:4px 0}
-#weightPage #wx-layers .wx-lc>span{min-width:0}
-#weightPage #wx-layers .wx-lc small{flex-basis:100%;padding-left:23px;margin-top:-1px}
-#weightPage #wx-layers .wx-lc small::before{content:none}
-#weightPage #wx-layers .wx-fixed{margin:6px 0}
+/* The Layers drawer on its own: short capsules wrap to two rows, no sideways scroll; the reason for a disabled
+   chip is the one note line under them (and a toast on tap). */
+#weightPage #wx-layers{display:flex;align-items:center;gap:0 6px;min-height:0;padding-bottom:2px}
+#weightPage #wx-layers[hidden]{display:none}
+#weightPage #wx-layers .wx-fixed{display:none}
+#weightPage #wx-layers .wx-lc{height:34px;margin:3px 0;padding:0 11px 0 9px}
+#weightPage #wx-layers .wx-lnote{flex:1 0 100%;min-height:18px;margin:0 0 2px;font:450 calc(11.5px*var(--wx-s))/calc(18px*var(--wx-s)) var(--st-font);color:var(--st-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #weightPage .wx-layers[hidden]{display:none}
 #weightPage .wx-fixed{flex:none;display:inline-flex;align-items:center;gap:6px;font:500 calc(12px*var(--wx-s))/calc(18px*var(--wx-s)) var(--st-font);color:var(--st-ink-3);white-space:nowrap;padding-right:4px}
 #weightPage .wx-fixed .vn-key-raw{width:7px;height:7px;border-radius:50%;background:#DCD5EE}

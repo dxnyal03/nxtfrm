@@ -1316,7 +1316,7 @@ Object.assign(NXT, (()=>{
     const narrow=vw<360,gutter=narrow?12:16,platePad=narrow?10:14;
     const measured=N.ui.chartW&&Number(N.ui.chartW[kind]);
     const W=Math.round(measured>0?measured:kind==="expand"?vw-2*gutter:vw-2*gutter-2*platePad);
-    const plotH=Math.round(kind==="expand"?Math.max(232,(N.ui.expandH>0?N.ui.expandH:svh-324)):clampN(232,Math.round(svh*.355)-(N.ui.layersOpen?12:0),320));/* Layers open: 12 px off the page plot keeps it above the live dock (spec §19.6, D146) */
+    const plotH=Math.round(kind==="expand"?Math.max(232,(N.ui.expandH>0?N.ui.expandH:svh-324)):clampN(N.ui.layersOpen?190:232,Math.round(svh*.355)-(N.ui.layersOpen?90:0),320));/* Layers open: the two-row drawer and its note take 90 px off the page plot (floor 190 while open) so it stays above the live dock (spec §19.6, D146) */
     const left=6,right=42,top=11,bottom=26;
     return {W,H:top+plotH+bottom,left,right,top,bottom,padX:9,plotH,gutter:"right",kind,svh};
   }
@@ -1860,6 +1860,8 @@ Object.assign(NXT, (()=>{
   /* Range row (spec §6.3): range, one fixed transport slot (Replay / Stop / ↺ Latest, the same button in every
      state) and Layers. The drawer under it is always in the DOM (hidden when closed), so the series names stay in
      the chart's markup. */
+  /* The drawer's visible chip names are short (D148 fix); the full name stays for assistive tech and the note. */
+  const LAYER_SHORT={weekly:'Weekly',spread:'Spread',post:'Post-workout',notes:'Notes',forecast:'Projection'};
   function rangeRowHTML(model,idx) {
     const ranges=[[14,'2W'],[30,'1M'],[90,'3M'],['cut','Cut']];
     const seg=`<div class="vn-seg n99-segments wx-seg" role="group" aria-label="Chart date range">${ranges.map(([r,l])=>{
@@ -1873,13 +1875,15 @@ Object.assign(NXT, (()=>{
         <span class="wx-tp-t is-idle">Replay</span><span class="wx-tp-t is-playing">Stop</span><span class="wx-tp-t is-historical">Latest</span>
       </button>`;
     const lbtn=`<button type="button" class="wx-lyb" id="wx-lyb" aria-expanded="${open}" aria-controls="wx-layers" aria-label="Chart layers, ${on} on" onclick="NXT.toggleLayers()"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3 17 6.8 10 10.6 3 6.8z"/><path d="M3 10.2l7 3.8 7-3.8M3 13.6l7 3.8 7-3.8"/></svg>${on?`<b class="wx-badge" aria-hidden="true">${on}</b>`:''}</button>`;
+    const firstOff=layers.find(l=>l.why);
     const chips=layers.map(l=>{
       const pressed=!!N.ui[l.key]&&!l.why,rid=`wx-why-${l.k}`;
-      return `<button type="button" class="wx-lc${l.why?' is-off':''}" data-wx-layer="${l.k}" aria-pressed="${pressed}"${l.why?` aria-disabled="true" aria-describedby="${rid}"`:''} onclick="NXT.layerChip('${l.k}',this)">${l.glyph}<span>${esc(l.name)}</span>${l.why?`<small id="${rid}">${esc(l.why)}</small>`:''}</button>`;
+      return `<button type="button" class="wx-lc${l.why?' is-off':''}" data-wx-layer="${l.k}" aria-pressed="${pressed}"${l.why?` aria-disabled="true" aria-describedby="${rid}"`:''} onclick="NXT.layerChip('${l.k}',this)">${l.glyph}<span aria-hidden="true">${esc(LAYER_SHORT[l.k]?LAYER_SHORT[l.k]+(l.k==='notes'?l.name.replace(/^Notes/,''):''):l.name)}</span><span class="st-sr">${esc(l.name)}</span>${l.why?`<small class="st-sr" id="${rid}">${esc(l.why)}</small>`:''}</button>`;
     }).join('');
     return `<div class="wx-rr">${seg}${transport}${lbtn}</div>
       <div class="wx-layers" id="wx-layers" role="group" aria-label="Chart layers"${open?'':' hidden'}>
         <span class="wx-fixed"><i class="vn-key-raw raw" aria-hidden="true"></i>Morning readings</span><span class="wx-fixed"><i class="vn-key-trend" aria-hidden="true"></i>Smoothed trend</span>${chips}
+        <p class="wx-lnote" id="wx-lnote" aria-live="polite">${esc(firstOff?`${firstOff.name} · ${firstOff.why}`:'')}</p>
       </div>`;
   }
   /* The range summary (D50): what this window says without scrubbing. Trend change (first → last smoothed trend
@@ -2239,7 +2243,7 @@ Object.assign(NXT, (()=>{
     return N.ui.layersOpen;
   }
   function layerChip(name,el) {
-    if(el&&el.getAttribute('aria-disabled')==='true'){const why=el.querySelector('small');if(why&&typeof toast==='function')toast(why.textContent);return;}
+    if(el&&el.getAttribute('aria-disabled')==='true'){const why=el.querySelector('small'),full=el.querySelector('.st-sr'),note=document.getElementById('wx-lnote');if(why){if(note)note.textContent=(full?full.textContent+' · ':'')+why.textContent;if(typeof toast==='function')toast(why.textContent);}return;}
     N.setLayer(name,undefined,()=>{const again=typeof document!=='undefined'&&document.querySelector(`[data-wx-layer="${name}"]`);if(again&&again.focus)again.focus({preventScroll:true});});
   }
   /* ---- Compare periods, presentation (spec §11, §12; D110 engine; w4) ----------------------------------------
@@ -2986,7 +2990,11 @@ Object.assign(NXT, (()=>{
   function cardioModal(date,id) {
     const rec=id?(state.cardio||[]).find(r=>r&&r.id===id):null;
     const d=rec?rec.date:typeof date==='string'&&date<=state.date?date:state.date;
-    N.modal(rec?'Edit cardio':'Log cardio',`<form onsubmit="event.preventDefault();NXT.saveCardio(${rec?`'${esc(rec.id)}'`:''})"><label>Date<input id="n99-card-date" type="date" max="${state.date}" required value="${d}"></label><label>Activity<select id="n99-card-type">${(rec&&rec.type&&!CARDIO_TYPES.includes(rec.type)?[rec.type,...CARDIO_TYPES]:CARDIO_TYPES).map(t=>`<option${rec&&rec.type===t?' selected':''}>${esc(t)}</option>`).join('')}</select></label><div class="n99-form-grid"><label>Duration · minutes<input id="n99-card-min" type="number" min="1" max="600" step="1" inputmode="numeric" required${rec&&rec.duration!==''&&rec.duration!=null?` value="${esc(rec.duration)}"`:''}></label><label>Effort · 1–10<input id="n99-card-effort" type="number" min="1" max="10" step="1" inputmode="numeric" placeholder="Optional"${rec&&rec.intensity!==''&&rec.intensity!=null?` value="${esc(rec.intensity)}"`:''}></label></div><div class="n99-form-grid"><label>Speed · km/h<input id="n99-card-speed" type="number" min="0" max="80" step="0.1" inputmode="decimal" placeholder="Optional"${rec&&rec.speed!==''&&rec.speed!=null?` value="${esc(rec.speed)}"`:''}></label><label>Incline · %<input id="n99-card-incline" type="number" min="0" max="40" step="0.5" inputmode="decimal" placeholder="Optional"${rec&&rec.incline!==''&&rec.incline!=null?` value="${esc(rec.incline)}"`:''}></label></div><label>Average heart rate · optional<input id="n99-card-hr" type="number" min="30" max="240" inputmode="numeric"${rec&&rec.hr!==''&&rec.hr!=null?` value="${esc(rec.hr)}"`:''}></label><p class="n99-small">For easy cardio, use a pace where conversation feels comfortable. Speed or incline alone cannot establish your physiological Zone 2.</p><button class="n99-button" type="submit">${rec?'Save changes':'Save cardio'}</button>${rec?N.button('Delete this session',`NXT.deleteCardio('${esc(rec.id)}')`,true):''}</form>`);
+    const has=k=>rec&&rec[k]!==''&&rec[k]!=null;
+    const num=(id,k,min,max,step,mode,label,ph)=>`<label>${label}<input id="${id}" type="number" min="${min}" max="${max}" step="${step}" inputmode="${mode}"${ph?' placeholder="Optional"':''}${has(k)?` value="${esc(rec[k])}"`:''}></label>`;
+    /* D150 · Date, Activity, Duration, Speed, Incline, Save. Effort and Average heart rate sit behind one "More details" fold,
+       shut unless the record being edited already has either (they are stored and shown in History only; the engine reads duration). */
+    N.modal(rec?'Edit cardio':'Log cardio',`<form onsubmit="event.preventDefault();NXT.saveCardio(${rec?`'${esc(rec.id)}'`:''})"><label>Date<input id="n99-card-date" type="date" max="${state.date}" required value="${d}"></label><label>Activity<select id="n99-card-type">${(rec&&rec.type&&!CARDIO_TYPES.includes(rec.type)?[rec.type,...CARDIO_TYPES]:CARDIO_TYPES).map(t=>`<option${rec&&rec.type===t?' selected':''}>${esc(t)}</option>`).join('')}</select></label><label>Duration · minutes<input id="n99-card-min" type="number" min="1" max="600" step="1" inputmode="numeric" required${has('duration')?` value="${esc(rec.duration)}"`:''}></label><div class="n99-form-grid">${num('n99-card-speed','speed',0,80,0.1,'decimal','Speed · km/h',1)}${num('n99-card-incline','incline',0,40,0.5,'decimal','Incline · %',1)}</div><details class="n99-more"${has('intensity')||has('hr')?' open':''}><summary>More details</summary><div class="n99-form-grid">${num('n99-card-effort','intensity',1,10,1,'numeric','Effort · 1–10',1)}${num('n99-card-hr','hr',30,240,1,'numeric','Average heart rate',1)}</div></details><p class="n99-small">For easy cardio, use a pace where conversation feels comfortable. Speed or incline alone cannot establish your physiological Zone 2.</p><button class="n99-button" type="submit">${rec?'Save changes':'Save cardio'}</button></form>${rec?`<div class="n99-sheet-foot">${N.button('Delete this session',`NXT.deleteCardio('${esc(rec.id)}')`,true)}</div>`:''}`);
   }
   function saveCardio(id) {
     const duration=N.finite(val('n99-card-min')),intensity=N.finite(val('n99-card-effort')),speed=N.finite(val('n99-card-speed')),incline=N.finite(val('n99-card-incline')),hr=N.finite(val('n99-card-hr'));
