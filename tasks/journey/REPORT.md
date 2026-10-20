@@ -98,3 +98,71 @@ Not verified: WebKit and the iPhone simulator, for the reason above; haptics (no
    moment on test data.
 2. **Release:** bump `RELEASE` to 163 when shipping.
 3. **Decisions:** D95–D100 in `tasks/elevate/DECISIONS-PROPOSED.md`.
+
+## Week by week, and the tilt light removed (2026-10-19)
+
+PR dxnyal03/nxtfrm#38 was merged by the owner (`f45e6e0`, Release 163). New branch `week-by-week-tilt` from it.
+
+- **Week by week (D101).** Rebuilt from the proposal the owner approved ("okay"): bars for each week's change, an honest
+  week in progress, context chips (lifts, cardio, notes), the fastest week starred, Show all, and rows that open in
+  place to their seven mornings. Old ledger styles removed; scrub, replay and "Show on chart" still drive the rows.
+- **Tilt light removed (D88 withdrawn).** Owner: "remove the tilt light not nice". The orientation listener, the
+  reflections and canvas drift, the Settings › Appearance row and the styles are deleted.
+
+| Check | Result |
+|---|---|
+| Deterministic suites, Node v26.8.2 | 23 suites · 631 passed · 0 failed · every exit 0 |
+| D18 Train layout budget | 6 / 6 |
+| Week list at 320, 375, 402 pt | no overflow, 0 console errors; open, Show all, Show on chart, replay all checked |
+| Text contrast on the week list | 50 of 51 texts measured AA; the one flag was the workout dock overlapping the capture |
+| Reduced motion, OS and in-app | 0 running animations |
+| Tilt light | no Settings row, no `deviceorientation` listener, no API left |
+
+Pushed as PR dxnyal03/nxtfrm#39 (with the follow-up that gives the weekly average label its own gutter, found on the
+owner's screenshot). `RELEASE` is 163; shipping this needs 164.
+
+## Whole-app pass and a distilled Today (2026-10-19)
+
+Owner: "using the ios sim, now go through each of the pages and the whole nxtfrm, upgrade it and enhance the app
+experience", then "tab switch animation not so aggressive", then "think of a more sleek way to do the Today page",
+"be creative, think like a senior app designer", "match the design direction of NXTFRM". Same branch and PR
+(commit `c8b9d5f`).
+
+**Today (D103).** It was about 2,560 px at 320 pt, roughly three screens: the training card, three full coach cards,
+the minis, a Decision pushed below them, the scan tile and a Quick actions row, with "Full Body A · 6 of 15" said four
+times. Now:
+- one pill under the greeting for the morning: a lit "Log morning weight", then "✓ 81.7 kg this morning", which replays
+  the weigh-in moment on the trend;
+- the training card on its own, ending on its button, followed by the three numbers at a glance;
+- the **Coach deck**: the notes stacked like iOS notifications, the top headline readable, a tap fanning them out with a
+  View Transition and Show less folding them back;
+- the Decision and the latest scan;
+- about 1,670 px at 320 pt, with nothing removed that is not one tap away.
+A three-step "Your day" strip was tried first and replaced: it repeated the training card in a box of its own.
+
+**Everywhere else (D102).** Edit or delete a cardio session from History; "Last time" set by set in Train (under the
+set card, so Log set does not move down); a day's chart note in its History card; Data & sync on the hub's glass cards;
+one Edit for scan history; 44 pt targets for the gym toggle and the scrolled title; calmer tab transitions and a fix for
+the "App error" toast after a quick second tab tap.
+
+| Check | Result |
+|---|---|
+| Deterministic suites, Node v26.8.2 | 23 suites · 631 passed · 0 failed · every exit 0 |
+| D18 Train layout budget | 6 / 6 at 320–430 pt |
+| Whole-app crawl at 402 and 320 pt | 21 screens, 0 console errors; no new overflow or small targets (the flags are screen-reader text, the cropped ghost word, and the existing calendar cells at 320) |
+| Text contrast on new surfaces | all ≥ 4.5:1 after darkening the logged pill (it measured 2.5:1 on the bright sky) |
+| Reduced motion | OS: 0 running animations, the deck opens in place; in-app: only the settle from changing the setting |
+| Functional, disposable profile | cardio edit prefilled → saved in place → "Cardio updated"; delete asks → removed; Last time fills kg and reps; scan Edit reveals Delete; the deck opens, focuses Show less, folds back; the pill replays the moment |
+
+**Found on the iPhone simulator after the push (fixed in the next commit).**
+- Tapping three tabs quickly could land on an older one: during a transition the app still believed it was on the
+  first tab, so a tap back to it rendered at once and the pending updates overwrote it. Reproduced in Chrome too
+  (Progress → History → Today with no gap ended on History); every update now renders the last tab asked for. Seven
+  rapid sequences, 0, 20–120 ms apart, all end on the last tab; re-tapping the current tab still scrolls to the top.
+- Settings › App & install ran edge to edge; it now sits on the same 16 pt gutter as every page.
+
+Checked on the simulator (iOS 27.0 WebKit) through the deploy preview: the weigh-in pill and its replay, the coach deck
+folding and fanning out, the training card, "Last time" filling 120 × 14, Edit cardio prefilled from History, the
+Settings hub. The simulator is slow, so a transition caught mid-way is the simulator's frame rate, not the app's.
+
+`RELEASE` unchanged (163).

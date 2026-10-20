@@ -92,7 +92,6 @@ const NXP = (() => {
     const work=N.workRows();
     const lastLift=[...new Set(work.map(row=>row.date))].sort().at(-1);
     const lastLiftRow=lastLift?work.find(row=>row.date===lastLift):null;
-    const lastLiftLine=lastLiftRow?(lastLift===state.date?(finished?'Logged today':'In progress today'):(()=>{const n=work.filter(row=>row.date===lastLift).length,ago=Math.round((N.dateMs(state.date)-N.dateMs(lastLift))/864e5),when=ago===1?'yesterday':ago>1?ago+' days ago':N.shortDate(lastLift);return `Last lifted · ${N.label(lastLiftRow.dayType||state.dayType)}, ${when}${n?` · ${n} ${n===1?'set':'sets'}`:''}`;})()):'';
     const plateau=N.detectPlateau();
     const trendEv=plateau.weeklyRate===null?(s.change===null?'—':N.signed(s.change)+' kg/wk'):N.signed(plateau.weeklyRate)+' kg/wk';
     const confEv=!plateau.confidence||plateau.confidence==='none'?'—':plateau.confidence;
@@ -101,7 +100,6 @@ const NXP = (() => {
     const morning=N.timingRows('Morning').find(row=>row.date===state.date)||null;
     const sets=list.reduce((a,e)=>a+Number(e.sets),0);
     const nextDate=N.dateAdd(state.date,1);
-    const nextLine=`Next session · ${N.label(N.typeFor(nextDate))} tomorrow`;
     /* Ascension — the rail and its header read the coach's statuses, so an excused or moved
        day is neither "not logged" nor counted as a planned lift (NXT.coach.context().week).
        Without coach.js the rail falls back to the plan, as before. */
@@ -144,37 +142,29 @@ const NXP = (() => {
         <div class="st-train-row">
           <div class="st-train-id">
             <h2 class="st-h2">${esc(N.label(state.dayType))}</h2>
-            <p class="st-meta">${list.length} ${N.plural(list.length,"exercise")} · ${sets} working ${N.plural(sets,"set")} · ${esc(state.gym||'Gym')}</p>
+            <p class="st-meta">${list.length} ${N.plural(list.length,"exercise")} · ${sets} working ${N.plural(sets,"set")}</p>
           </div>
           ${logged?ringHTML(logged,sets,'sets','var(--st-lift)'):''}
         </div>
         <div class="st-tweek st-tweek-top"><div class="st-tweek-h"><span>This week · ${weekHead}</span>${textAct('Edit plan',"NXT.more('training')",true)}</div>${weekStrip}</div>
         <button type="button" class="st-cta" onclick="${esc(finished?"switchTab('train')":action)}">${esc(title)}<span aria-hidden="true">›</span></button>
-        ${lastLiftLine?`<p class="st-meta st-mt2 st-center">${esc(lastLiftLine)}</p>`:''}
       </article>`:`
       <article class="st-tile st-t-train" style="--c:${state.dayType==='Zone2'?'var(--st-cardio)':state.dayType==='Floorball'?'var(--st-floor)':'var(--st-rest)'}"><span class="st-ghost" aria-hidden="true">${esc(state.dayType==='Zone2'?'Walk':state.dayType==='Floorball'?'Floorball':N.label(state.dayType))}</span>
         <div class="st-tile-head"><span class="st-cat">Today</span>${textAct('Change','showSessionSheet()',true)}</div>
         <h2 class="st-h2">${esc(N.label(state.dayType))}</h2>
         <p class="st-body st-mt2">${state.dayType==='Rest'?'A planned recovery day. Nothing is scheduled.':state.dayType==='Zone2'?'An easy, conversational effort. No lifting session is due.':'Hard conditioning day. Log duration and effort.'}</p>
         ${state.dayType==='Rest'?'':`<button type="button" class="st-cta" onclick="${esc(action)}">${esc(title)}<span aria-hidden="true">›</span></button>`}
-        <div class="vn-rows st-mt3">
-          <button type="button" class="vn-row" onclick="apx95OpenQuickWeight()">
-            <span class="vn-row-l"><span class="vn-row-t">Morning weight</span>
-            <span class="vn-row-s">${morning?`Logged · ${morning.weight.toFixed(1)} kg`:'Not logged yet'}</span></span>
-            ${morning?'':`<span class="vn-row-v st-accent-t">Log</span>`}
-            <i class="vn-chev" aria-hidden="true">›</i>
-          </button>
-          ${addOnEligible()?`<button type="button" class="vn-row" onclick="NXP.addOnPick()">
+        ${addOnEligible()?`<div class="vn-rows st-mt3">
+          <button type="button" class="vn-row" onclick="NXP.addOnPick()">
             <span class="vn-row-l"><span class="vn-row-t">Add optional lifting</span>
             <span class="vn-row-s">Kept as an add-on — today’s plan is unchanged</span></span>
             <i class="vn-chev" aria-hidden="true">›</i>
-          </button>`:''}
-        </div>
-        <p class="st-meta st-mt3">${esc(nextLine)}</p>
+          </button>
+        </div>`:''}
         <div class="st-tweek"><div class="st-tweek-h"><span>This week · ${weekHead}</span>${textAct('Edit plan',"NXT.more('training')",true)}</div>${weekStrip}</div>
       </article>`;
-    /* Ascension — the Coach stack and the Week in review sit between the training tile and the
-       minis. Each is a direct child of .st-bento, so it reveals on scroll like its neighbours. */
+    /* Ascension — the Coach stack and the Week in review. D103 places them after the minis and, when
+       there are two or more, inside the coach deck (one child of .st-bento, so it reveals on scroll). */
     const coStack=coachStackHTML(),coReview=reviewTileHTML();
     /* A warning verdict leads Today (it used to sit ~2,000px down, under every coach note); a calm one
        keeps its place after the minis. Same card, same words — only its position changes. */
@@ -185,18 +175,32 @@ const NXP = (() => {
             ${support?`<p class="st-body st-mt2">${esc(support)}</p>`:''}
             ${decEvidenceHTML(trendEv,confEv,plateau)}
           </section>`;
+    /* D103 — the morning in one pill under the greeting: a lit "Log morning weight" until this morning's
+       reading (D7) is in, then the reading itself; a tap replays the weigh-in moment on the trend (D92).
+       Replaces the 04–12 chip (D81), which vanished once you had weighed in. */
+    const weighPill=morning
+      ?`<button type="button" class="st-wpill is-done" onclick="NXP.weighReplay()" aria-label="${esc(`Weighed in this morning, ${morning.weight.toFixed(1)} kilograms. Show it on the trend`)}"><i aria-hidden="true">${check}</i><b>${morning.weight.toFixed(1)} kg</b><span>this morning</span></button>`
+      :`<button type="button" class="st-wpill" onclick="apx95OpenQuickWeight()"><i aria-hidden="true"></i><b>Log morning weight</b></button>`;
+    /* D103 — the coach notes and last week's review fold into one deck when there are two or more:
+       the top note on glass with the rest stacked beneath; a tap fans them out (and back). Every note,
+       its evidence, actions, Why and Dismiss are unchanged inside. Open/closed is memory only. */
+    const coCount=(ui.coachList||[]).length+(coReview?1:0);
+    const coDeck=coCount>=2?`<section class="st-codeck${ui.coDeckOpen?' is-open':''}" aria-label="Coach">
+          <div class="st-codeck-h"><h2 class="st-codeck-t">Coach<span class="st-codeck-n">${coCount}</span></h2><button type="button" class="vn-text st-codeck-tg" aria-expanded="${ui.coDeckOpen?'true':'false'}" onclick="NXP.coachDeck()">${ui.coDeckOpen?'Show less':'Show all'}</button></div>
+          <div class="st-codeck-b">${coStack}${coReview}<button type="button" class="st-codeck-open" onclick="NXP.coachDeck()" aria-label="${esc(`Show all ${coCount} coach notes`)}"></button></div>
+        </section>`:coStack+coReview;
     document.getElementById('homePage').innerHTML=`<div class="vn-today st-today">
       <div class="vn-pad">
         <header class="st-head">
           <div>
             <p class="st-eyebrow">${esc(weekday)} · ${esc(dateLine)}</p>
             <h1 class="st-h1">${esc(greeting())}</h1>
-            ${!morning&&new Date().getHours()>=4&&new Date().getHours()<12?`<button type="button" class="st-wchip" onclick="apx95OpenQuickWeight()"><i aria-hidden="true"></i>Log morning weight</button>`:''}
+            ${weighPill}
           </div>
           ${lift?`<button type="button" class="st-chip" onclick="cycleGym()">${esc(state.gym||'Gym')}<span aria-hidden="true">⇄</span></button>`:''}
         </header>
         <div class="st-bento">
-          ${trainTile}${decUp?decTile:''}${coStack}${coReview}
+          ${trainTile}${decUp?decTile:''}
           <div class="st-minis">
             ${weightTileHTML()}
             <button type="button" class="st-tile st-mini" style="--c:var(--st-cardio)" onclick="showCardioSheet()">
@@ -225,16 +229,15 @@ const NXP = (() => {
             </button>`;
             })()}
           </div>
+          ${coDeck}
           ${decUp?'':decTile}
           ${bodyTileHTML()}
         </div>
       </div>
 
-      <nav class="vn-pad st-quick" aria-label="Quick actions">
-        <button type="button" class="st-qa" style="--c:var(--st-weight)" onclick="apx95OpenQuickWeight()"><span aria-hidden="true">+</span>Weight</button>
-        ${state.dayType==='Zone2'?'':`<button type="button" class="st-qa" style="--c:var(--st-cardio)" onclick="showCardioSheet()"><span aria-hidden="true">+</span>Cardio</button>`}
-        ${N.features.checkin?`<button type="button" class="st-qa" style="--c:var(--st-rest)" onclick="apx96OpenReadiness()"><span aria-hidden="true">+</span>Check-in</button>`:''}
-      </nav>
+      ${N.features.checkin?`<nav class="vn-pad st-quick" aria-label="Quick actions">
+        <button type="button" class="st-qa" style="--c:var(--st-rest)" onclick="apx96OpenReadiness()"><span aria-hidden="true">+</span>Check-in</button>
+      </nav>`:''}
 
       ${(N.features.wearable||N.features.checkin||N.features.calories)?`<details class="vn-more vn-pad st-more">
         <summary>More for today</summary>
@@ -244,6 +247,26 @@ const NXP = (() => {
         </div>
       </details>`:''}
     </div>`;
+  }
+  /* D103 · The coach deck folds and fans out in place (STRATA.morph animates it when it can). */
+  function coachDeck() {
+    const deck=document.querySelector('#homePage .st-codeck');
+    if(!deck)return;
+    ui.coDeckOpen=!deck.classList.contains('is-open');
+    const apply=()=>{
+      deck.classList.toggle('is-open',ui.coDeckOpen);
+      const t=deck.querySelector('.st-codeck-tg');
+      if(t){t.setAttribute('aria-expanded',String(ui.coDeckOpen));t.textContent=ui.coDeckOpen?'Show less':'Show all';}
+    };
+    if(typeof STRATA==='object'&&STRATA&&typeof STRATA.morph==='function')STRATA.morph(deck,apply);else apply();
+    /* The fold-out cover goes away once open, so focus moves to Show less rather than to the page. */
+    const t=deck.querySelector('.st-codeck-tg'),a=document.activeElement;
+    if(t&&(!a||a===document.body||a.classList.contains('st-codeck-open')))t.focus({preventScroll:true});
+  }
+  /* D103 · This morning's reading, landed on the trend again (D92); Progress when the moment has too little to draw. */
+  function weighReplay() {
+    if(typeof STRATA==='object'&&STRATA&&typeof STRATA.moment==='function'&&STRATA.moment())return;
+    N.ui.view='overview';switchTab('weight');
   }
   /* ---- Ascension · coaching surfaces ------------------------------------------------
      The presentation of NXT.coach (coach.js, the engine). Every figure and sentence
@@ -1371,6 +1394,8 @@ const NXP = (() => {
 
       ${allDone?`<details class="st-extra"><summary>Log an extra set</summary>${form}</details>`:form}
 
+      ${previous&&previous.sets&&previous.sets.length?`<div class="st-lastx" role="group" aria-label="Last time, ${esc(N.shortDate(previous.date))}"><span class="st-lastx-l">Last time<small>${esc(N.shortDate(previous.date))}</small></span><div class="st-lastx-r">${previous.sets.map((x,k)=>`<button type="button" class="st-lastx-s" onclick="NXP.useLast(${k})" aria-label="Set ${k+1} last time: ${esc(trimNum(x.weight))} kilograms for ${esc(x.reps)} reps. Tap to fill">${esc(trimNum(x.weight))}<i data-st-ico="text">×</i>${esc(x.reps)}</button>`).join('')}</div></div>`:''}
+
       <nav class="st-exnav" aria-label="Exercise navigation">
         <button type="button" ${index<=0?'disabled':''} onclick="NXP.goExercise(-1)" aria-label="Previous exercise"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5"/></svg></button>
         <button type="button" class="st-exnav-mid nxp-queue-open" onclick="NXP.queue()">${index+1} / ${list.length} · All exercises</button>
@@ -1425,6 +1450,14 @@ const NXP = (() => {
   function useAim() {
     const aim=N.aimFor(state.exercise);if(!aim)return;
     fillEntry(aim.weight,aim.reps);
+  }
+  /* D102 · Last time, set by set: the previous session of this exercise at this gym, working sets only
+     (the same session "Best" reads). A tap fills that set's load and reps. */
+  function useLast(k) {
+    const ex=state.exercise;if(!ex)return;
+    const prev=N.sessionRows(ex,state.gym,state.date,100).at(-1),x=prev&&prev.sets&&prev.sets[k];
+    if(!x)return;
+    fillEntry(Number(x.weight),Number(x.reps));
   }
   function useTarget(k) {
     const c=coachAdvice(state.exercise),s=c&&c.sets&&c.sets[k];if(!s)return;
@@ -2859,8 +2892,7 @@ const NXP = (() => {
         ${setField('nxp-motion','Motion','Reduce motion removes page and set-logging animation. Your device setting is followed by default.',[['system','Follow device'],['reduced','Reduce motion']],p.motion==='reduced'?'reduced':'system')}
         <button type="submit" class="vn-set-act">Save appearance</button>
       </form>
-      ${(()=>{const t=typeof STRATA==='object'&&STRATA.tiltState?STRATA.tiltState():'none';if(t==='none')return '';
-        return `<section class="vn-set-group st-tilt-g"><h2 class="vn-set-grp">Tilt light</h2><div class="st-tilt-row"><p>Light moves across the glass as you tilt your phone. ${t==='on'?'On for this device.':'Your iPhone asks once for motion access.'}</p>${t==='on'?'<span class="st-tilt-on">On</span>':`<button type="button" class="vn-set-act" onclick="STRATA.allowTilt().then(()=>NXT.more('appearance'))">Allow tilt light</button>`}</div></section>`;})()}`,'vn-settings');
+      `,'vn-settings');
   }
   function saveAppearance() {N.cfg().appearance={text:val('nxp-text')==='large'?'large':'normal',motion:val('nxp-motion')==='reduced'?'reduced':'system'};applyAppearance();N.commit('Appearance saved');}
   /* Associates the persistent labels the legacy cloud/backup forms already
@@ -3122,13 +3154,17 @@ const NXP = (() => {
     const rows=[];
     cardio.forEach(r=>{
       const mins=historyNum(r.duration||r.minutes),hr=historyNum(r.hr),effort=historyNum(r.intensity),incline=historyNum(r.incline),speed=historyNum(r.speed);
-      rows.push({name:r.type||'Cardio',value:mins?`${mins} min`:'',meta:[hr?`HR ${hr}`:'',effort?`Intensity ${effort}`:'',incline?`Incline ${incline}`:'',speed?`Speed ${speed}`:'',r.gym||''].filter(Boolean),kind:'cardio'});
+      rows.push({id:r.id||null,date:r.date,name:r.type||'Cardio',value:mins?`${mins} min`:'',meta:[hr?`HR ${hr}`:'',effort?`Intensity ${effort}`:'',incline?`Incline ${incline}`:'',speed?`Speed ${speed}`:'',r.gym||''].filter(Boolean),kind:'cardio'});
     });
     floorball.forEach(r=>{
       const mins=historyNum(r.duration),effort=historyNum(r.intensity);
       rows.push({name:'Floorball',value:mins?`${mins} min`:'',meta:[effort?`Intensity ${effort}`:'',r.notes?String(r.notes):''].filter(Boolean),kind:'floorball'});
     });
-    return `<div class="nxp-history-block vn-hist-block" data-kind="conditioning"><span class="nxp-history-block-label">Conditioning</span>${rows.map(r=>`<div class="nxp-history-ex" data-kind="${r.kind}"><b>${esc(r.name)}</b>${r.value?`<span>${esc(r.value)}</span>`:''}</div>${r.meta.length?`<p class="nxp-history-meta">${esc(r.meta.join(' · '))}</p>`:''}`).join('')}</div>`;
+    return `<div class="nxp-history-block vn-hist-block" data-kind="conditioning"><span class="nxp-history-block-label">Conditioning</span>${rows.map(r=>(r.kind==='cardio'&&r.id?`<button type="button" class="nxp-history-ex st-hx-edit" data-kind="cardio" onclick="NXT.cardioModal('${esc(r.date)}','${esc(r.id)}')" aria-label="${esc(`${r.name}${r.value?', '+r.value:''}. Edit or delete`)}"><b>${esc(r.name)}</b>${r.value?`<span>${esc(r.value)}</span>`:''}<em class="st-hx-e" aria-hidden="true">Edit</em></button>`:`<div class="nxp-history-ex" data-kind="${r.kind}"><b>${esc(r.name)}</b>${r.value?`<span>${esc(r.value)}</span>`:''}</div>`)+(r.meta.length?`<p class="nxp-history-meta">${esc(r.meta.join(' · '))}</p>`:'')).join('')}</div>`;
+  }
+  /* D100/D102 · A day's chart note belongs in its history too; a tap opens it to change or remove. */
+  function historyNoteBlock(date,n) {
+    return `<div class="nxp-history-block vn-hist-block" data-kind="note"><span class="nxp-history-block-label">Note</span><button type="button" class="nxp-history-ex st-hx-edit" onclick="NXT.openNote('${esc(date)}')" aria-label="${esc(`Note: ${N.noteLabel(n.kind)}${n.text?', '+n.text:''}. Edit`)}"><b><i class="st-hx-nd" aria-hidden="true"></i>${esc(N.noteLabel(n.kind))}</b>${n.text?`<span>${esc(n.text)}</span>`:''}<em class="st-hx-e" aria-hidden="true">Edit</em></button></div>`;
   }
   /* D50 — a morning weigh-in in History shows where it sat: the change from the previous
      morning and the engine's trend value that day. Contextual readings (post-workout,
@@ -3159,6 +3195,7 @@ const NXP = (() => {
     if(scope.lift&&r.logs.length)blocks.push(historyLiftingBlock(date,r.logs));
     if(scope.cond&&(r.cardio.length||r.floorball.length))blocks.push(historyConditioningBlock(r.cardio,r.floorball));
     if(scope.body&&r.bw)blocks.push(historyWeightBlock(r.bw,r.bwOthers));
+    {const nt=typeof N.chartNotes==='function'?N.chartNotes()[date]:null;if(scope.body&&nt)blocks.push(historyNoteBlock(date,nt));}
     if(scope.lift&&r.logs.length){
       parts.push(historyPlural(r.logs.length,'set'));
       const exercises=new Set(r.logs.map(x=>x.exercise).filter(Boolean)).size;
@@ -3587,7 +3624,7 @@ const NXP = (() => {
   }
   bindSteppers();
   bindKeyboardDock();
-  return {shareProgress,shareToggle,shareSend,ask,finishScene,actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen};
+  return {shareProgress,shareToggle,shareSend,ask,finishScene,actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,useLast,coachDeck,weighReplay,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;

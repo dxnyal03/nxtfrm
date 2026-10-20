@@ -5023,7 +5023,13 @@ function evoHistoryHTML(ordered){
     const weightDelta=prior?evoChangeRows(s,prior).find(r=>r.key==="weight"):null;
     return `<div class="vn-evo-hist"><button type="button" class="vn-evo-hist-main" onclick="evoOpenScan('${jss(s.id)}')"><b>${esc(evoShort(s.date)||"Undated")}</b><span>${esc(evoBit(s,"weight"))} · ${esc(evoBit(s,"bodyFat"))} · ${esc(evoBit(s,"muscleMass"))}</span>${weightDelta?`<em>${esc(weightDelta.delta)} in weight</em>`:""}</button><button type="button" class="vn-evo-hist-del" onclick="evoDeleteScan('${jss(s.id)}')">Delete</button></div>`;
   }).join("");
-  return `<section class="vn-evo-sec"><h2>Scan history</h2>${rows}</section>`;
+  /* D102 — one Edit for the list instead of a red Delete on every row; Delete and its confirm are unchanged. */
+  return `<section class="vn-evo-sec vn-evo-hist-sec"><div class="vn-evo-hist-h"><h2>Scan history</h2><button type="button" class="vn-evo-hist-edit" aria-pressed="false" onclick="evoHistEdit(this)">Edit</button></div>${rows}</section>`;
+}
+function evoHistEdit(btn){
+  const sec=btn&&btn.closest(".vn-evo-hist-sec");if(!sec)return;
+  const on=sec.classList.toggle("is-editing");
+  btn.setAttribute("aria-pressed",String(on));btn.textContent=on?"Done":"Edit";
 }
 function evoProvenanceHTML(scan){
   const prov=scan&&scan.provenance;

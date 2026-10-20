@@ -1848,15 +1848,29 @@ Object.assign(NXT, (()=>{
     if((state.logs||[]).some(r=>r.date===state.date))return toast('This day already has logged sets.');
     settings.dayOverrides=settings.dayOverrides||{};settings.dayOverrides[state.date]=type;state.dayType=type;state.exercise=N.templateFor(type)[0]?.name||'';state.setNum=1;N.commit('Today’s session updated');
   }
-  function cardioModal(date) {
-    const d=typeof date==='string'&&date<=state.date?date:state.date;
-    N.modal('Log cardio',`<form onsubmit="event.preventDefault();NXT.saveCardio()"><label>Date<input id="n99-card-date" type="date" max="${state.date}" required value="${d}"></label><label>Activity<select id="n99-card-type">${CARDIO_TYPES.map(t=>`<option>${esc(t)}</option>`).join('')}</select></label><div class="n99-form-grid"><label>Duration · minutes<input id="n99-card-min" type="number" min="1" max="600" step="1" inputmode="numeric" required></label><label>Effort · 1–10<input id="n99-card-effort" type="number" min="1" max="10" step="1" inputmode="numeric" placeholder="Optional"></label></div><div class="n99-form-grid"><label>Speed · km/h<input id="n99-card-speed" type="number" min="0" max="80" step="0.1" inputmode="decimal" placeholder="Optional"></label><label>Incline · %<input id="n99-card-incline" type="number" min="0" max="40" step="0.5" inputmode="decimal" placeholder="Optional"></label></div><label>Average heart rate · optional<input id="n99-card-hr" type="number" min="30" max="240" inputmode="numeric"></label><p class="n99-small">For easy cardio, use a pace where conversation feels comfortable. Speed or incline alone cannot establish your physiological Zone 2.</p><button class="n99-button" type="submit">Save cardio</button></form>`);
+  /* D102 · Cardio could be logged but never corrected. With an id the same sheet opens filled in, saves
+     over that record (same id, same fields) and offers Delete; without one it logs a new session. */
+  function cardioModal(date,id) {
+    const rec=id?(state.cardio||[]).find(r=>r&&r.id===id):null;
+    const d=rec?rec.date:typeof date==='string'&&date<=state.date?date:state.date;
+    N.modal(rec?'Edit cardio':'Log cardio',`<form onsubmit="event.preventDefault();NXT.saveCardio(${rec?`'${esc(rec.id)}'`:''})"><label>Date<input id="n99-card-date" type="date" max="${state.date}" required value="${d}"></label><label>Activity<select id="n99-card-type">${(rec&&rec.type&&!CARDIO_TYPES.includes(rec.type)?[rec.type,...CARDIO_TYPES]:CARDIO_TYPES).map(t=>`<option${rec&&rec.type===t?' selected':''}>${esc(t)}</option>`).join('')}</select></label><div class="n99-form-grid"><label>Duration · minutes<input id="n99-card-min" type="number" min="1" max="600" step="1" inputmode="numeric" required${rec&&rec.duration!==''&&rec.duration!=null?` value="${esc(rec.duration)}"`:''}></label><label>Effort · 1–10<input id="n99-card-effort" type="number" min="1" max="10" step="1" inputmode="numeric" placeholder="Optional"${rec&&rec.intensity!==''&&rec.intensity!=null?` value="${esc(rec.intensity)}"`:''}></label></div><div class="n99-form-grid"><label>Speed · km/h<input id="n99-card-speed" type="number" min="0" max="80" step="0.1" inputmode="decimal" placeholder="Optional"${rec&&rec.speed!==''&&rec.speed!=null?` value="${esc(rec.speed)}"`:''}></label><label>Incline · %<input id="n99-card-incline" type="number" min="0" max="40" step="0.5" inputmode="decimal" placeholder="Optional"${rec&&rec.incline!==''&&rec.incline!=null?` value="${esc(rec.incline)}"`:''}></label></div><label>Average heart rate · optional<input id="n99-card-hr" type="number" min="30" max="240" inputmode="numeric"${rec&&rec.hr!==''&&rec.hr!=null?` value="${esc(rec.hr)}"`:''}></label><p class="n99-small">For easy cardio, use a pace where conversation feels comfortable. Speed or incline alone cannot establish your physiological Zone 2.</p><button class="n99-button" type="submit">${rec?'Save changes':'Save cardio'}</button>${rec?N.button('Delete this session',`NXT.deleteCardio('${esc(rec.id)}')`,true):''}</form>`);
   }
-  function saveCardio() {
+  function saveCardio(id) {
     const duration=N.finite(val('n99-card-min')),intensity=N.finite(val('n99-card-effort')),speed=N.finite(val('n99-card-speed')),incline=N.finite(val('n99-card-incline')),hr=N.finite(val('n99-card-hr'));
     if(duration===null||duration<1||duration>600||intensity!==null&&(intensity<1||intensity>10)||speed!==null&&(speed<0||speed>80)||incline!==null&&(incline<0||incline>40)||hr!==null&&(hr<30||hr>240))return toast('Check your cardio values.');
     const cd=val('n99-card-date')||state.date;if(!Number.isFinite(N.dateMs(cd))||cd>state.date)return toast('Pick today or an earlier date.');
-    state.cardio.push({id:uid(),date:cd,gym:state.gym,type:val('n99-card-type'),duration,intensity:intensity??'',speed:speed??'',incline:incline??'',hr:hr??'',ts:Date.now()});N.commit(cd===state.date?'Cardio saved':'Cardio saved for '+N.shortDate(cd));
+    const fields={date:cd,type:val('n99-card-type'),duration,intensity:intensity??'',speed:speed??'',incline:incline??'',hr:hr??''};
+    const at=id?(state.cardio||[]).findIndex(r=>r&&r.id===id):-1;
+    if(id&&at<0)return toast('That session is no longer here. Nothing was changed.');
+    if(at>=0){Object.assign(state.cardio[at],fields);N.commit('Cardio updated');return;}
+    state.cardio.push({id:uid(),gym:state.gym,...fields,ts:Date.now()});N.commit(cd===state.date?'Cardio saved':'Cardio saved for '+N.shortDate(cd));
+  }
+  async function deleteCardio(id) {
+    const r=(state.cardio||[]).find(x=>x&&x.id===id);if(!r)return;
+    const what=`${r.type||'Cardio'}${N.finite(r.duration)?' · '+N.finite(r.duration)+' min':''} · ${N.shortDate(r.date)}`;
+    const ok=typeof NXP==='object'&&NXP.ask?await NXP.ask({title:'Delete this cardio session?',body:`${what}. This cannot be undone.`,ok:'Delete',danger:true}):confirm('Delete this cardio session?');
+    if(!ok)return;
+    state.cardio=state.cardio.filter(x=>x!==r);N.commit('Cardio deleted');
   }
   function cardioCard() {
     const minutes=N.cardioWeek(),target=Number(settings.zone2WeeklyTarget)||90;
@@ -1905,7 +1919,7 @@ Object.assign(NXT, (()=>{
     const a=N.typeFor(from),b=N.typeFor(to);settings.dayOverrides=settings.dayOverrides||{};settings.dayOverrides[from]=b;settings.dayOverrides[to]=a;
     state.dayType=N.typeFor(state.date);state.exercise=N.templateFor()[0]?.name||'';N.commit('Sessions swapped');
   }
-  return {sessionLogs,training,selectExercise,nextExercise,logSet,finish,openFinishSummary,resume,shorter,fullSession,undo,sessionPicker,chooseSession,cardioModal,saveCardio,cardioCard,recoveryDay,recoveryModal,saveRecovery,openDay,setDayType,moveDay};
+  return {sessionLogs,training,selectExercise,nextExercise,logSet,finish,openFinishSummary,resume,shorter,fullSession,undo,sessionPicker,chooseSession,cardioModal,saveCardio,deleteCardio,cardioCard,recoveryDay,recoveryModal,saveRecovery,openDay,setDayType,moveDay};
 })());
 
 Object.assign(NXT, (()=>{

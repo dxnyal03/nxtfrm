@@ -174,72 +174,130 @@ const STRATA = (() => {
     const wrapEl = page.querySelector("#vn-chart-wrap");
     if (wrapEl && !wrapEl.querySelector(".st-tip")) { wrapEl.style.position = "relative"; wrapEl.insertAdjacentHTML("beforeend", `<div class="st-tip" hidden></div>`); }
   }
-  /* ---- Week by week ------------------------------------------------------
-     The last five Monday-to-Sunday averages of the morning weigh-ins, one row
-     per week with its change from the week before and the mornings weighed.
-     Every figure is the engine's own NXT.windowStats over NXT.weights(); nothing
-     is computed here beyond that difference. Scrubbing the chart lights the
-     row that holds the selected day. -- */
+  /* ---- Week by week (D101) -----------------------------------------------------------------------------
+     Every Monday-to-Sunday week of the cut, newest first. Each row leads with the change in morning average on
+     the week before, drawn as a bar, but only between weeks with at least three mornings (the rule the chart's
+     weekly steps use, D41), so the week in progress shows its mornings until it has three. Beside it: the
+     average, the mornings weighed, and what happened that week from the records themselves: lifting days and
+     cardio minutes (NXT.activityWeeks) and chart notes (D100); the fastest full week carries a star. Five weeks
+     show and the rest fold behind "Show all". A row opens in place to its seven mornings against the week's
+     average; "Show on chart" keeps the old jump. Every figure is the engine's own NXT.windowStats over
+     NXT.weights(); nothing here is stored. */
+  const WK = { open: new Set(), all: false, data: null };
+  const WKDAY = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], WKLONG = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  function weeksData() {
+    const N = NXT, rows = N.weights().filter(r => r.date <= state.date), today = state.date;
+    if (!rows.length) return null;
+    const ws0 = N.weekStart(today), cs = typeof settings === "object" && settings && Number.isFinite(N.dateMs(settings.cutStart)) && settings.cutStart <= today ? settings.cutStart : null;
+    const w0 = N.weekStart(cs || rows[0].date), weeks = [];
+    for (let st = w0; st <= ws0 && weeks.length < 104; st = N.dateAdd(st, 7)) {
+      const part = st === ws0, so = part ? Math.round((N.dateMs(today) - N.dateMs(st)) / 864e5) + 1 : 7;
+      const w = N.windowStats(rows, part ? today : N.dateAdd(st, 6), so);
+      weeks.push({ st, end: N.dateAdd(st, 6), avg: w.avg, n: w.n, part, so });
+    }
+    const pre = N.windowStats(rows, N.dateAdd(w0, -1), 7);
+    weeks.forEach((w, i) => {
+      const p = i ? weeks[i - 1] : { avg: pre.avg, n: pre.n };
+      w.chg = w.n >= 3 && p.n >= 3 && w.avg !== null && p.avg !== null ? w.avg - p.avg : null;
+    });
+    const act = new Map((typeof N.activityWeeks === "function" ? N.activityWeeks(Math.min(104, weeks.length)) : []).map(x => [x.start, x]));
+    const notes = typeof N.chartNotes === "function" ? N.chartNotes() : {};
+    const byDate = new Map(rows.map(r => [r.date, Number(r.weight)]));
+    const full = weeks.filter(w => !w.part && w.chg !== null);
+    const best = full.length >= 2 ? full.reduce((m, w) => w.chg < m.chg ? w : m, full[0]) : null;
+    return { weeks, act, notes, byDate, best: best && best.chg <= -.1 ? best.st : null, mx: Math.max(.5, ...weeks.map(w => Math.abs(w.chg || 0))) };
+  }
+  function weekRowHTML(D, w, k, hidden) {
+    const N = NXT, a = D.act.get(w.st), dd = new Date(w.st + "T12:00:00");
+    const name = w.part ? "This week" : shortDate(w.st), sub = w.part ? (w.n >= 3 ? "so far" : `${7 - w.so} ${7 - w.so === 1 ? "day" : "days"} to go`) : `${w.n} of 7`;
+    const c = w.chg, open = WK.open.has(w.st), avg = w.avg === null ? "—" : w.avg.toFixed(1);
+    const val = c === null ? `<b>${avg}</b><small>${w.avg === null ? "no mornings" : "kg" + (w.part ? " so far" : "")}</small>`
+      : `<b>${Math.abs(c) < .05 ? "" : c < 0 ? "−" : "+"}${Math.abs(c).toFixed(1)}</b><small>${avg} kg</small>`;
+    const mid = c !== null ? `<span class="wk-bar${c > 0 ? " is-up" : ""}" aria-hidden="true"><i style="--w:${(Math.abs(c) / D.mx).toFixed(3)}"></i></span>`
+      : `<span class="wk-wait">${w.part ? `<b>${w.n === w.so ? w.n : w.n + " of " + w.so}</b> ${(w.n === w.so ? w.n : w.so) === 1 ? "morning" : "mornings"} so far. A change shows once 3 are in.` : w.avg === null ? "No mornings weighed this week." : "Fewer than 3 mornings: no change shown."}</span>`;
+    const chips = [];
+    if (D.best === w.st) chips.push('<span class="wk-c is-best">★ Fastest week</span>');
+    if (a && a.liftDays) chips.push(`<span class="wk-c">${a.liftDays} ${a.liftDays === 1 ? "lift" : "lifts"}</span>`);
+    if (a && a.cardioMin) chips.push(`<span class="wk-c">${a.cardioMin} min cardio</span>`);
+    for (let i = 0; i < 7; i++) { const d = N.dateAdd(w.st, i), nt = D.notes[d]; if (nt) chips.push(`<span class="wk-c is-note"><i aria-hidden="true"></i>${esc(N.noteLabel(nt.kind))} · ${WKDAY[i]}</span>`); }
+    const label = `${w.part ? "This week" : "Week of " + shortDate(w.st)}: ${w.avg === null ? "no mornings weighed" : `average ${avg} kilograms`}${c === null ? "" : `, ${Math.abs(c) < .05 ? "unchanged" : (c < 0 ? "down " : "up ") + Math.abs(c).toFixed(1)} on the week before`}, ${w.n} of ${w.so} mornings weighed`;
+    return `<li class="wk-row${w.part ? " is-now" : ""}${open ? " is-open" : ""}${hidden ? " is-more" : ""}" data-a="${w.st}" data-b="${w.end}" style="--i:${k}">
+      <button type="button" class="wk-head" aria-expanded="${open}" aria-controls="wk-p-${w.st}" aria-label="${esc(label)}"><span class="wk-d">${esc(name)}<small>${esc(sub)}</small></span>${mid}<span class="wk-v">${val}</span></button>
+      ${chips.length ? `<div class="wk-ctx">${chips.join("")}</div>` : ""}
+      <div class="wk-p" id="wk-p-${w.st}"${open ? "" : " hidden"}>${open ? weekPanelHTML(D, w) : ""}</div></li>`;
+  }
+  function weekPanelHTML(D, w) {
+    const N = NXT, days = [];
+    for (let i = 0; i < 7; i++) { const d = N.dateAdd(w.st, i); days.push({ i, d, v: D.byDate.has(d) ? D.byDate.get(d) : null, fut: d > state.date, note: D.notes[d] || null }); }
+    const have = days.filter(x => x.v !== null);
+    if (!have.length) return `<p class="wk-pe">No mornings weighed this week.</p>`;
+    const avg = w.avg !== null ? w.avg : have.reduce((s, x) => s + x.v, 0) / have.length, dev = Math.max(.4, ...have.map(x => Math.abs(x.v - avg)));
+    /* The average gets its own gutter at the left of its line, so no day's bar or value can ever cover it. */
+    const Wd = 340, mid = 58, G = 44, slot = (Wd - G - 6) / 7, X = i => G + slot * i + slot / 2, H = v => Math.max(4, Math.abs(v - avg) / dev * 34);
+    const bars = days.map(x => {
+      const cx = X(x.i).toFixed(1);
+      if (x.fut) return `<circle class="wk-fut" cx="${cx}" cy="${mid}" r="3"/>`;
+      if (x.v === null) return `<circle class="wk-miss" cx="${cx}" cy="${mid}" r="7"/>`;
+      const h = H(x.v), up = x.v >= avg, y = up ? mid - h : mid;
+      return `<rect class="wk-day${up ? " is-up" : ""}" x="${(X(x.i) - 11).toFixed(1)}" y="${y.toFixed(1)}" width="22" height="${h.toFixed(1)}" rx="5" style="--k:${x.i}"/><text class="wk-dv" x="${cx}" y="${(up ? y - 6 : y + h + 14).toFixed(1)}" text-anchor="middle">${x.v.toFixed(1)}</text>`;
+    }).join("");
+    const labs = days.map(x => `<text class="wk-dl" x="${X(x.i).toFixed(1)}" y="124" text-anchor="middle">${WKDAY[x.i]}${x.note ? " ◆" : ""}</text>`).join("");
+    const missed = days.filter(x => !x.fut && x.v === null).map(x => WKLONG[x.i]);
+    const foot = w.part && days.some(x => x.fut) ? `${days.filter(x => x.fut).length} ${days.filter(x => x.fut).length === 1 ? "day" : "days"} to go` : missed.length === 0 ? "Every morning weighed" : missed.length === 1 ? `${missed[0]} not weighed` : missed.length === 2 ? `${missed[0]} and ${missed[1]} not weighed` : `${missed.length} mornings not weighed`;
+    const sr = days.map(x => `${WKLONG[x.i]} ${x.fut ? "still to come" : x.v === null ? "not weighed" : x.v.toFixed(1) + " kilograms"}${x.note ? ", note: " + N.noteLabel(x.note.kind) + (x.note.text ? " " + x.note.text : "") : ""}`).join("; ");
+    return `<svg class="wk-days" viewBox="0 0 ${Wd} 132" aria-hidden="true"><line class="wk-avg" x1="${G - 4}" x2="${Wd - 4}" y1="${mid}" y2="${mid}"/><text class="wk-al" x="0" y="${mid - 3}">avg</text><text class="wk-al is-v" x="0" y="${mid + 11}">${avg.toFixed(1)}</text>${bars}${labs}</svg>
+      <p class="st-sr">${esc(sr)}.</p>
+      <div class="wk-pf"><span>${esc(foot)}</span><button type="button" class="wk-go">Show on chart<span aria-hidden="true"> ›</span></button></div>`;
+  }
+  function weekShowOnChart(li) {
+    const mm = NXT.ui.chart, sv = document.getElementById("n99-chart-svg"), host = li.closest(".st-weeks");
+    if (!mm || !sv || !host) return;
+    const a = li.dataset.a, b = li.dataset.b, inWk = mm.points.map((q, i) => ({ q, i })).filter(o => o.q.date >= a && o.q.date <= b);
+    sv.querySelectorAll(".st-weeksel").forEach(e => e.remove());
+    host.querySelectorAll(".wk-row.is-pick").forEach(e => e.classList.remove("is-pick"));
+    if (!inWk.length) { toast("That week is outside this chart range. Choose Cut to see it."); return; }
+    li.classList.add("is-pick");
+    const x1 = Math.max(mm.left, inWk[0].q.x - 8), x2 = Math.min(mm.W - mm.right, inWk[inWk.length - 1].q.x + 8);
+    const gp = sv.querySelector("g[clip-path]");
+    gp && gp.insertAdjacentHTML("afterbegin", `<rect class="st-weeksel" x="${x1.toFixed(1)}" y="${mm.top}" width="${(x2 - x1).toFixed(1)}" height="${(mm.H - mm.bottom - mm.top).toFixed(1)}" rx="8"/>`);
+    NXT.selectPoint(inWk[inWk.length - 1].i);
+    const wrapEl = document.getElementById("vn-chart-wrap"); wrapEl && wrapEl.scrollIntoView({ block: "center", behavior: reduced() ? "auto" : "smooth" });
+  }
   function dressWeeks(page, entering) {
     const m = typeof NXT === "object" && NXT.ui && NXT.ui.chart, anchor = page.querySelector(".vn-togs") || page.querySelector("#vn-chart-wrap");
     if (!m || !anchor || page.querySelector(".st-weeks") || typeof NXT.windowStats !== "function") return;
-    const rows = NXT.weights(), today = state.date, ws = NXT.weekStart(today), weeks = [];
-    for (let i = 4; i >= 0; i--) {
-      const st = NXT.dateAdd(ws, -7 * i), part = i === 0, end = part ? today : NXT.dateAdd(st, 6);
-      const days = part ? Math.round((NXT.dateMs(today) - NXT.dateMs(st)) / 86400000) + 1 : 7;
-      const w = NXT.windowStats(rows, end, days);
-      weeks.push({ st, end: NXT.dateAdd(st, 6), avg: w.avg, n: w.n, part });
-    }
-    const have = weeks.filter(w => w.avg !== null && w.avg !== undefined);
-    if (have.length < 2) return;
-    const shown = weeks.filter(w => w.avg !== null && w.avg !== undefined);
+    const D = weeksData();
+    if (!D || D.weeks.filter(w => w.avg !== null).length < 2) return;
+    WK.data = D;
+    const list = D.weeks.slice().reverse(), SHOW = 5;
     const host = document.createElement("section");
-    host.setAttribute("aria-label", "Week by week: average and range of morning weight");
-    {
-      /* Week by week as a ledger (owner pick, 2026-10-08): one row per week, the engine's own averages. */
-      const style = "ledger";
-      if (style === "ledger") {
-        const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], have = new Set(rows.map(r => r.date));
-        let pv = null;
-        const meta = shown.map(w => {
-          const d = pv === null ? null : w.avg - pv; pv = w.avg;
-          const dd = new Date(w.st + "T12:00:00"), so = w.part ? Math.round((NXT.dateMs(today) - NXT.dateMs(w.st)) / 86400000) + 1 : 7;
-          const days = Array.from({ length: 7 }, (_, k) => { const ds = NXT.dateAdd(w.st, k); return ds > today ? "f" : have.has(ds) ? "y" : "n"; });
-          return { w, d, so, days, name: w.part ? "This week" : dd.getDate() + " " + MON[dd.getMonth()], dir: d === null ? "" : d < -0.04 ? "down" : d > 0.04 ? "up" : "flat" };
-        });
-        const arrow = dir => dir === "down" ? '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v7.5M2.8 6.6 6 9.8l3.2-3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' : dir === "up" ? '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10V2.5M2.8 5.4 6 2.2l3.2 3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
-        const chip = x => x.d === null ? '<span class="wx-chip is-none">first</span>' : `<span class="wx-chip is-${x.dir}">${arrow(x.dir)}${Math.abs(x.d).toFixed(1)}</span>`;
-        const attrs = x => `class="st-wk wx-it${x.w.part ? " is-now" : ""}" data-a="${x.w.st}" data-b="${x.w.end}" aria-label="${esc(`${x.w.part ? "This week so far" : "Week of " + shortDate(x.w.st)}: average ${x.w.avg.toFixed(1)} kilograms${x.d === null ? "" : x.dir === "flat" ? ", unchanged" : `, ${x.dir} ${Math.abs(x.d).toFixed(1)} on the week before`}, ${x.w.n} of ${x.so} mornings weighed`)}"`;
-        if (style === "ledger") {
-          host.className = "st-weeks wx-ledger" + (entering && !reduced() ? " is-draw" : "");
-          host.innerHTML = `<div class="st-wk-h"><h3>Week by week</h3><small>Morning average, Mon–Sun</small></div><ol class="st-wk-l">${meta.map((x, k) => `<li ${attrs(x)} style="--i:${k}"><span class="wx-d">${esc(x.name)}${x.w.part ? `<small>${7 - x.so} ${7 - x.so === 1 ? "day" : "days"} to go</small>` : ""}</span><b class="wx-v">${x.w.avg.toFixed(1)}<em>kg</em></b>${chip(x)}<span class="wx-dots" aria-hidden="true">${x.days.map((c, j) => `<i class="is-${c}" style="--j:${j}"></i>`).join("")}</span></li>`).join("")}</ol>`;
-        }
-      }
-    }
+    host.className = "st-weeks wk" + (entering && !reduced() ? " is-draw" : "") + (WK.all ? " is-all" : "");
+    host.setAttribute("aria-label", "Week by week: the change in morning average, Monday to Sunday");
+    host.innerHTML = `<div class="wk-h"><h3>Week by week</h3><small>Mon–Sun morning average</small></div>
+      <div class="wk-leg" aria-hidden="true"><span>Week</span><span>Weekly change</span><span>Average</span></div>
+      <ol class="wk-l">${list.map((w, k) => weekRowHTML(D, w, k, k >= SHOW)).join("")}</ol>
+      ${list.length > SHOW ? `<div class="wk-morerow"><button type="button" class="wk-more" aria-expanded="${WK.all}">${WK.all ? "Show fewer" : `Show all ${list.length} weeks`}</button></div>` : ""}`;
     anchor.insertAdjacentElement("afterend", host);
-    host.querySelectorAll(".st-wk").forEach(li => {
-      li.tabIndex = 0; li.setAttribute("role", "button");
-      const go = () => {
-        const mm = NXT.ui.chart, sv = document.getElementById("n99-chart-svg"); if (!mm || !sv) return;
-        const a = li.dataset.a, b = li.dataset.b, inWk = mm.points.map((q, i) => ({ q, i })).filter(o => o.q.date >= a && o.q.date <= b);
-        sv.querySelectorAll(".st-weeksel").forEach(e => e.remove());
-        host.querySelectorAll(".st-wk.is-pick").forEach(e => e.classList.remove("is-pick"));
-        if (!inWk.length) return;
-        li.classList.add("is-pick");
-        const x1 = Math.max(mm.left, inWk[0].q.x - 8), x2 = Math.min(mm.W - mm.right, inWk[inWk.length - 1].q.x + 8);
-        const gp = sv.querySelector("g[clip-path]");
-        gp && gp.insertAdjacentHTML("afterbegin", `<rect class="st-weeksel" x="${x1.toFixed(1)}" y="${mm.top}" width="${(x2 - x1).toFixed(1)}" height="${(mm.H - mm.bottom - mm.top).toFixed(1)}" rx="8"/>`);
-        NXT.selectPoint(inWk[inWk.length - 1].i);
-        const wrapEl = document.getElementById("vn-chart-wrap"); wrapEl && wrapEl.scrollIntoView({ block: "center", behavior: reduced() ? "auto" : "smooth" });
-      };
-      li.onclick = go; li.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+    host.addEventListener("click", e => {
+      const more = e.target.closest(".wk-more");
+      if (more) { WK.all = !WK.all; host.classList.toggle("is-all", WK.all); more.setAttribute("aria-expanded", String(WK.all)); more.textContent = WK.all ? "Show fewer" : `Show all ${list.length} weeks`; return; }
+      const go = e.target.closest(".wk-go");
+      if (go) { weekShowOnChart(go.closest(".wk-row")); return; }
+      const head = e.target.closest(".wk-head");
+      if (!head) return;
+      const li = head.closest(".wk-row"), st = li.dataset.a, w = WK.data && WK.data.weeks.find(x => x.st === st), panel = li.querySelector(".wk-p");
+      if (!w || !panel) return;
+      const open = !li.classList.contains("is-open");
+      li.classList.toggle("is-open", open); head.setAttribute("aria-expanded", String(open));
+      if (open) { WK.open.add(st); if (!panel.innerHTML.trim()) panel.innerHTML = weekPanelHTML(WK.data, w); panel.hidden = false; haptic("tick"); }
+      else { WK.open.delete(st); panel.hidden = true; }
     });
     weeksSync(m.points.length - 1);
   }
   function weeksSync(index) {
     const host = document.querySelector(".st-weeks"), m = NXT.ui && NXT.ui.chart, p = m && m.points && m.points[index];
     if (!host || !p) return;
-    host.querySelectorAll(".st-wk").forEach(r => r.classList.toggle("is-on", p.date >= r.dataset.a && p.date <= r.dataset.b));
+    host.querySelectorAll(".wk-row").forEach(r => r.classList.toggle("is-on", p.date >= r.dataset.a && p.date <= r.dataset.b));
   }
   /* ---- Performance list: fold the long tail ------------------------------
      The engine's rows and order are untouched. When there is recent history the
@@ -567,7 +625,7 @@ const STRATA = (() => {
      Anything tappable dips on touch and springs back on release (Web Animations on
      the independent `scale` property, so it never fights an element's own transform
      or transitions). Large surfaces dip less than buttons. Off under reduced motion. */
-  const PRESS = "button:not(:disabled), [role=button], summary, a[href], .st-tile[onclick], .st-wk, label:has(>input[type=checkbox])";
+  const PRESS = "button:not(:disabled), [role=button], summary, a[href], .st-tile[onclick], label:has(>input[type=checkbox])";
   const SPRING_BACK = "linear(0.0027,0.0851,0.2168,0.4029,0.5926,0.7408,0.885,0.9931,1.057,1.1015,1.1196,1.1192,1.1064,1.0893,1.0663,1.0438,1.0266,1.0102,0.9982,0.9914,0.9869,0.9854,0.9859,0.9877,0.9903,0.9927,0.9954,0.9976,0.9992,1.0005,1.0013,1.0017,1.0018,1.0017,1.0014,1.0011,1.0008,1.0005,1.0002,1.0001,1)";
   let pressed = null;
   function pressDepth(el) { const r = el.getBoundingClientRect(), big = r.height > 96 || el.classList.contains("st-tile"); return big ? 0.985 : r.width > 200 ? 0.97 : r.width > 100 ? 0.96 : 0.92; }
@@ -705,18 +763,29 @@ const STRATA = (() => {
   }
   function pick(sel) { if (!sel) return null; for (const el of document.querySelectorAll(sel)) if (onScreen(el)) return el; return null; }
   function currentTab() { return (typeof state === "object" && state && TABS.includes(state.tab)) ? state.tab : "home"; }
+  /* The tab asked for last. A tap during a running transition used to compare against state.tab, which only
+     changes inside the transition's update; a quick third tap back to the tab on screen then rendered at once and
+     the two pending updates landed after it (WebKit may run an interrupted update late), so the app ended on an
+     older tab (iPhone simulator, 2026-10-19). Every update now renders the latest request. */
+  let navLast = null, navPending = 0, navUntil = 0;
   function navigate(orig, args) {
-    const from = currentTab(), to = TABS.includes(args[0]) ? args[0] : "home";
+    const shown = currentTab(), to = TABS.includes(args[0]) ? args[0] : "home";
+    const pending = navPending > 0 && performance.now() < navUntil;
+    const from = pending && navLast ? navLast : shown;
     if (to === from) {
+      if (to !== shown) return; /* already on its way */
       const out = orig.apply(null, args);
       if ((window.scrollY || 0) > 2) window.scrollTo({ top: 0, behavior: reduced() ? "auto" : "smooth" });
       return out;
     }
-    scrollMemo[from] = window.scrollY || 0;
-    const back = scrollMemo[to] || 0;
+    navLast = to;
+    scrollMemo[shown] = window.scrollY || 0;
     const swap = () => {
+      const target = navLast;
+      if (currentTab() === target) return;
       window.scrollTo(0, 0);
-      const o = orig.apply(null, args);
+      const o = orig.apply(null, [target].concat(Array.prototype.slice.call(args, 1)));
+      const back = scrollMemo[target] || 0;
       if (back) window.scrollTo(0, back);
       queueTop();
       return o;
@@ -725,25 +794,34 @@ const STRATA = (() => {
     if (typeof document.startViewTransition !== "function" || reduced() || document.hidden || de.classList.contains("st-sheet-open")) return swap();
     const portal = to === "train" && lastPress && performance.now() - lastPress.t < 1500;
     if (portal) { de.style.setProperty("--st-px", Math.round(lastPress.x) + "px"); de.style.setProperty("--st-py", Math.round(lastPress.y) + "px"); lastPress = null; }
-    de.setAttribute("data-st-nav", portal ? "portal" : TABS.indexOf(to) > TABS.indexOf(from) ? "fwd" : "back");
+    de.setAttribute("data-st-nav", portal ? "portal" : TABS.indexOf(to) > TABS.indexOf(shown) ? "fwd" : "back");
     const named = [];
     const tag = (el, n) => { if (el) { el.style.viewTransitionName = n; named.push(el); } };
     /* A portal is the only motion of its transition: no title travel, no flying name. */
-    const pairs = portal ? [] : MORPH.filter(m => m.sel[from] && m.sel[to]).map(m => ({ m, el: pick(m.sel[from]) })).filter(p => p.el);
-    if (!portal) tag(pick(MAST[from]), "st-mast");
+    /* D71 calmer (owner, 2026-10-19: "tab switch animation not so aggressive"): elements no longer fly
+       between tabs; the page fades and the title moves a few points. MORPH stays defined for reference. */
+    const pairs = [];
+    if (!portal) tag(pick(MAST[shown]), "st-mast");
     pairs.forEach(p => tag(p.el, p.m.name));
     const untag = () => { named.splice(0).forEach(el => { el.style.viewTransitionName = ""; }); };
     let out;
+    navPending++; navUntil = performance.now() + 1500;
     try {
       const t = document.startViewTransition(() => {
         untag();
         out = swap();
-        if (!portal) tag(pick(MAST[to]), "st-mast");
-        pairs.forEach(p => tag(pick(p.m.sel[to]), p.m.name));
+        if (!portal) tag(pick(MAST[currentTab()]), "st-mast");
+        pairs.forEach(p => tag(pick(p.m.sel[currentTab()]), p.m.name));
       });
-      const done = () => { untag(); de.removeAttribute("data-st-nav"); };
+      /* The direction attribute stays until the last overlapping transition is done. */
+      const done = () => { untag(); navPending = Math.max(0, navPending - 1); if (!navPending) de.removeAttribute("data-st-nav"); };
       t.finished.then(done, done);
-    } catch (e) { untag(); de.removeAttribute("data-st-nav"); return swap(); }
+      /* Tapping another tab before this one settles skips it, and `ready` rejects with an AbortError.
+         Nothing failed, but the page's unhandledrejection handler would toast "App error", so it is
+         absorbed here (found on the iPhone simulator, 2026-10-19). */
+      if (t.ready && t.ready.catch) t.ready.catch(() => {});
+      if (t.updateCallbackDone && t.updateCallbackDone.catch) t.updateCallbackDone.catch(() => {});
+    } catch (e) { untag(); navPending = Math.max(0, navPending - 1); if (!navPending) de.removeAttribute("data-st-nav"); return swap(); }
     return out;
   }
 
@@ -1282,6 +1360,43 @@ const STRATA = (() => {
     apx95SaveQuickWeight.__strataH = true;
   }
 
+  /* D103 · Today's weigh-in pill replays this morning's moment (same card, nothing new computed). */
+  function moment() {
+    try {
+      if (typeof NXT !== "object" || typeof state !== "object" || !state) return false;
+      const e = NXT.timingRows("Morning").filter(r => r && r.date === state.date).at(-1);
+      return e ? weighMoment(e, false) : false;
+    } catch (err) { return false; }
+  }
+
+  /* ---- D103 · Morph: one region changes layout as one movement -------------------------------------
+     Today's coach deck fans out and folds back with a View Transition: each card in the region, its
+     header and everything after it on the page carry a transition name for the length of the change,
+     so cards travel to their places and the page below slides instead of jumping. The page itself does
+     not fade (the tab transition's root animation is switched off for it). Plain change without support,
+     under reduced motion, or while a tab transition is running. */
+  function morph(scope, mutate) {
+    const de = document.documentElement;
+    if (!scope || typeof document.startViewTransition !== "function" || reduced() || document.hidden || de.hasAttribute("data-st-nav") || de.hasAttribute("data-st-morph")) return mutate();
+    const named = [];
+    const tag = (el, n) => { if (el && el.getClientRects().length) { el.style.viewTransitionName = n; named.push(el); } };
+    const untag = () => { named.splice(0).forEach(el => { el.style.viewTransitionName = ""; }); };
+    tag(scope.querySelector(".st-codeck-h"), "st-mh");
+    scope.querySelectorAll(".co-tile").forEach((el, i) => tag(el, "st-mo-" + i));
+    const page = scope.closest(".page") || document.body;
+    let k = 0;
+    for (let el = scope; el && el !== page; el = el.parentElement)
+      for (let sib = el.nextElementSibling; sib; sib = sib.nextElementSibling) tag(sib, "st-ms-" + k++);
+    de.setAttribute("data-st-morph", "");
+    const done = () => { untag(); de.removeAttribute("data-st-morph"); };
+    try {
+      const t = document.startViewTransition(() => { mutate(); });
+      t.finished.then(done, done);
+      if (t.ready && t.ready.catch) t.ready.catch(() => {});
+      if (t.updateCallbackDone && t.updateCallbackDone.catch) t.updateCallbackDone.catch(() => {});
+    } catch (e) { done(); mutate(); }
+  }
+
   /* ---- D93 · The Observatory ------------------------------------------------------------------------
      Your sky, explorable. Every lifting session is a star, gathered into one constellation per routine and
      laid out on a sunflower spiral in the order you trained (the first session at the centre); walks have
@@ -1466,7 +1581,7 @@ const STRATA = (() => {
   /* ---- D87 · Touch light ---------------------------------------------------------------------------
      The tap ripple (D38), made continuous: glass catches light under the finger, the light follows it
      while pressed, and on release it opens out and fades. Off under reduced motion. */
-  const LIT = ".st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row,.st-dec-chip,.vn-row,.vn-set-row,.st-lrow>button,.co-tile,.st-wchip,.st-share-b,.vn-set-act,.st-fin-done,.st-fin-cardio,.st-ask-acts button,.nxp-cal-day,.st-live,.st-dk-menu button";
+  const LIT = ".st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row,.st-dec-chip,.vn-row,.vn-set-row,.st-lrow>button,.co-tile,.st-wpill,.st-codeck-open,.st-share-b,.vn-set-act,.st-fin-done,.st-fin-cardio,.st-ask-acts button,.nxp-cal-day,.st-live,.st-dk-menu button";
   let lit = null;
   function bindRipple() {
     const end = () => {
@@ -1497,44 +1612,6 @@ const STRATA = (() => {
       lit.i.style.left = (e.clientX - r.left - lit.d / 2) + "px"; lit.i.style.top = (e.clientY - r.top - lit.d / 2) + "px";
     }, { capture: true, passive: true });
     ["pointerup", "pointercancel"].forEach(t => document.addEventListener(t, e => { if (lit && e.pointerId === lit.id) end(); }, true));
-  }
-
-  /* ---- D88 · Tilt light ------------------------------------------------------------------------------
-     Where the phone reports its orientation, the light on the glass moves as you tilt it: tile sheens,
-     the dock's glint and the canvas drift a little with the phone, against a resting angle that follows
-     how you hold it. iPhone asks once (Settings › Appearance › Tilt light); nothing is stored by the app.
-     Off under reduced motion. */
-  const tilt = { x: 0, y: 0, tx: 0, ty: 0, b0: null, raf: 0, live: false, seen: false, bound: false };
-  function tiltFrame() {
-    tilt.raf = 0;
-    tilt.x += (tilt.tx - tilt.x) * .16; tilt.y += (tilt.ty - tilt.y) * .16;
-    const de = document.documentElement;
-    de.style.setProperty("--st-tx", tilt.x.toFixed(3)); de.style.setProperty("--st-ty", tilt.y.toFixed(3));
-    if (Math.abs(tilt.tx - tilt.x) > .002 || Math.abs(tilt.ty - tilt.y) > .002) tilt.raf = requestAnimationFrame(tiltFrame);
-  }
-  function onOrient(e) {
-    if (e.beta == null || e.gamma == null) return;
-    tilt.seen = true;
-    if (reduced()) { if (tilt.live) { tilt.live = false; document.documentElement.classList.remove("st-tilt"); } return; }
-    if (tilt.b0 === null) tilt.b0 = e.beta;
-    tilt.b0 += (e.beta - tilt.b0) * .015;
-    tilt.tx = Math.max(-1, Math.min(1, e.gamma / 28));
-    tilt.ty = Math.max(-1, Math.min(1, (e.beta - tilt.b0) / 22));
-    if (!tilt.live) { tilt.live = true; document.documentElement.classList.add("st-tilt"); }
-    if (!tilt.raf) tilt.raf = requestAnimationFrame(tiltFrame);
-  }
-  function bindTilt() { if (tilt.bound) return; tilt.bound = true; window.addEventListener("deviceorientation", onOrient, { passive: true }); }
-  function tiltState() {
-    if (tilt.live) return "on";
-    if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") return "ask";
-    return "none";
-  }
-  async function allowTilt() {
-    try {
-      const s = await DeviceOrientationEvent.requestPermission();
-      if (s === "granted") { bindTilt(); toast("Tilt light is on"); } else toast("Tilt light needs motion access");
-    } catch (e) { toast("Tilt light is not available here"); }
-    return tiltState();
   }
 
   /* ---- D89 · Dock shortcuts --------------------------------------------------------------------------
@@ -1746,7 +1823,6 @@ const STRATA = (() => {
     bindSheetKeyboard();
     bindGymGuard();
     bindGlance();
-    bindTilt();
     bindDockShortcuts();
     bindPull();
     bindWeighMoment();
@@ -1919,7 +1995,7 @@ const STRATA = (() => {
     if (!host) return;
     const on = !!(state0.replay && p);
     host.classList.toggle("is-replay", on);
-    host.querySelectorAll(".st-wk").forEach(r => r.classList.toggle("is-ahead", on && r.dataset.a > p.date));
+    host.querySelectorAll(".wk-row").forEach(r => r.classList.toggle("is-ahead", on && r.dataset.a > p.date));
   }
   /* Numbers count up once, as their card scrolls in after a tab change. A rewind cancels a count in flight. */
   function countNum(el) {
@@ -2215,7 +2291,7 @@ const STRATA = (() => {
     if (!reduced()) requestAnimationFrame(() => { el.classList.add("is-in"); el.querySelectorAll("[data-st-num]").forEach(countNum); });
     else el.classList.add("is-in", "is-still");
   }
-  return { observatory, closeObservatory, hydrate, install, odoSet, stopReplay, sky, haptic, story, storyClose, goalMoment, goalCheck, glance: () => { glTouch = 0; showGlance(); }, tiltState, allowTilt, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
+  return { observatory, closeObservatory, hydrate, install, odoSet, stopReplay, sky, haptic, story, storyClose, goalMoment, goalCheck, moment, morph, glance: () => { glTouch = 0; showGlance(); }, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
 })();
 STRATA.install();
 if (typeof NXT === "object" && NXT && typeof NXT.repaint === "function" && document.readyState !== "loading") {
