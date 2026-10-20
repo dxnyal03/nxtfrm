@@ -2215,20 +2215,21 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
    L2 instrument glass for the log strip and the lead, L1 quiet glass for the digest. None of these carry
    .st-tile (its forced background would need !important to change), so each draws its own material from
    the shared tokens. No !important. */
-#homePage .tf-log,#homePage .tf-lead{position:relative;isolation:isolate;border-radius:var(--r-card);background:var(--st-tile),rgba(18,17,27,.72);box-shadow:var(--st-tile-hl),var(--st-depth)}
-#homePage .tf-log::before,#homePage .tf-lead::before{content:"";position:absolute;inset:0;z-index:2;padding:1px;border-radius:inherit;pointer-events:none;opacity:.4;background:var(--st-edge);
+#homePage .tf-lc,#homePage .tf-lead{position:relative;isolation:isolate;border-radius:var(--r-card);background:var(--st-tile),rgba(18,17,27,.72);box-shadow:var(--st-tile-hl),var(--st-depth)}
+#homePage .tf-lc::before,#homePage .tf-lead::before{content:"";position:absolute;inset:0;z-index:2;padding:1px;border-radius:inherit;pointer-events:none;opacity:.4;background:var(--st-edge);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
-@media (prefers-reduced-transparency:reduce){#homePage .tf-log,#homePage .tf-lead,#homePage .tf-dig-tile{background:rgba(30,27,44,.96)}}
+@media (prefers-reduced-transparency:reduce){#homePage .tf-lc,#homePage .tf-lead,#homePage .tf-dig-tile{background:rgba(30,27,44,.96)}}
 
 /* With the weigh-in pill gone (D121) the masthead ends at the context line; the card follows at the §2 rhythm. */
 #homePage .st-head{margin-bottom:15px}
 @media (max-height:740px){#homePage .st-head{margin-bottom:12px}}
 @media (max-width:359px){#homePage .st-head{margin-bottom:10px}}
 
-/* Log strip: two cells, each a Zone A (log / replay) over a Zone B (explain, open Progress). */
-#homePage .tf-log{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);overflow:hidden}
-#homePage .tf-lc{position:relative;display:grid;grid-template-rows:auto 1fr;min-width:0;overflow:hidden}
-#homePage .tf-lc+.tf-lc{box-shadow:inset 1px 0 0 var(--st-tile-line)}
+/* Log strip (D149): two separate lit-glass cards, Weight and Cardio, a Today tile gap (12 px) apart; each card is a
+   Zone A (log / replay) over a Zone B (explain, open Progress) with its own radius, edge, shadow and hue bloom. */
+#homePage .tf-log{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+#homePage .tf-lc{display:grid;grid-template-rows:auto 1fr;min-width:0;overflow:hidden;border-radius:var(--st-r);
+  background:radial-gradient(110% 80% at 100% 0%,color-mix(in srgb,var(--c) 12%,transparent),transparent 60%),var(--st-tile),var(--st-tile-bg);box-shadow:var(--st-tile-hl),var(--st-shadow)}
 #homePage .tf-za,#homePage .tf-zb{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;width:100%;margin:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit}
 #homePage .tf-za{gap:1px;min-height:80px;padding:8px 12px 7px}
 #homePage .tf-zb{gap:0;min-height:50px;padding:5px 12px 6px;box-shadow:inset 0 1px 0 var(--st-tile-line)}
@@ -2239,7 +2240,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #homePage .tf-za:focus-visible,#homePage .tf-zb:focus-visible,#homePage .tf-dig-row:focus-visible,#homePage .tf-well-b:focus-visible,#homePage .tf-next:focus-visible{outline-offset:-4px;border-radius:14px;box-shadow:inset 0 0 0 8px rgba(205,187,255,.14)}
 /* The unlogged Weight zone is lit (the D103 pill's job, D121): a hue corner bloom and a hue edge on this zone only. */
 #homePage .tf-za.is-lit{background:radial-gradient(120% 110% at 0% 0%,color-mix(in srgb,var(--c) 58%,transparent),transparent 64%),linear-gradient(180deg,color-mix(in srgb,var(--c) 12%,transparent),transparent 70%);box-shadow:inset 0 0 44px -10px color-mix(in srgb,var(--c) 55%,transparent),inset 0 1px 0 color-mix(in srgb,var(--c) 45%,rgba(255,255,255,.3))}
-#homePage .tf-za.is-lit::before{content:"";position:absolute;inset:0;padding:1px;border-radius:var(--r-card) 0 0 0;pointer-events:none;
+#homePage .tf-za.is-lit::before{content:"";position:absolute;inset:0;padding:1px;border-radius:var(--st-r) 0 0 0;pointer-events:none;
   background:linear-gradient(155deg,color-mix(in srgb,var(--c) 88%,#fff),color-mix(in srgb,var(--c) 55%,transparent) 48%,color-mix(in srgb,var(--c) 18%,transparent) 80%);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
 #homePage .tf-lr{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:2px 4px;width:100%;min-width:0}/* the state keeps its word: it wraps under the label rather than clipping */
@@ -2270,14 +2271,16 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #homePage .tf-sp-n i.is-on{background:currentColor;opacity:1}
 #homePage .tf-cm{display:block;width:100%;height:4px;margin-top:8px;border-radius:2px;background:rgba(var(--st-hl),.1);overflow:hidden}
 #homePage .tf-cm i{display:block;height:100%;border-radius:inherit;background:var(--c)}
-/* Larger text under 430px: one column, each cell's zones side by side. */
+/* Larger text under 430px, and any width under 360px: the cards stack, each card's zones side by side. */
 @media (max-width:429px){
   :root[data-nxp-size="large"] #homePage .tf-log{grid-template-columns:minmax(0,1fr)}
   :root[data-nxp-size="large"] #homePage .tf-lc{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
-  :root[data-nxp-size="large"] #homePage .tf-lc+.tf-lc{box-shadow:inset 0 1px 0 var(--st-tile-line)}
   :root[data-nxp-size="large"] #homePage .tf-zb{box-shadow:inset 1px 0 0 var(--st-tile-line)}
 }
 @media (max-width:359px){
+  #homePage .tf-log{grid-template-columns:minmax(0,1fr)}
+  #homePage .tf-lc{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
+  #homePage .tf-zb{box-shadow:inset 1px 0 0 var(--st-tile-line)}
   #homePage .tf-za{padding:10px 11px 8px}#homePage .tf-zb{padding:7px 11px 8px}
   #homePage .tf-lv b{font-size:calc(25px*var(--tf-s))}
   #homePage .tf-ls{font-size:calc(11px*var(--tf-s))}
