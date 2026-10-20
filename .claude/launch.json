@@ -2,18 +2,6 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "nxtfrm-dev",
-      "runtimeExecutable": "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
-      "runtimeArgs": [
-        "-u",
-        "/Users/alidanial/Documents/NXTFRM/tasks/vnext/devserver.py",
-        "8763",
-        "/Users/alidanial/Documents/NXTFRM"
-      ],
-      "port": 8763,
-      "url": "http://localhost:8763"
-    },
-    {
       "name": "nxtfrm-experience",
       "runtimeExecutable": "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
       "runtimeArgs": [
@@ -24,6 +12,18 @@
       ],
       "port": 8766,
       "url": "http://localhost:8766"
+    },
+    {
+      "name": "nxtfrm-dev",
+      "runtimeExecutable": "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3",
+      "runtimeArgs": [
+        "-u",
+        "/Users/alidanial/Documents/NXTFRM/tasks/vnext/devserver.py",
+        "8763",
+        "/Users/alidanial/Documents/NXTFRM"
+      ],
+      "port": 8763,
+      "url": "http://localhost:8763"
     }
   ]
 }
