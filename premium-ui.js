@@ -224,13 +224,6 @@ const NXP = (() => {
     const lastLift=lastLiftSession([...new Set(work.map(row=>row.date))],state.date,!!N.planDone());
     const lastLiftRow=lastLift?work.find(row=>row.date===lastLift):null;
     const plateau=N.detectPlateau();
-    /* D107 — the chip is named for the number it prints: the rate over its real span ("4-week rate", "15-day
-       rate"), or, before there is one, the week-on-week change of the 7-day averages (a delta, 1 dp). */
-    const trendLab=plateau.weeklyRate!==null?N.rateSpan(plateau).label:s.change!==null?'Week on week':'Rate';
-    const trendEv=plateau.weeklyRate===null?(s.change===null?'—':N.signedFixed(s.change,1)+' kg'):N.signed(plateau.weeklyRate)+' kg/wk';
-    const confEv=!plateau.confidence||plateau.confidence==='none'?'—':plateau.confidence;
-    const toneClass=r.tone==='watch'?' vn-tone-watch':'';
-    const support=r.message||r.reason||'';
     const morning=N.timingRows('Morning').find(row=>row.date===state.date)||null;
     const nextDate=N.dateAdd(state.date,1);
     /* Ascension — the rail and its header read the coach's statuses, so an excused or moved
@@ -293,7 +286,12 @@ const NXP = (() => {
     const coIns=coachCall('insights'),cur=lift?tfCurrent(list,doneMap,state.exercise):null;
     const dcToday=cxDay[state.date]||null,movedFrom=dcToday&&dcToday.movedFrom||null;
     const mode=k==='today'&&movedFrom?'moved':k;
-    const pick=pickToday({review:r,insights:coIns,week:null,mode,dayType:state.dayType,template:list.map(e=>e&&e.name),current:cur&&cur.name,button:btn&&btn.label});
+    /* The unseen week review joins the digest (D63); ui.coachReview is what reviewSheet()/reviewSeen() read. */
+    const wkRv=coachCall('weekReview');
+    ui.coachReview=wkRv&&!wkRv.seen&&coDate(wkRv.weekStart)?wkRv:null;
+    const pick=pickToday({review:r,insights:coIns,week:ui.coachReview,mode,dayType:state.dayType,template:list.map(e=>e&&e.name),current:cur&&cur.name,button:btn&&btn.label});
+    /* ui.coachList stays the index space of coachAct(i) / coachDismiss(i): the pool, in engine order. */
+    ui.coachList=pick.pool;
     ui.carriedIndex=pick.carriedIndex;
     const cue=cueFor({mode,dayType:state.dayType,template:list,done:doneMap,selected:state.exercise,carried:pick.carried,advice:coachAdvice});
     const cardioRow=(Array.isArray(state.cardio)?state.cardio:[]).filter(x=>x&&x.date===state.date&&Number(x.ts)>0).sort((x,y)=>Number(y.ts)-Number(x.ts))[0];
@@ -302,39 +300,37 @@ const NXP = (() => {
       locked:lift&&(isFin||!!(dsToday&&dsToday.recorded&&dsToday.recorded.workingSets>0&&dsToday.plan&&dsToday.plan.gym===(state.gym||'Gym A'))),
       movedFrom,addOnOk:addOnEligible(),cardioToday,cardioMins,cardioTarget,cardioAt:cardioRow?tfClock(cardioRow.ts):'',
       daysLeft:cxWeek&&Number(cxWeek.daysLeft)>0?Number(cxWeek.daysLeft):0});
-    /* The masthead's context line: fixed fragments, never a sentence (todayLine, pure). */
+    /* The masthead's context line: fixed fragments, never a sentence (todayLine, pure). A genuine concern
+       (a watch lead) turns it into the concern link (D81, D122). */
     const nextLift=lift?null:tfNextLift(state.date);
+    const leadTitle=pick.lead.kind==='insight'?pick.lead.item.title:r.title;
     const ctx=todayLine({date:state.date,k:k==='today'&&isFin?'finished':k,dayType:state.dayType,lift,gym:state.gym,
       week:dsWeek.filter(Boolean).map(x=>({date:x.date,type:x.type,lift:x.plan.lift,k:x.k})),
       finishedAt:dsToday&&dsToday.finished?tfClock(dsToday.finished.at):'',movedFrom,reason:dsToday&&dsToday.reason,
-      cardioMin:cardioMins,cardioTarget,next:nextLift,cutStart:settings.cutStart,lead:null});
-    const ctxHTML=ctx.length?`<p class="tf-ctx">${ctx.map((f,i)=>`${i?'<span class="tf-sep" aria-hidden="true"> · </span>':''}<span class="tf-f${f.strong?' is-s':''}">${f.strong?esc(f.t).replace(/\d+(?:[/:]\d+)?/g,'<b>$&</b>'):esc(f.t)}</span>`).join('')}</p>`:'';
-    /* Ascension — the Coach stack and the Week in review. D103 places them after the minis and, when
-       there are two or more, inside the coach deck (one child of .st-bento, so it reveals on scroll). */
-    const coStack=coachStackHTML(pick.carried&&pick.carried.id),coReview=reviewTileHTML();
-    /* A warning verdict leads Today (it used to sit ~2,000px down, under every coach note); a calm one
-       keeps its place after the minis. Same card, same words — only its position changes. */
-    const decUp=r.tone==='watch';
-    const decTile=`<section class="st-tile st-t-dec${toneClass}" data-st-view aria-labelledby="vn-dec-h" style="--c:var(--st-accent)">
-            <div class="st-tile-head"><span class="st-cat">Decision</span><button type="button" class="st-link st-why" onclick="NXT.openReview()">Why<span aria-hidden="true">›</span></button></div>
-            <h2 class="st-h3" id="vn-dec-h">${esc(r.title)}</h2>
-            ${support?`<p class="st-body st-mt2">${esc(support)}</p>`:''}
-            ${decEvidenceHTML(trendEv,confEv,plateau,trendLab)}
-          </section>`;
-    /* D103 — the morning in one pill under the greeting: a lit "Log morning weight" until this morning's
-       reading (D7) is in, then the reading itself; a tap replays the weigh-in moment on the trend (D92).
-       Replaces the 04–12 chip (D81), which vanished once you had weighed in. */
-    const weighPill=morning
-      ?`<button type="button" class="st-wpill is-done" onclick="NXP.weighReplay()" aria-label="${esc(`Weighed in this morning, ${morning.weight.toFixed(1)} kilograms. Show it on the trend`)}"><i aria-hidden="true">${check}</i><b>${morning.weight.toFixed(1)} kg</b><span>this morning</span></button>`
-      :`<button type="button" class="st-wpill" onclick="apx95OpenQuickWeight()"><i aria-hidden="true"></i><b>Log morning weight</b></button>`;
-    /* D103 — the coach notes and last week's review fold into one deck when there are two or more:
-       the top note on glass with the rest stacked beneath; a tap fans them out (and back). Every note,
-       its evidence, actions, Why and Dismiss are unchanged inside. Open/closed is memory only. */
-    const coCount=(ui.coachList||[]).length-(pick.carried?1:0)+(coReview?1:0);
-    const coDeck=coCount>=2?`<section class="st-codeck${ui.coDeckOpen?' is-open':''}" aria-label="Coach">
-          <div class="st-codeck-h"><h2 class="st-codeck-t">Coach<span class="st-codeck-n">${coCount}</span></h2><button type="button" class="vn-text st-codeck-tg" aria-expanded="${ui.coDeckOpen?'true':'false'}" onclick="NXP.coachDeck()">${ui.coDeckOpen?'Show less':'Show all'}</button></div>
-          <div class="st-codeck-b">${coStack}${coReview}<button type="button" class="st-codeck-open" onclick="NXP.coachDeck()" aria-label="${esc(`Show all ${coCount} coach notes`)}"></button></div>
-        </section>`:coStack+coReview;
+      cardioMin:cardioMins,cardioTarget,next:nextLift,cutStart:settings.cutStart,lead:{variant:pick.lead.variant,title:leadTitle}});
+    const ctxHTML=ctx.variant==='watch'
+      ?`<button type="button" class="tf-ctx is-watch" onclick="NXP.toLead()" aria-label="${esc(`Watch: ${ctx.watchTitle}. ${pick.lead.kind==='decision'?'Read the weight decision below.':'Read it below.'}`)}"><span class="tf-f tf-w"><i class="tf-sv is-watch" aria-hidden="true"></i>Watch</span><span class="tf-sep" aria-hidden="true"> · </span><span class="tf-f tf-wt-t">${esc(ctx.watchTitle)}</span><span class="tf-f tf-rb"><span class="tf-sep" aria-hidden="true"> · </span>Read below <span aria-hidden="true">↓</span></span></button>`
+      :ctx.length?`<p class="tf-ctx">${ctx.map((f,i)=>`${i?'<span class="tf-sep" aria-hidden="true"> · </span>':''}<span class="tf-f${f.strong?' is-s':''}">${f.strong?esc(f.t).replace(/\d+(?:[/:]\d+)?/g,'<b>$&</b>'):esc(f.t)}</span>`).join('')}</p>`:'';
+    /* Stage 5 — four surfaces: the focus card, the log strip, one lead interpretation and the digest
+       (D120). The lead sits after the log strip unless it is a genuine concern (afterFocus). */
+    const rows=N.weights();
+    const cardioLast=(Array.isArray(state.cardio)?state.cardio:[]).map(x=>x&&x.date).filter(d=>coDate(d)&&d<state.date).sort().at(-1)||null;
+    const logStrip=logStripHTML({rows,morning,cardioToday,cardioAt:cardioRow?tfClock(cardioRow.ts):'',cardioMins,cardioTarget,cardioLast,walk:state.dayType==='Zone2'});
+    const leadTile=leadHTML({lead:pick.lead,r,plateau,rows});
+    /* Recent evidence · Lifts: the D20 outcome of the last completed session (≤ 7 days), never today's
+       open one (lastLiftSession); otherwise the engine status word. Hidden while the card shows the receipt. */
+    const liftsRow=lift&&(k==='finished'||isFin)?null:(()=>{
+      const ago=lastLift?Math.round((N.dateMs(state.date)-N.dateMs(lastLift))/864e5):null;
+      const oc=lastLift&&ago!==null&&ago<=7?liftOutcome(lastLift,(lastLiftRow&&lastLiftRow.gym)||state.gym):null;
+      if(oc&&oc.compared){
+        const nm=weekShort[lastLiftRow.dayType]||N.label(lastLiftRow.dayType||state.dayType);
+        return {sub:`${oc.up} of ${oc.compared} beat last time · ${nm} · ${coDayShort(lastLift)}`,label:`Lifts: ${oc.up} of ${oc.compared} beat last time, ${N.label(lastLiftRow.dayType||state.dayType)}, ${coDayShort(lastLift)}. Open Performance.`};
+      }
+      const sub=perfLabel==='Building'?'Building · no comparable sessions yet':perfLabel==='Older history'&&lastPerfDate?`Older history · last ${N.shortDate(lastPerfDate)}`:`${perfLabel} · ${lifts.length} ${N.plural(lifts.length,'lift')}`;
+      return {sub,label:`Lifts: ${sub}. Open Performance.`};
+    })();
+    const digest=digestHTML({pick,r,plateau,rows,liftsRow,button:btn&&btn.label});
+    const surfaces=pick.lead.place==='afterFocus'?leadTile+logStrip:logStrip+leadTile;
     document.getElementById('homePage').innerHTML=`<div class="vn-today st-today">
       <div class="vn-pad">
         <header class="st-head">
@@ -342,42 +338,10 @@ const NXP = (() => {
             <p class="st-eyebrow">${esc(weekday)} · ${esc(dateLine)}${ctx.cutWeek?` · Week ${ctx.cutWeek} of your cut`:''}</p>
             <h1 class="st-h1">${esc(greeting())}</h1>
             ${ctxHTML}
-            ${weighPill}
           </div>
         </header>
         <div class="st-bento">
-          ${trainTile}${decUp?decTile:''}
-          <div class="st-minis">
-            ${weightTileHTML()}
-            <button type="button" class="st-tile st-mini" style="--c:var(--st-cardio)" onclick="showCardioSheet()">
-              <span class="st-cat">Cardio</span>
-              <span class="st-mini-v"><b class="vn-num">${cardioMins}</b><small>/${cardioTarget}</small></span>
-              <span class="st-mini-bar"><i style="width:${Math.min(100,cardioTarget?cardioMins/cardioTarget*100:0).toFixed(0)}%"></i></span>
-              <span class="st-meta">min/wk</span>
-            </button>
-            ${(()=>{
-              /* Recent session (≤7 days): lead with its D20 outcome — "3 of 5 beat" — and name the
-                 session; otherwise the engine status word as before. */
-              const ago=lastLift?Math.round((N.dateMs(state.date)-N.dateMs(lastLift))/864e5):null;
-              const oc=lastLift&&ago!==null&&ago<=7?liftOutcome(lastLift,(lastLiftRow&&lastLiftRow.gym)||state.gym):null;
-              if(oc&&oc.compared){
-                const when=ago===0?'today':ago===1?'yesterday':`${ago}d ago`;
-                return `<button type="button" class="st-tile st-mini st-mini-lifts" style="--c:var(--st-lift)" onclick="NXT.ui.view='strength';switchTab('weight')" aria-label="Lifts: ${oc.up} of ${oc.compared} beat last time, ${N.label(lastLiftRow.dayType||state.dayType)} ${when}">
-              <span class="st-cat">Lifts</span>
-              <span class="st-mini-v"><b class="vn-num">${oc.up}</b><small>/${oc.compared} beat</small></span>
-              <span class="st-meta">${esc(weekShort[lastLiftRow.dayType]||N.label(lastLiftRow.dayType||state.dayType))} · ${when}</span>
-            </button>`;
-              }
-              return `<button type="button" class="st-tile st-mini" style="--c:var(--st-lift)" onclick="NXT.ui.view='strength';switchTab('weight')">
-              <span class="st-cat">Lifts</span>
-              <span class="st-mini-v st-mini-w">${esc(perfLabel)}</span>
-              <span class="st-meta">${perfLabel==='Older history'&&lastPerfDate?`Last ${esc(N.shortDate(lastPerfDate))}`:`${lifts.length} ${N.plural(lifts.length,"lift")}`}</span>
-            </button>`;
-            })()}
-          </div>
-          ${coDeck}
-          ${decUp?'':decTile}
-          ${bodyTileHTML()}
+          ${trainTile}${surfaces}${digest}
         </div>
       </div>
 
@@ -393,6 +357,7 @@ const NXP = (() => {
         </div>
       </details>`:''}
     </div>`;
+    tfAfterPaint();
   }
   /* ---- Stage 5 · Today's focus card ----------------------------------------------------------------
      One card, one task: the state line, the session title (Dusk hue), the tape of planned working sets,
@@ -588,21 +553,257 @@ const NXP = (() => {
         ${cta}
       </article>`;
   }
-  /* D103 · The coach deck folds and fans out in place (STRATA.morph animates it when it can). */
-  function coachDeck() {
-    const deck=document.querySelector('#homePage .st-codeck');
-    if(!deck)return;
-    ui.coDeckOpen=!deck.classList.contains('is-open');
-    const apply=()=>{
-      deck.classList.toggle('is-open',ui.coDeckOpen);
-      const t=deck.querySelector('.st-codeck-tg');
-      if(t){t.setAttribute('aria-expanded',String(ui.coDeckOpen));t.textContent=ui.coDeckOpen?'Show less':'Show all';}
-    };
-    if(typeof STRATA==='object'&&STRATA&&typeof STRATA.morph==='function')STRATA.morph(deck,apply);else apply();
-    /* The fold-out cover goes away once open, so focus moves to Show less rather than to the page. */
-    const t=deck.querySelector('.st-codeck-tg'),a=document.activeElement;
-    if(t&&(!a||a===document.body||a.classList.contains('st-codeck-open')))t.focus({preventScroll:true});
+  /* ---- Stage 5 · Log strip (C3) --------------------------------------------------------------------
+     Two cells under the focus card, Weight and Cardio. Zone A logs (or replays) and says whether today is
+     done; Zone B explains and opens Progress. Every figure is read here from the engine's own reads
+     (weights(), trend(), forecastView()/forecastWords(), cardioWeek()); nothing is computed anew. */
+  const tfTick='<svg class="tf-tick" viewBox="0 0 12 12" aria-hidden="true" focusable="false"><path d="M2.5 6.3 4.9 8.6 9.5 3.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const tfKg=v=>Number(v).toFixed(1);
+  const tfMinus=t=>String(t).replace(/(^|[\s(])-(?=\d)/g,'$1−');
+  /* trendSparkSVG(series, {h, from, to, line, label, cls}) — the 28-day smoothed trend over its morning
+     readings (D50), shared by every Today plot so two cannot drift. series: N.trend() points {date, weight,
+     avg}. Y domain is data-only over readings and trend (D2); no goal line (D3), no projection (I11), no
+     second axis. The line breaks across EWMA restarts (gaps over 3 days). Area and line sit in a stretched
+     0–100 box (preserveAspectRatio none); the dots are drawn in pixel space so they stay round. */
+  function trendSparkSVG(series,o){
+    const opt=o||{},H=opt.h||24,pad=3;
+    const pts=(Array.isArray(series)?series:[]).filter(p=>p&&coDate(p.date)&&N.finite(p.weight)!==null);
+    if(!pts.length)return '';
+    const t0=N.dateMs(opt.from||pts[0].date),t1=N.dateMs(opt.to||pts.at(-1).date);
+    const has=p=>p.avg!==null&&p.avg!==undefined&&Number.isFinite(Number(p.avg));
+    const vals=pts.flatMap(p=>has(p)?[p.weight,p.avg]:[p.weight]);
+    const lo=Math.min(...vals),hi=Math.max(...vals),span=(hi-lo)||1;
+    const xp=d=>Math.max(0,Math.min(100,(N.dateMs(d)-t0)/((t1-t0)||1)*100));
+    const yp=v=>pad+(hi-v)/span*(H-pad*2);
+    const tr=pts.filter(has),runs=[];let run=[];
+    tr.forEach(p=>{if(run.length&&(N.dateMs(p.date)-N.dateMs(run.at(-1).date))/864e5>3){runs.push(run);run=[];}run.push(p);});
+    if(run.length)runs.push(run);
+    const lines=opt.line===false?[]:runs.filter(r=>r.length>1);
+    const path=r=>r.map((p,i)=>(i?'L':'M')+xp(p.date).toFixed(2)+' '+yp(p.avg).toFixed(2)).join(' ');
+    const lineD=lines.map(path).join(' ');
+    const area=lines.map(r=>path(r)+` L ${xp(r.at(-1).date).toFixed(2)} ${H} L ${xp(r[0].date).toFixed(2)} ${H} Z`).join(' ');
+    const gid='tfsg'+Math.random().toString(36).slice(2,7),e=lines.length?tr.at(-1):null;
+    const dots=pts.map(p=>`<circle class="tf-sp-raw" cx="${xp(p.date).toFixed(2)}%" cy="${yp(p.weight).toFixed(2)}" r="1.5"/>`).join('');
+    const plot=lineD?`<svg viewBox="0 0 100 ${H}" preserveAspectRatio="none" width="100%" height="${H}" overflow="visible"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".12"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs><path class="tf-sp-area" d="${area}" fill="url(#${gid})"/><path class="tf-sp-line" d="${lineD}" pathLength="1" fill="none" stroke="currentColor" stroke-width="1.8" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"/></svg>`:'';
+    return `<svg class="tf-spark${opt.cls?' '+opt.cls:''}" width="100%" height="${H}" role="img" aria-label="${esc(opt.label||'')}" focusable="false">${plot}${dots}${e?`<circle class="tf-sp-end" cx="${xp(e.date).toFixed(2)}%" cy="${yp(e.avg).toFixed(2)}" r="2.5"/>`:''}</svg>`;
   }
+  /* The weight cell's data states (§5.3): empty, 1–2 mornings, sparse (< 4 trend points), fresh, aging, paused. */
+  function tfWeightRead(rows){
+    const from=N.dateAdd(state.date,-27),series=N.trend(rows).filter(p=>p.date>=from&&p.date<=state.date);
+    const tr=series.filter(p=>p.avg!==null&&p.avg!==undefined);
+    let fv=null;try{fv=N.forecastView(rows);}catch(e){fv=null;}
+    const fw=fv?N.forecastWords(fv):{asOf:'',paused:''},fr=fv&&fv.freshness;
+    return {from,series,tr,fv,fw,mornings:series.length,aging:fr==='aging',paused:fr==='stale'||fr==='expired'};
+  }
+  function logStripHTML(m){
+    const rows=m.rows||[],last=rows.at(-1)||null,mo=m.morning,w=tfWeightRead(rows),old=w.aging||w.paused;
+    /* Weight · Zone A: lit until this morning's reading (D7) is in (D121), then the reading; a tap replays it (D92). */
+    let za;
+    if(mo){
+      za=`<button type="button" class="tf-za" onclick="NXP.weighReplay()" aria-label="${esc(`Weight logged this morning, ${tfKg(mo.weight)} kilograms. Replay weigh-in.`)}">
+            <span class="tf-lr"><span class="tf-ll"><i aria-hidden="true"></i>Weight</span><span class="tf-ls is-ok">${tfTick}This morning</span></span>
+            <span class="tf-lv"><b class="vn-num">${tfKg(mo.weight)}</b><small>kg</small></span>
+            <span class="tf-lsub"><span>Latest morning</span><span> · ${esc(N.shortDate(state.date))}</span></span>
+          </button>`;
+    }else{
+      const other=rows.length?0:N.otherTimingCount();
+      /* Fragments drop whole from the right when the cell is narrow (the context line's rule), never mid-word. */
+      const sub=last?`<span>Last · ${tfKg(last.weight)} kg</span><span${old?' class="is-old"':''}> · ${esc(coDayShort(last.date))}</span>`:other?`<span>No morning readings yet</span><span> · ${other} other-time</span>`:'<span>No readings yet</span>';
+      za=`<button type="button" class="tf-za is-lit" onclick="apx95OpenQuickWeight()" aria-label="${esc(`Weight not logged today. Log morning weight.${last?` Last reading ${tfKg(last.weight)} kilograms, ${coDayShort(last.date)}.`:''}`)}">
+            <span class="tf-lr"><span class="tf-ll"><i aria-hidden="true"></i>Weight</span><span class="tf-ls">${coMark('missed','tf-lsm')}Not yet today</span></span>
+            <span class="tf-lv is-task">Log morning</span>
+            <span class="tf-lsub">${sub}</span>
+          </button>`;
+    }
+    /* Weight · Zone B: the labelled smoothed trend (D107 name, D50 window) and its range, never a future date. */
+    const tr=w.tr,first=tr[0],end=tr.at(-1),lastD=w.fv&&w.fv.lastObservationDate?N.shortDate(w.fv.lastObservationDate):last?N.shortDate(last.date):'';
+    let zl,zf='',plot,sum;
+    if(!rows.length||(!w.series.length&&!tr.length&&rows.length<3)){
+      const n=w.series.length;
+      zl=n?`${n} of 3 mornings for a trend`:'Smoothed trend · starts after 3 mornings';
+      plot=`<span class="tf-sp-n" aria-hidden="true">${[0,1,2].map(j=>`<i${j<n?' class="is-on"':''}></i>`).join('')}</span>`;
+      sum=n?`${n} of 3 morning readings for a smoothed trend.`:'Smoothed trend starts after 3 morning readings.';
+    }else if(!tr.length){
+      const n=Math.min(2,w.series.length);
+      zl=w.series.length?`${n} of 3 mornings for a trend`:`Smoothed trend · to ${lastD} · Paused`;
+      plot=`<span class="tf-sp-n" aria-hidden="true">${[0,1,2].map(j=>`<i${j<n?' class="is-on"':''}></i>`).join('')}</span>`;
+      sum=w.series.length?`${n} of 3 morning readings for a smoothed trend.`:`Smoothed trend paused since ${lastD}.`;
+    }else if(tr.length<4){
+      zl=`Smoothed trend · 28 days · ${w.mornings} ${N.plural(w.mornings,'morning')}`;
+      zf=`<b data-st-odo="${tfKg(end.avg)}">${tfKg(end.avg)}</b> kg`;
+      plot=trendSparkSVG(w.series,{from:w.from,to:state.date,line:false,label:`Smoothed trend ${tfKg(end.avg)} kilograms, ${w.mornings} morning readings in 28 days`});
+      sum=`Smoothed trend ${tfKg(end.avg)} kilograms, ${w.mornings} morning readings in the last 28 days.`;
+    }else{
+      zl=w.paused?`Smoothed trend · to ${lastD} · Paused`:w.aging&&w.fw.asOf?`Smoothed trend · ${w.fw.asOf}`:'Smoothed trend · 28 days';
+      zf=`<span>${tfKg(first.avg)} → </span><b data-st-odo="${tfKg(end.avg)}">${tfKg(end.avg)}</b> kg`;
+      sum=`Smoothed trend over the last 28 days, from ${tfKg(first.avg)} to ${tfKg(end.avg)} kilograms, ${w.mornings} morning readings`+(w.paused?`, paused since ${lastD}`:w.aging&&w.fv?`, as of ${N.shortDate(w.fv.modelOriginDate)}`:'')+'.';
+      plot=trendSparkSVG(w.series,{from:w.from,to:state.date,label:sum,cls:w.paused?'is-paused':''});
+    }
+    const zb=`<button type="button" class="tf-zb" onclick="NXT.ui.view='overview';switchTab('weight')" aria-label="${esc(sum+' Open Progress.')}">
+            <span class="tf-zl">${esc(zl)}<i aria-hidden="true">›</i></span>${zf?`<span class="tf-zf vn-num">${zf}</span>`:''}
+            <span class="tf-zp">${plot}</span>
+          </button>`;
+    /* Cardio: today's state in Zone A, the week against its target in Zone B (a meter, not a chart). Never lit:
+       cardio is not a daily task, and on a walk day the focus card already holds the logger. */
+    const ct=Math.round(Number(m.cardioToday)||0),cm=Math.round(Number(m.cardioMins)||0),tg=Math.round(Number(m.cardioTarget)||0);
+    const ca=ct>0
+      ?`<button type="button" class="tf-za" onclick="showCardioSheet()" aria-label="${esc(`Cardio logged today, ${ct} minutes${m.cardioAt?' at '+m.cardioAt:''}. Log another session.`)}">
+            <span class="tf-lr"><span class="tf-ll"><i aria-hidden="true"></i>Cardio</span><span class="tf-ls is-ok">${tfTick}${ct} min today</span></span>
+            <span class="tf-lv"><b class="vn-num">${ct}</b><small>min</small></span>
+            <span class="tf-lsub"><span>today</span>${m.cardioAt?`<span> · ${esc(m.cardioAt)}</span>`:''}</span>
+          </button>`
+      :`<button type="button" class="tf-za" onclick="showCardioSheet()" aria-label="${esc(`No cardio today. Log cardio.${m.cardioLast?` Last session ${coDayShort(m.cardioLast)}.`:''}`)}">
+            <span class="tf-lr"><span class="tf-ll"><i aria-hidden="true"></i>Cardio</span><span class="tf-ls">${coMark('missed','tf-lsm')}None today</span></span>
+            <span class="tf-lv is-task">Log cardio</span>
+            <span class="tf-lsub">${m.cardioLast?`<span>Last</span><span> · ${esc(coDayShort(m.cardioLast))}</span>`:'<span>No cardio yet</span>'}</span>
+          </button>`;
+    const pct=tg?Math.min(100,cm/tg*100):0;
+    const cb=`<button type="button" class="tf-zb" onclick="NXT.ui.view='training';switchTab('weight')" aria-label="${esc(`Cardio this week, ${cm} of ${tg} minutes. Open Training.`)}">
+            <span class="tf-zl">This week<i aria-hidden="true">›</i></span><span class="tf-zf vn-num">${cm} / ${tg} min</span>
+            <span class="tf-zp"><span class="tf-cm" aria-hidden="true"><i style="width:${pct.toFixed(0)}%"></i></span></span>
+          </button>`;
+    return `<section class="tf-log" aria-label="Log today">
+        <div class="tf-lc is-weight${mo?'':' is-lit'}" style="--c:var(--st-weight)">${za}${zb}</div>
+        <div class="tf-lc is-cardio" style="--c:var(--st-cardio)">${ca}${cb}</div>
+      </section>`;
+  }
+  /* ---- Stage 5 · Lead interpretation and digest (C4) -------------------------------------------------
+     One interpretation leads (pickToday): observation, evidence, suggestion and what it rests on, all from
+     structured engine fields; the only words the UI adds are the labels Evidence / Suggested / Based on. */
+  const TF_SEV={watch:'Watch',act:'Action',calm:'Calm'};
+  const tfSev=(k)=>TF_SEV[k]?`<span class="tf-sev is-${k}"><i class="tf-sv is-${k}" aria-hidden="true"></i>${TF_SEV[k]}</span>`:'';
+  const tfChips=list=>list.length?`<ul class="tf-chips">${list.map(c=>`<li>${c}</li>`).join('')}</ul>`:'';
+  /* The Decision (review()) in four parts. Evidence splits review()'s own reason on its own " · ". */
+  function decisionParts(r,plateau,rows){
+    const rv=r||{},w=tfWeightRead(rows||[]);
+    const chips=String(rv.reason||'').split(' · ').map(x=>x.trim()).filter(Boolean).slice(0,3).map(x=>`<span class="tf-chip-v vn-num">${esc(tfMinus(x))}</span>`);
+    const conf=String(plateau&&plateau.confidence||'').toLowerCase(),lvl={low:1,medium:2,high:3}[conf]||0;
+    const meter=lvl?`<span class="tf-meter3" aria-hidden="true">${[1,2,3].map(j=>`<i${j<=lvl?' class="on"':''}></i>`).join('')}</span>`:'';
+    const based=[lvl?`Rate precision ${conf}`:'',`${w.mornings} ${N.plural(w.mornings,'morning')} in 28 days`,w.aging?w.fw.asOf:'',w.paused?'paused':''].filter(Boolean).join(' · ');
+    return {sev:rv.tone==='watch'?'watch':'calm',dom:'weight',word:'Weight · Decision',title:rv.title||'',body:rv.message||'',
+      dl:`<dl class="tf-anat">${chips.length?`<div><dt>Evidence</dt><dd>${tfChips(chips)}</dd></div>`:''}${rv.action?`<div><dt>Suggested</dt><dd>${esc(rv.action)}</dd></div>`:''}<div><dt>Based on</dt><dd>${meter}<span>${esc(based)}</span></dd></div></dl>`,
+      tools:`<button type="button" class="tf-tx" onclick="NXT.openReview()" aria-haspopup="dialog">Why<i aria-hidden="true">›</i></button>`};
+  }
+  /* A coach insight in four parts; i is its index in ui.coachList (coachAct/coachDismiss unchanged). */
+  function insightParts(it,i,hideAction){
+    const dom=CO_DOM[it.domain]?it.domain:'data',sev=it.severity==='act'||it.severity==='watch'?it.severity:'info';
+    const ev=(Array.isArray(it.evidence)?it.evidence:[]);
+    const chips=ev.filter(e=>e&&e.label&&e.value!==undefined&&e.value!==null&&String(e.value)!==''&&e.label!=='Decision').slice(0,3)
+      .map(e=>`<span class="tf-chip-l">${esc(e.label)}</span><span class="tf-chip-d" aria-hidden="true">·</span><span class="tf-chip-v vn-num">${esc(tfMinus(e.value))}</span>`);
+    const w=it.why||{};
+    const act=it.action&&it.action.label&&!hideAction?`<button type="button" class="tf-glass tf-act" onclick="NXP.coachAct(${i})">${esc(it.action.label)}<span aria-hidden="true">›</span></button>`:'';
+    const dates=ev.map(e=>e&&e.date).filter(d=>coDate(d)&&d<=state.date).sort(),newest=dates.at(-1);
+    const nE=newest?ev.find(e=>e&&e.date===newest):null,held=ev.find(e=>e&&e.label==='Decision'&&e.value);
+    const based=[newest?(dom==='strength'?'Your session on '+coDayShort(newest):`${nE.label} · ${coDayShort(newest)}`):'',held?'Decision · '+held.value:''].filter(Boolean).join(' · ');
+    const sugg=w.canDo||act;
+    return {sev,dom,word:CO_DOM[dom],title:it.title||'',body:it.body||'',
+      dl:`<dl class="tf-anat">${chips.length?`<div><dt>Evidence</dt><dd>${tfChips(chips)}</dd></div>`:''}${sugg?`<div><dt>Suggested</dt><dd>${w.canDo?`<span>${esc(w.canDo)}</span>`:''}${act}</dd></div>`:''}${based?`<div><dt>Based on</dt><dd><span>${esc(based)}</span></dd></div>`:''}</dl>`,
+      tools:`<button type="button" class="tf-tx" onclick="NXP.coachDismiss(${i})" aria-label="${esc('Dismiss: '+(it.title||''))}">Dismiss</button>`};
+  }
+  /* The lead: one L2 surface. Calm = quiet glass with a weight bloom; act = the domain-hue edge; watch =
+     the amber edge, ◆ and the word (one brighten on entry, no loop). */
+  function leadHTML(m){
+    const L=m.lead,p=L.kind==='insight'?insightParts(L.item,L.index,L.hideAction):decisionParts(m.r,m.plateau,m.rows);
+    const variant=L.variant;
+    return `<section class="tf-lead is-${variant}" aria-labelledby="tf-lead-h" style="--c:var(--co-${p.dom})">
+          <div class="tf-le"><span class="tf-le-t"><span class="tf-le-d">${coIcon(p.dom)}<span>${esc(p.word)}</span></span>${tfSev(variant)}</span>${p.tools}</div>
+          <h2 class="tf-lead-h" id="tf-lead-h" tabindex="-1">${esc(p.title)}</h2>
+          ${p.body?`<p class="tf-lead-b" id="tf-lead-b">${esc(tfMinus(p.body))}</p><button type="button" class="tf-tx tf-more" hidden aria-expanded="false" aria-controls="tf-lead-b" onclick="NXP.leadMore()">More</button>`:''}
+          ${p.dl}
+        </section>`;
+  }
+  /* Recent evidence · latest Evo scan as one row (D42 tones: less fat is good news, less muscle is
+     something to watch, scale weight neutral; the arrow and number always carry the direction). */
+  function scanRowHTML(){
+    const scans=bodyScanSource().filter(s=>s&&['bodyFat','fatMass','muscleMass','weight'].some(k=>N.finite(s[k])!==null));
+    if(!scans.length)return '';
+    const L=scans.at(-1),P=scans.at(-2)||null;
+    const part=(k,label,unit)=>{
+      const v=N.finite(L[k]);if(v===null)return null;
+      const pv=P?N.finite(P[k]):null,d=pv===null?null:v-pv,dir=d===null?null:Math.abs(d)<0.05?'eq':d<0?'dn':'up';
+      const tone=!dir||dir==='eq'||k==='weight'?'':k==='muscleMass'?(dir==='dn'?' is-watch':''):dir==='dn'?' is-good':'';
+      const u=unit==='%'?'%':' kg',uw=unit==='%'?'percent':'kilograms';
+      return {h:`${label} <b class="vn-num">${v.toFixed(1)}</b>${u}${d===null?'':` <span class="tf-dl${tone}">${dir==='eq'?'=':dir==='dn'?'↓':'↑'}${dir==='eq'?'':Math.abs(d).toFixed(1)}</span>`}`,
+        a:`${label} ${v.toFixed(1)} ${uw}${d===null?'':dir==='eq'?', unchanged':`, ${dir==='dn'?'down':'up'} ${Math.abs(d).toFixed(1)}`}`};
+    };
+    const parts=[part('bodyFat','Fat','%')||part('fatMass','Fat mass','kg'),part('muscleMass','Muscle','kg')].filter(Boolean);
+    if(!parts.length){const wt=part('weight','Weight','kg');if(wt)parts.push(wt);}
+    return `<button type="button" class="tf-dig-row tf-ev" style="--c:var(--st-fat)" onclick="NXT.ui.view='body';switchTab('weight')" aria-label="${esc(`Latest Evo scan, ${N.shortDate(L.date)}: ${parts.map(x=>x.a).join('; ')}. Open Body.`)}">
+            <span class="tf-gd" aria-hidden="true">${coIcon('weight')}</span><span class="tf-dig-tx"><span class="tf-dig-ct">Latest Evo scan · ${esc(N.shortDate(L.date))}</span><span class="tf-dig-cs">${parts.map((x,j)=>`<span class="tf-sp">${j?' · ':''}${x.h}</span>`).join('')}</span></span><i class="tf-chv" aria-hidden="true">›</i>
+          </button>`;
+  }
+  /* More insights · N (everything pickToday did not carry or lead, in engine order), then Recent evidence. */
+  function digestHTML(m){
+    const items=m.pick.digest,n=items.length,open=!!ui.digestOpen&&n>0;
+    const trainBtn=/^(start|resume|finish)/i.test(String(m.button||''));
+    const meta=d=>d.kind==='insight'?{dom:CO_DOM[d.item.domain]?d.item.domain:'data',word:CO_DOM[d.item.domain]||'Coach',title:d.item.title,sev:d.item.severity}
+      :d.kind==='decision'?{dom:'weight',word:'Weight decision',title:(m.r&&m.r.title)||'',sev:m.r&&m.r.tone==='watch'?'watch':'calm'}
+      :{dom:'schedule',word:'Last week’s review',title:d.item.headline||'Last week',sev:'info'};
+    const ms=items.map(meta),glyph=x=>`<span class="tf-gd" style="--c:var(--co-${x.dom})" aria-hidden="true">${coIcon(x.dom)}</span>`;
+    const head=n?`<button type="button" class="tf-dig-row tf-dig-tg" aria-expanded="${open}" aria-controls="tf-dig-list" onclick="NXP.digestToggle()" aria-label="${esc(`More insights, ${n}: ${ms.map(x=>x.word).join('; ')}. ${open?'Collapse':'Expand'}.`)}">
+            <span class="tf-gds" aria-hidden="true">${ms.slice(0,3).map(glyph).join('')}</span><span class="tf-dig-tx"><span class="tf-dig-t">More insights<b class="tf-pill">${n}</b></span><span class="tf-dig-p">${ms.map((x,j)=>`<span>${j?' · ':''}${esc(x.word)}</span>`).join('')}</span></span><i class="tf-chv" aria-hidden="true">›</i>
+          </button>`:'';
+    const list=n?`<ul class="tf-dig-list" id="tf-dig-list"${open?'':' hidden'}>${items.map((d,j)=>{
+      const x=ms[j],sub=[x.word,TF_SEV[x.sev]||''].filter(Boolean).join(' · ');
+      if(d.kind==='week')return `<li><button type="button" class="tf-dig-row tf-dig-c" onclick="NXP.reviewSheet()" aria-haspopup="dialog">${glyph(x)}<span class="tf-dig-tx"><span class="tf-dig-ct">${esc(x.title)}</span><span class="tf-dig-cs">${esc(`Last week · ${coRange(d.item.weekStart,d.item.weekEnd)}`)}</span></span><i class="tf-chv" aria-hidden="true">›</i></button></li>`;
+      const it=d.kind==='insight'?d.item:null;
+      const hide=!!(it&&it.action&&it.action.payload&&it.action.payload.tab==='train'&&trainBtn);
+      const p=it?insightParts(it,d.index,hide):decisionParts(m.r,m.plateau,m.rows);
+      return `<li><details class="tf-dig-i"><summary class="tf-dig-row tf-dig-c">${glyph(x)}<span class="tf-dig-tx"><span class="tf-dig-ct">${esc(x.title)}</span><span class="tf-dig-cs">${x.sev==='watch'||x.sev==='act'||x.sev==='calm'?`<i class="tf-sv is-${x.sev}" aria-hidden="true"></i>`:''}${esc(sub)}</span></span><i class="tf-chv" aria-hidden="true">›</i></summary>
+            <div class="tf-dig-x">${p.body?`<p class="tf-dig-b">${esc(tfMinus(p.body))}</p>`:''}${p.dl}<div class="tf-dig-tools">${p.tools}</div></div></details></li>`;
+    }).join('')}</ul>`:'';
+    const lifts=m.liftsRow?`<button type="button" class="tf-dig-row tf-ev" style="--c:var(--co-strength)" onclick="NXT.ui.view='strength';switchTab('weight')" aria-label="${esc(m.liftsRow.label)}"><span class="tf-gd" aria-hidden="true">${coIcon('strength')}</span><span class="tf-dig-tx"><span class="tf-dig-ct">Lifts</span><span class="tf-dig-cs">${m.liftsRow.sub.split(' · ').map((t,j)=>`<span class="tf-sp">${j?' · ':''}${esc(t)}</span>`).join('')}</span></span><i class="tf-chv" aria-hidden="true">›</i></button>`:'';
+    const scan=scanRowHTML(),ev=lifts+scan;
+    if(!head&&!ev)return '';
+    return `<section class="tf-dig${open?' is-open':''}" aria-labelledby="tf-dig-h"><h2 class="st-sr" id="tf-dig-h">More insights</h2>
+        <div class="tf-dig-tile">${head}${list}${ev?`<p class="tf-dig-sub">Recent evidence</p>${ev}`:''}</div>
+      </section>`;
+  }
+  /* The digest folds out in place (STRATA.morph when it can, instant under reduced motion); memory only. */
+  function digestToggle(){
+    const sec=document.querySelector('#homePage .tf-dig'),list=document.getElementById('tf-dig-list'),tg=sec&&sec.querySelector('.tf-dig-tg');
+    if(!sec||!list||!tg)return;
+    ui.digestOpen=!ui.digestOpen;
+    const apply=()=>{
+      if(ui.digestOpen)list.removeAttribute('hidden');else list.setAttribute('hidden','');
+      sec.classList.toggle('is-open',ui.digestOpen);
+      tg.setAttribute('aria-expanded',String(ui.digestOpen));
+      tg.setAttribute('aria-label',String(tg.getAttribute('aria-label')||'').replace(/(Expand|Collapse)\.$/,ui.digestOpen?'Collapse.':'Expand.'));
+    };
+    if(typeof STRATA==='object'&&STRATA&&typeof STRATA.morph==='function')STRATA.morph(sec,apply);else apply();
+  }
+  /* The concern line jumps to the lead and puts focus on its heading. */
+  function toLead(){
+    const h=document.getElementById('tf-lead-h');
+    if(!h)return;
+    const still=(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)||document.documentElement.getAttribute('data-nxp-motion')==='reduced';
+    h.closest('section').scrollIntoView({block:'start',behavior:still?'auto':'smooth'});
+    h.focus({preventScroll:true});
+  }
+  function leadMore(){
+    const b=document.getElementById('tf-lead-b'),t=document.querySelector('#homePage .tf-more');
+    if(!b||!t)return;
+    const open=b.classList.toggle('is-open');
+    t.setAttribute('aria-expanded',String(open));t.textContent=open?'Less':'More';
+  }
+  /* After Today paints: clamp the lead body to three lines only when it is measurably longer (a page laid
+     out while hidden keeps the full text), and put focus back where a Dismiss left it. */
+  function tfAfterPaint(){
+    const b=document.getElementById('tf-lead-b'),t=document.querySelector('#homePage .tf-more');
+    if(b&&t&&b.clientHeight>0){
+      const lh=parseFloat(getComputedStyle(b).lineHeight)||21;
+      if(b.scrollHeight>lh*3+2){b.classList.add('is-clamp');t.hidden=false;}
+    }
+    const f=ui.refocus;ui.refocus=null;
+    if(f==='lead'){const h=document.getElementById('tf-lead-h');if(h)h.focus({preventScroll:true});}
+    else if(f&&typeof f.dig==='number'){
+      const rows=[...document.querySelectorAll('#tf-dig-list > li')].map(li=>li.querySelector('summary,button'));
+      const to=rows[f.dig]||rows[f.dig-1]||document.querySelector('#homePage .tf-dig-tg');
+      if(to)to.focus({preventScroll:true});
+    }
+  }
+  /* coachDeck stays as an alias of the digest toggle (and the end of home()'s test slice). */
+  function coachDeck() {return digestToggle();}
   /* D103 · This morning's reading, landed on the trend again (D92); Progress when the moment has too little to draw. */
   function weighReplay() {
     if(typeof STRATA==='object'&&STRATA&&typeof STRATA.moment==='function'&&STRATA.moment())return;
@@ -786,41 +987,6 @@ const NXP = (() => {
     return N.coachFor(ex);
   }
 
-  /* ---- Today · Coach stack ---------------------------------------------------------
-     NXT.coach.insights(): at most three, ranked by the engine. weight.review repeats the
-     Decision card's headline directly below, so it is not stacked here (engine report,
-     integration note 3); the next-ranked insight takes its place. */
-  function coachStackHTML(skipId) {
-    ui.coachList=[];
-    const list=coachCall('insights');
-    if(!Array.isArray(list))return '';
-    const pool=tfPool(list);
-    ui.coachList=pool;
-    /* Stage 5: the insight the focus card's cue carries is shown there, not again here (each once). */
-    return pool.map((it,i)=>skipId&&it.id===skipId?'':coachTileHTML(it,i)).join('');
-  }
-  function coachTileHTML(it,i) {
-    const dom=CO_DOM[it.domain]?it.domain:'data';
-    const sev=it.severity==='act'||it.severity==='watch'?it.severity:'info';
-    const ev=(Array.isArray(it.evidence)?it.evidence:[]).filter(e=>e&&e.label&&e.value!==undefined&&e.value!==null&&String(e.value)!=='');
-    /* Three chips are enough on a phone; the folded "Why" carries the evidence sentence. */
-    const chips=ev.slice(0,3).map(e=>`<li class="co-chip"><span class="co-chip-l">${esc(e.label)}</span><span class="co-chip-d" aria-hidden="true">·</span><b class="co-chip-v">${esc(e.value)}</b></li>`).join('');
-    const w=it.why||{};
-    const rows=[['Noticed',w.noticed],['Evidence',w.evidence],['Why it matters',w.matters],['What you can do',w.canDo]].filter(r=>r[1]);
-    const why=rows.length?`<details class="co-why"><summary><span>Why</span><i aria-hidden="true">›</i></summary><dl>${rows.map(r=>`<div><dt>${r[0]}</dt><dd>${esc(r[1])}</dd></div>`).join('')}</dl></details>`:'';
-    /* One primary capsule per tile at most, and only on an act: a watch or info action takes the quieter glass capsule (D56 tiers), so a stack of tiles never reads as three competing primaries. */
-    const opensTrain=it.action&&it.action.kind==='open'&&it.action.payload&&it.action.payload.tab==='train';
-    const act=it.action&&it.action.label?`<button type="button" class="${sev==='act'&&!opensTrain?'st-cta':'is-q'} co-act" onclick="NXP.coachAct(${i})">${esc(it.action.label)}<span aria-hidden="true">›</span></button>`:'';
-    const sevHTML=sev==='info'?'':`<span class="co-sev"><i class="co-sh" aria-hidden="true"></i>${sev==='act'?'Action':'Watch'}</span>`;
-    return `<article class="st-tile co-tile is-${sev} is-d-${dom}" aria-labelledby="co-h${i}">
-          <div class="st-tile-head co-eb"><span class="co-tags"><span class="st-cat co-dom">${coIcon(dom)}<span>${esc(CO_DOM[dom])}</span></span>${sevHTML}</span><button type="button" class="vn-text co-dismiss" onclick="NXP.coachDismiss(${i})" aria-label="${esc('Dismiss: '+it.title)}">Dismiss</button></div>
-          <h2 class="co-title" id="co-h${i}">${esc(it.title)}</h2>
-          ${it.body?`<p class="co-body">${esc(it.body)}</p>`:''}
-          ${chips?`<ul class="co-chips" aria-label="Evidence">${chips}</ul>`:''}
-          ${act}
-          ${why}
-        </article>`;
-  }
   /* Each action maps to the function that already exists (engine report §3.5). */
   function coachAct(i) {
     const it=ui.coachList&&ui.coachList[i],a=it&&it.action;
@@ -840,6 +1006,12 @@ const NXP = (() => {
     const now=Date.now();
     if(ui.coachTap&&now-ui.coachTap<450)return;
     ui.coachTap=now;
+    /* Stage 5: after the repaint, focus goes to the new lead's heading, or to the next digest row. */
+    const a=typeof document==='object'&&document.activeElement;
+    if(a&&a.closest){
+      if(a.closest('#homePage .tf-lead'))ui.refocus='lead';
+      else{const li=a.closest('#tf-dig-list > li');if(li)ui.refocus={dig:[...li.parentNode.children].indexOf(li)};}
+    }
     const it=ui.coachList&&ui.coachList[i];
     if(it&&N.coach)N.coach.dismiss(it.id,it.fingerprint);
   }
@@ -882,36 +1054,7 @@ const NXP = (() => {
     </div>`);
   }
 
-  /* ---- Today · Week in review --------------------------------------------------------- */
-  function reviewTileHTML() {
-    ui.coachReview=null;
-    const rv=coachCall('weekReview');
-    if(!rv||rv.seen||!coDate(rv.weekStart))return '';
-    ui.coachReview=rv;
-    const range=coRange(rv.weekStart,rv.weekEnd);
-    const L=rv.lifts||{},vs=rv.vsPrev||{},cd=rv.cardio||{},wt=rv.weight||{},oc=rv.outcomes||{};
-    const done=coNum(L.done),plan=coNum(L.planned),sets=coNum(rv.sets),dSets=coNum(vs.sets),cMin=coNum(cd.min),cTgt=coNum(cd.target),avg=coNum(wt.avg),dW=coNum(wt.change);
-    const setsCtx=dSets===null?'':dSets>0?`<span class="co-fig-s is-good">${coArrow('up')}${dSets} more</span>`:dSets<0?`<span class="co-fig-s">${coArrow('dn')}${Math.abs(dSets)} fewer</span>`:`<span class="co-fig-s">${coArrow('eq')}same</span>`;
-    const wCtx=dW===null?'<span class="co-fig-s">kg avg</span>':Math.abs(dW)<0.05?`<span class="co-fig-s">${coArrow('eq')}level</span>`:dW<0?`<span class="co-fig-s is-good">${coArrow('dn')}${Math.abs(dW).toFixed(1)} kg lower</span>`:`<span class="co-fig-s is-up">${coArrow('up')}${dW.toFixed(1)} kg higher</span>`;
-    const fig=(l,v,u,ctx)=>`<div class="co-fig-c" role="listitem"><small>${l}</small><b class="vn-num">${v}${u?`<em>${u}</em>`:''}</b>${ctx}</div>`;
-    const strip=`<div class="co-fig" role="list" aria-label="Last week in four figures">${
-      fig('Lifting',done===null?'—':done,plan===null?'':'/'+plan,'<span class="co-fig-s">days</span>')+
-      fig('Sets',sets===null?'—':sets,'',setsCtx||'<span class="co-fig-s">working</span>')+
-      fig('Cardio',cMin===null?'—':cMin,cTgt===null?'':'/'+cTgt,'<span class="co-fig-s">min</span>')+
-      fig('Weight',avg===null?'—':avg.toFixed(1),'',wCtx)
-    }</div>`;
-    const compared=(coNum(oc.beat)||0)+(coNum(oc.matched)||0)+(coNum(oc.below)||0);
-    const outcomes=compared?`<p class="co-out"><span class="co-out-l">Best set vs last time</span><span class="is-beat"><i aria-hidden="true"></i><b class="vn-num">${oc.beat}</b> beat</span><span class="is-same"><i aria-hidden="true"></i><b class="vn-num">${oc.matched}</b> matched</span><span class="is-below"><i aria-hidden="true"></i><b class="vn-num">${oc.below}</b> below</span></p>`:'';
-    /* The engine's own "Excused: …" and "Moved: …" lines, shown only when it wrote them. */
-    const xm=(Array.isArray(rv.lines)?rv.lines:[]).filter(l=>/^(Excused|Moved): /.test(l)).map(l=>`<p class="co-xm">${esc(l)}</p>`).join('');
-    return `<article class="st-tile co-tile co-review is-info" aria-labelledby="co-rv-h">
-          <button type="button" class="co-open" onclick="NXP.reviewSheet()" aria-label="${esc('Open last week in review, '+range)}"></button>
-          <div class="st-tile-head co-eb"><span class="st-cat co-dom">${coIcon('schedule')}<span>Last week · ${esc(range)}</span></span><button type="button" class="vn-text co-got" onclick="NXP.reviewSeen()">Got it</button></div>
-          <h2 class="co-title" id="co-rv-h">${esc(rv.headline||'Last week')}</h2>
-          ${strip}${outcomes}${xm}
-          <p class="co-more" aria-hidden="true"><span>See the week</span><i>›</i></p>
-        </article>`;
-  }
+  /* ---- Week in review: a row in Today's digest opens the sheet (stage 5); seen once Done ------------ */
   function reviewSheet() {
     const rv=ui.coachReview||coachCall('weekReview');
     if(!rv||!coDate(rv.weekStart))return;
@@ -1008,58 +1151,6 @@ const NXP = (() => {
     const v=Math.max(0,Number(value)||0),tg=Math.max(1,Number(target)||1),pct=Math.min(100,v/tg*100);
     return `<span class="st-count" style="--rc:${color}" role="img" aria-label="${v} of ${tg} ${esc(unit)}"><span class="st-count-v"><b class="vn-num">${v}</b><small>/${tg}</small></span><span class="st-count-u">${esc(unit)}</span><span class="st-count-bar"><i style="width:${pct.toFixed(0)}%"></i></span></span>`;
   }
-  /* Compact weight: the canonical 7-day trend and the engine's weekly rate.
-     The chart itself lives on Progress. */
-  function decEvidenceHTML(trendEv,confEv,plateau,trendLab='Rate') {
-    const rate=N.finite(plateau&&plateau.weeklyRate);
-    const dir=rate===null?'flat':rate<-0.05?'down':rate>0.05?'up':'flat';
-    /* D50 — the trend chip is a 28-day mini chart: the engine's trend line over an area,
-       each morning reading as a faint dot, the first and last trend values named. Same
-       window as the four-week rate it sits beside. Drawn from N.trend(N.weights()) only. */
-    const from=N.dateAdd(state.date,-27);
-    const series=N.trend(N.weights()).filter(p=>p.date>=from&&p.date<=state.date);
-    const tr=series.filter(p=>p.avg!==null);
-    let plot='',range='';
-    if(tr.length>=4){
-      const W=300,H=64,padX=4,padT=8,padB=6;
-      const vals=series.flatMap(p=>p.avg===null?[p.weight]:[p.weight,p.avg]);
-      const lo=Math.min(...vals),hi=Math.max(...vals),span=(hi-lo)||1;
-      const t0=N.dateMs(from),t1=N.dateMs(state.date),xs=ms=>padX+(ms-t0)/((t1-t0)||1)*(W-padX*2);
-      const ys=v=>padT+(hi-v)/span*(H-padT-padB);
-      const line=tr.map(p=>[xs(N.dateMs(p.date)),ys(p.avg)]);
-      const d=line.map((q,i)=>(i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join(' ');
-      const area=d+` L ${line.at(-1)[0].toFixed(1)} ${H} L ${line[0][0].toFixed(1)} ${H} Z`;
-      const dots=series.map(p=>`<circle class="st-dec-raw" cx="${xs(N.dateMs(p.date)).toFixed(1)}" cy="${ys(p.weight).toFixed(1)}" r="1.9"/>`).join('');
-      const e=line.at(-1),gid='stdg'+Math.random().toString(36).slice(2,6);
-      plot=`<svg class="st-dec-plot" viewBox="0 0 ${W} ${H}" aria-hidden="true" focusable="false"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".22"/><stop offset=".72" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs><path d="${area}" fill="url(#${gid})" class="st-dec-area"/>${dots}<path class="st-dec-line" pathLength="1" d="${d}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle class="st-dec-dot" cx="${e[0].toFixed(1)}" cy="${e[1].toFixed(1)}" r="3.6" fill="currentColor"/></svg>`;
-      range=`<span class="st-dec-range vn-num">${tr[0].avg.toFixed(1)} → ${tr.at(-1).avg.toFixed(1)} kg</span>`;
-    }
-    const arrow={down:'M12 5v13M6.5 12.5 12 18l5.5-5.5',up:'M12 19V6M6.5 11.5 12 6l5.5 5.5',flat:'M5 12h14'}[dir];
-    const lvl={low:1,medium:2,high:3}[String(confEv).toLowerCase()]||0;
-    const bars=lvl?`<span class="st-dec-bars" aria-hidden="true">${[1,2,3].map(i=>`<i class="${i<=lvl?'on':''}"></i>`).join('')}</span>`:'';
-    const label=`Open your weight trend. ${trendLab} ${trendEv}${tr.length>=4?`; smoothed trend ${tr[0].avg.toFixed(1)} to ${tr.at(-1).avg.toFixed(1)} kilograms over the last 28 days`:''}`;
-    return `<div class="st-dec-ev${plot?' has-plot':''}">
-      <button type="button" class="st-dec-chip st-dec-trend is-${dir}${plot?' st-dec-chart':''}" onclick="NXT.ui.view='overview';switchTab('weight')" aria-label="${esc(label)}"><span class="st-dec-top"><span class="st-dec-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${arrow}"/></svg></span><span class="st-dec-txt"><small>${esc(trendLab)}</small><b class="vn-num st-dec-val">${esc(trendEv)}</b></span>${range}</span>${plot}</button>
-      <button type="button" class="st-dec-chip st-dec-conf" onclick="NXT.openReview()" aria-label="Why this rate precision"><span class="st-dec-txt"><small>Rate precision</small><b>${esc(confEv)}</b></span>${bars}</button>
-    </div>`;
-  }
-  function weightTileHTML() {
-    const rows=N.weights();
-    /* Missing stays missing, but readings logged at other times are named rather than denied (D14). */
-    const other=rows.length?0:N.otherTimingCount();
-    if(!rows.length)return `<button type="button" class="st-tile st-mini" style="--c:var(--st-weight)" onclick="apx95OpenQuickWeight()"><span class="st-cat">Weight</span><span class="st-mini-v">—</span><span class="st-meta">${other?`No morning readings yet · ${other} other-time`:'Log a weigh-in'}</span></button>`;
-    /* D107 — the smoothed trend under its own name; without one yet, the latest morning reading under its own.
-       The tile shows "Smoothed" (the full name wrapped beside Cardio and Lifts at 390); screen readers hear
-       "Smoothed trend". The rate prints with U+2212 like every other rate surface. */
-    const s=N.trend(rows).filter(p=>p.avg!==null).at(-1);
-    const v=s?s.avg:rows.at(-1).weight;
-    const pl=N.detectPlateau(rows),rate=N.finite(pl&&pl.weeklyRate);
-    return `<button type="button" class="st-tile st-mini" style="--c:var(--st-weight)" onclick="NXT.ui.view='overview';switchTab('weight')">
-      <span class="st-cat">${s?'Smoothed<span class="st-sr"> trend</span>':'Latest morning'}</span>
-      <span class="st-mini-v"><b class="st-odo st-odo-sm" data-st-odo="${v.toFixed(1)}">${v.toFixed(1)}</b><small>kg</small></span>
-      <span class="st-meta">${s&&rate!==null&&pl.ok?(Math.abs(rate)<0.05?'Flat':`${N.signedFixed(rate,2,'−')}/wk`):N.shortDate(s?s.date:rows.at(-1).date)}</span>
-    </button>`;
-  }
   /* D20 comparison for any logged lifting day: best set per exercise against the
      previous session of that exercise at that gym. Same rule as the finish card. */
   function liftOutcome(date,gym) {
@@ -1075,27 +1166,6 @@ const NXP = (() => {
       if(dw>0||(dw===0&&dr>0))up+=1; else if(dw===0&&dr===0)same+=1; else down+=1;
     });
     return {up,same,down,compared,exercises:Object.keys(byEx).length};
-  }
-  function bodyTileHTML() {
-    /* "Latest" means the same scan here as on Progress and Settings: a newer scan without a
-       weight is still the latest, shown with the figures it has (stage-1 finding S4). */
-    const scans=bodyScanSource().filter(s=>s&&['bodyFat','fatMass','muscleMass','weight'].some(k=>N.finite(s[k])!==null));
-    if(!scans.length)return '';
-    const L=scans.at(-1),P=scans.at(-2)||null;
-    /* Change pills read by metric, not by sign: less fat is good news, less muscle is
-       something to watch (never a claim it was preserved), scale weight is neutral. The
-       arrow and the number always carry the direction, so colour is never alone. */
-    const ARW={dn:'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v7.5M2.8 6.6 6 9.8l3.2-3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',up:'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10V2.5M2.8 5.4 6 2.2l3.2 3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',eq:'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'};
-    const tone=(k,dir)=>dir==='eq'?'is-none':k==='muscleMass'?(dir==='dn'?'is-watch':'is-none'):k==='weight'?'is-none':(dir==='dn'?'is-down':'is-up');
-    const cell=(k,label,unit,c)=>{
-      const v=N.finite(L[k]);if(v===null)return '';
-      const pv=P?N.finite(P[k]):null,d=pv===null?null:v-pv,dir=d===null?null:Math.abs(d)<0.05?'eq':d<0?'dn':'up';
-      return `<span class="st-scan-c" style="--c:${c}"><small>${label}</small><b class="vn-num">${v.toFixed(1)}<em>${unit}</em></b>${d===null?'':`<span class="wx-chip ${tone(k,dir)}" aria-label="${dir==='eq'?'unchanged':(dir==='dn'?'down ':'up ')+Math.abs(d).toFixed(1)+' '+unit}">${ARW[dir]}${Math.abs(d).toFixed(1)}</span>`}</span>`;
-    };
-    return `<button type="button" class="st-tile st-t-body" style="--c:var(--st-fat)" onclick="NXT.ui.view='body';switchTab('weight')">
-      <div class="st-tile-head"><span class="st-cat">Latest Evo scan</span><span class="st-meta">${esc(N.shortDate(L.date))}${P?`<span class="st-scan-vs"> · vs ${esc(N.shortDate(P.date))}</span>`:''}</span></div>
-      <div class="st-scan-g">${cell('bodyFat','Fat %','%','var(--st-fat)')}${cell('fatMass','Fat mass','kg','var(--st-fat)')}${cell('muscleMass','Muscle','kg','var(--st-lean)')}${cell('weight','Weight','kg','var(--st-weight)')}</div>
-    </button>`;
   }
   function previewAllowed() {
     const sync=NXT.wearables&&NXT.wearables.sync;
@@ -4084,7 +4154,7 @@ const NXP = (() => {
   }
   bindSteppers();
   bindKeyboardDock();
-  return {shareProgress,shareToggle,shareSend,ask,finishScene,actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,useLast,coachDeck,weighReplay,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen,dayState,pickToday,todayLine,cueFor,lastLiftSession,todayPlan,cueSheet,railKey};
+  return {shareProgress,shareToggle,shareSend,ask,finishScene,actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,useLast,coachDeck,weighReplay,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,digestToggle,toLead,leadMore,trendSparkSVG,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen,dayState,pickToday,todayLine,cueFor,lastLiftSession,todayPlan,cueSheet,railKey};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;

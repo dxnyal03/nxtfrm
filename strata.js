@@ -706,26 +706,10 @@ const STRATA = (() => {
       if (!e.isIntersecting) continue;
       io.unobserve(e.target);
       const el = e.target;
-      if (el.hasAttribute("data-st-view")) { el.classList.add("is-in", "st-play"); rollDec(el); }
+      if (el.hasAttribute("data-st-view")) el.classList.add("is-in", "st-play");
       if (el.classList.contains("st-rv")) { el.classList.add("st-rv-in"); revealNums(el); }
     }
   }, { threshold: 0.28, rootMargin: "0px 0px -6% 0px" }) : null;
-  function rollDec(root) {
-    const el = root.querySelector(".st-dec-val");
-    if (!el || reduced() || el.dataset.stRolled) return;
-    const m = /^([+\u2212-]?)(\d+(?:\.\d+)?)(.*)$/.exec(el.textContent.trim());
-    if (!m) return;
-    el.dataset.stRolled = "1";
-    const sign = m[1], target = parseFloat(m[2]), unit = m[3], dp = (m[2].split(".")[1] || "").length;
-    const t0 = performance.now(), dur = 900;
-    const step = now => {
-      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 4);
-      el.textContent = sign + (target * e).toFixed(dp) + unit;
-      if (k < 1) requestAnimationFrame(step);
-    };
-    el.textContent = sign + (0).toFixed(dp) + unit;
-    requestAnimationFrame(step);
-  }
   function bindView(page, entering) {
     const live = entering && !reduced() && io;
     page.querySelectorAll("[data-st-view]").forEach(el => {
@@ -753,7 +737,7 @@ const STRATA = (() => {
   const MAST = { home: "#homePage .st-head .st-h1", train: "#trainPage .nxp-train-chrome h1", weight: "#weightPage .nxp-progress-chrome h1", history: "#historyPage .vn-hist-chrome h1", more: "#morePage .vn-set-title" };
   const MORPH = [
     { name: "st-m-session", sel: { home: "#homePage .st-t-train .st-h2", train: "#trainPage .nxp-train-chrome h1, #trainPage .st-tbar-t" } },
-    { name: "st-m-trend", sel: { home: "#homePage .st-mini [data-st-odo]", weight: "#n99-chart-average" } },
+    { name: "st-m-trend", sel: { home: "#homePage .tf-log [data-st-odo]", weight: "#n99-chart-average" } },
     { name: "st-m-live", sel: { home: "#stLive", weight: "#stLive", history: "#stLive", more: "#stLive", train: "#trainPage .st-tbar" } }
   ];
   const scrollMemo = {};
@@ -1368,7 +1352,7 @@ const STRATA = (() => {
     apx95SaveQuickWeight.__strataH = true;
   }
 
-  /* D103 · Today's weigh-in pill replays this morning's moment (same card, nothing new computed). */
+  /* D103, D121 · Today's Weight cell replays this morning's moment (same card, nothing new computed). */
   function moment() {
     try {
       if (typeof NXT !== "object" || typeof state !== "object" || !state) return false;
@@ -1378,7 +1362,7 @@ const STRATA = (() => {
   }
 
   /* ---- D103 · Morph: one region changes layout as one movement -------------------------------------
-     Today's coach deck fans out and folds back with a View Transition: each card in the region, its
+     Today's digest folds out and back with a View Transition: each row in the region, its
      header and everything after it on the page carry a transition name for the length of the change,
      so cards travel to their places and the page below slides instead of jumping. The page itself does
      not fade (the tab transition's root animation is switched off for it). Plain change without support,
@@ -1389,8 +1373,8 @@ const STRATA = (() => {
     const named = [];
     const tag = (el, n) => { if (el && el.getClientRects().length) { el.style.viewTransitionName = n; named.push(el); } };
     const untag = () => { named.splice(0).forEach(el => { el.style.viewTransitionName = ""; }); };
-    tag(scope.querySelector(".st-codeck-h"), "st-mh");
-    scope.querySelectorAll(".co-tile").forEach((el, i) => tag(el, "st-mo-" + i));
+    tag(scope.querySelector(".tf-dig-tg"), "st-mh");
+    scope.querySelectorAll(".tf-dig-list > li").forEach((el, i) => tag(el, "st-mo-" + i));
     const page = scope.closest(".page") || document.body;
     let k = 0;
     for (let el = scope; el && el !== page; el = el.parentElement)
@@ -1589,7 +1573,7 @@ const STRATA = (() => {
   /* ---- D87 · Touch light ---------------------------------------------------------------------------
      The tap ripple (D38), made continuous: glass catches light under the finger, the light follows it
      while pressed, and on release it opens out and fades. Off under reduced motion. */
-  const LIT = ".st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row,.st-dec-chip,.vn-row,.vn-set-row,.st-lrow>button,.co-tile,.st-wpill,.st-codeck-open,.st-share-b,.vn-set-act,.st-fin-done,.st-fin-cardio,.st-ask-acts button,.nxp-cal-day,.st-live,.st-dk-menu button";
+  const LIT = ".st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row,.vn-row,.vn-set-row,.st-lrow>button,.tf-za,.tf-zb,.tf-dig-row,.tf-act,.st-share-b,.vn-set-act,.st-fin-done,.st-fin-cardio,.st-ask-acts button,.nxp-cal-day,.st-live,.st-dk-menu button";
   let lit = null;
   function bindRipple() {
     const end = () => {
