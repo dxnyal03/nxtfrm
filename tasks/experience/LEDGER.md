@@ -20,7 +20,7 @@ main or deploy. RELEASE 163. Phone first (320–430 px); desktop layouts withdra
 | Weight w5 phone polish (remove wide-width paths, motion, Larger text) | nxtfrm-weight-builder / Sonnet | queued | — | — | after w4 |
 | Today t1 picker + focus card (D120–D127) | builder / Fable 5.1 | done | `fa4aa01` | 27 suites, 691 tests | — |
 | Today t2 log strip, lead, digest (D128–D129) | builder / Fable 5.1 | done | `076ae8d` | 27 suites, 691 tests; §16 partial | — |
-| Today t3 dock hand-off, CSS sweep, fit | builder / Fable 5.1 (running, resumed 14:41) | in progress | uncommitted: strata.css, strata.js, verify-151/152 | — | on landing: merge into experience-upgrade |
+| Today t3 dock hand-off, CSS sweep, fit (D140–D143) | builder / Fable 5.1 | done | `7b49339` strata.css, strata.js, verify-151/152 | 27 suites green; §16 pass except page height 1338 vs 1300 and strip bottom +1.7 px | check run (Haiku) at 7b49339; merge into experience-upgrade after w4 lands |
 | Integration (merge experience-today) | coordinator | queued | — | full gate + check runner | then checkpoint render |
 | Checkpoint: fixtures, phone shots, preview 8766, simulator | coordinator + nxtfrm-check-runner / Haiku | queued | — | — | then one Sonnet review |
 | Cross-review | nxtfrm-reviewer / Sonnet high | queued | — | — | builders fix, re-review changed areas |
