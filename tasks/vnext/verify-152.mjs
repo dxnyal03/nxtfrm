@@ -1,6 +1,9 @@
 /**
  * Release 152 — charts and Today (D50). Presentation only.
  *   Today: Decision trend chip as a 28-day mini chart; minis never truncate.
+ *   Stage 5 (Today brief, D120/D121): the chart is the log strip's Weight Zone B ("Smoothed trend · 28 days")
+ *     and the minis' meta lines are the strip's sub-lines; the checks keep their intents (one dot per morning,
+ *     the first and last trend values named, a text summary on the chart, nothing ellipsised).
  *   Progress › Weight: range read (trend change, lowest morning, mornings weighed), caption folded,
  *     unit on the axis, dense ranges thin their dots.
  *   Progress › Performance: best set (D20) leads each row, status pill, no repeated status text.
@@ -58,14 +61,14 @@ try {
     /* Today */
     await tab(page, 'home');
     const dec = await page.evaluate(() => {
-      const svg = document.querySelector('#homePage .st-t-dec .st-dec-plot'), chip = svg && svg.closest('button');
+      const svg = document.querySelector('#homePage .tf-log .tf-lc.is-weight .tf-spark'), chip = svg && svg.closest('button');
       const from = NXT.dateAdd(state.date, -27), tr = NXT.trend(NXT.weights()).filter((p) => p.date >= from && p.date <= state.date && p.avg !== null);
-      return { has: !!svg, raw: svg ? svg.querySelectorAll('.st-dec-raw').length : 0, morning: NXT.trend(NXT.weights()).filter((p) => p.date >= from && p.date <= state.date).length, range: chip?.querySelector('.st-dec-range')?.textContent, want: `${tr[0].avg.toFixed(1)} → ${tr.at(-1).avg.toFixed(1)} kg`, label: chip?.getAttribute('aria-label') };
+      return { has: !!svg, raw: svg ? svg.querySelectorAll('.tf-sp-raw').length : 0, morning: NXT.trend(NXT.weights()).filter((p) => p.date >= from && p.date <= state.date).length, range: chip ? [...chip.querySelector('.tf-zf').childNodes].map((n) => n.nodeType === 1 && n.dataset && n.dataset.stOdo ? n.dataset.stOdo : n.textContent).join('').replace(/\s+/g, ' ').trim() : null, /* the odometer (D71) reels the last value; its data-st-odo is the figure */ want: `${tr[0].avg.toFixed(1)} → ${tr.at(-1).avg.toFixed(1)} kg`, label: chip?.getAttribute('aria-label'), svgLabel: svg?.getAttribute('aria-label'), role: svg?.getAttribute('role') };
     });
-    check('Today: Decision trend chip draws a 28-day chart with one dot per morning reading', dec.has && dec.raw === dec.morning && dec.raw > 0, dec);
-    check('Today: chart names the first and last trend value from N.trend()', dec.range === dec.want && /kilograms over 28 days/.test(dec.label), { got: dec.range, want: dec.want });
-    const minis = await page.evaluate(() => [...document.querySelectorAll('#homePage .st-minis .st-meta')].map((e) => ({ t: e.textContent, clipped: e.scrollWidth > e.clientWidth + 1 || getComputedStyle(e).textOverflow === 'ellipsis' })));
-    check('Today: no mini tile text is ellipsised or clipped', minis.every((m) => !m.clipped), minis);
+    check('Today: the Weight Zone B draws the 28-day smoothed trend with one dot per morning reading', dec.has && dec.raw === dec.morning && dec.raw > 0, dec);
+    check('Today: the chart names the first and last trend value from N.trend() and carries a text summary', dec.range === dec.want && dec.role === 'img' && /over the last 28 days/.test(dec.svgLabel) && /kilograms/.test(dec.label), { got: dec.range, want: dec.want, label: dec.label });
+    const minis = await page.evaluate(() => [...document.querySelectorAll('#homePage .tf-log .tf-lsub, #homePage .tf-log .tf-zl, #homePage .tf-log .tf-zf, #homePage .tf-log .tf-ls')].map((e) => ({ t: e.textContent.replace(/\s+/g, ' ').trim(), clipped: getComputedStyle(e).textOverflow === 'ellipsis' || [...e.querySelectorAll('span')].some((s) => s.getBoundingClientRect().width > 0 && s.getBoundingClientRect().left < e.getBoundingClientRect().left - 1) })));
+    check('Today: no log-strip line is ellipsised (fragments drop whole, D127/D128)', minis.length > 0 && minis.every((m) => !m.clipped), minis);
     /* Weight */
     await tab(page, 'weight'); await page.evaluate(() => NXT.setView('overview')); await page.waitForTimeout(1000);
     const rr = await page.evaluate(() => {
@@ -141,7 +144,8 @@ try {
     check('D55: diagnosis never asks for waist or check-ins', await page.evaluate(() => !/waist|check-in/i.test(NXT.diagnose().headline)));
     await page.evaluate(() => NXT.setView('overview'));
     await tab(page, 'home');
-    const caps = await page.evaluate(() => [...document.querySelectorAll('#homePage .st-cta, #homePage .st-qa, #homePage .st-chip, #homePage .st-why')].filter((e) => e.offsetParent).map((e) => { const c = getComputedStyle(e); return { r: parseFloat(c.borderTopLeftRadius), h: e.getBoundingClientRect().height, f: c.fontFamily.split(',')[0].replace(/"/g, '') }; }));
+    /* Stage 5: Today's capsules are the focus button (.tf-cta, primary or glass), the glass options and actions (.tf-glass) and the gym capsule (.tf-cap). */
+    const caps = await page.evaluate(() => [...document.querySelectorAll('#homePage .st-cta, #homePage .tf-cta, #homePage .tf-glass, #homePage .tf-cap, #homePage .st-qa, #homePage .st-chip, #homePage .st-why')].filter((e) => e.offsetParent).map((e) => { const c = getComputedStyle(e); return { r: parseFloat(c.borderTopLeftRadius), h: e.getBoundingClientRect().height, f: c.fontFamily.split(',')[0].replace(/"/g, '') }; }));
     check('D56: every Today button is a capsule (radius ≥ half its height) in Geist', caps.length > 0 && caps.every((b) => b.r >= b.h / 2 - 1 && b.f === 'Geist'), caps);
     check('no page errors', errors.length === 0, errors);
     await ctx.close();

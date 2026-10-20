@@ -866,7 +866,8 @@ const STRATA = (() => {
       const total = ds ? ds.plan.plannedSets : list.reduce((a, e) => a + (Number(e.sets) || 0), 0);
       const count = ds ? ds.loggedSets : list.reduce((a, e) => a + Math.min(NXT.done(e.name), Number(e.sets) || 0), 0);
       const rest = typeof apx96RestRemaining === "function" ? apx96RestRemaining() : 0;
-      return { name: NXT.label(state.dayType), count, total, rest, word: ds && ds.k === "complete" ? "planned sets complete" : "in progress" };
+      /* The word is D105's own (ds.w: "In progress", "Planned sets complete"), never composed here. */
+      return { name: NXT.label(state.dayType), count, total, rest, word: ds && ds.w ? ds.w : "In progress" };
     } catch (e) { return null; }
   }
   function fmt(s) { return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
@@ -892,14 +893,76 @@ const STRATA = (() => {
     placeLive(liveEl);
     return liveEl;
   }
+  /* ---- D123 · Live dock hand-off (stage 5, C5) ---------------------------------------------------------
+     On Today the live row in the phone dock hides while the focus card's button is fully visible above the
+     dock: the card already says Resume. (The >= 1024 floating pill is left as D75 built it: the app is used
+     on the phone, owner 2026-10-20.) An IntersectionObserver on
+     `#homePage .tf-card .tf-cta`, bound in Today's hydrate and disconnected on every re-render or tab
+     change (one observer at a time, never two), reads the button against the viewport minus the dock's
+     own band (the tab row, not the live row, so showing the row cannot move the threshold). Visible means
+     fully inside; hidden means fewer than 24 px of the button remain — the band between holds the last
+     state, so nothing flickers at the edge. The same 1 s tick writes the card's rest ring and countdown
+     (`[data-tf-rest]`, `--tf-rest-pct`); it never re-renders Today. */
+  let ctaIO = null, ctaBtn = null, ctaVisible = false, ctaInset = -1, restSaid = 0;
+  function wideRail() { return !!(window.matchMedia && matchMedia("(min-width:1024px)").matches); }
+  function dockInset() {
+    const inner = document.querySelector(".tabs .tabs-inner");
+    if (inner) { const r = inner.getBoundingClientRect(); if (r.height) return Math.max(0, Math.round((window.innerHeight || 0) - r.top + 8)); }
+    return 0;
+  }
+  function unbindCta() { if (ctaIO) { ctaIO.disconnect(); ctaIO = null; } ctaBtn = null; ctaVisible = false; ctaInset = -1; }
+  function bindCta(page) {
+    unbindCta();
+    /* Phones only (owner, 2026-10-20): with the side rail (>= 1024) the floating pill keeps its D75 behaviour. */
+    if (!page || page.id !== "homePage" || wideRail() || typeof IntersectionObserver !== "function") return;
+    const btn = page.querySelector(".tf-card .tf-cta");
+    if (!btn) return;
+    const inset = dockInset(), h = btn.getBoundingClientRect().height || 54, t24 = Math.max(0, Math.min(1, 24 / h));
+    ctaInset = inset; ctaBtn = btn;
+    /* Read the first state now, so the row never flashes between the paint and the observer's first call. */
+    const r = btn.getBoundingClientRect();
+    ctaVisible = r.height > 0 && r.top >= 0 && r.bottom <= (window.innerHeight || 0) - inset;
+    ctaIO = new IntersectionObserver(list => {
+      const e = list[list.length - 1], was = ctaVisible, px = e.intersectionRect ? e.intersectionRect.height : 0;
+      if (!e.target.isConnected) return; /* a repaint replaced the card: the next tick rebinds to the new button */
+      if (e.isIntersecting && e.intersectionRatio >= 0.995) ctaVisible = true;
+      else if (!e.isIntersecting || px < 24) ctaVisible = false;
+      if (ctaVisible !== was) updateLive();
+    }, { rootMargin: "0px 0px -" + inset + "px 0px", threshold: [0, t24, 1] });
+    ctaIO.observe(btn);
+  }
+  /* The card's rest ring: digits, arc and (at most every 15 s) its spoken label; gone when the rest ends. */
+  function tickCardRest(rest) {
+    const b = document.querySelector("#homePage [data-tf-rest]");
+    if (!b) return;
+    const ring = b.closest(".tf-rest") || b;
+    if (!(rest > 0)) { if (!ring.hidden) ring.hidden = true; return; }
+    if (ring.hidden) ring.hidden = false;
+    const t = fmt(rest);
+    if (b.textContent !== t) b.textContent = t;
+    const total = (typeof NXP === "object" && NXP.ui && NXP.ui.restTotal) || 90;
+    ring.style.setProperty("--tf-rest-pct", String(Math.max(0, Math.min(1, rest / total)).toFixed(3)));
+    const now = Date.now();
+    if (now - restSaid >= 15000) {
+      restSaid = now;
+      const m = Math.floor(rest / 60), sec = rest % 60;
+      ring.setAttribute("aria-label", "Rest, " + (m ? m + " minute" + (m === 1 ? "" : "s") + " " : "") + sec + " second" + (sec === 1 ? "" : "s") + " left");
+    }
+  }
   function updateLive() {
     if (!document.body) return;
     const s = liveSession(), tab = currentTab();
     const inTrain = tab === "train";
     const el = ensureLive();
-    const show = !!s && !inTrain;
+    /* A resize can move the dock band (phone ↔ side rail): re-read it and rebind, still one observer. */
+    if (tab === "home" && !wideRail() && (!ctaIO || !ctaBtn.isConnected || dockInset() !== ctaInset)) bindCta(document.getElementById("homePage"));
+    else if (ctaIO && (tab !== "home" || wideRail())) unbindCta();
+    const held = tab === "home" && ctaVisible;
+    const show = !!s && !inTrain && !held;
+    el.classList.toggle("is-handoff", tab === "home");
     if (el.hidden === show) el.hidden = !show;
     document.body.classList.toggle("st-live-on", show);
+    if (tab === "home") tickCardRest(s ? s.rest : 0);
     const trainTab = document.querySelector('.tabs .tab[data-tab="train"]');
     if (trainTab) {
       trainTab.classList.toggle("is-live", !!s);
@@ -1768,6 +1831,7 @@ const STRATA = (() => {
     foldPerf(page);
     foldBody(page);
     if (page.id === "trainPage") bindTrain(page);
+    bindCta(page);
     bindProgressReplay(page);
     if (page.id === "weightPage") {
       dressChartHead();

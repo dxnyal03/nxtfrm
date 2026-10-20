@@ -249,7 +249,6 @@ body{font-family:var(--st-font);color:var(--st-ink)}
 /* ---- TILES ------------------------------------------------------------------ */
 .st-bento{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .st-bento>*{grid-column:1/-1;min-width:0}
-.st-bento>.st-half{grid-column:span 1}
 .st-tile{
   position:relative;isolation:isolate;overflow:hidden;display:block;width:100%;box-sizing:border-box;text-align:left;
   padding:20px;border-radius:var(--st-r);border:1px solid var(--st-tile-line);
@@ -270,8 +269,6 @@ button.st-tile:active{transform:scale(.985)}
 @media (hover:hover){.st-tile:hover::after{opacity:1}}
 .st-tile-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;min-height:24px}
 .st-tile-head .vn-text{min-height:44px;margin:-10px -8px -10px 0}
-.st-tile-foot{display:flex;justify-content:flex-end;margin-top:6px}
-.st-tile-foot .vn-text{min-height:44px}
 
 /* ---- ACTIONS ---------------------------------------------------------------- */
 .st-cta{
@@ -324,37 +321,13 @@ button.st-tile:active{transform:scale(.985)}
   background:rgba(var(--st-hl),.05) !important;border:1px solid rgba(var(--st-hl),.1) !important;color:var(--st-ink) !important;border-radius:16px !important;
 }
 
-/* ---- RING ------------------------------------------------------------------- */
-.st-ring{position:relative;display:inline-grid;place-items:center;width:78px;height:78px;flex:none}
-.st-ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
-.st-ring circle{fill:none;stroke-width:6;stroke-linecap:round}
-.st-ring .st-ring-bg{stroke:rgba(var(--st-hl),.08)}
-.st-ring .st-ring-fg{stroke:var(--rc);stroke-dashoffset:var(--off)}
-.st-ring b{position:relative;font:550 20px/1 var(--st-font-d);letter-spacing:-.02em;margin-top:-6px}
-.st-ring small{position:absolute;bottom:17px;font:500 10.5px var(--st-font);color:var(--st-ink-3)}
-.st-enter .st-ring .st-ring-fg{animation:st-ring 1.2s var(--st-glide) .15s both}
-@keyframes st-ring{from{stroke-dashoffset:var(--len)}}
 
 /* ---- TODAY ------------------------------------------------------------------ */
 .st-today{padding-bottom:12px}
 .st-train-row{display:flex;align-items:center;justify-content:space-between;gap:14px}
 .st-train-id{min-width:0}
 
-.st-evid{display:flex;flex-wrap:wrap;gap:8px 18px;font:450 13.5px var(--st-font);color:var(--st-ink-3)}
-.st-evid b{margin-left:6px;color:var(--st-ink);font-weight:550}
-.st-half{display:flex !important;flex-direction:column;justify-content:space-between;gap:10px;min-height:168px;padding:18px}
-.st-half-body{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
-.st-half .st-ring{width:72px;height:72px}
-.st-word{font:550 24px/1.1 var(--st-font-d);letter-spacing:-.02em}
-.st-half .vn-status{font-size:12.5px}
 
-/* Hero: the one big number on Today. */
-.st-hero{padding:18px 18px 14px}
-.st-hero-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.st-hero-eb{margin:14px 0 0;font:550 12px/1.3 var(--st-font);letter-spacing:.07em;text-transform:uppercase;color:var(--st-ink-3);min-height:16px;transition:color .2s}
-.st-hero.is-scrubbing .st-hero-eb,.st-hero.is-replaying .st-hero-eb{color:var(--st-accent-lift)}
-.st-big{display:flex;align-items:baseline;gap:8px;margin:2px 0 0}
-.st-big small{font:450 22px var(--st-font);color:var(--st-ink-3)}
 .st-odo{
   display:inline-flex;font:250 76px/1 var(--st-font-d);letter-spacing:-.045em;font-variant-numeric:tabular-nums;
   background:linear-gradient(180deg,#FFFFFF 30%,#CBB8FF 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
@@ -365,17 +338,6 @@ button.st-tile:active{transform:scale(.985)}
 .st-od-s i{font-style:normal;height:1em;line-height:1em;display:block;background:inherit;-webkit-background-clip:text;background-clip:text}
 .st-od,.st-od-s,.st-od-s i,.st-od-x{background:linear-gradient(180deg,#FFFFFF 30%,#CBB8FF 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .st-od-x{display:inline-block;height:1em;line-height:1em}
-.st-hero.is-scrubbing .st-od-s,.st-hero.is-replaying .st-od-s{transition-duration:.28s}
-.st-hero-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:10px;font:450 14px var(--st-font);color:var(--st-ink-3)}
-.st-rate b{color:var(--st-ink);font-weight:550}
-.st-hero-chart{margin:10px -4px 0;touch-action:pan-y;min-height:170px}
-.st-hero-chart svg{display:block;overflow:visible;outline:none;cursor:crosshair}
-.st-hero-chart svg:focus-visible{outline:2px solid var(--st-accent);outline-offset:4px;border-radius:8px}
-.st-hero-foot{display:flex;align-items:center;gap:14px;margin-top:4px}
-.st-hero-foot .st-link{margin-left:auto}
-.st-key{display:inline-flex;align-items:center;gap:7px;font:500 12.5px var(--st-font);color:var(--st-ink-3)}
-.st-key-line{width:16px;height:3px;border-radius:2px;background:var(--st-weight);box-shadow:0 0 8px var(--st-weight)}
-.st-key-dot{width:6px;height:6px;border-radius:50%;background:rgba(var(--st-hl),.6)}
 
 /* Shared chart marks */
 .st-grid{stroke:rgba(var(--st-hl),.06);stroke-width:1}
@@ -394,7 +356,6 @@ button.st-tile:active{transform:scale(.985)}
 @keyframes st-draw{to{stroke-dashoffset:0}}
 @keyframes st-fade{to{opacity:1}}
 
-.st-hero-chart{position:relative}
 .st-band{fill:rgba(var(--st-hl),.028)}
 .st-hc-start{fill:var(--st-bg);stroke:#9B7BFF;stroke-width:2}
 .st-pillg rect{fill:rgba(20,18,30,.9);stroke:rgba(180,154,255,.45);stroke-width:1}
@@ -419,50 +380,11 @@ button.st-tile:active{transform:scale(.985)}
 #weightPage #n99-chart-active{fill:#fff;stroke:#8B5CF6;stroke-width:3}
 #weightPage #n99-chart-cursor{stroke:rgba(180,154,255,.55);stroke-dasharray:3 4}
 
-.st-wbig{display:flex;align-items:baseline;gap:6px}
-.st-wbig small{font:450 15px var(--st-font);color:var(--st-ink-3)}
 
-.st-t-weight .st-meta b{color:var(--st-ink);font-weight:550}
-.st-rowtile{display:flex !important;align-items:center;gap:12px;padding:18px 18px 18px 20px}
-.st-rowtile-l{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
-.st-rowtile .st-word{font-size:22px}
-.st-rowtile-c{font-style:normal;font-size:22px;color:var(--st-ink-4)}
 
-/* Weekly bars */
-.st-bars{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;align-items:end;gap:10px;height:132px;margin:6px 0 12px}
-.st-bar{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
-.st-bar b{font:550 12.5px var(--st-font);color:var(--st-ink-2);margin-bottom:6px}
-.st-bar i{display:block;width:100%;max-width:46px;height:calc(var(--h) * 80px);border-radius:12px;background:rgba(var(--st-hl),.11);transform-origin:bottom}
-.st-bar small{margin-top:7px;font:500 10.5px var(--st-font);color:var(--st-ink-4);white-space:nowrap}
-.st-bar.is-now b{color:var(--st-weight)}
-.st-bar.is-now i{background:linear-gradient(180deg,var(--st-weight),color-mix(in srgb,var(--st-accent) 70%,#000));box-shadow:0 8px 22px -6px color-mix(in srgb,var(--st-accent) 70%,transparent)}
-.st-enter .st-bar i{animation:st-grow .9s var(--st-spring) both;animation-delay:calc(var(--i) * 80ms + .15s)}
 @keyframes st-grow{from{transform:scaleY(0)}}
 
-/* 5-week calendar */
-.st-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
-.st-cal-h{font:550 10.5px var(--st-font);color:var(--st-ink-4);text-align:center;padding-bottom:2px}
-.st-cal-d{
-  position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;aspect-ratio:1;border-radius:11px;
-  background:rgba(var(--st-hl),.03);font:500 11.5px var(--st-font);color:var(--st-ink-4);
-}
-.st-cal-d em{font-style:normal;line-height:1}
-.st-cal-d.is-w{background:color-mix(in srgb,var(--st-weight) 11%,transparent);color:var(--st-ink-2)}
-.st-cal-d.is-active{background:color-mix(in srgb,var(--st-lift) 22%,transparent);color:var(--st-ink)}
-.st-cal-d.is-today{box-shadow:inset 0 0 0 1.5px var(--st-accent-lift);color:var(--st-ink)}
-.st-cal-d.is-fut{opacity:.35}
-.st-cal-m{display:flex;gap:3px;height:5px}
-.st-cal-m i,.st-cal-k i{display:inline-block;width:5px;height:5px}
-.m-lift{border-radius:50%;background:var(--st-lift);box-shadow:0 0 6px var(--st-lift)}
-.m-cardio{border-radius:50%;box-shadow:inset 0 0 0 1.4px var(--st-cardio)}
-.m-floor{background:var(--st-floor);transform:rotate(45deg) scale(.85)}
-.m-w{width:9px !important;height:3px !important;border-radius:2px;background:color-mix(in srgb,var(--st-weight) 45%,transparent)}
-.st-cal-k{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px;font:500 12px var(--st-font);color:var(--st-ink-3)}
-.st-cal-k span{display:inline-flex;align-items:center;gap:6px}
-.st-enter .st-cal-d{animation:st-pop .5s var(--st-spring) both;animation-delay:calc(var(--i) * 12ms + .1s)}
-@keyframes st-pop{from{opacity:0;transform:scale(.6)}}
 
-/* Scan tile */
 
 /* Quick actions */
 .st-quick{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 6px}
@@ -475,10 +397,6 @@ button.st-tile:active{transform:scale(.985)}
 .st-qa:active{transform:scale(.95)}
 .st-more{margin-top:8px}
 
-/* Week strip inside its tile */
-.st-t-week .vn-week{margin:0}
-.st-t-week .vn-week-c{border-radius:14px}
-.st-t-week .vn-week-c.is-today{background:color-mix(in srgb,var(--st-accent) 22%,transparent) !important;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--st-accent-lift) 70%,transparent) !important}
 
 /* ---- ENTRANCE + SCROLL REVEAL -------------------------------------------------
    Plays when a tab is entered, never on the repaint that follows logging a set
@@ -1023,7 +941,6 @@ html.st-sheet-open main{transform:scale(.94) translateY(10px);filter:brightness(
 /* ---- TODAY v2: dense, aligned ------------------------------------------- */
 .st-today .st-bento{gap:12px}
 
-.st-center{text-align:center}
 .st-tweek{margin-top:18px;padding-top:14px;border-top:1px solid rgba(var(--st-hl),.07)}
 .st-tweek-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font:500 12.5px var(--st-font);color:var(--st-ink-3)}
 .st-tweek-h .vn-text{min-height:36px;padding:0;font-size:13px}
@@ -1139,9 +1056,7 @@ body,button,input{-webkit-font-smoothing:antialiased}
   .st-tr-name{font-size:13.5px}
   .st-tr-count{font-size:11.5px}
   .st-tile{padding:16px}
-  .st-half{min-height:156px;padding:15px}
   .st-segs{grid-template-columns:1fr}
-  .st-bars{gap:6px}
 }
 @media (max-width:420px){
   #weightPage .st-range-row .st-replay{width:44px;height:44px;padding:0;justify-content:center;flex:none}
@@ -1295,7 +1210,7 @@ body,button,input{-webkit-font-smoothing:antialiased}
 #trainPage .st-sect,#weightPage h3,#weightPage h2,#historyPage .nxp-cal-month{font:590 18px/1.25 var(--st-font) !important;letter-spacing:-.01em !important;text-transform:none !important;color:var(--st-ink) !important}
 #historyPage .nxp-cal-month span{font-weight:590 !important}
 /* Labels: no uppercase, no tracking, one muted voice. */
-.nxp-caption,.nxp-progress-body-heading,.vn-perf-kicker,.vn-set-eyebrow,.vn-metric-l,.st-eyebrow,.st-hero-eb,#trainPage small,.vn-h-sect{text-transform:none !important;letter-spacing:0 !important;font:550 13px/1.3 var(--st-font) !important;color:var(--st-ink-3) !important}
+.nxp-caption,.nxp-progress-body-heading,.vn-perf-kicker,.vn-set-eyebrow,.vn-metric-l,.st-eyebrow,#trainPage small,.vn-h-sect{text-transform:none !important;letter-spacing:0 !important;font:550 13px/1.3 var(--st-font) !important;color:var(--st-ink-3) !important}
 .st-mm-f small{text-transform:none !important;letter-spacing:0 !important;font-size:11px !important}
 /* Rows that sat loose on the canvas become Today-style tiles. */
 #weightPage details.nxp-disclosure,#weightPage .vn-weighins{
@@ -1369,22 +1284,6 @@ body:has(.st-train-active){overflow:visible !important}
 .st-rest .vn-rest-actions .n99-button:first-child{background:rgba(var(--st-hl),.07) !important;color:var(--st-ink) !important}
 @media (prefers-reduced-motion:reduce){#trainPage .st-train-active .st-log{transition:none}.st-rest .nxp-rest-rail span{transition:none !important}}
 
-/* Weekly recap tile (Home, Sunday / Monday). */
-.st-recap .st-rc-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin-top:2px}
-.st-recap .st-rc-stats>div{display:flex;flex-direction:column;gap:3px;min-width:0;padding:0 12px}
-.st-recap .st-rc-stats>div:first-child{padding-left:0}
-.st-recap .st-rc-stats>div+div{border-left:1px solid var(--st-tile-line)}
-.st-recap .st-rc-stats b{font:300 30px/1.05 var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink);white-space:nowrap}
-.st-recap .st-rc-stats b small{font:400 13px var(--st-font);color:var(--st-ink-3);letter-spacing:0;margin-left:2px}
-.st-recap .st-rc-stats span{font:550 13px/1.2 var(--st-font);color:var(--st-ink-2)}
-.st-recap .st-rc-stats em{font:400 12px/1.25 var(--st-font);font-style:normal;color:var(--st-ink-3)}
-.st-recap .st-rc-best{list-style:none;margin:16px 0 0;padding:12px 0 0;border-top:1px solid var(--st-tile-line);display:flex;flex-direction:column;gap:2px}
-.st-recap .st-rc-best li{display:flex;align-items:center;gap:10px;min-height:36px}
-.st-recap .st-rc-best li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:500 14.5px var(--st-font);color:var(--st-ink)}
-.st-recap .st-rc-best li b{font:600 14.5px var(--st-font);color:var(--st-ink);white-space:nowrap}
-.st-recap .st-rc-best li i{font:550 11.5px/1 var(--st-font);font-style:normal;color:var(--st-lean);display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;background:rgba(196,181,253,.12)}
-.st-recap .st-rc-best li i::before{content:"";border-left:3.5px solid transparent;border-right:3.5px solid transparent;border-bottom:5.5px solid currentColor}
-@media (max-width:359px){.st-recap .st-rc-stats b{font-size:25px}.st-recap .st-rc-stats>div{padding:0 8px}}
 
 /* =====================================================================================
    ONE TYPEFACE. The system face (SF on iPhone and Mac) for everything: text, numerals,
@@ -1415,12 +1314,10 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 #homePage span.vn-row-t{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 15/500 */
 #homePage span.vn-row-s{font-size:var(--fs-cap) !important;font-weight:var(--fw-reg) !important}/* 12.5/400 */
 #homePage p.st-meta{font-size:var(--fs-label) !important;font-weight:var(--fw-reg) !important}/* 13/450 */
-#homePage .st-tweek-h span{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12.5/500 */
+#homePage .st-tweek-h span{font-size:calc(var(--fs-cap)*var(--tf-s,1)) !important;font-weight:var(--fw-med) !important}/* 12.5/500 · scales with Larger text (A-25) */
 /* 12/500 */
 /* 16/550 */
 #homePage button.st-link{font-size:var(--fs-body) !important;font-weight:var(--fw-med) !important}/* 14/550 */
-#homePage .st-evid span{font-size:var(--fs-label) !important;font-weight:var(--fw-reg) !important}/* 13.5/450 */
-#homePage .st-evid b{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13.5/550 */
 /* 13/450 */
 /* 11/590 */
 /* 11.5/550 */
@@ -1606,7 +1503,6 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
   box-shadow:inset 0 1px 0 rgba(255,255,255,.34),inset 0 0 0 1px rgba(196,166,255,.6),0 6px 22px rgba(124,77,255,.5),0 0 34px rgba(124,77,255,.28) !important}
 #homePage .st-tweek .vn-week-c.is-today .vn-week-d{color:#fff !important}
 #homePage .st-tweek .vn-week-c.is-today .vn-week-t{color:#fff !important;font-weight:650 !important}
-#homePage .st-tweek .vn-week-m i{width:6px;height:6px;background:var(--st-accent-lift,#b18aff);box-shadow:0 0 9px rgba(177,138,255,.9),0 0 2px #fff}
 @media (prefers-reduced-transparency:reduce){#homePage .st-tweek .vn-week{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(40,36,60,.9)}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){#homePage .st-tweek .vn-week{background:rgba(40,36,60,.85)}}
 @media (max-width:359px){#homePage .st-tweek .vn-week{padding:4px !important;gap:1px !important}}
@@ -1614,7 +1510,6 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 /* Week rail: roomier cells */
 #homePage .st-tweek .vn-week{padding:8px !important;gap:4px !important}
 #homePage .st-today .st-tweek .vn-week-c{min-height:72px !important;justify-content:center;gap:7px}
-#homePage .st-tweek .vn-week-m{height:6px}
 @media (max-width:359px){#homePage .st-tweek .vn-week{padding:6px !important;gap:2px !important}#homePage .st-today .st-tweek .vn-week-c{min-height:68px !important}}
 
 /* Week rail: every session type has its own hue, and always its own text label (never colour alone) */
@@ -1631,7 +1526,6 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 #homePage .st-tweek .vn-week-c:not(.is-k-rest) .vn-week-d{color:color-mix(in srgb,var(--k) 70%,#9a97aa) !important}
 #homePage .st-tweek .vn-week-c.is-k-rest:not(.is-today){background:transparent;box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.05)}
 #homePage .st-tweek .vn-week-c.is-k-rest .vn-week-t{color:var(--st-ink-4,#6b6880) !important;font-weight:450 !important}
-#homePage .st-tweek .vn-week-c .vn-week-m i{background:var(--k);box-shadow:0 0 9px color-mix(in srgb,var(--k) 80%,transparent),0 0 2px #fff}
 /* Today keeps the glow, in its own hue */
 #homePage .st-tweek .vn-week-c.is-today{background:linear-gradient(180deg,color-mix(in srgb,var(--k) 55%,transparent),color-mix(in srgb,var(--k) 26%,transparent)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.34),inset 0 0 0 1px color-mix(in srgb,var(--k) 70%,#fff),0 6px 22px color-mix(in srgb,var(--k) 55%,transparent),0 0 34px color-mix(in srgb,var(--k) 30%,transparent) !important}
 #homePage .st-tweek .vn-week-c.is-today .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-d{color:#fff !important}
@@ -1647,17 +1541,11 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 #homePage .st-tweek .vn-week-c.is-k-rest::after{opacity:.25}
 #homePage .st-tweek .vn-week-d{font-size:11px !important;font-weight:700 !important;letter-spacing:.08em !important}
 #homePage .st-tweek .vn-week-t{font-size:13px !important;letter-spacing:-.01em}
-/* done marker: a lit bar along the base instead of a tiny dot */
-#homePage .st-tweek .vn-week-m{height:5px;width:100%;justify-content:center}
-#homePage .st-tweek .vn-week-c .vn-week-m i{width:60%;height:4px;border-radius:3px;
-  background:linear-gradient(90deg,color-mix(in srgb,var(--k) 70%,#fff),var(--k));
-  box-shadow:0 0 10px color-mix(in srgb,var(--k) 85%,transparent),0 0 2px #fff}
 /* today: lifted, brighter, with a soft halo */
 #homePage .st-tweek .vn-week-c.is-today{transform:translateY(-2px);
   background:linear-gradient(180deg,color-mix(in srgb,var(--k) 62%,#fff 6%),color-mix(in srgb,var(--k) 30%,transparent)) !important;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 0 0 1px color-mix(in srgb,var(--k) 60%,#fff),0 10px 26px color-mix(in srgb,var(--k) 55%,transparent),0 0 40px color-mix(in srgb,var(--k) 32%,transparent) !important}
 #homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:13.5px !important}
-#homePage .st-tweek .vn-week-c.is-today .vn-week-m i{background:#fff;box-shadow:0 0 10px rgba(255,255,255,.9)}
 @media (prefers-reduced-motion:no-preference){#homePage .st-tweek .vn-week-c{transition:transform .25s ease,box-shadow .25s ease,background .25s ease}}
 @media (max-width:359px){#homePage .st-today .st-tweek .vn-week-c{min-height:76px !important}#homePage .st-tweek .vn-week-t{font-size:11.5px !important}}
 @media (max-width:359px){#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:10.5px !important;letter-spacing:-.03em}#homePage .st-tweek .vn-week{padding:7px !important;gap:3px !important}}
@@ -1686,15 +1574,7 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 #homePage .st-tweek .vn-week-c.is-today .vn-week-d{transform:scale(1.14);color:#fff !important;
   background:linear-gradient(180deg,color-mix(in srgb,var(--k) 85%,#fff 8%),color-mix(in srgb,var(--k) 55%,#000));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 0 3px color-mix(in srgb,var(--k) 28%,transparent),0 8px 22px color-mix(in srgb,var(--k) 60%,transparent),0 0 30px color-mix(in srgb,var(--k) 38%,transparent) !important}
-/* done: a small check badge on the ring */
-#homePage .st-tweek .vn-week-m{position:absolute;top:-3px;right:calc(50% - 26px);height:16px;width:16px;display:block}
-#homePage .st-tweek .vn-week-c .vn-week-m i{width:16px;height:16px;border-radius:50%;background:var(--k);box-shadow:0 0 0 2px #14121f,0 0 10px color-mix(in srgb,var(--k) 80%,transparent);position:relative}
-#homePage .st-tweek .vn-week-c .vn-week-m i::after{content:"";position:absolute;left:5px;top:3.5px;width:4px;height:7px;border:solid #0d0b16;border-width:0 2px 2px 0;transform:rotate(40deg)}
-#homePage .st-tweek .vn-week-c.is-today .vn-week-m i{background:#fff}
-@media (max-width:359px){#homePage .st-tweek .vn-week-d{width:34px;height:34px;font-size:12.5px !important}#homePage .st-tweek .vn-week::before{top:18px}#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:10px !important;letter-spacing:-.02em !important}#homePage .st-tweek .vn-week-m{right:calc(50% - 22px)}}
-#homePage .st-tweek .vn-week-m{top:-2px;right:calc(50% - 20px);width:14px;height:14px}
-#homePage .st-tweek .vn-week-c .vn-week-m i{width:14px;height:14px}
-#homePage .st-tweek .vn-week-c .vn-week-m i::after{left:4.5px;top:2.5px}
+@media (max-width:359px){#homePage .st-tweek .vn-week-d{width:34px;height:34px;font-size:12.5px !important}#homePage .st-tweek .vn-week::before{top:18px}#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:10px !important;letter-spacing:-.02em !important}}
 
 /* Week rail v2 — glass, quiet glow (matches the app's cards) */
 #homePage .st-tweek .vn-week{padding:12px 6px 10px !important;border-radius:22px;
@@ -1720,8 +1600,6 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
   box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -6px 12px rgba(0,0,0,.14),0 6px 14px color-mix(in srgb,var(--k) 26%,rgba(0,0,0,.3)) !important}
 #homePage .st-tweek .vn-week-c.is-today .vn-week-d::before{background:linear-gradient(150deg,rgba(255,255,255,.8),color-mix(in srgb,var(--k) 70%,#fff) 60%,color-mix(in srgb,var(--k) 70%,transparent))}
 #homePage .st-tweek .vn-week-c.is-today .vn-week-t{color:#fff !important}
-#homePage .st-tweek .vn-week-c .vn-week-m i{box-shadow:0 0 0 2px rgba(20,18,31,.9) !important}
-#homePage .st-tweek .vn-week-m{top:-3px}
 @media (prefers-reduced-transparency:reduce){#homePage .st-tweek .vn-week{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(40,36,60,.9) !important}#homePage .st-tweek .vn-week-d{-webkit-backdrop-filter:none;backdrop-filter:none}}
 @media (max-width:359px){#homePage .st-tweek .vn-week{padding:10px 4px 8px !important}#homePage .st-tweek .vn-week::after{top:27px}}
 #homePage .st-tweek .vn-week::after{display:none}
@@ -2121,9 +1999,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 
 /* -- Today: Decision trend chip as a 28-day mini chart -- */
 
-/* -- Today: minis never truncate; recap names wrap -- */
 
-.st-recap .st-rc-best li span{white-space:normal !important;overflow:visible !important;text-overflow:clip !important;line-height:1.3}
 
 /* -- Progress › Weight: range read -- */
 #weightPage .st-rread{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:14px 0 4px;border-radius:18px;
@@ -2240,7 +2116,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 .st-h2,.st-h3,#weightPage .vn-weight .vn-h-sub#vn-traj-headline,.vn-perf-name,#trainPage .st-next .st-h3{font-family:var(--st-font-d) !important;letter-spacing:-.025em !important}
 .st-h2{font-weight:620 !important}.st-h3{font-weight:600 !important}
 .st-eyebrow,.st-head .st-eyebrow{font-family:var(--st-font-d) !important;font-weight:520 !important;letter-spacing:.01em !important;color:color-mix(in srgb,var(--st-accent-lift) 70%,var(--st-ink-3)) !important}
-.st-odo,.st-od,.st-od-s i,#weightPage .vn-weight .vn-metric-v,#weightPage .st-rread b,#weightPage .st-perf-best,.st-recap .st-rc-stats b,.st-count-v b,#weightPage .st-jr-big,#trainPage .st-cmeter-h .vn-num b{
+.st-odo,.st-od,.st-od-s i,#weightPage .vn-weight .vn-metric-v,#weightPage .st-rread b,#weightPage .st-perf-best,.st-count-v b,#weightPage .st-jr-big,#trainPage .st-cmeter-h .vn-num b{
   font-family:var(--st-font-d) !important;font-weight:220 !important;font-feature-settings:"tnum" 1,"ss01" 1;
 }
 #weightPage .vn-weight .vn-trend-val,#weightPage .st-perf-pill,.st-cat{font-family:var(--st-font-d) !important}
@@ -2271,7 +2147,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
     linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.01)),rgba(16,15,24,.78) !important;
   box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 40px 80px -40px color-mix(in srgb,var(--c) 55%,transparent),0 30px 60px -32px rgba(0,0,0,.95) !important;
 }
-#homePage .st-t-train .st-h2{font-size:38px !important;line-height:1 !important;font-weight:650 !important;letter-spacing:-.045em !important;margin-top:6px !important;
+#homePage .st-t-train .st-h2{font-size:calc(38px*var(--tf-s,1)) !important;/* scales with Larger text (A-25); the declaration was already !important */line-height:1 !important;font-weight:650 !important;letter-spacing:-.045em !important;margin-top:6px !important;
   background:linear-gradient(180deg,#fff 40%,color-mix(in srgb,var(--c) 45%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent}
 #homePage .st-t-train .st-cta{box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 14px 30px -12px rgba(124,58,237,.85),0 0 0 1px rgba(255,255,255,.08) inset !important}
 #homePage .st-head .st-h1{font-size:34px !important}
@@ -2284,10 +2160,11 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 @media (max-height:740px){#homePage{--tf-gap:10px;--tf-pad:16px;--tf-cap:46px;--tf-cta:50px}}
 @media (max-width:359px){#homePage{--tf-gap:8px;--tf-pad:13px 16px 14px;--tf-cta:48px}}
 /* One line, never wrapped or cut: a fragment that does not fit wraps onto the hidden second row. */
-#homePage .tf-ctx{display:flex;flex-wrap:wrap;height:20px;overflow:hidden;margin:6px 0 0;font:450 calc(14px*var(--tf-s))/20px var(--st-font);color:var(--st-ink-2)}
+/* Ink, not ink-2: the line sits on the sky's lightest haze (sampled ≈ rgb(101,85,138) at 10:00), where ink-2 measures 3.3:1. */
+#homePage .tf-ctx{display:flex;flex-wrap:wrap;height:20px;overflow:hidden;margin:6px 0 0;font:450 calc(14px*var(--tf-s))/20px var(--st-font);color:var(--st-ink)}
 #homePage .tf-f{white-space:nowrap}
 #homePage .tf-f b{font-weight:600;color:var(--st-ink)}
-#homePage .tf-sep{white-space:pre;color:var(--st-ink-4)}
+#homePage .tf-sep{white-space:pre;color:var(--st-ink-2)}
 @media (max-width:359px){#homePage .tf-ctx{height:18px;font-size:calc(13px*var(--tf-s));line-height:18px}}
 
 #homePage .tf-head{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;margin-bottom:4px}
@@ -2335,7 +2212,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 /* L1 insets inside the card: the cue, the now well, the receipt, the next session. */
 #homePage .tf-well,#homePage .tf-receipt,#homePage .tf-next{border-radius:var(--r-card);background:rgba(var(--st-hl),.045);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.07)}
 #homePage .tf-well{display:flex;align-items:center;gap:6px;margin-top:var(--tf-gap)}
-#homePage .tf-well-b{display:flex;flex-direction:column;align-items:flex-start;flex:1;min-width:0;min-height:44px;padding:7px 14px;border:0;border-radius:inherit;background:none;color:inherit;text-align:left;cursor:pointer}
+#homePage .tf-well-b{display:flex;flex-direction:column;align-items:flex-start;flex:1;min-width:0;min-height:44px;padding:7px 14px 6px;border:0;border-radius:inherit;background:none;color:inherit;text-align:left;cursor:pointer}
 #homePage .tf-well-b>span{max-width:100%}
 #homePage .tf-k{font:500 calc(12px*var(--tf-s))/16px var(--st-font);color:var(--st-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #homePage .tf-wt{font:600 calc(15px*var(--tf-s))/20px var(--st-font-d);letter-spacing:-.01em;color:var(--st-ink)}
@@ -2343,7 +2220,11 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #homePage .tf-now .tf-wt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* One line of note keeps the card inside its budget (A-2, A-7); the whole note stays in the button's name. */
 #homePage .tf-wn{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden;font:450 calc(12.5px*var(--tf-s))/17px var(--st-font);color:var(--st-ink-3)}
-@media (max-width:359px){#homePage .tf-cue .tf-wn{display:none}}
+/* Under 360 the cue and the now well keep the structured target only (§4.3); the note stays in the button's name and in Train. */
+@media (max-width:359px){#homePage .tf-well .tf-wn{display:none}
+  /* …and the structured target and the state line wrap to a second line rather than being cut (I6: the words stay). */
+  #homePage .tf-now .tf-wt{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-height:18px}
+  #homePage .tf-state span{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-height:14px;text-overflow:clip}}
 #homePage .tf-rest{position:relative;flex:none;display:grid;place-content:center;justify-items:center;width:52px;height:52px;margin-right:8px;padding:0;border:0;border-radius:50%;background:none;color:var(--st-ink);cursor:pointer}
 #homePage .tf-rest svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
 #homePage .tf-rest circle{fill:none;stroke-width:3}
@@ -2380,7 +2261,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 /* The rail stays the D48 capsules; the card owns its header and the conditional legend. */
 #homePage .tf-card .tf-rail{margin-top:14px}
 #homePage .tf-card .st-tweek [data-rail] .st-cap{height:var(--tf-cap)}
-#homePage .tf-rail-h{min-height:18px;margin-bottom:8px}
+#homePage .tf-rail-h{height:18px;min-height:18px;margin-bottom:8px}
 #homePage .tf-rail-h .vn-text{position:relative;min-height:18px;line-height:18px}
 #homePage .tf-rail-h .vn-text::after{content:"";position:absolute;inset:-13px -8px}
 /* "today in progress" drops whole when the header has no room for it, never wrapping the count. */
@@ -2392,11 +2273,17 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #homePage .tf-lg-m{width:11px;height:11px;color:var(--st-ink-2)}
 
 /* The button, always last: the page's only primary, or glass when the task is a review. */
-#homePage .tf-card .tf-cta{min-height:var(--tf-cta)}
+#homePage .tf-card .tf-cta{min-height:var(--tf-cta);margin-top:16px}
+/* Compact (375×667) and narrow (320×568): the measured fit — the rail, tape and button gaps close by 2–4 px each so
+   the button and the log strip's Zone A clear the dock; nothing is dropped. */
 :is(#homePage,.tf-anat-s) .tf-glass{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border:0;border-radius:999px;cursor:pointer;
   background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);color:var(--btn-ink);font:600 calc(15px*var(--tf-s,1))/1 var(--st-font-d)}
 #homePage .tf-glass.tf-cta{width:100%;margin-top:16px;font-size:calc(16px*var(--tf-s))}
 #homePage .tf-glass span[aria-hidden]{font-size:18px;opacity:.8}
+/* Compact (375×667) and narrow (320×568): the measured fit — the masthead, the well, the rail, the tape and the button
+   close their gaps by 2–4 px each so the button and the log strip's Zone A clear the dock; nothing is dropped. */
+@media (max-height:740px){#homePage .st-head{margin-bottom:10px}#homePage .tf-ctx{margin-top:4px}#homePage .tf-well{margin-top:8px}#homePage .tf-well-b{padding:6px 14px 5px}#homePage .tf-card .tf-rail{margin-top:12px}#homePage .tf-card .tf-cta,#homePage .tf-glass.tf-cta{margin-top:12px}#homePage .tf-tl{margin-top:4px}#homePage .tf-tape{margin-top:8px}}
+@media (max-width:359px){#homePage .tf-head{min-height:30px}#homePage .tf-card .tf-rail{margin-top:12px}#homePage .tf-rail-h{margin-bottom:6px}#homePage .tf-card .tf-cta,#homePage .tf-glass.tf-cta{margin-top:12px}#homePage .tf-receipt{padding:8px 12px}#homePage .st-head{margin-bottom:8px}}
 
 /* The cue sheet: the carried insight's evidence, suggestion and what it rests on. */
 .tf-anat-s .tf-anat{display:grid;gap:12px;margin:14px 0}
@@ -2426,16 +2313,20 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #homePage .tf-zb{gap:0;min-height:50px;padding:5px 12px 6px;box-shadow:inset 0 1px 0 var(--st-tile-line)}
 #homePage .tf-za:active,#homePage .tf-zb:active{background:rgba(var(--st-hl),.04)}
 #homePage .tf-za:focus-visible,#homePage .tf-zb:focus-visible{z-index:3}
+/* Rows inside clipped tiles (the log cells, the digest and evidence rows, the wells): the 2 px lavender ring sits inside
+   the row with a soft halo, since the global 3 px outside offset is cut off by the tile's overflow. */
+#homePage .tf-za:focus-visible,#homePage .tf-zb:focus-visible,#homePage .tf-dig-row:focus-visible,#homePage .tf-well-b:focus-visible,#homePage .tf-next:focus-visible{outline-offset:-4px;border-radius:14px;box-shadow:inset 0 0 0 8px rgba(205,187,255,.14)}
 /* The unlogged Weight zone is lit (the D103 pill's job, D121): a hue corner bloom and a hue edge on this zone only. */
-#homePage .tf-za.is-lit{background:radial-gradient(120% 110% at 0% 0%,color-mix(in srgb,var(--c) 40%,transparent),transparent 62%)}
+#homePage .tf-za.is-lit{background:radial-gradient(120% 110% at 0% 0%,color-mix(in srgb,var(--c) 58%,transparent),transparent 64%),linear-gradient(180deg,color-mix(in srgb,var(--c) 12%,transparent),transparent 70%);box-shadow:inset 0 0 44px -10px color-mix(in srgb,var(--c) 55%,transparent),inset 0 1px 0 color-mix(in srgb,var(--c) 45%,rgba(255,255,255,.3))}
 #homePage .tf-za.is-lit::before{content:"";position:absolute;inset:0;padding:1px;border-radius:var(--r-card) 0 0 0;pointer-events:none;
-  background:linear-gradient(155deg,color-mix(in srgb,var(--c) 75%,#fff),color-mix(in srgb,var(--c) 30%,transparent) 45%,transparent 75%);
+  background:linear-gradient(155deg,color-mix(in srgb,var(--c) 88%,#fff),color-mix(in srgb,var(--c) 55%,transparent) 48%,color-mix(in srgb,var(--c) 18%,transparent) 80%);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
-#homePage .tf-lr{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:2px 6px;width:100%;min-width:0}/* the state keeps its word: it wraps under the label rather than clipping */
+#homePage .tf-lr{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:2px 4px;width:100%;min-width:0}/* the state keeps its word: it wraps under the label rather than clipping */
 #homePage .tf-ll{display:inline-flex;align-items:center;gap:6px;flex:none;font:600 calc(12.5px*var(--tf-s))/16px var(--st-font-d);color:var(--st-ink)}
 #homePage .tf-ll i{width:6px;height:6px;border-radius:50%;background:var(--c)}
 #homePage .tf-ls{display:inline-flex;align-items:center;gap:4px;min-width:0;overflow:hidden;white-space:nowrap;font:600 calc(11px*var(--tf-s))/14px var(--st-font);color:var(--st-ink-3)}
 #homePage .tf-ls.is-ok{color:var(--st-accent-lift)}
+#homePage .tf-za.is-lit .tf-ls{color:var(--st-ink-2)}/* ink-3 measures 3.8:1 on the lit bloom */
 #homePage .tf-tick,#homePage .tf-lsm{flex:none;width:11px;height:11px}
 #homePage .tf-lv{display:flex;align-items:baseline;gap:3px;margin-top:2px;color:var(--st-ink)}
 #homePage .tf-lv b{font:300 calc(28px*var(--tf-s))/30px var(--st-font-d);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
@@ -2473,7 +2364,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 }
 
 /* Lead: eyebrow, observation, body (three lines, then More), and the run-in anatomy rows. */
-#homePage .tf-lead{--c:var(--co-weight);padding:16px 18px 16px;scroll-margin-top:16px}
+#homePage .tf-lead{--c:var(--co-weight);padding:12px 18px 14px;scroll-margin-top:16px}
 #homePage .tf-lead.is-calm{background:radial-gradient(120% 90% at 0% 0%,color-mix(in srgb,var(--st-weight) 25%,transparent),transparent 58%),var(--st-tile),rgba(18,17,27,.72)}
 #homePage .tf-lead.is-act::before{opacity:1;background:linear-gradient(155deg,color-mix(in srgb,var(--c) 70%,#fff) 0%,color-mix(in srgb,var(--c) 42%,transparent) 26%,rgba(255,255,255,.05) 58%,color-mix(in srgb,var(--c) 52%,transparent) 100%)}
 #homePage .tf-lead.is-act{background:radial-gradient(130% 92% at 10% -14%,color-mix(in srgb,var(--c) 30%,transparent),transparent 62%),var(--st-tile),rgba(17,16,26,.78)}
@@ -2499,30 +2390,32 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #homePage .tf-lead-h:focus-visible{outline:2px solid var(--btn-text);outline-offset:4px;border-radius:6px}
 #homePage .tf-lead-b{margin:6px 0 0;font:400 calc(14.5px*var(--tf-s))/21px var(--st-font);color:var(--st-ink-2)}
 #homePage .tf-lead-b.is-clamp:not(.is-open){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
-#homePage .tf-more{margin-top:4px}
-#homePage .tf-anat{display:grid;gap:8px;margin:10px 0 0}
-#homePage .tf-anat>div{display:grid;grid-template-columns:72px minmax(0,1fr);align-items:baseline;column-gap:10px}
-#homePage .tf-anat dt{font:600 calc(11.5px*var(--tf-s))/18px var(--st-font-d);color:var(--st-ink-3)}
-#homePage .tf-anat dd{min-width:0;margin:0;font:500 calc(13.5px*var(--tf-s))/18px var(--st-font);color:var(--st-ink-2)}
-#homePage .tf-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
-#homePage .tf-chips li{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:0 5px;max-width:100%;padding:2px 9px;border-radius:12px;background:rgba(var(--st-hl),.06);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.09)}
+#homePage .tf-more{margin-top:2px}
+/* Run-in rows: the label leads its own line and the value flows after it, so a short row is one line at every width. */
+#homePage .tf-anat{display:grid;gap:6px;margin:8px 0 0}
+#homePage .tf-anat>div{display:block;min-width:0;font:500 calc(13.5px*var(--tf-s))/21px var(--st-font);color:var(--st-ink-2)}
+#homePage .tf-anat dt{display:inline;margin-right:8px;font:600 calc(11.5px*var(--tf-s))/21px var(--st-font-d);color:var(--st-ink-3)}
+#homePage .tf-anat dd{display:inline;margin:0}
+#homePage .tf-anat dd>span{vertical-align:baseline}
+#homePage .tf-chips{display:inline;margin:0;padding:0;list-style:none}
+#homePage .tf-chips li{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:0 5px;max-width:100%;margin:0 4px 2px 0;padding:1px 8px;border-radius:12px;vertical-align:baseline;background:rgba(var(--st-hl),.06);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.09)}
 #homePage .tf-chip-l{font:500 calc(12px*var(--tf-s))/17px var(--st-font);color:var(--st-ink-3)}
 #homePage .tf-chip-d{color:var(--st-ink-4)}
 #homePage .tf-chip-v{font:560 calc(12.5px*var(--tf-s))/17px var(--st-font-d);color:var(--st-ink)}
-#homePage .tf-meter3{display:inline-flex;align-items:flex-end;gap:3px;margin-right:7px}
+#homePage .tf-meter3{display:inline-flex;align-items:flex-end;gap:3px;margin-right:7px;vertical-align:baseline}
 #homePage .tf-meter3 i{width:4px;border-radius:1.5px;background:rgba(var(--st-hl),.16)}
 #homePage .tf-meter3 i:nth-child(1){height:6px}#homePage .tf-meter3 i:nth-child(2){height:9px}#homePage .tf-meter3 i:nth-child(3){height:12px}
 #homePage .tf-meter3 i.on{background:var(--st-accent-lift)}
 #homePage .tf-act{min-height:44px;margin-top:8px;padding:0 14px;font-size:calc(14px*var(--tf-s))}
 #homePage .tf-anat dd>span+.tf-act{display:flex;width:max-content}
-@media (max-width:359px){#homePage .tf-lead{padding:14px 14px}#homePage .tf-anat>div{grid-template-columns:1fr;row-gap:4px}}
+@media (max-width:359px){#homePage .tf-lead{padding:12px 14px}}
 
 /* The concern line (D122): ◆ Watch · title · Read below ↓, one line; the trailing words drop first. */
 #homePage button.tf-ctx{position:relative;width:100%;padding:0;border:0;background:none;cursor:pointer;text-align:left;color:var(--st-ink)}
 #homePage button.tf-ctx::after{content:"";position:absolute;inset:-12px 0}
-#homePage .tf-ctx .tf-w{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:color-mix(in srgb,var(--st-review) 60%,#fff)}
+#homePage .tf-ctx .tf-w{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:color-mix(in srgb,var(--st-review) 38%,#fff)}/* the word lightens on the haze; the ◆ keeps the full amber */
 #homePage .tf-ctx .tf-wt-t{white-space:normal;font-weight:600}
-#homePage .tf-ctx .tf-rb{color:var(--st-ink-2)}
+#homePage .tf-ctx .tf-rb{color:var(--st-ink)}
 
 /* Digest: one L1 tile of 58px hairline rows: More insights · N, then Recent evidence. */
 #homePage .tf-dig-tile{border-radius:var(--r-card);background:rgba(var(--st-hl),.028);box-shadow:inset 0 0 0 1px var(--st-tile-line),var(--st-tile-hl);overflow:hidden}
@@ -2696,7 +2589,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 .st-cta>span[aria-hidden]{display:grid;place-items:center;width:28px;height:28px;margin-right:-6px;border-radius:50%;font-size:18px;line-height:1;
   background:rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
 /* ---- Tier 2 · glass ------------------------------------------------------- */
-.n99-button.secondary,.st-chip,.st-link.st-why,.st-qa,.st-replay,#historyPage .nxp-cal-nav button,#historyPage .nxp-cal-today,.st-fold,#weightPage .vn-tog,.n99-modal .n99-icon,#morePage .vn-set-back{
+.n99-button.secondary,.st-chip,.st-link.st-why,.st-qa,.st-replay,#historyPage .nxp-cal-nav button,#historyPage .nxp-cal-today,.st-fold,#weightPage .vn-tog,.n99-modal .n99-icon,#morePage .vn-set-back,.tf-glass{/* .tf-glass: Today's glass capsules join the tier, so the forced body font (html,body,button … !important) cannot take them off Geist (D56) */
   border-radius:999px !important;border:0 !important;
   background:var(--btn-glass) !important;box-shadow:var(--btn-glass-shadow) !important;
   color:var(--btn-ink) !important;font-family:var(--st-font-d) !important;font-weight:560 !important;letter-spacing:-.005em !important;
@@ -3220,7 +3113,6 @@ html.nx-reveal .tabs{animation:nx-dock-in .42s cubic-bezier(.32,.72,0,1) .06s ba
 /* ---- Today · Week in review ------------------------------------------------------------- */
 
 /* Monday's old "Last week" recap (strata.js) says the same thing; it shows only when the review does not. */
-.co-rv-on .st-recap{display:none !important}
 
 /* ---- Sheets: catch-up confirmation, excuse, week review --------------------------------- */
 .n99-modal .co-sheet .co-lead{margin:10px 0 0;font:400 14.5px/1.5 var(--st-font);color:var(--st-ink-2)}
@@ -3857,7 +3749,9 @@ body .toast.st-island.is-quiet{position:fixed !important;width:1px !important;he
   background:radial-gradient(120% 140% at 0% 50%,rgba(139,92,246,.3),transparent 62%),linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02)) !important;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(205,187,255,.12) !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;overflow:hidden}
 .tabs>.st-live.is-docked .st-live-t{flex:1}
-@media (prefers-reduced-motion:no-preference){.tabs>.st-live.is-docked:not([hidden]){animation:st-live-grow .55s cubic-bezier(.32,.72,0,1) both !important}}
+@media (prefers-reduced-motion:no-preference){.tabs>.st-live.is-docked:not([hidden]){animation:st-live-grow var(--st-live-grow,.55s) cubic-bezier(.32,.72,0,1) both !important}}
+/* D123 · On Today the row comes back from the hand-off in the state tier (200 ms), not the first-arrival .55 s. */
+.tabs>.st-live.is-docked.is-handoff{--st-live-grow:var(--st-t-state,200ms)}
 @keyframes st-live-grow{from{height:0;margin-bottom:0;padding-top:0;padding-bottom:0;opacity:0}}
 :root[data-nxp-motion="reduced"] .tabs>.st-live.is-docked{animation:none !important}
 body.st-live-on main::after{height:76px}

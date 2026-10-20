@@ -1,6 +1,10 @@
 /**
  * Release 151 — Today week rail capsules with outcome states, plan-vs-actual header, 28-day decision
  * sparkline, Lifts/Trend mini copy, Progress "Cut" range (D48); calorie system hidden app-wide (D49).
+ * Stage 5 (Today brief, D120): the Lifts mini is the Lifts evidence row, the Decision sparkline is the
+ * log strip's "Smoothed trend · 28 days" plot and the minis' meta lines are the strip's sub-lines; the
+ * checks below read those with their original intents kept (D20 outcome, one trend point per day,
+ * no "-0.00/wk").
  *
  * Run (seed only runs on the hostname "localhost"):
  *   python3 -m http.server 8765 &
@@ -70,8 +74,11 @@ try {
     const { ctx, page, errors } = await fresh(browser);
     await page.click('[data-tab="home"]'); await page.waitForTimeout(1000);
     const labels = await page.evaluate(() => [...document.querySelectorAll('#homePage .vn-week-c')].map((e) => e.getAttribute('aria-label')));
-    const past = labels.filter((l) => /not logged/.test(l)).length;
-    check('rail: past planned days with nothing logged read "not logged"', past >= 1, labels);
+    /* D105: every past planned day with nothing recorded reads "Not logged" — as many capsules as the engine's day
+       states say (none on a Monday, when the week has no past day yet; the word and the count must still agree). */
+    const past = labels.filter((l) => /not logged/i.test(l)).length;
+    const want = await page.evaluate(() => Array.from({ length: 7 }, (_, i) => NXP.dayState(NXT.dateAdd(NXT.weekStart(), i))).filter((d) => d && d.k === 'missed').length);
+    check('rail: past planned days with nothing logged read "Not logged" (count agrees with dayState)', past === want, { past, want, labels });
     check('rail: capsules — every cell has a capsule with the letter; status mark is a check (done) or hollow ring (not logged), never a dashed stroke or a dot row', await page.evaluate(() => [...document.querySelectorAll('#homePage .vn-week-c')].every((e) => { const cap = e.querySelector('.st-cap'), d = cap && cap.querySelector('.vn-week-d'), m = cap && cap.querySelector('.st-cap-s'); const cs = cap && getComputedStyle(cap); return cap && d && cs.borderStyle !== 'dashed' && !e.querySelector('.vn-week-w') && ((e.classList.contains('is-done') === !!(m && m.classList.contains('is-done'))) && (e.classList.contains('is-missed') === !!(m && m.classList.contains('is-missed')))); })));
     check('progress: Cut is offered without a cut start (D51) and opens on the first weigh-in', (await page.evaluate(() => { NXT.ui.view = 'overview'; switchTab('weight'); return new Promise((r) => setTimeout(() => { NXT.setRange('cut'); setTimeout(() => r(NXT.ui.chart.points[0].date === NXT.weights()[0].date && [...document.querySelectorAll('#weightPage .vn-seg button')].map((b) => b.textContent.trim()).join(',') === '2W,1M,3M,Cut'), 600); }, 800)); })));
     check('baseline: no page errors', errors.length === 0, errors);
@@ -84,22 +91,35 @@ try {
     await page.click('[data-tab="home"]'); await page.waitForTimeout(1200);
     const cells = await page.evaluate(() => [...document.querySelectorAll('#homePage .vn-week-c')].map((e) => ({ a: e.getAttribute('aria-label'), c: e.className })));
     const tue = cells[1];
-    check('rail: Tuesday walk with 45 min logged is done (check badge, no hollow ring)', /Easy cardio · done/.test(tue.a) && /is-done/.test(tue.c) && !/is-missed/.test(tue.c), tue);
+    /* D105: the word is "Done" (contract §6); today's own capsule also says "Today". */
+    check('rail: Tuesday walk with 45 min logged is done (check badge, no hollow ring)', /Easy cardio · (Today · )?Done/.test(tue.a) && /is-done/.test(tue.c) && !/is-missed/.test(tue.c), tue);
     /* The fixture lift lands two days before today. On a walk day that is an add-on (neither done nor
        "not logged"); on a lift day it is done. Either way it must never read "not logged". */
     const liftCell = await page.evaluate((d) => { const i = Math.round((NXT.dateMs(d) - NXT.dateMs(NXT.weekStart())) / 864e5); const e = document.querySelectorAll('#homePage .vn-week-c')[i]; return e ? { a: e.getAttribute('aria-label'), c: e.className, t: NXT.typeFor(d) } : null; }, fx.d);
     check('rail: the day with the fixture lift is never "not logged" (done on a lift day, add-on on a walk day)', !liftCell || (!/is-missed/.test(liftCell.c) && (liftCell.t === 'Zone2' ? /logged, plan not done/.test(liftCell.a) : /done/.test(liftCell.a))), liftCell);
     const head = await page.evaluate(() => document.querySelector('#homePage .st-tweek-h span').textContent);
-    check('header: plan vs actual — lifting days done of planned (cardio minutes live in the Cardio tile, D50)', /This week · 1 of 3 lifts done/.test(head), head);
-    const headBox = await page.evaluate(() => { const h = document.querySelector('#homePage .st-tweek-h'); const lines = (el) => { const r = document.createRange(); r.selectNodeContents(el); return r.getClientRects().length; }; return { lines: lines(h.querySelector('span')), btnLines: lines(h.querySelector('.vn-text')) }; });
+    /* D105/D126: the header reads "N of M planned lifts" (the same count, its meaning unchanged). */
+    check('header: plan vs actual — lifting days done of planned (cardio minutes live in the Cardio tile, D50)', /This week · 1 of 3 planned lifts/.test(head), head);
+    /* The header's count is one 18 px row (a fragment that does not fit drops whole, never wraps the count). */
+    const headBox = await page.evaluate(() => { const h = document.querySelector('#homePage .st-tweek-h'); const lines = (el) => { const r = document.createRange(); r.selectNodeContents(el); return r.getClientRects().length; }; const rh = h.querySelector('.tf-rh') || h.querySelector('span'); return { lines: Math.round(rh.getBoundingClientRect().height / 18), btnLines: lines(h.querySelector('.vn-text')) }; });
     check('header: stays on one line at 390 and "Edit plan" does not wrap', headBox.lines <= 1 && headBox.btnLines <= 1, headBox);
-    const lifts = await page.evaluate(() => document.querySelector('#homePage .st-minis .st-mini-lifts')?.innerText.replace(/\s+/g, ' '));
-    check(`lifts mini: last session's D20 outcome "${fx.up}/${fx.exercises} beat" + session name and recency`, lifts && new RegExp(`${fx.up} ?/${fx.exercises} beat`).test(lifts) && /2d ago/.test(lifts), lifts);
-    const engine = await page.evaluate(({ d, gym }) => { const rows = NXT.workRows().filter((r) => r.date === d && r.setType !== 'warmup'); const byEx = {}; rows.forEach((r) => { (byEx[r.exercise || r.name] = byEx[r.exercise || r.name] || []).push(r); }); let up = 0; Object.entries(byEx).forEach(([n, s]) => { const p = NXT.sessionRows(n, gym, d, 100).at(-1); if (!p) return; const a = NXT.bestSet(s), b = NXT.bestSet(p.sets); if (Number(a.weight) > Number(b.weight) || (Number(a.weight) === Number(b.weight) && Number(a.reps) > Number(b.reps))) up++; }); return up; }, fx);
-    check('lifts mini: the count matches NXT.bestSet() applied per exercise', engine === fx.up, { engine, fixture: fx.up });
-    const spark = await page.evaluate(() => { const p = document.querySelector('.st-dec-plot .st-dec-line'); const from = NXT.dateAdd(state.date, -27); const want = NXT.trend(NXT.weights()).filter((q) => q.date >= from && q.date <= state.date && q.avg !== null).length; return { got: p ? (p.getAttribute('d').match(/[ML]/g) || []).length : 0, want }; });
-    check('decision chart: one trend point per day with a trend value in the last 28 days', spark.got === spark.want && spark.want >= 20, spark);
-    check('trend mini: shows rate or "Flat", never "-0.00/wk"', !/-0\.00\/wk/.test(await page.evaluate(() => document.querySelector('#homePage .st-minis .st-tile .st-meta').textContent)));
+    /* Stage 5: the Lifts evidence row reads "N of M beat last time · session · Wkd D Mon" for the last completed
+       session that is not today's open one (D126). The seed may hold a session newer than the fixture's, so the
+       expected outcome is computed for whichever session the engine names, with NXT.bestSet() per exercise. */
+    const lifts = await page.evaluate(() => [...document.querySelectorAll('#homePage .tf-ev')].map((e) => e.innerText.replace(/\s+/g, ' ')).find((t) => /^Lifts/.test(t)));
+    const engine = await page.evaluate(() => {
+      const work = NXT.workRows(), d = NXP.lastLiftSession([...new Set(work.map((r) => r.date))], state.date, !!NXT.planDone());
+      const gym = (work.find((r) => r.date === d) || {}).gym || state.gym;
+      const rows = work.filter((r) => r.date === d && r.setType !== 'warmup'); const byEx = {}; rows.forEach((r) => { (byEx[r.exercise || r.name] = byEx[r.exercise || r.name] || []).push(r); });
+      let up = 0, compared = 0; Object.entries(byEx).forEach(([n, s]) => { const p = NXT.sessionRows(n, gym, d, 100).at(-1); if (!p) return; compared++; const a = NXT.bestSet(s), b = NXT.bestSet(p.sets); if (Number(a.weight) > Number(b.weight) || (Number(a.weight) === Number(b.weight) && Number(a.reps) > Number(b.reps))) up++; });
+      return { d, up, compared, day: new Date(NXT.dateMs(d)).toLocaleDateString('en-SG', { weekday: 'short', timeZone: 'UTC' }) };
+    });
+    check(`lifts row: the last completed session's D20 outcome "${engine.up} of ${engine.compared} beat" + session name and its day`, lifts && new RegExp(`${engine.up} of ${engine.compared} beat`).test(lifts) && lifts.includes(engine.day), { lifts, engine });
+    const fxUp = await page.evaluate(({ d, gym }) => { const rows = NXT.workRows().filter((r) => r.date === d && r.setType !== 'warmup'); const byEx = {}; rows.forEach((r) => { (byEx[r.exercise || r.name] = byEx[r.exercise || r.name] || []).push(r); }); let up = 0; Object.entries(byEx).forEach(([n, s]) => { const p = NXT.sessionRows(n, gym, d, 100).at(-1); if (!p) return; const a = NXT.bestSet(s), b = NXT.bestSet(p.sets); if (Number(a.weight) > Number(b.weight) || (Number(a.weight) === Number(b.weight) && Number(a.reps) > Number(b.reps))) up++; }); return up; }, fx);
+    check('fixture: the injected session\'s D20 outcome matches NXT.bestSet() applied per exercise', fxUp === fx.up, { engine: fxUp, fixture: fx.up });
+    const spark = await page.evaluate(() => { const p = document.querySelector('#homePage .tf-log .tf-spark .tf-sp-line'); const from = NXT.dateAdd(state.date, -27); const want = NXT.trend(NXT.weights()).filter((q) => q.date >= from && q.date <= state.date && q.avg !== null).length; return { got: p ? (p.getAttribute('d').match(/[ML]/g) || []).length : 0, want }; });
+    check('log strip sparkline: one trend point per day with a trend value in the last 28 days', spark.got === spark.want && spark.want >= 20, spark);
+    check('log strip: the Weight and Cardio sub-lines never print "-0.00/wk"', !/-0\.00\/wk/.test(await page.evaluate(() => [...document.querySelectorAll('#homePage .tf-log .tf-lsub, #homePage .tf-log .tf-zf, #homePage .tf-log .tf-zl')].map((e) => e.textContent).join(' | '))));
     /* Progress: Cut range */
     await page.evaluate(() => { NXT.ui.view = 'overview'; switchTab('weight'); }); await page.waitForTimeout(1200);
     const btns = await page.evaluate(() => [...document.querySelectorAll('#weightPage .vn-seg button')].map((b) => b.textContent.trim()));
