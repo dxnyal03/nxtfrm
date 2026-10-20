@@ -83,3 +83,17 @@ Each stage is its own commit(s); calculation changes are separate commits.
 **8 · QA** — identical data/viewports before/after (320/375/390/393/430/768/1280 + 1440), data states, larger text,
 keyboard, reduced motion (OS + in-app), contrast, targets, overflow, occlusion, screen-reader summaries, interaction
 paths; full deterministic gate (`node --test *.test.js` and each suite); report.
+
+## Status · 2026-10-20 11:20 SGT
+
+- Integration branch: `experience-upgrade` (this worktree). Inherited from PR #39 (`b7d8d71` and earlier): D101
+  week by week, D102 whole-app pass, D103 Today distilled. Everything from `e48faab` on is this upgrade.
+- Stage 2 committed: `e48faab` D104 forecast time, `363ee05` D105 day state, `5e7a63d` D106–D107 names/sources,
+  `8ae6eee` D108 verification fixes. 27 suites / 703 tests green with the Weight w2 edits in the tree.
+- Weight stream: w1 `85cf367` committed; w2 (plate + plot) resuming from an interrupted diff; w3–w5 queued.
+- Today stream (worktree `experience-today`, branch `experience-today`): t1 `fa4aa01` committed; t2 resuming;
+  t3 queued; then merged into `experience-upgrade`.
+- Contracts frozen: `CONTRACTS.md`. Specs: `SPEC-weight.md`, `SPEC-today.md`. Study: `ANALYTICS-STUDY.md`
+  (nothing applied). Disposable probe output stays in `~/Library/Caches/DanDev/nxtfrm/experience/`.
+- Next deliverable: a runnable visual checkpoint of Today and Weight (`?scenario=` fixtures, local preview on
+  port 8766 via `.claude/launch.json` → `nxtfrm-experience`), one cross-review, owner fixes, then Stage 6.
