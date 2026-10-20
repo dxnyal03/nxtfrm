@@ -3483,6 +3483,34 @@ body.st-live-on main::after{content:"";display:block;height:70px}
 .st-fin-receipt em{font:520 14px/1 var(--st-font-d);font-style:normal;font-variant-numeric:tabular-nums;color:var(--st-ink-2)}
 .st-fin-receipt em i{font-style:normal;color:var(--st-ink-4);margin:0 2px}
 .st-fin-receipt>p{display:flex;justify-content:space-between;margin:8px 0 0;padding-top:12px;border-top:1px dashed rgba(255,255,255,.14);font:560 13px/1 var(--st-font-d);color:var(--st-ink-2)}
+/* D152 · Focusing on form: the finish sheet's per-exercise switches, the Form tag and the History toggle. Tier-2 glass, 44 px targets. */
+.st-fin-form{margin-top:22px}
+.st-fin-form h3{margin:0 0 4px;font:590 15px/1.3 var(--st-font);color:var(--st-ink)}
+.st-fin-form-s{margin:0 0 10px;font:450 13px/1.45 var(--st-font);color:var(--st-ink-3)}
+.st-fin-form ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.st-fin-ft{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:56px;padding:8px 14px;border:0;border-radius:18px;text-align:left;cursor:pointer;color:var(--st-ink);background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);font-family:var(--st-font)}
+.st-fin-ft[aria-checked="true"]{background:linear-gradient(90deg,rgba(139,92,246,.24),rgba(139,92,246,.08));box-shadow:inset 0 0 0 1px rgba(196,181,253,.3)}
+.st-fin-ft-t{display:flex;flex-direction:column;gap:3px;min-width:0}
+.st-fin-ft-t b{font:560 14.5px/1.25 var(--st-font);overflow-wrap:anywhere}
+.st-fin-ft-t small{font:450 12.5px/1.3 var(--st-font);font-variant-numeric:tabular-nums;color:var(--st-ink-2)}
+.st-fin-ft-t small i{font-style:normal;color:var(--st-ink-3)}
+.st-fin-ft-s{display:flex;align-items:center;gap:8px;flex:none}
+.st-fin-ft-s em{font:560 12.5px/1 var(--st-font);font-style:normal;color:var(--st-ink-2)}
+.st-fin-sw{position:relative;width:44px;height:26px;border-radius:999px;background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);transition:background .2s}
+.st-fin-sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4);transition:transform .2s cubic-bezier(.32,.72,0,1)}
+.st-fin-ft[aria-checked="true"] .st-fin-sw{background:#8b5cf6}
+.st-fin-ft[aria-checked="true"] .st-fin-sw::after{transform:translateX(18px)}
+.st-fin-ft:focus-visible,.nxp-history-form:focus-visible{outline:3px solid rgba(167,139,250,.6);outline-offset:2px}
+.st-fin-tag{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;font:560 11px/1.4 var(--st-font);font-style:normal;letter-spacing:.02em;color:#e4d9ff;background:rgba(139,92,246,.22);vertical-align:2px}
+#historyPage .nxp-history-form{display:inline-flex;align-items:center;gap:8px;min-height:44px;margin:6px 0 2px;padding:0 14px;border:0;border-radius:999px;cursor:pointer;font:560 13px/1 var(--st-font);color:var(--st-ink-2);background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+#historyPage .nxp-history-form i{width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--st-ink-3)}
+#historyPage .nxp-history-form.is-on{color:var(--st-ink);box-shadow:inset 0 0 0 1px rgba(196,181,253,.35);background:rgba(139,92,246,.2)}
+#historyPage .nxp-history-form.is-on i{background:#a78bfa;box-shadow:none}
+#homePage .tf-oc:has(.is-form){grid-template-columns:repeat(2,minmax(0,1fr));row-gap:10px}
+@media (min-width:640px){#homePage .tf-oc:has(.is-form){grid-template-columns:repeat(4,minmax(0,1fr))}}
+#homePage .tf-oc .is-form i{color:#c4b5fd}
+.st-outcome:has(div:nth-child(4)){grid-template-columns:repeat(2,1fr)}
+@media (min-width:380px){.st-outcome:has(div:nth-child(4)){grid-template-columns:repeat(4,1fr)}}
 .st-fin-note{margin:18px 4px 0;font:450 13.5px/1.5 var(--st-font);color:var(--st-ink-3);text-align:center}
 .st-fin-acts{position:absolute;left:0;right:0;bottom:0;display:grid;gap:8px;padding:18px 20px calc(14px + var(--nxt-safe-bottom,0px));
   background:linear-gradient(180deg,rgba(7,6,11,0),rgba(7,6,11,.88) 30%,#07060B)}

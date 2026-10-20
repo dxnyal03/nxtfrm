@@ -4,7 +4,7 @@
    only: no model call, no composite score (D9), only canonical Morning weigh-ins
    in anything weight-related (D14), and nothing emitted for features that
    D49/D55 switched off. It CALLS the existing engine (review, detectPlateau,
-   trendStats, weights, workRows, sessionRows, bestSet, aimFor, coachFor,
+   trendStats, weights, workRows, sessionRows, realSessionRows, bestSet, aimFor, coachFor,
    strengthItems, activityWeeks, activitySummary, typeFor, templateFor,
    setDayType, commit) and changes none of it. The UI renders what this returns.
 
@@ -194,7 +194,7 @@
             liftDays; partial days count as done; planned as in context.week)
       sets, tonnage, vsPrev:{sets, tonnage}   (activityWeeks; null before the
             first activity record or when there is no previous week)
-      outcomes:{beat, matched, below, exercises}  (D20: each exercise's best
+      outcomes:{beat, matched, below, form, exercises}  (D20: each exercise's best
             working set vs its previous session at that gym — the finish
             summary's rule; exercises = exercise-sessions, compared or not)
       cardio:{min, target, sessions}
@@ -482,7 +482,7 @@ Object.assign(NXT, (() => {
     if (!silenceable()) return {aim: null, coach: null};
     const rows = ix.byName.get(name) || [];
     return pinned({gym, dayType: type, logs: rows}, () => {
-      const keep = new Set(N.sessionRows(name, gym, state.date, 100).slice(-3).map(s => s.date));
+      const keep = new Set(N.realSessionRows(name, gym, state.date, 100).slice(-3).map(s => s.date));
       return pinned({logs: rows.filter(r => keep.has(r.date))}, () => {
         const a = N.aimFor(name), c = N.coachFor(name);
         return {
@@ -988,7 +988,7 @@ Object.assign(NXT, (() => {
       if (!groups.has(k)) groups.set(k, {date: r.date, gym: w.gym, name: w.name, sets: []});
       groups.get(k).sets.push(r);
     }
-    let beat = 0, matched = 0, below = 0, exercises = 0;
+    let beat = 0, matched = 0, below = 0, form = 0, exercises = 0;
     for (const g of [...groups.values()].sort((a, b) => (a.date + a.gym + a.name).localeCompare(b.date + b.gym + b.name))) {
       exercises++;
       const prev = pinned({logs: ix.byName.get(g.name) || []}, () => N.sessionRows(g.name, g.gym, g.date, 100)).at(-1);
@@ -996,9 +996,12 @@ Object.assign(NXT, (() => {
       const a = N.bestSet(g.sets), b = N.bestSet(prev.sets);
       if (!a || !b) continue;
       const dw = Number(a.weight) - Number(b.weight), dr = Number(a.reps) - Number(b.reps);
-      if (dw > 0 || (dw === 0 && dr > 0)) beat++; else if (dw === 0 && dr === 0) matched++; else below++;
+      if (dw > 0 || (dw === 0 && dr > 0)) beat++; else if (dw === 0 && dr === 0) matched++;
+      else if (g.sets.length && g.sets.every(r => r.form === true)) form++;   /* D152: marked Focusing on form, not a decline */
+      else below++;
     }
-    return {beat, matched, below, exercises};
+    /* `form` appears only when the owner marked something (D152), so every other week keeps its shape. */
+    return form ? {beat, matched, below, form, exercises} : {beat, matched, below, exercises};
   }
   function reviewOf(ws, we) {
     const ix = index(), canon = N.weights();
@@ -1035,8 +1038,8 @@ Object.assign(NXT, (() => {
     if (missedL.length) lines.push("Missed: " + missedL.map(x => `${weekday(x.date).slice(0, 3)} ${x.label}`).join(", "));
     if (excusedL.length) lines.push("Excused: " + excusedL.map(x => `${weekday(x.date).slice(0, 3)} ${x.label}${x.reason && x.reason !== "other" ? ` (${x.reason})` : ""}`).join(", "));
     if (movedL.length) lines.push("Moved: " + movedL.map(x => `${weekday(x.date).slice(0, 3)} ${x.label}${x.movedTo ? ` → ${dayShort(x.movedTo)}` : ""}`).join(", "));
-    const compared = outcomes.beat + outcomes.matched + outcomes.below;
-    if (compared) lines.push(`Best set vs last time: ${outcomes.beat} beat · ${outcomes.matched} matched · ${outcomes.below} below`);
+    const compared = outcomes.beat + outcomes.matched + outcomes.below + (outcomes.form || 0);
+    if (compared) lines.push(`Best set vs last time: ${outcomes.beat} beat · ${outcomes.matched} matched · ${outcomes.below} below${outcomes.form ? ` · ${outcomes.form} form` : ""}`);
     const order = ["Improving", "Holding steady", "Watch", "Review"].filter(s => words[s]);
     if (order.length) lines.push("Tracked lifts on Sunday: " + order.map(s => `${words[s]} ${s}`).join(" · "));
     if (cur) lines.push(`Cardio: ${cur.cardioMin} of ${cardio.target} min · ${count(cur.cardioSessions, "session")}`);
@@ -1108,7 +1111,7 @@ Object.assign(NXT, (() => {
         if (c.kind !== "load") return same;
         const r = windowed({work: N.workRows()}, state.date, () => N.review());
         if (!cautious(r)) return same;
-        const last = N.sessionRows(exercise, state.gym, state.date, 100).at(-1), best = last ? N.bestSet(last.sets) : null;
+        const last = N.realSessionRows(exercise, state.gym, state.date, 100).at(-1), best = last ? N.bestSet(last.sets) : null;
         if (!best) return same;
         const w = Number(best.weight), n = Number(best.reps), aimReps = Number(c.reps), title = String(r.title || "");
         return Object.assign({}, c, {

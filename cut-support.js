@@ -479,13 +479,31 @@ const NXT = (() => {
       if(!groups.has(r.date))groups.set(r.date,[]);
       groups.get(r.date).push(r);
     }
-    return [...groups].sort(([a],[b])=>a.localeCompare(b)).map(([date,sets])=>({date,sets:sets.sort((a,b)=>Number(a.setNum)-Number(b.setNum)),value:Math.max(...sets.map(r=>Number(r.weight)*(1+Number(r.reps)/30)))}));
+    return [...groups].sort(([a],[b])=>a.localeCompare(b)).map(([date,sets])=>({date,sets:sets.sort((a,b)=>Number(a.setNum)-Number(b.setNum)),value:Math.max(...sets.map(r=>Number(r.weight)*(1+Number(r.reps)/30))),form:sets.every(r=>r.form===true)}));
+  }
+  /* D152 · "Focusing on form". The owner (never the app) marks an exercise on a day as a deliberate lighter
+     session. The flag is `form:true` on that exercise's working-set rows for that date and gym; warm-ups never
+     carry it. A session is a form session when it has working sets and every one carries the flag. */
+  function formRowsOf(date,gym,ex) {
+    return (Array.isArray(state.logs)?state.logs:[]).filter(r=>r&&r.date===date&&(r.gym||"Gym A")===gym&&(r.exercise||r.name)===ex&&r.setType!=="warmup");
+  }
+  function isFormSession(date,gym,ex) {
+    const rows=formRowsOf(date,gym,ex);return rows.length>0&&rows.every(r=>r.form===true);
+  }
+  function markForm(date,gym,ex,on) {
+    const rows=formRowsOf(date,gym||"Gym A",ex);if(!rows.length)return false;
+    for(const r of rows){if(on)r.form=true;else delete r.form;}
+    return commit("");
+  }
+  /* Sessions that count as real progression history: form sessions are left out (D152). */
+  function realSessionRows(ex,gym,before,maxReps) {
+    return sessionRows(ex,gym,before,maxReps).filter(x=>!x.form);
   }
   function strengthItems() {
     const keys=new Map();
     workRows().forEach(r=>keys.set(JSON.stringify([r.exercise||r.name,r.gym||"Gym A"]),[r.exercise||r.name,r.gym||"Gym A"]));
     return [...keys.values()].map(([name,gym])=>{
-      const all=sessionRows(name,gym,dateAdd(state.date,1)),recent=all.slice(-4),last=all.at(-1);
+      const every=sessionRows(name,gym,dateAdd(state.date,1)),all=every.filter(x=>!x.form),recent=all.slice(-4),last=all.at(-1),lastAny=every.at(-1);
       let delta=null,status="Building data",tone="neutral";
       const fresh=!!last&&last.date>=dateAdd(state.date,-21);
       if(recent.length>=4&&fresh&&recent[0].date>=dateAdd(state.date,-56)) {
@@ -495,7 +513,7 @@ const NXT = (() => {
         status=sustained?"Review":delta>=2?"Improving":delta>=-5?"Holding steady":"Watch";
         tone=sustained?"watch":delta>=-5?"good":"neutral";
       } else if(!fresh&&all.length)status="Older history";
-      return {name,family:name,gym,sessions:all.length,latestDate:last?.date||"",latestE1rm:last?.value||0,delta,status,tone,history:all};
+      return {name,family:name,gym,sessions:all.length,formSessions:every.length-all.length,latestForm:!!lastAny&&!!lastAny.form,latestDate:lastAny?.date||"",latestE1rm:last?.value||0,delta,status,tone,history:all};
     }).sort((a,b)=>b.latestDate.localeCompare(a.latestDate)).slice(0,24);
   }
   function review() {
@@ -923,7 +941,7 @@ const NXT = (() => {
     return Math.max(t.reps[0],Math.min(t.reps[1],r));
   }
   function aimFor(ex) {
-    const t=targetFor(ex),all=sessionRows(ex,state.gym,state.date,100),last=all.at(-1);
+    const t=targetFor(ex),all=realSessionRows(ex,state.gym,state.date,100),last=all.at(-1);
     if(!last)return null;
     const best=bestSet(last.sets);if(!best)return null;
     const c=cue(ex),w=Number(best.weight),n=Number(best.reps);
@@ -936,7 +954,7 @@ const NXT = (() => {
      nothing stored): one headline, one concise note with the real numbers, and a target for
      each planned set that mirrors how the sets fell off last time. */
   function coachFor(ex) {
-    const t=targetFor(ex),all=sessionRows(ex,state.gym,state.date,100),last=all.at(-1);
+    const t=targetFor(ex),all=realSessionRows(ex,state.gym,state.date,100),last=all.at(-1);
     const lo=t.reps[0],hi=t.reps[1],planned=Math.max(1,Number(t.sets)||1),num=v=>String(Math.round(Number(v)*100)/100);
     if(!last)return {kind:"new",headline:"First session on this lift",note:`Choose a load you can move for ${lo}–${hi} reps with about two to spare. Today sets your baseline.`,sets:[]};
     const best=bestSet(last.sets);if(!best)return null;
@@ -972,7 +990,7 @@ const NXT = (() => {
     return out("hold","Match your best",`Repeat ${num(w)} × ${n}. Holding strength on a cut counts.`);
   }
   function cue(ex) {
-    const t=targetFor(ex),all=sessionRows(ex,state.gym,state.date,100),last=all.at(-1),prev=all.at(-2);
+    const t=targetFor(ex),all=realSessionRows(ex,state.gym,state.date,100),last=all.at(-1),prev=all.at(-2);
     let out;
     if(!last)out={label:"Set your baseline",weight:0,text:"Choose a manageable load and leave around two reps in reserve. Your first session establishes the baseline."};
     else {
@@ -1218,7 +1236,7 @@ const NXT = (() => {
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard(true)}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(1)+' kg',s.current.n+' '+plural(s.current.n,'weigh-in'))}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(1)+' kg',s.previous.n+' '+plural(s.previous.n,'weigh-in'))}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any change to your plan stays your choice.</p><div class="n99-stack">${CALORIES_ENABLED?button('Review calorie guide','NXT.openCalories()',true):''}${FEATURES.checkin?button('Update recovery check-in','apx96OpenReadiness()',true):''}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,features:FEATURES,flatKgWeek:PLATEAU_FLAT_KG_WEEK,plateauRules:{windowDays:PLATEAU_WINDOW_DAYS,minReadings:PLATEAU_MIN_READINGS,minSpanDays:PLATEAU_MIN_SPAN_DAYS},levelSeries,nowLevel,rateSeries,forecastView,comparePeriods,compareWindows,forecastWords,chartNotes,noteLabel,noteKinds:NOTE_KINDS.slice(),pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,plural,label,signedFixed,rateSpan,otherTimingCount,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,features:FEATURES,flatKgWeek:PLATEAU_FLAT_KG_WEEK,plateauRules:{windowDays:PLATEAU_WINDOW_DAYS,minReadings:PLATEAU_MIN_READINGS,minSpanDays:PLATEAU_MIN_SPAN_DAYS},levelSeries,nowLevel,rateSeries,forecastView,comparePeriods,compareWindows,forecastWords,chartNotes,noteLabel,noteKinds:NOTE_KINDS.slice(),pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,plural,label,signedFixed,rateSpan,otherTimingCount,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,realSessionRows,isFormSession,markForm,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{

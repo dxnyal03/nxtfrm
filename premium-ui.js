@@ -324,7 +324,7 @@ const NXP = (() => {
       const oc=lastLift&&ago!==null&&ago<=7?liftOutcome(lastLift,(lastLiftRow&&lastLiftRow.gym)||state.gym):null;
       if(oc&&oc.compared){
         const nm=weekShort[lastLiftRow.dayType]||N.label(lastLiftRow.dayType||state.dayType);
-        return {sub:`${oc.up} of ${oc.compared} beat last time · ${nm} · ${coDayShort(lastLift)}`,label:`Lifts: ${oc.up} of ${oc.compared} beat last time, ${N.label(lastLiftRow.dayType||state.dayType)}, ${coDayShort(lastLift)}. Open Performance.`};
+        return {sub:`${oc.up} of ${oc.compared} beat last time${oc.form?` · ${oc.form} form`:''} · ${nm} · ${coDayShort(lastLift)}`,label:`Lifts: ${oc.up} of ${oc.compared} beat last time${oc.form?`, ${oc.form} focusing on form`:''}, ${N.label(lastLiftRow.dayType||state.dayType)}, ${coDayShort(lastLift)}. Open Performance.`};
       }
       const sub=perfLabel==='Building'?'Building · no comparable sessions yet':perfLabel==='Older history'&&lastPerfDate?`Older history · last ${N.shortDate(lastPerfDate)}`:`${perfLabel} · ${lifts.length} ${N.plural(lifts.length,'lift')}`;
       return {sub,label:`Lifts: ${sub}. Open Performance.`};
@@ -500,10 +500,10 @@ const NXP = (() => {
         const mo=(sessionMoments()[0]||null);
         line=stLine('finished','Finished'+(at?' · '+tfClock(at):''));
         body=`<div class="tf-receipt">
-          ${oc.compared?`<ul class="tf-oc" aria-label="${esc(`Best set against last time: ${oc.up} beat, ${oc.same} matched, ${oc.down} below`)}">
+          ${oc.compared?`<ul class="tf-oc" aria-label="${esc(`Best set against last time: ${oc.up} beat, ${oc.same} matched, ${oc.down} below${oc.form?`, ${oc.form} focusing on form`:''}`)}">
             <li class="is-beat"><b class="vn-num">${oc.up}</b><span><i aria-hidden="true">●</i>beat</span></li>
             <li class="is-same"><b class="vn-num">${oc.same}</b><span><i aria-hidden="true">■</i>matched</span></li>
-            <li class="is-below"><b class="vn-num">${oc.down}</b><span><i aria-hidden="true">▼</i>below</span></li></ul>`:''}
+            <li class="is-below"><b class="vn-num">${oc.down}</b><span><i aria-hidden="true">▼</i>below</span></li>${oc.form?`<li class="is-form"><b class="vn-num">${oc.form}</b><span><i aria-hidden="true">◆</i>form</span></li>`:''}</ul>`:''}
           ${cap?`<p class="tf-rc-cap">${esc(cap)}</p>`:''}
           ${mo?`<p class="tf-moment"><i aria-hidden="true">★</i>${esc(mo.t)}</p>`:''}
         </div>`;
@@ -1163,19 +1163,30 @@ const NXP = (() => {
   }
   /* D20 comparison for any logged lifting day: best set per exercise against the
      previous session of that exercise at that gym. Same rule as the finish card. */
+  /* One exercise's D20 verdict for a session: beat / same / below against the previous session of that
+     exercise at that gym, or null with nothing to compare. A below the owner has marked "Focusing on form"
+     (D152) reads "form" instead; the engine holds the flag (N.isFormSession), nothing is inferred here. */
+  function exVerdict(date,gym,name,sets) {
+    const prev=N.sessionRows(name,gym,date,100).at(-1);
+    if(!prev||!prev.sets||!prev.sets.length)return null;
+    const a=N.bestSet(sets),b=N.bestSet(prev.sets);
+    if(!a||!b)return null;
+    const dw=Number(a.weight)-Number(b.weight),dr=Number(a.reps)-Number(b.reps);
+    if(dw>0||(dw===0&&dr>0))return {v:'beat',a,b};
+    if(dw===0&&dr===0)return {v:'same',a,b};
+    return {v:N.isFormSession(date,gym,name)?'form':'below',a,b,prevDate:prev.date};
+  }
   function liftOutcome(date,gym) {
     const rows=N.workRows().filter(r=>r.date===date&&(r.gym||'Gym A')===gym&&r.setType!=='warmup'),byEx={};
     rows.forEach(r=>{(byEx[r.exercise||r.name]=byEx[r.exercise||r.name]||[]).push(r);});
-    let up=0,same=0,down=0,compared=0;
+    let up=0,same=0,down=0,form=0,compared=0;
     Object.entries(byEx).forEach(([name,sets])=>{
-      const prev=N.sessionRows(name,gym,date,100).at(-1);
-      if(!prev||!prev.sets||!prev.sets.length)return;
+      const x=exVerdict(date,gym,name,sets);
+      if(!x)return;
       compared+=1;
-      const a=N.bestSet(sets),b=N.bestSet(prev.sets);
-      const dw=Number(a.weight)-Number(b.weight),dr=Number(a.reps)-Number(b.reps);
-      if(dw>0||(dw===0&&dr>0))up+=1; else if(dw===0&&dr===0)same+=1; else down+=1;
+      if(x.v==='beat')up+=1;else if(x.v==='same')same+=1;else if(x.v==='form')form+=1;else down+=1;
     });
-    return {up,same,down,compared,exercises:Object.keys(byEx).length};
+    return {up,same,down,form,compared,exercises:Object.keys(byEx).length};
   }
   function previewAllowed() {
     const sync=NXT.wearables&&NXT.wearables.sync;
@@ -1435,7 +1446,8 @@ const NXP = (() => {
     const rows=N.workRows(),prior=rows.filter(r=>r.date<state.date);
     const bests=[];
     Object.entries(byEx).forEach(([name,sets])=>{
-      const hist=prior.filter(r=>(r.exercise||r.name)===name&&Number(r.weight)>0);
+      if(N.isFormSession(state.date,state.gym,name))return;/* D152: a session marked Focusing on form earns no "new best" */
+      const hist=prior.filter(r=>(r.exercise||r.name)===name&&Number(r.weight)>0&&r.form!==true);
       if(!hist.length)return;
       const a=N.bestSet(sets),b=N.bestSet(hist);
       if(!a||!b)return;
@@ -1547,7 +1559,13 @@ const NXP = (() => {
         px=x;py=y;
       });
     });
-    const receipt=order.map(name=>`<li><span>${esc(name)}</span><b>${by.get(name).map(r=>`<em>${esc(trimNum(r.weight))}<i>×</i>${esc(String(r.reps))}</em>`).join('')}</b></li>`).join('');
+    /* D152 · exercises that came in below last time (D20). The owner decides, per exercise, whether a lighter
+       load was on purpose; the engine stores the flag (N.markForm). No prompt when nothing is below. */
+    const gymNow=state.gym||'Gym A';
+    const belowEx=order.map(name=>{const x=exVerdict(state.date,gymNow,name,by.get(name));return x&&(x.v==='below'||x.v==='form')?{name,x}:null;}).filter(Boolean);
+    const sc=r=>`${trimNum(r.weight)} × ${r.reps}`;
+    const formHTML=belowEx.length?`<section class="st-fin-form" aria-labelledby="st-fin-form-t"><h3 id="st-fin-form-t">Below last time</h3><p class="st-fin-form-s">A lighter load is sometimes on purpose. Tick the ones where you were focusing on form.</p><ul>${belowEx.map(({name,x})=>`<li><button type="button" class="st-fin-ft" role="switch" aria-checked="${x.v==='form'}" data-ex="${esc(name)}" aria-label="${esc(`Focusing on form: ${name}, ${sc(x.a)} against ${sc(x.b)} last time`)}"><span class="st-fin-ft-t"><b>${esc(name)}</b><small>${esc(sc(x.a))} <i>now</i> · ${esc(sc(x.b))} <i>last time</i></small></span><span class="st-fin-ft-s"><em>Form</em><i class="st-fin-sw" aria-hidden="true"></i></span></button></li>`).join('')}</ul></section>`:'';
+    const receipt=order.map(name=>`<li data-ex="${esc(name)}"><span>${esc(name)}${N.isFormSession(state.date,gymNow,name)?'<i class="st-fin-tag">Form</i>':''}</span><b>${by.get(name).map(r=>`<em>${esc(trimNum(r.weight))}<i>×</i>${esc(String(r.reps))}</em>`).join('')}</b></li>`).join('');
     const stat=(v,l,u='')=>`<div><b class="vn-num" data-to="${v}">${v.toLocaleString('en-SG')}</b>${u?`<small>${u}</small>`:''}<span>${l}</span></div>`;
     const old=document.getElementById('stFinish');if(old)old.remove();
     const el=document.createElement('div');el.id='stFinish';el.className='st-fin';
@@ -1560,6 +1578,7 @@ const NXP = (() => {
       <div class="st-fin-stats">${stat(working.length,'Working sets')}${stat(order.length,order.length===1?'Exercise':'Exercises')}${stat(volume,'Volume','kg')}</div>
       ${moments.length?`<ul class="st-fin-moments" aria-label="Highlights">${moments.map((m,i)=>`<li class="is-${m.k}" style="--i:${i}"><i aria-hidden="true"></i><span>${esc(m.t)}</span></li>`).join('')}</ul>`:''}
       <section class="st-fin-printwrap"><h3>Session print</h3>${sessionPrintSVG(working,state.date+'|'+state.gym,{h:132,cls:'is-fin'})}</section>
+      ${formHTML}
       <section class="st-fin-receipt" aria-label="Session receipt"><h3>Session receipt</h3><ol>${receipt}</ol><p><span>Working sets ${working.length}</span><span>Volume ${volume.toLocaleString('en-SG')} kg</span></p></section>
       <p class="st-fin-note">Your logged work is saved. No need to add cardio just because this workout is finished.</p>
     </div></div>
@@ -1569,6 +1588,14 @@ const NXP = (() => {
     const key=e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();}};
     el.querySelector('.st-fin-done').addEventListener('click',()=>close());
     el.querySelector('.st-fin-cardio').addEventListener('click',()=>close(()=>{if(typeof showCardioSheet==='function')showCardioSheet();}));
+    el.querySelectorAll('.st-fin-ft').forEach(btn=>btn.addEventListener('click',()=>{
+      const name=btn.dataset.ex,on=btn.getAttribute('aria-checked')!=='true';
+      if(N.markForm(state.date,gymNow,name,on)===false)return;
+      btn.setAttribute('aria-checked',String(on));
+      const li=[...el.querySelectorAll('.st-fin-receipt li')].find(l=>l.dataset.ex===name),sp=li&&li.querySelector(':scope>span'),tg=sp&&sp.querySelector('.st-fin-tag');
+      if(sp&&on&&!tg)sp.insertAdjacentHTML('beforeend','<i class="st-fin-tag">Form</i>');else if(tg&&!on)tg.remove();
+      try{btn.focus({preventScroll:true});}catch(e){}/* repaint() blurs the page */
+    }));
     document.addEventListener('keydown',key,true);
     document.body.appendChild(el);
     el.querySelector('.st-fin-done').focus({preventScroll:true});
@@ -1691,21 +1718,20 @@ const NXP = (() => {
     const working=N.sessionLogs().filter(r=>r.setType!=='warmup');
     const byEx={};
     working.forEach(r=>{(byEx[r.exercise]=byEx[r.exercise]||[]).push(r);});
-    let up=0,same=0,down=0,compared=0;
+    let up=0,same=0,down=0,form=0,compared=0;
     Object.entries(byEx).forEach(([name,sets])=>{
-      const prev=N.sessionRows(name,state.gym,state.date,100).at(-1);
-      if(!prev||!prev.sets||!prev.sets.length)return;
-      compared+=1;
       /* D20: compared by best set — heavier load wins, then more reps at it. */
-      const a=N.bestSet(sets),b=N.bestSet(prev.sets);
-      const dw=Number(a.weight)-Number(b.weight),dr=Number(a.reps)-Number(b.reps);
-      if(dw>0||(dw===0&&dr>0))up+=1; else if(dw===0&&dr===0)same+=1; else down+=1;
+      const x=exVerdict(state.date,state.gym,name,sets);
+      if(!x)return;
+      compared+=1;
+      if(x.v==='beat')up+=1;else if(x.v==='same')same+=1;else if(x.v==='form')form+=1;else down+=1;
     });
     const nextDate=N.dateAdd(state.date,1);
     const compare=compared?`<div class="st-outcome">
       <div style="--c:var(--st-lean)"><b class="vn-num" data-st-count="${up}">${up}</b><span>Beat</span></div>
       <div style="--c:var(--st-accent)"><b class="vn-num" data-st-count="${same}">${same}</b><span>Matched</span></div>
       <div style="--c:var(--st-fat)"><b class="vn-num" data-st-count="${down}">${down}</b><span>Below</span></div>
+      ${form?`<div style="--c:var(--st-ink-2)"><b class="vn-num" data-st-count="${form}">${form}</b><span>Form</span></div>`:''}
     </div>`:'';
     return `<p class="st-meta st-mt2">${working.length} working ${N.plural(working.length,"set")} · ${Object.keys(byEx).length} ${N.plural(Object.keys(byEx).length,"exercise")}</p>
       ${compare}
@@ -2756,7 +2782,7 @@ const NXP = (() => {
   }
   function performanceMeta(item) {
     const bits=[];
-    if(item.latestDate)bits.push(N.shortDate(item.latestDate));
+    if(item.latestDate)bits.push(N.shortDate(item.latestDate)+(item.latestForm?' · Form':''));
     bits.push(item.sessions===1?'1 session':item.sessions+' sessions');
     bits.push(item.gym);
     return bits.join(' · ');
@@ -3700,9 +3726,18 @@ const NXP = (() => {
         if(reps)return `${reps} reps`;
         return load?`${load} kg`:null;
       }).filter(Boolean);
-      return `<div class="nxp-history-ex"><b>${esc(name)}</b><span>${esc(historyPlural(sets.length,'set'))}</span></div>${lines.length?`<div class="nxp-history-sets">${lines.map(l=>`<span>${esc(l)}</span>`).join('')}</div>`:''}`;
+      /* D152 · a lift that came in below last time offers "Focusing on form"; a marked one reads Form. */
+      const gymOf=sets[0].gym||'Gym A',work=sets.filter(r=>r.setType!=='warmup'),vd=work.length?exVerdict(date,gymOf,name,work):null;
+      const formOn=!!vd&&vd.v==='form',formBtn=vd&&(vd.v==='below'||vd.v==='form')?`<button type="button" class="nxp-history-form${formOn?' is-on':''}" role="switch" aria-checked="${formOn}" data-ex="${esc(name)}" onclick="NXP.toggleForm('${esc(date)}','${esc(gymOf)}',this.dataset.ex)" aria-label="${esc(`Focusing on form: ${name}`)}"><i aria-hidden="true"></i>Focusing on form</button>`:'';
+      return `<div class="nxp-history-ex"><b>${esc(name)}${formOn?'<i class="st-fin-tag">Form</i>':''}</b><span>${esc(historyPlural(sets.length,'set'))}</span></div>${lines.length?`<div class="nxp-history-sets">${lines.map(l=>`<span>${esc(l)}</span>`).join('')}</div>`:''}${formBtn}`;
     }).join('');
     return `<div class="nxp-history-block vn-hist-block" data-kind="lifting"><span class="nxp-history-block-label">Lifting</span>${identity?`<p class="nxp-history-block-title">${esc(identity)}</p>`:''}${rows}<button type="button" class="nxp-history-edit" onclick="NXP.historyDay('${date}')">Edit sets<i aria-hidden="true">›</i></button></div>`;
+  }
+  /* D152 · the History day card's "Focusing on form" toggle; the engine writes the flag and repaints. */
+  function toggleForm(date,gym,name) {
+    const on=!N.isFormSession(date,gym,name);
+    if(N.markForm(date,gym,name,on)===false)return;
+    try{const b=[...document.querySelectorAll('.nxp-history-form')].find(x=>x.dataset.ex===name);if(b)b.focus({preventScroll:true});}catch(e){}
   }
   function historyConditioningBlock(cardio,floorball) {
     const rows=[];
@@ -4181,7 +4216,7 @@ const NXP = (() => {
   }
   bindSteppers();
   bindKeyboardDock();
-  return {shareProgress,shareToggle,shareSend,ask,finishScene,actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,useLast,coachDeck,weighReplay,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,digestToggle,toLead,leadMore,trendSparkSVG,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen,dayState,pickToday,todayLine,cueFor,lastLiftSession,todayPlan,cueSheet,railKey};
+  return {toggleForm,liftOutcome,shareProgress,shareToggle,shareSend,ask,finishScene,actRange,actSelect,actScrub,actKey,historyKey,removeScanPhotos,nameSheet,saveName,ui,useAim,useTarget,useLast,coachDeck,weighReplay,trainMenu,setRoutineGym,pickDay,setDay,editRoutine,routineBack,routineMove,routineBoth,routineDefault,routineEdit,routineStep,routineRemove,routinePick,routineFilter,routineChoose,routineSave,saveTodayToRoutine,home,training,progress,more,history,enterTrain,leaveTrain,syncTrainNav,addOnAdd,addOnRemove,addOnPick,addOnFilter,addOnSelect,rememberInput,logSet,queue,queueMove,exerciseDetails,paintRest,noteRestTotal,setSetType,setRir,goExercise,chooseExercise,editCurrentSet,sessionMenu,equipmentNote,sessionSummary,saveAppearance,pickOption,applyAppearance,exportBackup,cloudLabel,backupLabel,connectionHTML,validConfig,testConnection,historyDay,editHistorySet,otherDayDetails,historySelect,setHistoryFilter,historyShiftMonth,historyThisMonth,openRecovery,setRecoveryPreview,openWearableConnection,openBodyCapture,keyboardBottom,coachAct,coachDismiss,digestToggle,toLead,leadMore,trendSparkSVG,catchUpSheet,catchUpApply,excuseSheet,reviewSheet,reviewSeen,dayState,pickToday,todayLine,cueFor,lastLiftSession,todayPlan,cueSheet,railKey};
 })();
 (function hookProgressSelect(){
   const orig=NXT.selectPoint;
