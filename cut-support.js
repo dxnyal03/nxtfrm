@@ -517,7 +517,7 @@ const NXT = (() => {
     const pl=detectPlateau(rows),rate=pl.ok&&finite(pl.weeklyRate)!==null?pl.weeklyRate:s.change;
     if(rate===null)return base;
     const ref=(pl.ok&&finite(pl.lastAvg)!==null?pl.lastAvg:s.previous.avg)||s.current.avg,pct=ref?rate/ref*100:s.percent;
-    const kg=v=>signedFixed(v,2)+" kg/wk";
+    const kg=v=>signedFixed(v,2,"−")+" kg/wk";
     const fresh=lifts.filter(x=>x.delta!==null),holding=fresh.filter(x=>x.status==="Improving"||x.status==="Holding steady").length;
     const slipping=fresh.some(x=>x.status==="Watch"||x.status==="Review");
     const strengthLine=fresh.length?`${holding} of ${fresh.length} tracked lift${fresh.length===1?" is":"s are"} holding or improving.`:"Strength history is still building, so muscle retention is not yet assessable.";
@@ -648,7 +648,7 @@ const NXT = (() => {
     const tdeeThen=hist[0]?hist[0].tdee:null;
     const tdeeDrop=tdeeThen!==null&&tdeeNow!==null?tdeeThen-tdeeNow:null;
     const pct=v=>Math.round(v*100),kcal=n=>Number(n).toLocaleString("en-SG");
-    const rate=p.weeklyRate===null?"—":`${signedFixed(p.weeklyRate,2)} kg / week · ${p.spanDays||days} ${plural(p.spanDays||days,"day")}`;
+    const rate=p.weeklyRate===null?"—":`${signedFixed(p.weeklyRate,2,"−")} kg / week · ${p.spanDays||days} ${plural(p.spanDays||days,"day")}`;
     const rateTone=!p.ok||p.status==="undetermined"?"neutral":p.status==="losing"?"good":"watch";
     const adhValue=`Logged: ${adhLogged} of ${adhDays} days · ${pct(adhMean)}% weighted`;
     const adhTone=adhLogged===0?"neutral":adhMean>=.85?"good":"watch";
@@ -784,7 +784,7 @@ const NXT = (() => {
         <div class="n99-list-row"><span>Adaptive</span><small>${kcal(r.tdee)} kcal · your data</small></div>
         <div class="n99-list-row"><span>Difference</span><small>${diff===null?"—":signedKcal(diff)+" kcal / day"}</small></div>
       </div>
-      <p>Weight trending ${(weekly>0?"+":"")+weekly.toFixed(1)} kg / week, eating about ${kcal(r.intake)} kcal a day.</p>`);
+      <p>Weight trending ${signedFixed(weekly,1,"−")} kg / week, eating about ${kcal(r.intake)} kcal a day.</p>`);
   }
   function cardioWeek() { return (state.cardio||[]).filter(r=>r&&r.date>=weekStart()&&r.date<=state.date&&finite(r.duration)>0).reduce((s,r)=>s+Number(r.duration),0); }
   function completedWeek() { return new Set(workRows().filter(r=>r.date>=weekStart()).map(r=>r.date)).size; }
@@ -1517,6 +1517,8 @@ Object.assign(NXT, (()=>{
        trend yet it is the latest morning reading. */
     const nowName=nl?'Estimated level':'Latest morning';
     const nowWord=N.shortDate(nl?nl.date:(rows.at(-1)?rows.at(-1).date:state.date));
+    /* The caption ends where the level is measured (CONTRACTS §3): "now" only while that is today. */
+    const whenEnd=(nl?nl.date:(rows.at(-1)?rows.at(-1).date:state.date))===state.date?'now':nowWord;
     const nowNoteTxt=!nl?'From your latest morning reading. An estimated level starts once three mornings make a trend.':nl.source==='trend'?'Estimated level is your smoothed trend for now. A fitted line needs ten mornings in three weeks.':'';
     /* The legend reads in rail order, so after a net gain "Now" comes before "Start". */
     const startLab=`<span><b class="vn-num">${seed.toFixed(1)}</b>Start${first?`<i>${esc(N.shortDate(first))}</i>`:''}</span>`;
@@ -1564,7 +1566,7 @@ Object.assign(NXT, (()=>{
       const detB=`<button type="button" class="st-jr-act st-jr-det" id="st-jr-det" aria-expanded="${open}" aria-controls="st-jr-more" onclick="NXT.jrToggle()"><span>Details</span><i aria-hidden="true">⌄</i></button>`;
       return `<section class="vn-journey st-jr is-sum${open?' is-open':''}" aria-label="Cut journey"${canRewind?` data-st-jr="${esc(JSON.stringify(payload))}"`:''}>
       <div class="vn-sect-head"><p class="vn-h-sect">Cut journey</p>
-        <span class="vn-tiny st-jr-when">${first?esc(N.shortDate(first)):'Start'} → now</span>${share}</div>
+        <span class="vn-tiny st-jr-when">${first?esc(N.shortDate(first)):'Start'} → ${esc(whenEnd)}</span>${share}</div>
       <div class="st-jr-hero">
         <div><div class="st-jr-big vn-num"><span data-st-jr-done data-st-num>${Math.abs(done).toFixed(1)}</span><small>kg</small></div><p class="st-jr-sub" data-st-jr-sub>${sinceLine}</p></div>
         <div class="st-jr-togo">${togo}</div>
@@ -1582,7 +1584,7 @@ Object.assign(NXT, (()=>{
     }
     return `<section class="vn-journey st-jr" aria-label="Cut journey"${canRewind?` data-st-jr="${esc(JSON.stringify(payload))}"`:''}>
       <div class="vn-sect-head"><p class="vn-h-sect">Cut journey</p>
-        <span class="vn-tiny st-jr-when">${first?esc(N.shortDate(first)):'Start'} → now</span>${lv.length>=7?play:''}${share}</div>
+        <span class="vn-tiny st-jr-when">${first?esc(N.shortDate(first)):'Start'} → ${esc(whenEnd)}</span>${lv.length>=7?play:''}${share}</div>
       <div class="st-jr-hero">
         <div><div class="st-jr-big vn-num"><span data-st-jr-done data-st-num>${Math.abs(done).toFixed(1)}</span><small>kg</small></div><p class="st-jr-sub" data-st-jr-sub>${dir}${first&&elapsed>0?` in ${esc(sinceTxt)}`:''}</p></div>
         <div class="st-jr-togo">${remain>0?`<b class="vn-num"><span data-st-jr-togo data-st-num>${remain.toFixed(1)}</span> kg</b><span data-st-jr-togol>to your ${esc(hiTxt)} kg goal</span>`:cur>=lo?'<b>In range</b><span>your goal range</span>':`<b class="vn-num">${(lo-cur).toFixed(1)} kg</b><span>below your goal range</span>`}</div>
@@ -1766,7 +1768,7 @@ Object.assign(NXT, (()=>{
     if(pl&&pl.ok&&win.length){
       const rs=N.rateSpan(pl),n=win.length,m=`${n} ${N.plural(n,'morning')}`;
       full=`${rs.label} · ${m} to ${N.shortDate(win.at(-1).date)}`;
-      short=rs.full?`Last 4 weeks · ${m}`:`${rs.days} days · ${m}`;
+      const to=N.shortDate(win.at(-1).date);short=rs.full?`Last 4 wk · ${m} to ${to}`:`${rs.days} days · ${m} to ${to}`;
     }else{
       const n=win.length,m=`${n} ${N.plural(n,'morning')}`;
       const ready=model.points&&model.points.some(p=>p.avg!==null);
@@ -2059,8 +2061,18 @@ Object.assign(NXT, (()=>{
     /* x dates in the bottom lane, dropped where a gap label sits. */
     const xY=gutterRight?base+18:H-8;
     const xIdx=n<3?[...new Set([0,n-1])]:[0,Math.round((n-1)/2),n-1];
-    const xLabs=[...new Set(xIdx)].map((i,k,arr)=>({pt:points[i],anchor:arr.length===1?'start':k===0?'start':k===arr.length-1?'end':'middle'}))
-      .filter(l=>!gapLabs.some(g=>Math.abs(g.x-l.pt.x)<70))
+    /* Each tick keeps its slot only if its box clears the others by 10 px (first, last, then the middle one) and
+       clears the gap label; estimated at 7 px a character, so a short span shows fewer dates, never a collision. */
+    const wOf=t=>String(t).length*7,ext=(x,w,an)=>an==='start'?[x,x+w]:an==='end'?[x-w,x]:[x-w/2,x+w/2];
+    const cand=[...new Set(xIdx)].map((i,k,arr)=>({pt:points[i],anchor:arr.length===1?'start':k===0?'start':k===arr.length-1?'end':'middle'}));
+    const kept2=[],boxes=gapLabs.map(g=>ext(g.x,wOf(g.t),'middle'));
+    for(const l of [cand[0],cand[cand.length-1],...cand.slice(1,-1)].filter(Boolean)){
+      if(kept2.includes(l))continue;
+      const e=ext(l.pt.x,wOf(N.shortDate(l.pt.date)),l.anchor);
+      if(boxes.some(b=>e[0]<b[1]+10&&e[1]>b[0]-10))continue;
+      boxes.push(e);kept2.push(l);
+    }
+    const xLabs=kept2.sort((u,v)=>u.pt.x-v.pt.x)
       .map(l=>`<text class="wx-x" x="${px(l.pt.x)}" y="${xY}" text-anchor="${l.anchor}"${gutterRight?'':` fill="${CHART.axisText}" font-size="11"`}>${esc(N.shortDate(l.pt.date))}</text>`).join('')
       +gapLabs.map(g=>`<text class="wx-x wx-gaplab" x="${px(g.x)}" y="${xY}" text-anchor="middle">${esc(g.t)}</text>`).join('');
     /* Optional layers (spec §9): drawn only when on. */

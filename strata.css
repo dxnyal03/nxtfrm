@@ -185,6 +185,7 @@ svg.st-cmap :is(.st-ax,.st-cm-zl){font-size:11px !important}
 @property --st-a3{syntax:'<color>';inherits:true;initial-value:rgba(85,82,187,.16)}
 @property --st-a4{syntax:'<color>';inherits:true;initial-value:rgba(211,119,50,.08)}
 :root{transition:--st-a1 1.2s ease,--st-a2 1.2s ease,--st-a3 1.2s ease,--st-a4 1.2s ease}
+:root[data-nxp-motion="reduced"]{transition:none}
 :root[data-st-tab="train"]{--st-a1:rgba(124,58,237,.5);--st-a2:rgba(99,102,241,.22);--st-a3:rgba(168,85,247,.16);--st-a4:rgba(236,72,153,.08)}
 :root[data-st-tab="weight"]{--st-a1:rgba(139,92,246,.4);--st-a2:rgba(85,82,187,.2);--st-a3:rgba(180,154,255,.14);--st-a4:rgba(211,119,50,.1)}
 :root[data-st-tab="history"]{--st-a1:rgba(99,102,241,.34);--st-a2:rgba(211,119,50,.16);--st-a3:rgba(139,92,246,.18);--st-a4:rgba(196,181,253,.07)}
@@ -4476,9 +4477,16 @@ body:has(.cloud-local-banner:not([hidden])) #weightPage{--st-mast-mt:6px}
 
 /* 3d · Layers drawer: one 48 px row of 36 px chips (44 hit), scrolling sideways on phone with an edge fade;
    always in the DOM, hidden when closed. A disabled chip stays visible and says why (W5). */
-#weightPage .wx-layers{display:flex;align-items:center;gap:6px;height:48px;margin:0 calc(-1 * var(--wx-pad));padding:6px var(--wx-pad);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
-  -webkit-mask:linear-gradient(90deg,transparent 0,#000 var(--wx-pad),#000 calc(100% - var(--wx-pad)),transparent 100%);mask:linear-gradient(90deg,transparent 0,#000 var(--wx-pad),#000 calc(100% - var(--wx-pad)),transparent 100%)}
-#weightPage .wx-layers::-webkit-scrollbar{display:none}
+#weightPage .wx-layers{display:flex;flex-wrap:wrap;align-items:center;gap:0 6px;min-height:48px;margin:0 calc(-1 * var(--wx-pad));padding:0 var(--wx-pad);overflow:visible;
+  }
+#weightPage .wx-layers>*{margin:6px 0}
+/* The Layers drawer on its own: two columns, no sideways scroll; a disabled chip's reason sits under its name. */
+#weightPage #wx-layers{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 8px;padding-bottom:6px}
+#weightPage #wx-layers .wx-lc{height:auto;min-height:36px;min-width:0;padding:6px 10px;white-space:normal;text-align:left;flex-wrap:wrap;row-gap:1px;align-content:center;margin:4px 0}
+#weightPage #wx-layers .wx-lc>span{min-width:0}
+#weightPage #wx-layers .wx-lc small{flex-basis:100%;padding-left:23px;margin-top:-1px}
+#weightPage #wx-layers .wx-lc small::before{content:none}
+#weightPage #wx-layers .wx-fixed{margin:6px 0}
 #weightPage .wx-layers[hidden]{display:none}
 #weightPage .wx-fixed{flex:none;display:inline-flex;align-items:center;gap:6px;font:500 calc(12px*var(--wx-s))/calc(18px*var(--wx-s)) var(--st-font);color:var(--st-ink-3);white-space:nowrap;padding-right:4px}
 #weightPage .wx-fixed .vn-key-raw{width:7px;height:7px;border-radius:50%;background:#DCD5EE}
@@ -4696,8 +4704,9 @@ body:has(.cloud-local-banner:not([hidden])) #weightPage{--st-mast-mt:6px}
 #weightPage .wx-cmp-b i{font-style:normal;font-size:calc(13px*var(--wx-s));color:var(--st-ink-2)}
 #weightPage .wx-cmp-b:focus-visible,#weightPage .wx-cmp-done:focus-visible{outline:2px solid #CDBBFF;outline-offset:2px}
 #weightPage .wx-cmp-b.is-off{color:var(--st-ink-3);cursor:default;background:rgba(var(--st-hl),.04);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.06)}
-#weightPage .wx-cmp-off{flex:none;display:inline-flex;align-items:center;gap:6px;min-width:0}
-#weightPage .wx-cmp-off small{font:450 calc(11.5px*var(--wx-s))/calc(14px*var(--wx-s)) var(--st-font);color:var(--st-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+#weightPage .wx-cmp-off{flex:0 1 auto;display:inline-flex;align-items:center;gap:6px;min-width:0}
+#weightPage .wx-sum-h>.wx-cmp-off{display:inline-flex;flex:0 1 62%;overflow:visible;-webkit-line-clamp:unset}
+#weightPage .wx-cmp-off small{font:450 calc(11.5px*var(--wx-s))/calc(14px*var(--wx-s)) var(--st-font);color:var(--st-ink-3);white-space:normal;min-width:0}
 #weightPage .wx-slot.is-cmp{min-height:0}
 #weightPage .wx-cmp-h{display:flex;align-items:center;gap:8px}
 #weightPage .wx-cmp-h .wx-sum-h{flex:1;min-width:0}
