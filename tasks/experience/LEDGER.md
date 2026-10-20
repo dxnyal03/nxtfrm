@@ -27,4 +27,7 @@ main or deploy. RELEASE 163. Phone first (320–430 px); desktop layouts withdra
 | Stage 7 proposals (EWMA, rate range, arrival) | owner decision; nxtfrm-analysis-specialist / Opus only for a bounded question | pending owner | ANALYTICS-STUDY.md, cache patches | reviewed by skeptics | ask the owner; implement with Sonnet |
 | Today: Latest Evo scan tile restored (D147, owner request) | builder / Sonnet 5.5 medium | done | `040d9c4` | 28 suites 0 FAIL; 390/375/320 checked | pill colours vs D42 (less fat = mint) to confirm in the fix round |
 | Weight plate declutter (D148, owner feedback) | builder / Sonnet 5.5 medium (running) | in progress | — | — | before/after to the owner |
+| Today log strip as two cards (D149, owner) | builder / Sonnet 5.5 medium | done | `cca3efe` | 27/28 (forecast-time flake from the concurrent edit) | re-check in the fix round |
+| Today fix round (M2, M3, m4, m5) | builder / Sonnet 5.5 medium (running) | in progress | — | — | — |
+| Stage 6a · one sheet system (owner 2026-10-20: entry sheets "not consistent with the rest of the app") | builder / Sonnet | queued | Log cardio, weigh-in, pickers, note, cardio edit, Why/review, ask | — | after the fix rounds; owner screenshot in cache `checkpoint/owner-sheet-feedback.png` |
 | Stage 6 remaining pages | builders / Sonnet | queued | — | — | after the checkpoint is reviewable |
