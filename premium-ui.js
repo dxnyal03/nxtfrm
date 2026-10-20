@@ -309,7 +309,7 @@ const NXP = (() => {
       finishedAt:dsToday&&dsToday.finished?tfClock(dsToday.finished.at):'',movedFrom,reason:dsToday&&dsToday.reason,
       cardioMin:cardioMins,cardioTarget,next:nextLift,cutStart:settings.cutStart,lead:{variant:pick.lead.variant,title:leadTitle}});
     const ctxHTML=ctx.variant==='watch'
-      ?`<button type="button" class="tf-ctx is-watch" onclick="NXP.toLead()" aria-label="${esc(`Watch: ${ctx.watchTitle}. ${pick.lead.kind==='decision'?'Read the weight decision below.':'Read it below.'}`)}"><span class="tf-f tf-w"><i class="tf-sv is-watch" aria-hidden="true"></i>Watch</span><span class="tf-sep" aria-hidden="true"> · </span><span class="tf-f tf-wt-t">${esc(ctx.watchTitle)}</span><span class="tf-f tf-rb"><span class="tf-sep" aria-hidden="true"> · </span>Read below <span aria-hidden="true">↓</span></span></button>`
+      ?`<button type="button" class="tf-ctx is-watch" onclick="NXP.toLead()" aria-label="${esc(`Watch: ${ctx.watchTitle}. ${pick.lead.kind==='decision'?'Read the weight decision below.':'Read it below.'}`)}"><span class="tf-ci"><span class="tf-f tf-w"><i class="tf-sv is-watch" aria-hidden="true"></i>Watch</span><span class="tf-sep" aria-hidden="true"> · </span><span class="tf-f tf-wt-t">${esc(ctx.watchTitle)}</span><span class="tf-f tf-rb"><span class="tf-sep" aria-hidden="true"> · </span>Read below <span aria-hidden="true">↓</span></span></span></button>`
       :ctx.length?`<p class="tf-ctx">${ctx.map((f,i)=>`${i?'<span class="tf-sep" aria-hidden="true"> · </span>':''}<span class="tf-f${f.strong?' is-s':''}">${f.strong?esc(f.t).replace(/\d+(?:[/:]\d+)?/g,'<b>$&</b>'):esc(f.t)}</span>`).join('')}</p>`:'';
     /* Stage 5 — four surfaces: the focus card, the log strip, one lead interpretation and the digest
        (D120). The lead sits after the log strip unless it is a genuine concern (afterFocus). */
@@ -731,7 +731,7 @@ const NXP = (() => {
       if(d!==null&&word)read.push({k,dir,t:dir==='eq'?`${word} unchanged`:`${word} ${dir==='dn'?'down':'up'} ${amt}${unit==='%'?'':' kg'}${unit==='%'?' pts':''}`+(k==='muscleMass'&&dir==='dn'?' (watch)':'')});
       return `<span class="tf-sc-c" style="--c:${c}"><small>${label}</small><b class="vn-num">${v.toFixed(1)}<em>${unit}</em></b>${d===null?'':`<span class="wx-chip ${tone(k,dir)}">${ARW[dir]}${dir==='eq'?'0.0':amt}</span>`}</span>`;
     };
-    const cells=cell('bodyFat','Fat %','%','var(--st-fat)','Fat')+cell('fatMass','Fat mass','kg','var(--st-fat)',null)+cell('muscleMass','Muscle','kg','var(--st-lean)','Muscle')+cell('weight','Weight','kg','var(--st-weight)','Weight');
+    const cells=cell('bodyFat','Fat %','%','var(--st-fat)','Fat')+cell('fatMass','Fat mass','kg','var(--st-fat)',null)+cell('muscleMass','Muscle','kg','var(--st-lean)','Muscle')+cell('weight','Scan weight','kg','var(--st-weight)','Weight');
     const fatMassRead=(()=>{if(read.some(r=>r.k==='bodyFat'))return null;const v=N.finite(L.fatMass),pv=P?N.finite(P.fatMass):null;if(v===null||pv===null)return null;const d=v-pv;return Math.abs(d)<0.05?'Fat mass unchanged':`Fat mass ${d<0?'down':'up'} ${Math.abs(d).toFixed(1)} kg`;})();
     const parts=read.map(r=>r.t);if(fatMassRead)parts.unshift(fatMassRead);
     const line=P?(parts.length?parts.join(' · '):'Nothing to compare on this scan yet'):'First scan on record · nothing to compare yet';
@@ -1365,9 +1365,11 @@ const NXP = (() => {
     const logs=N.sessionLogs(),working=logs.filter(r=>r.setType!=='warmup');
     const sets=list.reduce((a,e)=>a+Number(e.sets),0);
     const logged=list.reduce((a,e)=>a+Math.min(N.done(e.name),Number(e.sets)),0);
-    const title=working.length?'Resume workout':'Start workout';
-    /* D105 — the same word as the rail and the tile once every planned set is logged. */
-    const ds=dayState(state.date,null,null),dsCat=ds&&ds.k==='complete'?'Planned sets complete':working.length?'In progress':'Ready when you are';
+    /* D105 — the same word as the rail and the tile once every planned set is logged, and the same action: Finish. */
+    const ds=dayState(state.date,null,null),allIn=!!(ds&&ds.setsComplete&&!ds.finished);
+    const title=allIn?'Finish workout':working.length?'Resume workout':'Start workout';
+    const ctaFn=allIn?'NXT.finish()':'NXP.enterTrain()';
+    const dsCat=ds&&ds.k==='complete'?'Planned sets complete':working.length?'In progress':'Ready when you are';
     const plan=list.map((e,i)=>{
       const done=N.done(e.name);
       const prev=N.sessionRows(e.name,state.gym,state.date,100).at(-1);
@@ -1393,7 +1395,7 @@ const NXP = (() => {
           ${logged?ringHTML(logged,sets,'sets','var(--st-lift)'):''}
         </div>
         ${muscleMapHTML(list.map(e=>e.name),'Today’s focus','')}
-        <button type="button" class="st-cta" onclick="NXP.enterTrain()">${esc(title)}<span aria-hidden="true">›</span></button>
+        <button type="button" class="st-cta" onclick="${ctaFn}">${esc(title)}<span aria-hidden="true">›</span></button>
       </section>
       <section class="st-plan"><div class="st-plan-h"><h2 class="st-sect">Session plan</h2><button type="button" class="st-link" onclick="NXP.sessionMenu()">Options<span aria-hidden="true">›</span></button></div>${plan}</section>
     </div>`;

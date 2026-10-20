@@ -3252,9 +3252,9 @@ html::after{content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;opa
 #weightPage .nxp-progress-chrome>div>p,#historyPage .vn-hist-chrome>div>p{margin:0 !important;font:520 calc(13px*var(--wx-s))/1.3 var(--st-font-d) !important;letter-spacing:.01em !important;text-transform:none !important;
   color:color-mix(in srgb,var(--st-accent-lift) 70%,var(--st-ink-3)) !important}
 #homePage .st-head .st-h1,#trainPage .nxp-train-chrome h1,#weightPage .nxp-progress-chrome h1,#historyPage .vn-hist-chrome h1,#morePage .vn-set-title{
-  font-size:calc(34px*var(--wx-sn)) !important;line-height:1.05 !important;margin-top:4px !important;letter-spacing:-.04em !important}
+  font-size:calc(34px*var(--wx-sn,1)) !important;line-height:1.05 !important;margin-top:4px !important;letter-spacing:-.04em !important}
 #morePage .vn-set-title{margin:calc(6px + 16.9px + 4px) 0 18px !important}
-@media (max-width:359px){#homePage .st-head .st-h1,#trainPage .nxp-train-chrome h1,#weightPage .nxp-progress-chrome h1,#historyPage .vn-hist-chrome h1,#morePage .vn-set-title{font-size:calc(30px*var(--wx-sn)) !important}}
+@media (max-width:359px){#homePage .st-head .st-h1,#trainPage .nxp-train-chrome h1,#weightPage .nxp-progress-chrome h1,#historyPage .vn-hist-chrome h1,#morePage .vn-set-title{font-size:calc(30px*var(--wx-sn,1)) !important}}
 
 /* ---- D71 · Tab transitions (calmer, owner 2026-10-19) ---------------------------------------------------
    A short crossfade with the title easing a few points in the direction of travel. Nothing flies across the
@@ -4361,6 +4361,8 @@ body.st-live-on main::after{height:76px}
   --wx-s:1;--wx-sn:1;/* text scale: 1, or 1.12 / 1.06 (numerals) under Larger text (spec §17, D145) */
   --wx-fs-h2:calc(20px*var(--wx-s));--wx-fs-cap:calc(var(--fs-label)*var(--wx-s));--wx-fs-lab:calc(var(--fs-label)*var(--wx-s));--wx-fs-num:calc(32px*var(--wx-sn));--wx-fs-unit:calc(15px*var(--wx-s));--wx-fs-sum:calc(21px*var(--wx-sn));--wx-fs-tick:calc(11.5px*var(--wx-s));--wx-fs-tag:calc(12.5px*var(--wx-s));
 }
+:root{--wx-s:1;--wx-sn:1}/* the masthead H1s on every page read these (B1) */
+:root[data-nxp-size="large"]{--wx-s:1.12;--wx-sn:1.06}
 :root[data-nxp-size="large"] #weightPage{--wx-s:1.12;--wx-sn:1.06}
 @media (max-width:359px){#weightPage{--wx-pad:10px}}
 
