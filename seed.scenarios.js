@@ -440,18 +440,20 @@
   /* ---- The badge: one fixed element on document.body, outside every page, so page re-renders cannot remove
      it. Shown only while a marker is set; absent otherwise. Styles are injected here (no stylesheet). ---- */
   const BADGE_ID = 'nxt-scenario-badge';
-  const BADGE_CSS = `#${BADGE_ID}{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:12px;z-index:10090;pointer-events:none;` +
-    `font:500 12px/1 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;letter-spacing:.01em;white-space:nowrap;` +
-    `color:var(--st-ink-2,#B9B5C8);background:rgba(var(--st-hl,255,255,255),.08);border:1px solid rgba(var(--st-hl,255,255,255),.12);` +
-    `box-shadow:inset 0 1px 0 rgba(var(--st-hl,255,255,255),.07);border-radius:999px;padding:7px 11px;` +
-    `-webkit-backdrop-filter:blur(12px) saturate(1.2);backdrop-filter:blur(12px) saturate(1.2)}`;
+  const BADGE_CSS = `#${BADGE_ID}{display:block;margin:0;padding:calc(env(safe-area-inset-top,0px) + 6px) 12px 6px;text-align:center;` +
+    `font:500 12px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;letter-spacing:.01em;` +
+    `color:var(--st-ink-2,#B9B5C8);background:rgba(var(--st-hl,255,255,255),.06);border-bottom:1px solid rgba(var(--st-hl,255,255,255),.1)}` +
+    `#cloudLocalBanner:not([hidden]) + #${BADGE_ID}{padding-top:6px}`;
   let badgeObserver = null;
 
-  /* The badge sits under the status bar, or under the local-only banner while that is on screen. */
+  /* The badge is a static strip in the document flow, after the local-only banner when there is one, so it
+     never covers a control and scrolls with the page. */
   function placeBadge(el) {
     const banner = document.getElementById('cloudLocalBanner');
-    const r = banner && !banner.hidden ? banner.getBoundingClientRect() : null;
-    el.style.top = r && r.height > 0 && r.bottom > 0 ? Math.round(r.bottom + 8) + 'px' : '';
+    const want = banner && banner.parentNode ? banner.nextElementSibling : document.body.firstElementChild;
+    if (want === el) return;
+    if (banner && banner.parentNode) banner.insertAdjacentElement('afterend', el);
+    else document.body.insertBefore(el, document.body.firstChild);
   }
 
   function mountBadge(name) {
@@ -472,7 +474,6 @@
     }
     el.dataset.scenario = name;
     el.textContent = 'Synthetic data · ' + name;
-    if (el.parentNode !== document.body) document.body.appendChild(el);
     placeBadge(el);
     if (!el.dataset.placed) {
       el.dataset.placed = '1';
