@@ -45,7 +45,7 @@ const NXT = (() => {
      Day-to-day spread off, Notes on, Projection and Post-workout off as before), the Layers drawer and Expand flags,
      the compare request, the Open day return point and the measured chart widths. */
   const ui = {view:"overview", range:30, showGoal:false, showPost:false, showForecast:false, selected:null, draft:null, lastFocus:null,
-    showWeekly:false, showSpread:false, showNotes:true, layersOpen:false, expanded:false, compare:null, returnTo:null, chartW:{}, wxWide:false};
+    showWeekly:false, showSpread:false, showNotes:true, layersOpen:false, expanded:false, compare:null, returnTo:null, chartW:{}};
   function cfg() {
     if(!settings.cutSupport || typeof settings.cutSupport!=="object" || Array.isArray(settings.cutSupport))settings.cutSupport={};
     const c=settings.cutSupport;
@@ -1290,7 +1290,7 @@ Object.assign(NXT, (()=>{
      of literals. With no kind (N.ui.chartKind unset), or wherever nothing can be measured (node tests, no window
      size), it is exactly the frame the chart has always had — 420 × 460 viewBox units, left gutter 34, right 8, top
      28, bottom 110, readings 12 inside the edges — so the default render and every contract test are unchanged.
-     The measured kinds ('page', 'wide', 'expand') use 1 SVG unit = 1 CSS px, so text never scales: W is the wrap's
+     The measured kinds ('page', 'expand') use 1 SVG unit = 1 CSS px, so text never scales: W is the wrap's
      measured width (N.ui.chartW[kind], set by the presentation layer) or an estimate from the viewport, and the plot
      height comes from the small viewport height (100svh), which Safari's collapsing toolbar does not change. */
   const GEO_LEGACY={W:420,H:460,left:34,right:8,top:28,bottom:110,padX:12,plotH:322,gutter:"left",kind:"legacy"};
@@ -1315,8 +1315,8 @@ Object.assign(NXT, (()=>{
     const svh=chartSvh()||Number(w.innerHeight)||844;
     const narrow=vw<360,gutter=narrow?12:16,platePad=narrow?10:14;
     const measured=N.ui.chartW&&Number(N.ui.chartW[kind]);
-    const W=Math.round(measured>0?measured:kind==="expand"?vw-2*gutter:kind==="wide"?clampN(580,vw-140-24-340-2*platePad,820):vw-2*gutter-2*platePad);
-    const plotH=Math.round(kind==="wide"?clampN(300,svh-470,440):kind==="expand"?Math.max(232,(N.ui.expandH>0?N.ui.expandH:svh-324)):clampN(232,Math.round(svh*.355),320));
+    const W=Math.round(measured>0?measured:kind==="expand"?vw-2*gutter:vw-2*gutter-2*platePad);
+    const plotH=Math.round(kind==="expand"?Math.max(232,(N.ui.expandH>0?N.ui.expandH:svh-324)):clampN(232,Math.round(svh*.355)-(N.ui.layersOpen?12:0),320));/* Layers open: 12 px off the page plot keeps it above the live dock (spec §19.6, D146) */
     const left=6,right=42,top=11,bottom=26;
     return {W,H:top+plotH+bottom,left,right,top,bottom,padX:9,plotH,gutter:"right",kind,svh};
   }
@@ -1563,7 +1563,7 @@ Object.assign(NXT, (()=>{
         <div><div class="st-jr-big vn-num"><span data-st-jr-done data-st-num>${Math.abs(done).toFixed(1)}</span><small>kg</small></div><p class="st-jr-sub" data-st-jr-sub>${sinceLine}</p></div>
         <div class="st-jr-togo">${togo}</div>
       </div>
-      ${canRewind?'<div class="st-jr-rw" hidden><span class="st-jr-rwc"><i aria-hidden="true">◷</i>Rewound · <b data-st-jr-rwd></b> · <span data-st-jr-rwk></span></span><button type="button" class="st-jr-back" hidden>Back to today</button></div>':''}
+      ${canRewind?'<div class="st-jr-rw" hidden><span class="st-jr-rwc"><i aria-hidden="true">◷</i><span class="st-jr-rww">Rewound · </span><b data-st-jr-rwd></b><span class="st-sr"> · <span data-st-jr-rwk></span></span></span><button type="button" class="st-jr-back" hidden>Back to today</button></div>':''}
       ${railHTML}
       ${canRewind?`<p class="st-sr" id="st-jr-sum">${esc(sum)} Drag along the bar, or use the arrow keys, to rewind to an earlier day.</p>`:''}
       <div class="st-jr-labs is-sum" aria-hidden="true">${back?nowLabS+startLabS:startLabS+nowLabS}${goalLabS}</div>
@@ -1911,8 +1911,8 @@ Object.assign(NXT, (()=>{
   /* The plate (spec §2): the only lit edge above the fold. No nested <section>: the contract reads the chart
      HTML up to the first </section>. */
   function plateHTML(model,idx,animClass) {
-    const p=model.points[idx],n=model.points.length,isLatest=idx===n-1,wide=!!N.ui.wxWide;
-    return `<section class="wx-plate n99-chart${isLatest?'':' is-hist'}${wide?' is-wide':''}" id="vn-weight" aria-labelledby="wx-h" data-wx-timing="${pointTiming(p)==='Morning'?'morning':'other'}">
+    const p=model.points[idx],n=model.points.length,isLatest=idx===n-1;
+    return `<section class="wx-plate n99-chart${isLatest?'':' is-hist'}" id="vn-weight" aria-labelledby="wx-h" data-wx-timing="${pointTiming(p)==='Morning'?'morning':'other'}">
       ${interpretationHTML(model)}
       ${readoutsHTML(model,idx)}
       ${rangeRowHTML(model,idx)}
@@ -1921,26 +1921,22 @@ Object.assign(NXT, (()=>{
         onpointerdown="NXT.scrub(event)" onpointermove="NXT.scrub(event)" onpointerup="NXT.scrubUp(event)" onpointercancel="NXT.scrubCancel(event)"
         onkeydown="NXT.chartKey(event)">${plotHTML(model,{idx,animClass})}</div>
       ${legendHTML(model)}
-      ${wide?selectionHTML(model,idx,true):''}
       <p class="st-sr" id="wx-sr-sum">${esc(srSummary(model))}</p>
       <p class="st-sr" id="wx-sel-sr" aria-live="polite"></p>
-      <div class="wx-slot${model.compare?' is-cmp':''}" id="wx-slot" data-wx-slot="${N.ui.selected&&!isLatest?'select':'summary'}">${model.compare?compareHTML(model):rangeReadHTML(model)}${wide?'':selectionHTML(model,idx,false)}</div>
+      <div class="wx-slot${model.compare?' is-cmp':''}" id="wx-slot" data-wx-slot="${N.ui.selected&&!isLatest?'select':'summary'}">${model.compare?compareHTML(model):rangeReadHTML(model)}${selectionHTML(model,idx)}</div>
       <input type="hidden" id="n99-chart-slider" value="${idx}" aria-hidden="true">
     </section>`;
   }
-  /* The inspector (spec §8.4, §4). On a phone the plate's slot swaps from the range summary to this bar while a
-     day is selected: the selected date with × (Back to latest), the day's context from NXP.dayState (D105) as a
-     link to the day, then + Note and Open day. On a wide layout the same content is a persistent strip under the
-     plot, which at the latest reading reads "Selected · Latest · Mon 19 Oct" and carries ↺ Back to latest only
-     while historical. One of the two is in the DOM at a time (a render-time choice), so the ids are unique and
-     selectPoint writes to whichever exists. */
-  function selectionHTML(model,idx,strip) {
+  /* The inspector (spec §8.4, §4; phone-first, D144). The plate's slot swaps from the range summary to this bar
+     while a day is selected: the selected date with × (Back to latest), the day's context from NXP.dayState (D105)
+     as a link to the day, then + Note and Open day. It is the same bar at every width. */
+  function selectionHTML(model,idx) {
     const p=model.points[idx],isLatest=idx===model.points.length-1,ctx=dayContext(p.date);
-    const x=`<button type="button" class="wx-sel-x" id="wx-sel-x" aria-label="Back to latest" onclick="NXT.backToLatest()"${strip&&isLatest?' hidden':''}>${strip?'<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 1 0 1.5-3.5M3 2.6v2.6h2.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Back to latest</span>':'<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'}</button>`;
-    return `<div class="${strip?'wx-insp':'wx-sel'}" id="wx-sel" role="group" aria-label="Selected day">
-        <div class="wx-sel-r1"><span class="wx-sel-h">Selected · <span id="wx-sel-l"${isLatest?'':' hidden'}>Latest · </span><b id="wx-sel-d">${esc(dayDate(p.date))}</b></span>${strip?'':x}</div>
-        <button type="button" class="wx-sel-ctx${ctx.quiet?' is-quiet':''}" id="wx-sel-ctx" data-date="${p.date}" onclick="NXT.openChartDay(this.dataset.date)" aria-label="${esc((strip?'That day: ':'')+ctx.text)}. Open in History">${strip?'<span class="wx-sel-k">That day</span>':''}<span id="wx-sel-ctxt">${esc(ctx.text)}</span><i aria-hidden="true">›</i></button>
-        <div class="wx-sel-r3"><span id="wx-sel-note-h">${noteChipHTML(p.date,'wx-sel-note')}</span><button type="button" class="wx-sel-open" id="wx-sel-open" data-date="${p.date}" onclick="NXT.openChartDay(this.dataset.date)">Open day<i aria-hidden="true"> ›</i></button>${strip?x:''}</div>
+    const x=`<button type="button" class="wx-sel-x" id="wx-sel-x" aria-label="Back to latest" onclick="NXT.backToLatest()"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>`;
+    return `<div class="wx-sel" id="wx-sel" role="group" aria-label="Selected day">
+        <div class="wx-sel-r1"><span class="wx-sel-h">Selected · <span id="wx-sel-l"${isLatest?'':' hidden'}>Latest · </span><b id="wx-sel-d">${esc(dayDate(p.date))}</b></span>${x}</div>
+        <button type="button" class="wx-sel-ctx${ctx.quiet?' is-quiet':''}" id="wx-sel-ctx" data-date="${p.date}" onclick="NXT.openChartDay(this.dataset.date)" aria-label="${esc(ctx.text)}. Open in History"><span id="wx-sel-ctxt">${esc(ctx.text)}</span><i aria-hidden="true">›</i></button>
+        <div class="wx-sel-r3"><span id="wx-sel-note-h">${noteChipHTML(p.date,'wx-sel-note')}</span><button type="button" class="wx-sel-open" id="wx-sel-open" data-date="${p.date}" onclick="NXT.openChartDay(this.dataset.date)">Open day<i aria-hidden="true"> ›</i></button></div>
       </div>`;
   }
   /* The day's context for the inspector: the D105 state from NXP.dayState ("Full Body A · In progress · 6 of 15
@@ -2221,10 +2217,15 @@ Object.assign(NXT, (()=>{
   function toggleLayers(force) {
     N.ui.layersOpen=force===undefined?!N.ui.layersOpen:!!force;
     const d=typeof document!=='undefined'&&document.getElementById('wx-layers'),b=d&&document.getElementById('wx-lyb');
-    const apply=()=>{if(d)d.hidden=!N.ui.layersOpen;if(b)b.setAttribute('aria-expanded',String(N.ui.layersOpen));};
+    const apply=()=>{if(d)d.hidden=!N.ui.layersOpen;if(b)b.setAttribute('aria-expanded',String(N.ui.layersOpen));
+      /* Inside Expand the drawer takes height from the plot (re-fit it, w5) rather than scrolling the body. */
+      if(N.ui.expanded&&XV.d&&typeof xvFit==='function'){xvFit();repaintPlot();}
+      else if(!N.ui.expanded&&N.ui.chartKind==='page'&&typeof document!=='undefined'&&document.getElementById('vn-chart-wrap'))repaintPlot();};
     /* The drawer opens and closes as one movement (STRATA.morph, 240 ms; a plain change under reduced motion). */
     const plate=d&&d.closest?d.closest('.wx-plate'):null;
     if(plate&&typeof STRATA==='object'&&STRATA&&typeof STRATA.morph==='function')STRATA.morph(plate,apply);else apply();
+    /* The readouts and slot settle a frame after the drawer (their rows re-flow), so Expand fits once more. */
+    if(N.ui.expanded&&XV.d&&typeof requestAnimationFrame==='function')requestAnimationFrame(()=>{if(N.ui.expanded){xvFit();repaintPlot();xvSettle();}});
     return N.ui.layersOpen;
   }
   function layerChip(name,el) {
@@ -2370,7 +2371,12 @@ Object.assign(NXT, (()=>{
     if(host&&host.appendChild)host.appendChild(d);
     return d;
   }
-  function xvRangeWords() { const m=N.ui.chart;return m&&m.start?`${rangeName()} · ${spanText(m.start,state.date)}`:rangeName(); }
+  function xvRangeWords() {
+    const m=N.ui.chart,cv=N.ui.compare&&m&&m.compare&&m.compare.ok?m.compare:null;
+    /* While comparing, the header names the two windows that are compared, not the widened x-window (w5). */
+    if(cv&&cv.cw&&cv.cw.before&&cv.cw.current){const w=cv.cw,end=x=>x.to>state.date?state.date:x.to;return `${spanText(w.before.from,end(w.before))} vs ${spanText(w.current.from,end(w.current))}`;}
+    return m&&m.start?`${rangeName()} · ${spanText(m.start,state.date)}`:rangeName();
+  }
   /* The plot takes the dialog's remaining height: everything else in the dialog measured, the rest to the plot. */
   function xvFit() {
     const d=XV.d,wrap=document.getElementById('vn-chart-wrap');if(!d||!wrap)return;
@@ -2380,6 +2386,14 @@ Object.assign(NXT, (()=>{
     const avail=dh-others-24;
     N.ui.expandH=Math.max(232,Math.round(avail-(6+11+26)));
     const w=Math.round(Number(wrap.clientWidth)||0);N.ui.chartW=N.ui.chartW||{};if(w>0)N.ui.chartW.expand=w;
+  }
+  /* After a re-fit, the rows around the plot may have re-flowed: take any remaining overflow off the plot (twice at most). */
+  function xvSettle() {
+    for(let i=0;i<2;i++){
+      const b=XV.body,over=b?Number(b.scrollHeight)-Number(b.clientHeight):0;
+      if(!(over>0)||!(N.ui.expandH>232))break;
+      N.ui.expandH=Math.max(232,N.ui.expandH-over);repaintPlot();
+    }
   }
   /* Re-render the plot in place for the current kind (page or expand), keeping the model, selection and lane. */
   function repaintPlot() {
@@ -2581,7 +2595,7 @@ Object.assign(NXT, (()=>{
     const words=pointWords(p),wrap=document.getElementById('vn-chart-wrap');
     if(wrap&&wrap.getAttribute('role')==='slider'){wrap.setAttribute('aria-valuenow',index);wrap.setAttribute('aria-valuetext',words);}
     if(opts&&opts.announce)text('wx-sel-sr',words);
-    /* The inspector (spec §8.4): the selection bar on a phone or the strip on a wide layout, whichever is in the DOM. */
+    /* The inspector (spec §8.4): the selection bar. */
     if(document.getElementById('wx-sel')){
       const ctx=dayContext(p.date),cb=document.getElementById('wx-sel-ctx');
       text('wx-sel-d',dayDate(p.date));
@@ -2590,7 +2604,6 @@ Object.assign(NXT, (()=>{
       text('wx-sel-ctxt',ctx.text);
       html('wx-sel-note-h',noteChipHTML(p.date,'wx-sel-note'));
       const ob=document.getElementById('wx-sel-open');if(ob)ob.dataset.date=p.date;
-      const xb=document.getElementById('wx-sel-x');if(xb&&xb.querySelector('span'))xb.hidden=isLatest;
     }
   }
   /* "Monday 28 September: morning 83.1 kilograms, smoothed trend 83.7, 0.6 below trend." The screen-reader form of

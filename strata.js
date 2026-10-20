@@ -108,11 +108,6 @@ const STRATA = (() => {
   /* Width watch: the chart is drawn for the wrap's measured width (NXT.ui.chartW[kind]). A change of more than
      2 px, or of the 24 px svh bucket / orientation (window resize), re-renders the Weight page once. */
   let chartRO = null, chartRT = 0;
-  function pageContentWidth() {
-    const pg = document.getElementById("weightPage"); if (!pg) return 0;
-    const cs = getComputedStyle(pg);
-    return pg.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
-  }
   function watchChartWidth(wrapEl, m) {
     if (!wrapEl || !m.geo || !m.geo.kind || m.geo.kind === "legacy") return;
     const kind = m.geo.kind, check = () => {
@@ -121,12 +116,6 @@ const STRATA = (() => {
       NXT.ui.chartW = NXT.ui.chartW || {};
       const was = NXT.ui.chartW[kind];
       NXT.ui.chartW[kind] = w;
-      /* The wide layout is a render-time choice from the page's measured content box (spec §4: ≥ 944 px, about an
-         1108 px viewport; until the two-column grid lands the column is capped at 600, so the viewport rule stands in
-         for it). Crossing it re-renders once, so the inspector strip and the selection bar are never both in the DOM. */
-      const wasWide = !!NXT.ui.wxWide, wide = pageContentWidth() >= 944 || (window.innerWidth || 0) >= 1108;
-      NXT.ui.wxWide = wide;
-      if (wide !== wasWide && typeof renderWeight === "function") { renderWeight(); return; }
       if (NXT.chartGeoChanged(cur.geo, NXT.chartGeo(kind)) && typeof renderWeight === "function") renderWeight();
       else if (was !== w && Math.abs(w - cur.W) > 2 && typeof renderWeight === "function") renderWeight();
     };
@@ -1980,7 +1969,7 @@ const STRATA = (() => {
     set("[data-st-jr-done]", Math.abs(done).toFixed(1));
     set("[data-st-jr-sub]", `${done >= .05 ? "down" : done <= -.05 ? "up" : "no change"} by ${ds}`);
     if (q("[data-st-jr-togo]")) { set("[data-st-jr-togo]", Math.max(0, togo).toFixed(1)); set("[data-st-jr-togol]", togo > 0 ? "to go that day" : "in your range that day"); }
-    set("[data-st-jr-nowv]", v.toFixed(1)); jrWord("Then", ds);
+    set("[data-st-jr-nowv]", v.toFixed(1)); jrWord("Estimated level", ds);
     if (when) when.textContent = (d.first ? shortDate(d.first) : shortDate(d.pts[0][0])) + " \u2192 " + ds;
     if (rw) { const rd = rw.querySelector("[data-st-jr-rwd]"), rk = rw.querySelector("[data-st-jr-rwk]"); if (rd) rd.textContent = ds; if (rk) rk.textContent = `${Math.abs(done).toFixed(1)} kg ${done >= .05 ? "down" : done <= -.05 ? "up" : "no change"}`; }
     const pv = jrPct(d, v), ps = jrPct(d, d.seed), pn = jrPct(d, d.now);

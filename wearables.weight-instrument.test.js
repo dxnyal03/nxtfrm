@@ -188,8 +188,7 @@ test("chartGeo('page') in a measured window: 1 unit = 1 px, right gutter, plotH 
   assert.strictEqual(withViewport(375, 667, n => n.chartGeo("page")).plotH, 237);
   assert.strictEqual(withViewport(320, 568, n => n.chartGeo("page")).plotH, 232, "floor");
   assert.strictEqual(withViewport(1024, 1366, n => n.chartGeo("page")).plotH, 320, "ceiling");
-  assert.strictEqual(withViewport(1280, 800, n => n.chartGeo("wide")).plotH, 330, "wide: svh − 470");
-  assert.strictEqual(withViewport(1440, 900, n => n.chartGeo("wide")).plotH, 430);
+  assert.strictEqual(withViewport(1280, 800, n => n.chartGeo("page")).plotH, 284, "a wide viewport keeps the phone plot (D144): round(800 × .355)");
   assert.strictEqual(withViewport(390, 844, n => { n.ui.chartW.page = 362; return n.chartGeo("page"); }).W, 362, "a measured width wins");
 });
 
@@ -695,24 +694,20 @@ test("layerState: every chip carries its name, default and (when unavailable) th
   assert.ok(/data-wx-layer="post" aria-pressed="false" aria-disabled="true" aria-describedby="wx-why-post"[^>]*>[\s\S]*?<small id="wx-why-post">No post-workout readings in this range<\/small>/.test(html));
 });
 
-test("the selection bar (phone) is in the slot, the strip (wide) under the plot, never both; × is named Back to latest", () => {
+test("the selection bar is the only inspector, in the slot, at every width; × is named Back to latest", () => {
   const { N } = chartPage(); N.ui.range = 30;
-  N.ui.wxWide = false; let html = N.chartHTML();
-  assert.ok(html.indexOf('class="wx-sel" id="wx-sel"') !== -1 && html.indexOf("wx-insp") === -1, "phone: the bar");
+  const html = N.chartHTML();
+  assert.ok(html.indexOf('class="wx-sel" id="wx-sel"') !== -1 && html.indexOf("wx-insp") === -1 && html.indexOf("wx-plate n99-chart is-wide") === -1, "the bar, no strip");
+  assert.strictEqual((html.match(/id="wx-sel"/g) || []).length, 1, "one inspector");
   assert.ok(html.indexOf('<div class="wx-slot" id="wx-slot" data-wx-slot="summary">') !== -1);
   assert.ok(html.indexOf('aria-label="Back to latest" onclick="NXT.backToLatest()"') !== -1);
   assert.ok(html.indexOf('id="wx-sel-open" data-date="') !== -1 && html.indexOf('onclick="NXT.openChartDay(this.dataset.date)"') !== -1);
   assert.ok(html.indexOf('id="wx-sel-note"') !== -1 && html.indexOf('id="st-note-chip"') !== -1, "both note chips, two ids");
-  N.ui.wxWide = true; html = N.chartHTML();
-  assert.ok(html.indexOf('class="wx-insp" id="wx-sel"') !== -1 && html.indexOf('class="wx-sel"') === -1, "wide: the strip");
-  assert.ok(html.indexOf('<span id="wx-sel-l">Latest · </span>') !== -1, "Selected · Latest · at the latest reading");
-  assert.ok(/id="wx-sel-x" aria-label="Back to latest"[^>]* hidden>/.test(html), "↺ hidden while at latest");
-  assert.ok(html.indexOf("wx-plate n99-chart is-wide") !== -1);
+  assert.ok(html.indexOf('<span id="wx-sel-l" hidden>Latest · </span>') === -1 || html.indexOf("Selected · ") !== -1);
   /* The plate still holds no nested section and none of the banned words. */
   const plate = html.slice(0, html.indexOf("</section>"));
   assert.strictEqual((plate.match(/<section/g) || []).length, 1);
   assert.strictEqual(/certainty|confidence|probability|likelihood|accuracy/i.test(plate), false);
-  N.ui.wxWide = false;
 });
 
 test("dayContext: NXP.dayState words (D105) with the records as the fallback; selectPoint writes the bar", () => {
@@ -998,7 +993,7 @@ test("Journey summary: Start weight / Estimated level (estimate tag) / Goal rang
   assert.ok(/<p class="st-jr-mh">Recorded<\/p><ul><li><button type="button" class="st-jr-mc is-rec" data-st-jr-go="[\d-]+"><i aria-hidden="true">✓<\/i>Lowest weigh-in \d+\.\d/.test(j), "a recorded weigh-in: solid chip, ✓");
   assert.ok(/<p class="st-jr-mh">Milestones · on your estimated level<\/p><ul>(<li><button type="button" class="st-jr-mc is-lvl"[^>]*><i aria-hidden="true">◌<\/i>(First kg down|Halfway|5% of your start) <em>[^<]+<\/em><\/button><\/li>)+/.test(j), "computed milestones: dashed chips under their own heading");
   assert.ok(j.indexOf('class="st-jr-mc is-est"') !== -1 && /\d+ kg <em>~[^<]+ · estimate<\/em>/.test(j), "the next-kilogram estimate, dashed and named an estimate");
-  assert.ok(/<div class="st-jr-rw" hidden><span class="st-jr-rwc"><i aria-hidden="true">◷<\/i>Rewound · <b data-st-jr-rwd><\/b> · <span data-st-jr-rwk><\/span><\/span><button type="button" class="st-jr-back" hidden>Back to today<\/button><\/div>/.test(j), "the rewind capsule with Back to today, hidden until a rewind");
+  assert.ok(/<div class="st-jr-rw" hidden><span class="st-jr-rwc"><i aria-hidden="true">◷<\/i><span class="st-jr-rww">Rewound · <\/span><b data-st-jr-rwd><\/b><span class="st-sr"> · <span data-st-jr-rwk><\/span><\/span><\/span><button type="button" class="st-jr-back" hidden>Back to today<\/button><\/div>/.test(j), "the rewind capsule with Back to today, hidden until a rewind");
   assert.strictEqual(j.indexOf("First reading"), -1, "the Journey never calls the saved start the first reading (W6)");
   assert.strictEqual(j.indexOf("as of"), -1, '"as of" is the aging forecast\'s word (D104)');
   const full = N.journeyHTML();
@@ -1060,6 +1055,17 @@ test("Rate and Projection copy (CONTRACTS §3, §4): Rate range, Rate precision,
   N.ui.showSpread = true; const on = N.chartHTML();
   assert.ok(/<p class="wx-leg" id="wx-leg" aria-label="Chart legend"><span><i class="wx-key-band" aria-hidden="true"><\/i>Day-to-day spread<\/span><\/p>/.test(on) && on.indexOf('class="wx-spread"') !== -1, "legend row with the band");
   N.ui.showSpread = false; assert.strictEqual(N.chartHTML().indexOf('id="wx-leg"'), -1, "no legend row without a band");
+});
+
+test("w5 · phone-first: no wide path, Layers trims the page plot 12 px, the rewound level is the contract name, Larger text and reduced transparency are in the CSS", () => {
+  const cs = fs.readFileSync(path.join(ROOT, "cut-support.js"), "utf8"), st = fs.readFileSync(path.join(ROOT, "strata.js"), "utf8"), css = fs.readFileSync(path.join(ROOT, "strata.css"), "utf8");
+  assert.ok(!/wxWide|wx-insp|is-wide\$\{/.test(cs + st) && !/wx-insp|\.wx-plate\.is-wide/.test(css), "the wide-width paths are gone");
+  assert.strictEqual(withViewport(390, 844, n => n.chartGeo("page")).plotH, 300);
+  assert.strictEqual(withViewport(390, 844, n => { n.ui.layersOpen = true; return n.chartGeo("page"); }).plotH, 288, "Layers open: 12 px off the page plot (spec §19.6)");
+  assert.strictEqual(withViewport(390, 844, n => { n.ui.layersOpen = true; return n.chartGeo("expand"); }).plotH, withViewport(390, 844, n => n.chartGeo("expand")).plotH, "Expand fits itself instead");
+  assert.ok(st.indexOf('jrWord("Estimated level", ds)') !== -1 && st.indexOf('jrWord("Then"') === -1, "a rewound level carries the contract name");
+  assert.ok(/:root\[data-nxp-size="large"\] #weightPage\{--wx-s:1\.12;--wx-sn:1\.06\}/.test(css), "Larger text scales the Weight tokens ×1.12, numerals ×1.06");
+  assert.ok(/prefers-reduced-transparency:reduce\)\{\s*#weightPage\{--btn-glass[\s\S]*?\.wx-plate\{background:#12111B/.test(css) && /prefers-reduced-transparency:reduce\)\{#weightPage \.wx-xv,#weightPage \.wx-xv::backdrop\{background:#07070C/.test(css), "plate glass and the Expand dialog fall back to solid");
 });
 
 console.log((failed ? "FAILED  " : "OK  ") + passed + " passed, " + failed + " failed");
