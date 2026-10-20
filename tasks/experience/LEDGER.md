@@ -1,0 +1,35 @@
+# Experience upgrade — progress ledger
+
+Integration branch `experience-upgrade` (worktree `~/Developer/Worktrees/nxtfrm/experience-upgrade`). Today stream on
+`experience-today` (worktree `…/experience-today`), merged into `experience-upgrade` at integration. No push, merge to
+main or deploy. RELEASE 163. Phone first (320–430 px); desktop layouts withdrawn 2026-10-20.
+
+| Task | Owner / model | Status | Commit / files | Checks | Next action |
+|---|---|---|---|---|---|
+| Stage 1 baseline | coordinator + probes | done | cache `experience/baseline/`, PLAN.md F1–F8 | 307 shots, 7 viewports | — |
+| Stage 2 forecast time (D104) | builder / Opus 5.5 | done | `e48faab` | 24 suites green | — |
+| Stage 2 day state (D105) | builder / Opus 5.5 | done | `363ee05` | 25 suites green | — |
+| Stage 2 names + sources (D106–D107) | builder / Opus 5.5 | done | `5e7a63d` | 26 suites green | — |
+| Stage 2 verification fixes (D108) | fixer / Opus 5.5 | done | `8ae6eee` | 26 suites, 679 tests | — |
+| Docs: plan, contracts, specs, study, preview config | coordinator | done | `4a3096c`, `54c60ba`, `f6a6f3f` | — | keep CONTRACTS.md in step with any approved Stage 7 change |
+| Demo fixtures `?scenario=` ×6 + badge | builder / Fable 5.1 | done | `ad0756f` seed.scenarios.js | 27 suites green; 6 scenarios verified | use in the checkpoint |
+| Weight w1 engine (D109–D117) | builder / Opus 5.5 | done | `85cf367` | 27 suites | — |
+| Weight w2 plate + plot (D118–D119) | builder / Fable 5.1 | done | `682edc4` | 27 suites, 709 tests; §19 1–6, 8–10, 12–14 pass | — |
+| Weight w3 inspector + Layers (D130–D133) | builder / Fable 5.1 | done | `e59b765` | 27 suites, 717 tests; §19 15–19, 25–26 pass | — |
+| Weight w4 Expand, Compare, Journey/Rate copy (D134–D139) | builder / Fable 5.1 | done | `1dce7d8` | 27 suites; §19 20–24, 26 pass | — |
+| Weight w5 phone polish (D144–D146) | builder / Sonnet 5.5 medium | done | `46f3878` | 28 suites, 0 FAIL; 0 overflow at 320–1280; reduced motion/transparency 0 offenders | — |
+| Today t1 picker + focus card (D120–D127) | builder / Fable 5.1 | done | `fa4aa01` | 27 suites, 691 tests | — |
+| Today t2 log strip, lead, digest (D128–D129) | builder / Fable 5.1 | done | `076ae8d` | 27 suites, 691 tests; §16 partial | — |
+| Today t3 dock hand-off, CSS sweep, fit (D140–D143) | builder / Fable 5.1 | done | `7b49339` strata.css, strata.js, verify-151/152 | 27 suites green; §16 pass except page height 1338 vs 1300 and strip bottom +1.7 px | check run (Haiku) at 7b49339; merge into experience-upgrade after w4 lands |
+| Integration (merge experience-today) | coordinator / Fable 5.1 | done | merge commit (see git log) | 28 suites, 737 tests, 0 failed; smoke render 0 errors | w5 on the merged tree, then checkpoint |
+| Checkpoint: fixtures, phone shots, preview 8766, simulator, draft PR #40 (deploy-preview-40) | coordinator | done — `CHECKPOINT-2026-10-20.md` | fixtures `ad0756f`…`961defc`; capture → cache `experience/checkpoint/` | capture running; simulator notes `checkpoint/webkit-notes.md` | report after the review |
+| Cross-review | reviewer / Sonnet 5.5 high | done | reviewed 61c617f; `tasks/experience/REVIEW-2026-10-20.md` | 1 blocker (B1 masthead H1 15 px off Weight — w5 vars scoped to #weightPage), 4 major, 9 minor; contracts/interactions/fit passed | Weight builder: B1, M1, M4, m1–m3, m7; Today builder: M2, M3, m4, m5; re-review changed areas |
+| Stage 7 proposals (EWMA, rate range, arrival) | owner decision; nxtfrm-analysis-specialist / Opus only for a bounded question | pending owner | ANALYTICS-STUDY.md, cache patches | reviewed by skeptics | ask the owner; implement with Sonnet |
+| Today: Latest Evo scan tile restored (D147, owner request) | builder / Sonnet 5.5 medium | done | `040d9c4` | 28 suites 0 FAIL; 390/375/320 checked | pill colours vs D42 (less fat = mint) to confirm in the fix round |
+| Weight plate declutter (D148, owner feedback) | builder / Sonnet 5.5 medium | done | `aca1e5a` | 28 suites 0 FAIL; 390/375/320 | before/after sent to the owner |
+| Weight fix round (B1, M1, M4, m1–m3, m7) | builder / Sonnet 5.5 medium | done | `2f3f148` | 28 suites 0 FAIL; H1 34 px on every page; Larger text confirmed on | Layers regression fixed in `ddd9e2e` (`#wx-layers[hidden]{display:none}`; compact two-row capsules; plot trimmed 90 px while open → bottom 701 vs dock 704 at 390) |
+| Today log strip as two cards (D149, owner) | builder / Sonnet 5.5 medium | done | `cca3efe` | 27/28 (forecast-time flake from the concurrent edit) | re-check in the fix round |
+| Today fix round (M2, M3, m4, m5, lit-card contrast, 375 zone alignment) | builder / Sonnet 5.5 medium | done | `b27f334` | 28 suites 0 FAIL | 15/15 dock wording not rendered live — re-review covers it |
+| Stage 6a · one sheet system (D150 cardio fields, D151) | builder / Sonnet 5.5 medium | done (hunks landed in `ddd9e2e` + `98042c7` — shared-worktree sweep, history mislabelled) | Log cardio, weigh-in, pickers, note, cardio edit, Why/review, ask | — | after the fix rounds; owner screenshot in cache `checkpoint/owner-sheet-feedback.png`. Owner: Log cardio = Date · Activity · Duration · Speed · Incline · Save; Effort and Heart rate behind "More details" (closed by default; both are stored/shown only, no engine use) — D150 |
+| Stage 6b · "Focusing on form" (D152, owner) | builder / Sonnet 5.5 medium | done — `ca747ea`; 29 suites 0 FAIL; new wearables.form-sessions.test.js (7) | Finish sheet: when any exercise came in below last time (D20), list them with their numbers and a tick "Focusing on form" per exercise; ticked exercises read "Form" instead of "below" on the receipt, Lifts row and History, are excluded from decline/Review signals and the coach, and their Aim keeps the last real best; no prompt when nothing was below; mark-in-hindsight from the History day card. Stored as a per-exercise flag on that day's own records — record-shape change, needs the owner's yes (D152) | — | after Stage 6a |
+| Stage 6 remaining pages | builders / Sonnet | queued | — | — | after the checkpoint is reviewable |

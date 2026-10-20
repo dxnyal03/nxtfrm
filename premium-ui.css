@@ -1506,8 +1506,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 }
 .nxp .n99-chart-selected .n99-chart-post small { display:block;margin-top:2px;font-size:var(--nxt-type-label);color:var(--nxt-text-muted);overflow-wrap:anywhere; }
 .nxp .n99-chart-selected #n99-chart-timing { display:block;margin-top:3px;font-size:var(--nxt-type-label);color:var(--nxt-text-muted); }
-.nxp .n99-legend { font-size:.8125rem;gap:10px; }
-.nxp .n99-legend > span:last-child { margin-left:0; }
 
 /* V102.3A Progress Weight — chart-led instrument. Tabs shared; Weight layout scoped. */
 .nxp-progress { min-width:0;overflow-x:hidden;padding-bottom:calc(var(--nxt-tabs-stack) + var(--nxt-space-3)); }
@@ -1691,12 +1689,6 @@ body:has(.cloud-local-banner:not([hidden])) .content {
 .nxp-progress-weight .n99-empty-number { display:none; }
 .nxp-progress-weight .n99-chart-empty { padding:18px 8px 12px; }
 .nxp-progress-weight .n99-chart-empty h3 { font-size:1rem; }
-.nxp-progress-weight .n99-legend {
-  border-top-color:var(--nxt-hairline);
-  padding-top:10px;
-  margin-top:2px;
-  font-size:.6875rem;
-}
 .nxp-progress-weight .n99-small { font-size:.75rem;color:var(--nxt-text-tertiary); }
 .nxp-progress-weight .nxp-progress-insight,
 .nxp-progress-weight .n99-chart + .n99-review {

@@ -41,7 +41,11 @@ const NXT = (() => {
   /* What the pickers offer. typeNames() stays the validation list, so a stored plan that
      still holds a hidden type keeps saving. */
   const pickTypes = (keep) => typeNames().filter(k=>k!=="Floorball"||(typeof FEATURES!=="undefined"&&FEATURES.floorball)||k===keep);
-  const ui = {view:"overview", range:30, showGoal:false, showPost:false, showForecast:false, selected:null, draft:null, lastFocus:null};
+  /* Weight chart state lives here, in memory only (no storage key). D109 adds the layer flags (Weekly averages and
+     Day-to-day spread off, Notes on, Projection and Post-workout off as before), the Layers drawer and Expand flags,
+     the compare request, the Open day return point and the measured chart widths. */
+  const ui = {view:"overview", range:30, showGoal:false, showPost:false, showForecast:false, selected:null, draft:null, lastFocus:null,
+    showWeekly:false, showSpread:false, showNotes:true, layersOpen:false, expanded:false, compare:null, returnTo:null, chartW:{}};
   function cfg() {
     if(!settings.cutSupport || typeof settings.cutSupport!=="object" || Array.isArray(settings.cutSupport))settings.cutSupport={};
     const c=settings.cutSupport;
@@ -78,6 +82,30 @@ const NXT = (() => {
   /* "1 reading", "3 readings". Wording only: the count it is given is printed unchanged beside it. */
   function plural(n,one,many) { return Number(n)===1?one:(many||one+"s"); }
   function label(t) { return names[t]||t||"Workout"; }
+  /* D107 — one printing rule for signed figures: rounded first, then signed, so a value that rounds to zero
+     prints "0.00" (or "0.0"), never "-0.00" / "−0.0". minus picks the glyph the surface already uses. */
+  function signedFixed(v,digits=2,minus="-") {
+    const n=finite(v);if(n===null)return "—";
+    const r=Number(n.toFixed(digits));
+    return r===0?(0).toFixed(digits):(r>0?"+":minus)+Math.abs(r).toFixed(digits);
+  }
+  /* D107 — a rate is named for the span it was fitted over. detectPlateau fits the 28-day window once its
+     readings span at least 14 days; it is the "4-week rate" only when they reach across it (span ≥ 25 days,
+     within a couple of days of each end), otherwise "N-day rate". The figure itself is unchanged. */
+  function rateSpan(p) {
+    const d=Math.max(0,Math.round(Number(p&&p.spanDays)||0)),full=d>=PLATEAU_WINDOW_DAYS-3;
+    return {full,days:d,label:full?"4-week rate":`${d}-day rate`,over:full?"over four weeks":`over ${d} days`};
+  }
+  /* Readings logged at another time of day (D14: contextual, never canonical) — counted so a person who only
+     weighs in later in the day is told where their readings are, not that there are none. It counts readings
+     (the copy says "N readings"), each passing cleanRows()'s own validity test (above 0, 20–400 kg). */
+  function otherTimingCount(input=state.bws) {
+    return (Array.isArray(input)?input:[]).filter(r=>{
+      if(!r||!Number.isFinite(dateMs(r.date))||r.date>state.date)return false;
+      const v=finite(r.weight),t=String(r.timeOfDay||"").trim().toLowerCase();
+      return v!==null&&v>0&&v>=20&&v<=400&&t!==""&&t!=="morning";
+    }).length;
+  }
   function cleanRows(input,key="weight") {
     const byDate=new Map();
     for(const r of Array.isArray(input)?input:[]) {
@@ -207,6 +235,58 @@ const NXT = (() => {
     const confidence=n<FORECAST_TRUST_POINTS||spanRatio>2?"low":spanRatio>.5?"medium":"high";
     return {ok:true,weeks,lowWeeks,highWeeks,confidence,reason:"",slope,lastDate,lastAvg,fittedLevel};
   }
+  /* D104 (proposed) — forecast time semantics. forecastGoal() fits the 21 days ending at its last trend-ready
+     morning, the model origin, and counts every week from there; it never reads the calendar. This view is the
+     one place its weeks become dates, so every surface prints the same arrival, anchored at the origin: an old
+     forecast keeps its own date instead of sliding a day later for every day without a weigh-in. Weeks still
+     count from the origin; weeksRemaining counts from the calculation date (today), for copy that says "away".
+     Freshness is days since the origin, on thresholds the app already uses: fresh to 3 (EWMA_GAP_DAYS; past it
+     the trend restarts), aging to 14 (the coach's STALE_DAYS, the span of its weigh-in nudge), stale to 21
+     (FORECAST_WINDOW_DAYS; a fit made today would hold no reading), then expired, as is any forecast whose
+     earliest arrival (arrivalLow) is today or past. Fresh and aging may print the anchored date, aging "as of"
+     the origin; stale and expired pause and never print an arrival. Freshness is separate from the model's own
+     confidence (modelConfidence, unchanged): an old forecast is not a less certain one, it is an old one. The
+     last observation (the newest morning reading) can be later than the origin: after a break of more than three
+     days the trend needs three mornings before it, and the fit, move on. Nothing here changes a number. */
+  const FORECAST_FRESH_DAYS=EWMA_GAP_DAYS,FORECAST_AGING_DAYS=14,FORECAST_STALE_DAYS=FORECAST_WINDOW_DAYS;
+  function forecastView(rows=weights(),calculationDate=state.date) {
+    const calc=Number.isFinite(dateMs(calculationDate))?calculationDate:state.date;
+    const seen=(Array.isArray(rows)?rows:[]).filter(r=>r&&Number.isFinite(dateMs(r.date))&&r.date<=calc);
+    const f=forecastGoal(seen),origin=f.lastDate||null;
+    const obs=seen.reduce((m,r)=>!m||r.date>m?r.date:m,null);
+    const since=d=>d?Math.round((dateMs(calc)-dateMs(d))/DAY):null;
+    const ahead=!!(f.ok&&origin&&finite(f.weeks)!==null&&f.weeks>0);
+    const at=w=>ahead?dateAdd(origin,w*7):null;
+    const arrivalDate=at(f.weeks),arrivalLow=at(f.lowWeeks),arrivalHigh=at(f.highWeeks);
+    // "About N weeks away" from today: never 0 while the date is still ahead, nothing once it has passed.
+    const left=d=>!d?null:d<=calc?0:Math.max(1,Math.round((dateMs(d)-dateMs(calc))/DAY/7));
+    const daysSinceOrigin=since(origin);
+    let freshness=null;
+    if(origin)freshness=arrivalLow&&calc>=arrivalLow?"expired":daysSinceOrigin<=FORECAST_FRESH_DAYS?"fresh":
+      daysSinceOrigin<=FORECAST_AGING_DAYS?"aging":daysSinceOrigin<=FORECAST_STALE_DAYS?"stale":"expired";
+    const current=freshness==="fresh"||freshness==="aging",goalConfirmed=!!cfg().targetConfirmed;
+    return {ok:f.ok,reason:f.reason,lastObservationDate:obs,modelOriginDate:origin,calculationDate:calc,
+      originLevel:f.fittedLevel,slopeKgWk:finite(f.slope)===null?null:f.slope*7,modelConfidence:f.confidence,
+      weeks:f.weeks,lowWeeks:f.lowWeeks,highWeeks:f.highWeeks,arrivalDate,arrivalLow,arrivalHigh,
+      weeksRemaining:left(arrivalDate),lowWeeksRemaining:left(arrivalLow),highWeeksRemaining:left(arrivalHigh),
+      daysSinceOrigin,daysSinceObservation:since(obs),freshness,current,goalConfirmed,
+      // No confirmed goal, no goal ETA anywhere (goalHigh() still falls back to a default range).
+      showArrival:ahead&&current&&goalConfirmed,
+      // Elapsed copy ("down in 11 weeks", the share card's range) counts to the origin once it is not fresh.
+      asOfDate:origin&&freshness!=="fresh"?origin:calc};
+  }
+  /* The words for a forecast's age, so every surface says it the same way (D104). */
+  function forecastWords(v) {
+    const out={asOf:"",paused:"",restart:""};
+    if(!v||!v.modelOriginDate)return out;
+    if(v.freshness==="aging")out.asOf=`as of ${shortDate(v.modelOriginDate)}`;
+    const n=v.daysSinceObservation;
+    if((v.freshness==="stale"||v.freshness==="expired")&&v.lastObservationDate)
+      out.paused=`Last morning weigh-in ${shortDate(v.lastObservationDate)}, ${n===0?"today":n===1?"yesterday":n+" days ago"}.`;
+    if(v.lastObservationDate&&v.lastObservationDate>v.modelOriginDate)
+      out.restart=`After a break of more than ${EWMA_GAP_DAYS} days the trend needs three mornings before the projection moves on.`;
+    return out;
+  }
   const PLATEAU_WINDOW_DAYS=28,PLATEAU_MIN_READINGS=10,PLATEAU_MIN_SPAN_DAYS=14,PLATEAU_FLAT_KG_WEEK=.15,PLATEAU_T=2;
   const PLATEAU_LADDER=[35,42,49,56,63,70,77,84,90],PLATEAU_LADDER_SLACK=7;
   // One equivalence test over the trailing `days` of raw readings, or null when the window is too thin.
@@ -301,6 +381,94 @@ const NXT = (() => {
     const priorChange=previous.n>=3&&earlier.n>=3?previous.avg-earlier.avg:null;
     return {current,previous,earlier,change,priorChange,percent:change!==null?change/previous.avg*100:null};
   }
+  /* Compare periods (Weight "Instrument", spec §11; proposed D110). A presentation of figures the app already has
+     (D9): the morning readings in two calendar windows, their count and coverage, average, lowest, and the smoothed
+     trend at each end. It reads the canonical morning set only (cleanRows), so a post-workout or other-time reading
+     can never enter a window. The difference is returned unrounded; rounding to 0.1 kg happens on screen, and
+     roundingNote says when the printed averages would not subtract to the printed change. Nothing here is a test of
+     significance, and nothing here writes. */
+  const COMPARE_MIN_MORNINGS=3,COMPARE_MIN_COVERAGE=.3;
+  function spanLabel(from,to) {
+    if(from===to)return shortDate(from);
+    return from.slice(0,7)===to.slice(0,7)?`${Number(from.slice(8))}–${shortDate(to)}`:`${shortDate(from)}–${shortDate(to)}`;
+  }
+  function daysIn(from,to) { return Math.round((dateMs(to)-dateMs(from))/DAY)+1; }
+  function monthStart(d) { return d.slice(0,8)+"01"; }
+  function monthEnd(d) { const n=new Date(dateMs(monthStart(d)));n.setUTCMonth(n.getUTCMonth()+1,0);return n.toISOString().slice(0,10); }
+  function shiftMonth(d,k) { const n=new Date(dateMs(monthStart(d)));n.setUTCMonth(n.getUTCMonth()+k);return n.toISOString().slice(0,10); }
+  /* One window: {from, to, label, days, partial, elapsed, total, completed}. A window never runs past today. */
+  function compareWindow(from,to,extra) { return {from,to,label:spanLabel(from,to),days:daysIn(from,to),partial:false,completed:false,...(extra||{})}; }
+  /* The two windows a comparison kind names. Kinds: 'previous' (the matched window immediately before),
+     'sameDays' (the same elapsed calendar days of last month), 'completed' (the last completed weeks or months,
+     labelled completed), 'firstLast' (first vs last 4 weeks of the cut; Cut range only). Returns {kind, range,
+     before, current, ok, reason}; before/current are null when the kind cannot apply. */
+  function compareWindows(range=30,kind="previous",today=state.date) {
+    const out=(before,current,reason)=>({kind,range,before,current,ok:!!(before&&current)&&!reason,reason:reason||""});
+    const cutStart=typeof settings!=="undefined"&&settings&&Number.isFinite(dateMs(settings.cutStart))&&settings.cutStart<=today?settings.cutStart:null;
+    let days=range==="cut"?(cutStart?daysIn(cutStart,today):null):Math.round(Number(range));
+    if(kind==="firstLast") {
+      if(range!=="cut")return out(null,null,"Only for the Cut range");
+      if(!cutStart)return out(null,null,"Needs a cut start date");
+      if(days<56)return out(null,null,"Needs 8 weeks of cut");
+      return out(compareWindow(cutStart,dateAdd(cutStart,27),{name:"First 4 weeks"}),compareWindow(dateAdd(today,-27),today,{name:"Last 4 weeks"}));
+    }
+    if(!(days>0))return out(null,null,"Needs a cut start date");
+    if(kind==="sameDays") {
+      const ms=monthStart(today),elapsed=daysIn(ms,today),total=daysIn(ms,monthEnd(today));
+      const pms=shiftMonth(today,-1),pTotal=daysIn(pms,monthEnd(pms)),pTo=dateAdd(pms,Math.min(elapsed,pTotal)-1);
+      return out(compareWindow(pms,pTo,{name:"Same days last month"}),compareWindow(ms,today,{name:"This month",partial:elapsed<total,elapsed,total}));
+    }
+    if(kind==="completed") {
+      if(range==="cut")return out(null,null,"Not for the Cut range");
+      if(days<28) {
+        /* Weeks: Mon–Sun, ending before this week; as many as the range holds (2W → two weeks). */
+        const n=Math.max(1,Math.round(days/7)),end=dateAdd(weekStart(today),-1);
+        const cFrom=dateAdd(end,1-7*n),bTo=dateAdd(cFrom,-1),bFrom=dateAdd(bTo,1-7*n);
+        return out(compareWindow(bFrom,bTo,{completed:true,unit:"week",count:n}),compareWindow(cFrom,end,{completed:true,unit:"week",count:n}));
+      }
+      const n=Math.max(1,Math.round(days/30)),cFrom=shiftMonth(today,-n),cTo=dateAdd(monthStart(today),-1),bFrom=shiftMonth(today,-2*n),bTo=dateAdd(cFrom,-1);
+      return out(compareWindow(bFrom,bTo,{completed:true,unit:"month",count:n}),compareWindow(cFrom,cTo,{completed:true,unit:"month",count:n}));
+    }
+    if(kind!=="previous")return out(null,null,"Unknown comparison");
+    const cFrom=dateAdd(today,1-days),bTo=dateAdd(cFrom,-1);
+    return out(compareWindow(dateAdd(bTo,1-days),bTo,{name:"Before"}),compareWindow(cFrom,today,{name:"This range"}));
+  }
+  /* Figures for one window. trendFirst/trendLast are the smoothed trend on the window's first and last morning,
+     and only when the trend is ready on both (it carries in from the readings before the window). */
+  function periodStats(rows,series,w) {
+    const to=w.to>state.date?state.date:w.to,days=daysIn(w.from,to);
+    const ws=windowStats(rows,to,days),items=ws.items;
+    let low=null;for(const r of items)if(!low||r.weight<low.weight)low={weight:r.weight,date:r.date};
+    const inWin=series.filter(r=>r.date>=w.from&&r.date<=to),first=inWin[0],last=inWin.at(-1);
+    const trendFirst=first&&first.avg!==null?first.avg:null,trendLast=last&&last.avg!==null?last.avg:null;
+    const coverage=days>0?ws.n/days:0;
+    let reason="";
+    if(ws.n<COMPARE_MIN_MORNINGS||coverage<COMPARE_MIN_COVERAGE)reason=`${ws.n} ${plural(ws.n,"morning")} in ${w.label} — too few to compare`;
+    const trendReason=trendFirst===null||trendLast===null?(ws.n?`Smoothed trend not ready at the ${trendFirst===null?"start":"end"} of ${w.label}`:`No mornings in ${w.label}`):"";
+    return {from:w.from,to,label:w.label,n:ws.n,days,coverage,avg:ws.avg,low,trendFirst,trendLast,
+      trendChange:trendFirst!==null&&trendLast!==null&&inWin.length>1?trendLast-trendFirst:null,trendReason,
+      partial:!!w.partial,elapsed:w.elapsed||null,total:w.total||null,completed:!!w.completed,ok:!reason,reason};
+  }
+  /* comparePeriods(rows, before, current, quantity): before/current are {from,to} windows (compareWindows' own, or
+     any two). quantity is 'avg' (Average morning, the default), 'trendChange' or 'low' (Lowest morning). diff is
+     current − before, unrounded. */
+  function comparePeriods(rows=weights(),before,current,quantity="avg") {
+    const morning=cleanRows(rows),series=trend(morning);
+    const win=w=>w&&w.from&&w.to?{...w,label:w.label||spanLabel(w.from,w.to)}:null;
+    const a=win(before),b=win(current);
+    if(!a||!b)return {a:null,b:null,quantity,diff:null,ok:false,reason:"No windows to compare",roundingNote:false};
+    const A=periodStats(morning,series,a),B=periodStats(morning,series,b);
+    const pick=s=>quantity==="low"?(s.low?s.low.weight:null):quantity==="trendChange"?s.trendChange:s.avg;
+    const va=pick(A),vb=pick(B);
+    let reason=!A.ok?A.reason:!B.ok?B.reason:"";
+    if(!reason&&quantity==="trendChange"&&(va===null||vb===null))reason=(va===null?A:B).trendReason||"Trend not ready";
+    const ok=!reason&&va!==null&&vb!==null,diff=ok?vb-va:null;
+    /* The change is the unrounded difference. When the two printed (0.1 kg) values would not subtract to the
+       printed change, the screen adds a one-line footnote saying so. */
+    const r1=v=>Number(v.toFixed(1));
+    const roundingNote=ok&&Math.abs(r1(r1(vb)-r1(va))-r1(diff))>1e-9;
+    return {a:A,b:B,quantity,diff,ok,reason,roundingNote};
+  }
   function workRows() {
     return (Array.isArray(state.logs)?state.logs:[]).filter(r=>r&&r.setType!=="warmup"&&Number.isFinite(dateMs(r.date))&&r.date<=state.date&&finite(r.weight)!==null&&Number(r.weight)>=0&&finite(r.reps)>0&&Number.isInteger(Number(r.reps)));
   }
@@ -311,13 +479,31 @@ const NXT = (() => {
       if(!groups.has(r.date))groups.set(r.date,[]);
       groups.get(r.date).push(r);
     }
-    return [...groups].sort(([a],[b])=>a.localeCompare(b)).map(([date,sets])=>({date,sets:sets.sort((a,b)=>Number(a.setNum)-Number(b.setNum)),value:Math.max(...sets.map(r=>Number(r.weight)*(1+Number(r.reps)/30)))}));
+    return [...groups].sort(([a],[b])=>a.localeCompare(b)).map(([date,sets])=>({date,sets:sets.sort((a,b)=>Number(a.setNum)-Number(b.setNum)),value:Math.max(...sets.map(r=>Number(r.weight)*(1+Number(r.reps)/30))),form:sets.every(r=>r.form===true)}));
+  }
+  /* D152 · "Focusing on form". The owner (never the app) marks an exercise on a day as a deliberate lighter
+     session. The flag is `form:true` on that exercise's working-set rows for that date and gym; warm-ups never
+     carry it. A session is a form session when it has working sets and every one carries the flag. */
+  function formRowsOf(date,gym,ex) {
+    return (Array.isArray(state.logs)?state.logs:[]).filter(r=>r&&r.date===date&&(r.gym||"Gym A")===gym&&(r.exercise||r.name)===ex&&r.setType!=="warmup");
+  }
+  function isFormSession(date,gym,ex) {
+    const rows=formRowsOf(date,gym,ex);return rows.length>0&&rows.every(r=>r.form===true);
+  }
+  function markForm(date,gym,ex,on) {
+    const rows=formRowsOf(date,gym||"Gym A",ex);if(!rows.length)return false;
+    for(const r of rows){if(on)r.form=true;else delete r.form;}
+    return commit("");
+  }
+  /* Sessions that count as real progression history: form sessions are left out (D152). */
+  function realSessionRows(ex,gym,before,maxReps) {
+    return sessionRows(ex,gym,before,maxReps).filter(x=>!x.form);
   }
   function strengthItems() {
     const keys=new Map();
     workRows().forEach(r=>keys.set(JSON.stringify([r.exercise||r.name,r.gym||"Gym A"]),[r.exercise||r.name,r.gym||"Gym A"]));
     return [...keys.values()].map(([name,gym])=>{
-      const all=sessionRows(name,gym,dateAdd(state.date,1)),recent=all.slice(-4),last=all.at(-1);
+      const every=sessionRows(name,gym,dateAdd(state.date,1)),all=every.filter(x=>!x.form),recent=all.slice(-4),last=all.at(-1),lastAny=every.at(-1);
       let delta=null,status="Building data",tone="neutral";
       const fresh=!!last&&last.date>=dateAdd(state.date,-21);
       if(recent.length>=4&&fresh&&recent[0].date>=dateAdd(state.date,-56)) {
@@ -327,11 +513,12 @@ const NXT = (() => {
         status=sustained?"Review":delta>=2?"Improving":delta>=-5?"Holding steady":"Watch";
         tone=sustained?"watch":delta>=-5?"good":"neutral";
       } else if(!fresh&&all.length)status="Older history";
-      return {name,family:name,gym,sessions:all.length,latestDate:last?.date||"",latestE1rm:last?.value||0,delta,status,tone,history:all};
+      return {name,family:name,gym,sessions:all.length,formSessions:every.length-all.length,latestForm:!!lastAny&&!!lastAny.form,latestDate:lastAny?.date||"",latestE1rm:last?.value||0,delta,status,tone,history:all};
     }).sort((a,b)=>b.latestDate.localeCompare(a.latestDate)).slice(0,24);
   }
   function review() {
-    const rows=weights(),s=trendStats(rows),lifts=strengthItems(),waist=cleanRows(cfg().waist,"cm"),check=cfg().recovery[state.date];
+    /* D106 — waist evidence only while the waist feature is on (D55). */
+    const rows=weights(),s=trendStats(rows),lifts=strengthItems(),waist=FEATURES.waist?cleanRows(cfg().waist,"cm"):[],check=cfg().recovery[state.date];
     const base={tone:"neutral",title:"Building your baseline",message:"Log morning weights across two weeks. Each weekly average needs at least three readings.",action:"Keep logging",reason:`${s.current.n} ${plural(s.current.n,"reading")} this week · ${s.previous.n} last week`,change:s.change};
     if(detectPlateau().plateau===true) {
       const d=NXT.diagnose();
@@ -348,12 +535,15 @@ const NXT = (() => {
     const pl=detectPlateau(rows),rate=pl.ok&&finite(pl.weeklyRate)!==null?pl.weeklyRate:s.change;
     if(rate===null)return base;
     const ref=(pl.ok&&finite(pl.lastAvg)!==null?pl.lastAvg:s.previous.avg)||s.current.avg,pct=ref?rate/ref*100:s.percent;
-    const kg=v=>(v>0?"+":"")+v.toFixed(2)+" kg/wk";
+    const kg=v=>signedFixed(v,2,"−")+" kg/wk";
     const fresh=lifts.filter(x=>x.delta!==null),holding=fresh.filter(x=>x.status==="Improving"||x.status==="Holding steady").length;
     const slipping=fresh.some(x=>x.status==="Watch"||x.status==="Review");
     const strengthLine=fresh.length?`${holding} of ${fresh.length} tracked lift${fresh.length===1?" is":"s are"} holding or improving.`:"Strength history is still building, so muscle retention is not yet assessable.";
-    const fc=forecastGoal(rows),eta=fc.ok&&fc.weeks>0?` At this pace your goal range is about ${fc.weeks} week${fc.weeks===1?"":"s"} away.`:"";
-    const why=`${kg(rate)} over ${pl.ok?"four weeks":"the last week"} · ${Math.abs(pct).toFixed(1)}% of body weight`;
+    /* D104: counted from today to the anchored arrival, said "as of" the last reading once it is not fresh,
+       silent once the forecast is paused, and silent without a confirmed goal. */
+    const fc=forecastView(rows),wk=fc.weeksRemaining,eta=fc.showArrival?` ${fc.freshness==="aging"?`At your pace as of ${shortDate(fc.modelOriginDate)},`:"At this pace"} your goal range is about ${wk} week${wk===1?"":"s"} away.`:"";
+    /* D107: the reason names the span the rate was fitted over ("over 15 days"), not always "four weeks". */
+    const why=`${kg(rate)} ${pl.ok?rateSpan(pl).over:"over the last week"} · ${Math.abs(pct).toFixed(1)}% of body weight`;
     if(pct < -1)return {...base,title:slipping?"Losing fast, and lifts are slipping":"Losing quickly",message:slipping?"Weight is dropping faster than usual while some lifts are down. Consider easing the deficit before strength suffers; this is a review prompt, not a diagnosis.":"Check energy, hunger and strength before pushing further. "+strengthLine+" Early water changes can contribute; this is a review prompt, not a diagnosis.",action:"Review your target",reason:why,change:rate,tone:"watch"};
     const c=cfg(),target=c.targetConfirmed?{low:goalLow(),high:goalHigh()}:null;
     if(target&&s.current.avg!==null&&s.previous.avg!==null&&s.current.avg>=target.low&&s.current.avg<=target.high&&s.previous.avg>=target.low&&s.previous.avg<=target.high)return {...base,title:"Your trend is in your goal range",message:"Two weekly averages are within your chosen range. Consider maintaining if you are happy with your progress; nothing changes automatically.",action:"Review your goal",reason:why,change:rate,tone:"good"};
@@ -442,7 +632,7 @@ const NXT = (() => {
     return {...base,ok:true,tdee,intake:Math.round(intake),weightChange:Math.round(weightChange*100)/100,confidence,spanDays:span};
   }
   function diagnose() {
-    const p=detectPlateau(),f=forecastGoal(),at=adaptiveTDEE();
+    const p=detectPlateau(),f=forecastGoal(),fv=forecastView(),fw=forecastWords(fv),at=adaptiveTDEE();
     const days=p.plateauDays||p.windowDays||PLATEAU_WINDOW_DAYS;
     const end=state.date,start=dateAdd(end,1-days);
     const map=cfg().adherence;let adhSum=0,adhLogged=0,adhDays=0;
@@ -452,7 +642,9 @@ const NXT = (() => {
       if(factor!==undefined){adhSum+=factor;adhLogged++;}
     }
     const adhMean=adhDays?adhSum/adhDays:0;
-    const waistRows=cleanRows(cfg().waist,"cm").filter(r=>r.date>=start&&r.date<=end);
+    /* D106 — a switched-off feature never feeds a visible conclusion: with waist off (D55) its stored
+       rows stay in storage and backups but no verdict ("waist is shrinking") is drawn from them. */
+    const waistRows=FEATURES.waist?cleanRows(cfg().waist,"cm").filter(r=>r.date>=start&&r.date<=end):[];
     const waistDrop=waistRows.length>=2?waistRows[0].cm-waistRows.at(-1).cm:null;
     const lifts=strengthItems().filter(x=>x.delta!==null&&x.delta<=-8);
     const recScore=r=>{
@@ -474,7 +666,7 @@ const NXT = (() => {
     const tdeeThen=hist[0]?hist[0].tdee:null;
     const tdeeDrop=tdeeThen!==null&&tdeeNow!==null?tdeeThen-tdeeNow:null;
     const pct=v=>Math.round(v*100),kcal=n=>Number(n).toLocaleString("en-SG");
-    const rate=p.weeklyRate===null?"—":`${p.weeklyRate>0?"+":p.weeklyRate<0?"-":""}${Math.abs(p.weeklyRate).toFixed(2)} kg / week · ${p.spanDays||days} ${plural(p.spanDays||days,"day")}`;
+    const rate=p.weeklyRate===null?"—":`${signedFixed(p.weeklyRate,2,"−")} kg / week · ${p.spanDays||days} ${plural(p.spanDays||days,"day")}`;
     const rateTone=!p.ok||p.status==="undetermined"?"neutral":p.status==="losing"?"good":"watch";
     const adhValue=`Logged: ${adhLogged} of ${adhDays} days · ${pct(adhMean)}% weighted`;
     const adhTone=adhLogged===0?"neutral":adhMean>=.85?"good":"watch";
@@ -493,13 +685,19 @@ const NXT = (() => {
     const pack=(verdict,headline,extra,actions,confidence,reason)=>({
       ok:true,verdict,headline,evidence:base.concat(extra).slice(0,4),actions,confidence,reason
     });
+    /* D108: a paused forecast (one that was made, then went stale) means mornings stopped, not that a count is short; and with the readings
+       already at PLATEAU_MIN_READINGS the shortfall is span, not readings. "1 more day" after a 15-day absence
+       named neither, so both take the no-missing-record read ("Keep weighing in each morning"). */
+    const lapsed=!!(f.ok&&fv.modelOriginDate&&!fv.current);
     const gap=()=>{
-      if(!p.ok)return {what:"weigh-ins",need:Math.max(1,PLATEAU_MIN_READINGS-p.n)};
+      if(!p.ok)return lapsed||(p.n||0)>=PLATEAU_MIN_READINGS?{what:"weigh-ins",need:null}:{what:"weigh-ins",need:Math.max(1,PLATEAU_MIN_READINGS-p.n)};
       if(CALORIES_ENABLED&&adhLogged<10)return {what:"adherence",need:10-adhLogged};
       if(FEATURES.waist&&waistRows.length<2)return {what:"waist",need:Math.max(1,2-waistRows.length)};
       if(CALORIES_ENABLED&&(hist.length<2&&!(hist.length>=1&&at.ok&&hist[0].date!==state.date)))return {what:"TDEE snapshots",need:Math.max(1,2-hist.length)};
       if(FEATURES.checkin&&lifts.length<2&&lowReady<5)return {what:"recovery check-ins",need:Math.max(1,5-lowReady)};
-      return {what:"weigh-ins",need:7};
+      /* D107: the weigh-ins already cover the window (p.ok), so asking for "7 more days" after 30 of 30 mornings
+         was a count of nothing. No missing record is named; the readings row says what the read rests on. */
+      return {what:"weigh-ins",need:null};
     };
     if(!p.plateau) {
       /* Stage 1: this card may not say "keep the plan" while the shared decision says to be
@@ -512,8 +710,16 @@ const NXT = (() => {
           [{text:`${care.action}.`,kind:"hold"}],p.ok&&p.confidence==="high"?"high":p.ok?"medium":"low",care.reason);
       }
     }
-    if(!p.plateau&&f.ok&&finite(f.slope)!==null&&f.slope<0) {
-      const extra=[{label:"Forecast",value:f.weeks===0?"At goal range":`~${f.weeks} week${f.weeks===1?"":"s"} to goal`,tone:"good"}];
+    /* D104: "Cut is progressing" needs a forecast that is still current (fresh or aging). Its row counts from
+       today to the anchored date, names that date and, once not fresh, the reading it rests on; without a
+       confirmed goal there is no row at all. A paused forecast falls through to the cases below. It also needs
+       the rate Today's review() reads (the plateau window's, else week on week): with neither, Today says
+       "Building your baseline" and this card may not say "progressing" (D108). */
+    const ts=trendStats(),rateRead=p.ok&&finite(p.weeklyRate)!==null?p.weeklyRate:ts.change;
+    const fcRow=()=>{const wk=fv.weeksRemaining,asOf=fw.asOf?` · ${fw.asOf}`:"";
+      return {label:"Forecast",value:f.weeks===0?`At goal range${asOf}`:`~${wk} week${wk===1?"":"s"} to goal · around ${shortDate(fv.arrivalDate)}${asOf}`,tone:"good"};};
+    if(!p.plateau&&f.ok&&finite(f.slope)!==null&&f.slope<0&&fv.current&&finite(rateRead)!==null) {
+      const extra=!fv.goalConfirmed?[]:[fcRow()];
       const conf=f.confidence==="high"&&p.ok&&p.confidence==="high"?"high":f.confidence==="low"||!p.ok?"low":"medium";
       return pack("no_issue","Cut is progressing.",extra,[{text:"Keep the current plan.",kind:"hold"}],conf,"Weight is still trending down.");
     }
@@ -546,11 +752,27 @@ const NXT = (() => {
         `Adaptive TDEE fell ${Math.round(tdeeDrop)} kcal over the plateau window.`);
     }
     const need=gap();
+    /* D104: a projection that has gone quiet says so, with the reading it last rested on. */
+    /* A current forecast that reached here (no rate read yet) keeps its anchored row, so the Why fold and the
+       Evidence tile still name the same date. */
+    const paused=!p.plateau&&fv.goalConfirmed&&f.ok&&f.weeks>0&&!fv.current&&fw.paused?[{label:"Forecast",value:`Paused · ${fw.paused.replace(/\.$/,"")}`,tone:"neutral"}]
+      :!p.plateau&&fv.goalConfirmed&&f.ok&&finite(f.slope)!==null&&f.slope<0&&fv.current&&fv.showArrival?[fcRow()]:[];
+    if(need.need===null) {
+      /* Without a plateau read there is no fitted span; say what the window holds instead of "over 0 days". */
+      const covered={label:"Readings",value:p.ok?`${p.n||0} over ${p.spanDays||0} ${plural(p.spanDays||0,"day")}`:`${p.n||0} in the last ${PLATEAU_WINDOW_DAYS} days`,tone:"neutral"};
+      return pack("insufficient_context",p.plateau
+        ?"Plateau confirmed. Not enough context to name the cause — food intake is not logged, so no cause matched."
+        :"Not enough context to name the cause from the records the app keeps.",
+        [covered].concat(paused),
+        [{text:"Keep weighing in each morning.",kind:"diagnose_more"}],
+        p.plateau&&p.confidence==="high"?"medium":"low",
+        p.plateau?"Plateau confirmed, but no cause matched strictly.":p.reason||"Not enough data to diagnose.");
+    }
     const headline=p.plateau
       ?`Plateau confirmed. Not enough context to name the cause — keep logging ${need.what} for ${need.need} more day${need.need===1?"":"s"}.`
       :`Not enough context to name the cause — keep logging ${need.what} for ${need.need} more day${need.need===1?"":"s"}.`;
     return pack("insufficient_context",headline,
-      [{label:"Needed",value:`${need.what} · ${need.need} more day${need.need===1?"":"s"}`,tone:"neutral"}],
+      [{label:"Needed",value:`${need.what} · ${need.need} more day${need.need===1?"":"s"}`,tone:"neutral"}].concat(paused),
       [{text:`Keep logging ${need.what} for ${need.need} more day${need.need===1?"":"s"}.`,kind:"diagnose_more"}],
       p.plateau&&p.confidence==="high"?"medium":"low",
       p.plateau?"Plateau confirmed, but no cause matched strictly.":p.reason||"Not enough data to diagnose.");
@@ -580,7 +802,7 @@ const NXT = (() => {
         <div class="n99-list-row"><span>Adaptive</span><small>${kcal(r.tdee)} kcal · your data</small></div>
         <div class="n99-list-row"><span>Difference</span><small>${diff===null?"—":signedKcal(diff)+" kcal / day"}</small></div>
       </div>
-      <p>Weight trending ${(weekly>0?"+":"")+weekly.toFixed(1)} kg / week, eating about ${kcal(r.intake)} kcal a day.</p>`);
+      <p>Weight trending ${signedFixed(weekly,1,"−")} kg / week, eating about ${kcal(r.intake)} kcal a day.</p>`);
   }
   function cardioWeek() { return (state.cardio||[]).filter(r=>r&&r.date>=weekStart()&&r.date<=state.date&&finite(r.duration)>0).reduce((s,r)=>s+Number(r.duration),0); }
   function completedWeek() { return new Set(workRows().filter(r=>r.date>=weekStart()).map(r=>r.date)).size; }
@@ -719,7 +941,7 @@ const NXT = (() => {
     return Math.max(t.reps[0],Math.min(t.reps[1],r));
   }
   function aimFor(ex) {
-    const t=targetFor(ex),all=sessionRows(ex,state.gym,state.date,100),last=all.at(-1);
+    const t=targetFor(ex),all=realSessionRows(ex,state.gym,state.date,100),last=all.at(-1);
     if(!last)return null;
     const best=bestSet(last.sets);if(!best)return null;
     const c=cue(ex),w=Number(best.weight),n=Number(best.reps);
@@ -732,7 +954,7 @@ const NXT = (() => {
      nothing stored): one headline, one concise note with the real numbers, and a target for
      each planned set that mirrors how the sets fell off last time. */
   function coachFor(ex) {
-    const t=targetFor(ex),all=sessionRows(ex,state.gym,state.date,100),last=all.at(-1);
+    const t=targetFor(ex),all=realSessionRows(ex,state.gym,state.date,100),last=all.at(-1);
     const lo=t.reps[0],hi=t.reps[1],planned=Math.max(1,Number(t.sets)||1),num=v=>String(Math.round(Number(v)*100)/100);
     if(!last)return {kind:"new",headline:"First session on this lift",note:`Choose a load you can move for ${lo}–${hi} reps with about two to spare. Today sets your baseline.`,sets:[]};
     const best=bestSet(last.sets);if(!best)return null;
@@ -768,7 +990,7 @@ const NXT = (() => {
     return out("hold","Match your best",`Repeat ${num(w)} × ${n}. Holding strength on a cut counts.`);
   }
   function cue(ex) {
-    const t=targetFor(ex),all=sessionRows(ex,state.gym,state.date,100),last=all.at(-1),prev=all.at(-2);
+    const t=targetFor(ex),all=realSessionRows(ex,state.gym,state.date,100),last=all.at(-1),prev=all.at(-2);
     let out;
     if(!last)out={label:"Set your baseline",weight:0,text:"Choose a manageable load and leave around two reps in reserve. Your first session establishes the baseline."};
     else {
@@ -953,7 +1175,7 @@ const NXT = (() => {
     ${sub?`<p class="n99-diag-sub">${esc(sub)}</p>`:""}
     <div class="n99-diag-rows">${rows}</div>
     ${actions.length?`<div class="n99-diag-actions">${actions.map(a=>`<p class="n99-diag-action ${esc(a.kind)}">${esc(a.text)}</p>`).join("")}</div>`:""}
-    <div class="n99-diag-foot"><span>Confidence</span><b>${esc(d.confidence)}</b></div>
+    <div class="n99-diag-foot"><span>Confidence in this read</span><b>${esc(d.confidence)}</b></div>
   </section>`;
   }
   function calorieCard() {
@@ -1012,14 +1234,15 @@ const NXT = (() => {
     maybeSnapshotTDEE(true);
     commit('Daily calorie target saved');
   }
-  function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard(true)}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(2)+' kg',s.current.n+' '+plural(s.current.n,'weigh-in'))}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(2)+' kg',s.previous.n+' '+plural(s.previous.n,'weigh-in'))}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any change to your plan stays your choice.</p><div class="n99-stack">${CALORIES_ENABLED?button('Review calorie guide','NXT.openCalories()',true):''}${FEATURES.checkin?button('Update recovery check-in','apx96OpenReadiness()',true):''}${button('Done','closeModal()')}</div>`); }
+  function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard(true)}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(1)+' kg',s.current.n+' '+plural(s.current.n,'weigh-in'))}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(1)+' kg',s.previous.n+' '+plural(s.previous.n,'weigh-in'))}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any change to your plan stays your choice.</p><div class="n99-stack">${CALORIES_ENABLED?button('Review calorie guide','NXT.openCalories()',true):''}${FEATURES.checkin?button('Update recovery check-in','apx96OpenReadiness()',true):''}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,features:FEATURES,flatKgWeek:PLATEAU_FLAT_KG_WEEK,levelSeries,nowLevel,rateSeries,chartNotes,noteLabel,noteKinds:NOTE_KINDS.slice(),pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,plural,label,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,features:FEATURES,flatKgWeek:PLATEAU_FLAT_KG_WEEK,plateauRules:{windowDays:PLATEAU_WINDOW_DAYS,minReadings:PLATEAU_MIN_READINGS,minSpanDays:PLATEAU_MIN_SPAN_DAYS},levelSeries,nowLevel,rateSeries,forecastView,comparePeriods,compareWindows,forecastWords,chartNotes,noteLabel,noteKinds:NOTE_KINDS.slice(),pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,plural,label,signedFixed,rateSpan,otherTimingCount,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,realSessionRows,isFormSession,markForm,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
   const N=NXT;
-  function signed(v,digits=2) { return v===null?'—':(v>0?'+':'')+v.toFixed(digits); }
+  /* D107: through signedFixed, so a figure that rounds to zero carries no sign. */
+  function signed(v,digits=2) { return v===null?'—':N.signedFixed(v,digits); }
   function smoothPath(points) {
     if(!points.length)return '';
     if(points.length===1)return `M ${points[0].x} ${points[0].y}`;
@@ -1043,7 +1266,7 @@ Object.assign(NXT, (()=>{
     const target=N.finite(goalHigh()),level=N.finite(f.fittedLevel),slope=N.finite(f.slope);
     if(!f.ok||!f.weeks||target===null||level===null||slope===null||!(slope<0))return null;
     // An anchor older than the visible window would be drawn off the left edge, so it is dropped
-    // from the chart. The trend read line still reports the horizon.
+    // from the chart. Evidence still reports the horizon.
     if(f.lastDate<start)return null;
     const days=(level-target)/-slope;
     if(!Number.isFinite(days)||!(days>0))return null;
@@ -1053,40 +1276,26 @@ Object.assign(NXT, (()=>{
     const sigma=here&&N.finite(here.sigma)!==null?here.sigma:CONE_SIGMA_FALLBACK;
     const historyDays=Math.max(1,(N.dateMs(state.date)-N.dateMs(start))/86400000);
     // Room for the future without letting it crowd out the record. A horizon past the cap runs to
-    // the edge unfinished, which reads as "continues"; the trend read line carries the number.
+    // the edge unfinished, which reads as "continues"; the goal pill carries the date.
     const soon=f.lowWeeks*7,late=f.highWeeks*7;
     const futureDays=Math.min(Math.max(days,late),Math.max(7,Math.round(FUTURE_SHARE*historyDays)),FUTURE_MAX_DAYS);
+    /* D104: the cone starts at its origin, which can be days before today while the forecast is aging. It
+       still runs to the plot's right edge (today + futureDays), so it never ends before the today line. */
+    const reach=futureDays+Math.max(0,(N.dateMs(state.date)-N.dateMs(f.lastDate))/86400000);
     // The cone spans the band's mouth today and the reported arrival window on the goal line: the
     // upper wall reaches the goal at highWeeks, the lower wall at lowWeeks. Neither is a new
     // statistic, both are forecastGoal's own bounds drawn out. It narrows instead of widening when
     // today's level spread is wider than the arrival window, which is a fact about the data, and the
     // walls provably cannot cross before their own arrivals, so the polygon stays simple.
     const upper=t=>level+sigma+(target-level-sigma)*t/late,lower=t=>level-sigma+(target-level+sigma)*t/soon;
-    const tU=Math.min(futureDays,late),tL=Math.min(futureDays,soon),tMid=Math.min(futureDays,days);
+    const tU=Math.min(reach,late),tL=Math.min(reach,soon),tMid=Math.min(reach,days);
     const cone=[[0,level+sigma],[tU,upper(tU)]];
     // Once the fast wall has landed, the goal line itself closes the shape, so the arrival window
     // reads as a segment along the goal rather than a vertical cut through it.
-    if(futureDays>soon&&futureDays<late)cone.push([futureDays,target]);
+    if(reach>soon&&reach<late)cone.push([reach,target]);
     cone.push([tL,lower(tL)],[0,level-sigma]);
     return {weeks:f.weeks,lowWeeks:f.lowWeeks,highWeeks:f.highWeeks,confidence:f.confidence,lastDate:f.lastDate,
-      level,slope,sigma,target,days,futureDays,arrives:days<=futureDays,cone,mid:[[0,level],[tMid,level+slope*tMid]]};
-  }
-  // One line of plain reading under the chart. The bounds are printed exactly as forecastGoal
-  // returns them and never widened to centre the point estimate: the chart, this line and
-  // NXT.forecastGoal() in the console have to tell the same story or none of them is trusted.
-  function trendReadText(forecast,plateau) {
-    const spell=n=>n===1?"1 week":n+" weeks";
-    // forecastGoal's reasons are full sentences; the trailing stop is dropped so the two clauses
-    // punctuate alike. Wording and numbers are left exactly as the stats layer produced them.
-    const horizon=!forecast.ok?forecast.reason.replace(/\.$/,""):forecast.weeks===0?"At your goal range":
-      forecast.lowWeeks===forecast.weeks&&forecast.highWeeks===forecast.weeks?`~${spell(forecast.weeks)} to goal`:
-      `~${spell(forecast.weeks)} to goal (range ${forecast.lowWeeks}–${forecast.highWeeks})`;
-    // "Undetermined" is dropped rather than reported as no plateau: too noisy to call is not the
-    // same finding as still losing.
-    const level=!plateau.ok||plateau.status==="undetermined"?"":
-      plateau.status==="flat"?`Plateau: ${plateau.plateauDays} days`:
-      plateau.status==="gaining"?"Trend is gaining":"No plateau detected";
-    return [horizon,level].filter(Boolean).join(" · ");
+      level,slope,sigma,target,days,futureDays,arrives:days<=reach,cone,mid:[[0,level],[tMid,level+slope*tMid]]};
   }
   /* "Cut" range (D48): from settings.cutStart (D31) to today. Display only — the
      same series, domain rule and trend; only the window changes. */
@@ -1095,18 +1304,64 @@ Object.assign(NXT, (()=>{
     if(!d||!Number.isFinite(N.dateMs(d))||d>state.date)return null;
     return Math.round((N.dateMs(state.date)-N.dateMs(d))/86400000)+1;
   }
-  function chartModel(rows=N.weights(),range=N.ui.range,showGoal=N.ui.showGoal) {
+  /* Chart geometry (Weight "Instrument", spec §7.1; proposed D109). chartModel() takes its frame from here instead
+     of literals. With no kind (N.ui.chartKind unset), or wherever nothing can be measured (node tests, no window
+     size), it is exactly the frame the chart has always had — 420 × 460 viewBox units, left gutter 34, right 8, top
+     28, bottom 110, readings 12 inside the edges — so the default render and every contract test are unchanged.
+     The measured kinds ('page', 'expand') use 1 SVG unit = 1 CSS px, so text never scales: W is the wrap's
+     measured width (N.ui.chartW[kind], set by the presentation layer) or an estimate from the viewport, and the plot
+     height comes from the small viewport height (100svh), which Safari's collapsing toolbar does not change. */
+  const GEO_LEGACY={W:420,H:460,left:34,right:8,top:28,bottom:110,padX:12,plotH:322,gutter:"left",kind:"legacy"};
+  const clampN=(lo,v,hi)=>Math.min(hi,Math.max(lo,v));
+  /* The small viewport height from a hidden 100svh probe (falls back to innerHeight where svh is unsupported). */
+  function chartSvh() {
+    const w=typeof window!=="undefined"?window:null,vh=w&&Number(w.innerHeight);
+    if(typeof document==="undefined"||!document.body||!document.createElement)return vh>0?vh:null;
+    let probe=document.getElementById("wx-svh");
+    if(!probe){
+      probe=document.createElement("div");probe.id="wx-svh";probe.setAttribute("aria-hidden","true");
+      probe.style.cssText="position:fixed;top:0;left:0;width:0;height:100vh;height:100svh;visibility:hidden;pointer-events:none";
+      document.body.appendChild(probe);
+    }
+    const h=Number(probe.offsetHeight);
+    return h>0?h:(vh>0?vh:null);
+  }
+  function chartGeo(kind=N.ui.chartKind) {
+    if(!kind||kind==="legacy")return {...GEO_LEGACY};
+    const w=typeof window!=="undefined"?window:null,vw=w&&Number(w.innerWidth);
+    if(!(vw>0))return {...GEO_LEGACY};
+    const svh=chartSvh()||Number(w.innerHeight)||844;
+    const narrow=vw<360,gutter=narrow?12:16,platePad=narrow?10:14;
+    const measured=N.ui.chartW&&Number(N.ui.chartW[kind]);
+    const W=Math.round(measured>0?measured:kind==="expand"?vw-2*gutter:vw-2*gutter-2*platePad);
+    const plotH=Math.round(kind==="expand"?Math.max(232,(N.ui.expandH>0?N.ui.expandH:svh-324)):clampN(N.ui.layersOpen?190:232,Math.round(svh*.355)-(N.ui.layersOpen?90:0),320));/* Layers open: the two-row drawer and its note take 90 px off the page plot (floor 190 while open) so it stays above the live dock (spec §19.6, D146) */
+    const left=6,right=42,top=11,bottom=26;
+    return {W,H:top+plotH+bottom,left,right,top,bottom,padX:9,plotH,gutter:"right",kind,svh};
+  }
+  /* Re-render only for a real change: width by more than 2 px, the svh bucket (24 px steps), or orientation. A
+     geometry that has not changed this way keeps the chart (and its dressing) as it is. */
+  function chartGeoChanged(prev,next) {
+    if(!prev||!next)return true;
+    if(prev.kind!==next.kind)return true;
+    if(Math.abs((prev.W||0)-(next.W||0))>2)return true;
+    const bucket=g=>Math.floor((Number(g.svh)||0)/24),orient=g=>(g.W||0)>=(Number(g.svh)||0);
+    return bucket(prev)!==bucket(next)||orient(prev)!==orient(next);
+  }
+  function chartModel(rows=N.weights(),range=N.ui.range,showGoal=N.ui.showGoal,geo=chartGeo(),win=null) {
     /* "Cut" (D51) replaces "All": from settings.cutStart, or from the first weigh-in when no
        cut start is saved, to today. The window grows with every reading and always opens on
        the starting point. */
     if(range==='cut')range=cutRangeDays()||0;
-    const series=N.trend(rows),start=range?N.dateAdd(state.date,1-range):rows[0]?.date||N.dateAdd(state.date,-29);
+    /* win {from, to} (Compare, spec §11) widens the x-window over both compared windows; null keeps the range. */
+    const winTo=win&&win.to&&win.to<state.date?win.to:state.date;
+    const series=N.trend(rows),start=win&&win.from?win.from:range?N.dateAdd(state.date,1-range):rows[0]?.date||N.dateAdd(state.date,-29);
     /* D52: taller plot (H 392→460) and thin side margins (20→8); the wrap runs edge to edge
        across the card, so the plot uses the full card width. */
     /* D58: the plot's left edge is moved in by a label gutter (8→34), so tick numbers sit beside
        the plot instead of on it and no reading, start marker or step ever paints over them. */
-    const visible=series.filter(r=>r.date>=start),W=420,H=460,left=34,right=8,top=28,bottom=110;
-    if(!visible.length)return {visible,start,W,H,left,right,top,bottom,low:null,high:null,step:null};
+    /* The frame comes from chartGeo() (D109); its default is the frame these two decisions set. */
+    const visible=series.filter(r=>r.date>=start&&r.date<=winTo),{W,H,left,right,top,bottom}=geo;
+    if(!visible.length)return {visible,start,W,H,left,right,top,bottom,low:null,high:null,step:null,geo,win};
     /* D2 — Y-domain from visible morning readings + trend ONLY.
        Goal band, target reference, forecast cone/endpoint, confidence band
        extremes and post-workout must never stretch the recent-trajectory scale. */
@@ -1114,14 +1369,15 @@ Object.assign(NXT, (()=>{
     /* Post-workout is contextual only (D8): never enters trend/plateau/forecast
        maths, and also never enters this domain. Drawn through the same scale
        when toggled on; readings outside the plot simply clip. */
-    const postRows=N.ui.showPost?N.timingRows('Post-workout').filter(r=>r.date>=start&&r.date<=state.date):[];
+    const postRows=N.ui.showPost?N.timingRows('Post-workout').filter(r=>r.date>=start&&r.date<=winTo):[];
     // showGoal is accepted for API compatibility but must not affect the domain (D2/D3).
     void showGoal;
-    const bandRows=(N.trendConfidence(rows)||[]).filter(r=>r.date>=start&&r.date<=state.date);
-    const forecastRead=N.forecastGoal(rows);
+    const bandRows=(N.trendConfidence(rows)||[]).filter(r=>r.date>=start&&r.date<=winTo);
+    const forecastRead=N.forecastGoal(rows),forecastView=N.forecastView(rows);
     /* Projection is off by default. Omit entirely when forecastGoal reports
-       insufficient evidence (!ok) rather than drawing a weak estimate (I11). */
-    const canForecast=!!(N.cfg().targetConfirmed&&forecastRead.ok&&forecastRead.weeks!==null&&forecastRead.confidence!=='none');
+       insufficient evidence (!ok) rather than drawing a weak estimate (I11),
+       and when it has gone stale (D104): a paused projection draws no cone. */
+    const canForecast=!!(N.cfg().targetConfirmed&&forecastRead.ok&&forecastRead.weeks!==null&&forecastRead.confidence!=='none'&&forecastView.current);
     const fc=N.ui.showForecast&&canForecast?forecastGeometry(forecastRead,start,bandRows):null;
     const dataLow=Math.min(...values),rawHigh=Math.max(...values);
     const span=Math.max(1,rawHigh-dataLow);
@@ -1130,10 +1386,10 @@ Object.assign(NXT, (()=>{
     const low=Math.floor((dataLow-step*.6)/step)*step,high=Math.ceil((rawHigh+step*.6)/step)*step;
     // Future strip only when a projection is actually drawn — still same px/day.
     const futureDays=fc?fc.futureDays:0;
-    const first=N.dateMs(start),end=Math.max(N.dateMs(state.date),first+86400000)+futureDays*86400000;
+    const first=N.dateMs(start),end=Math.max(N.dateMs(winTo),first+86400000)+futureDays*86400000;
     /* D51: readings sit 12 units inside the plot edges, so the first and last day's dots and the
        selected-point halo are never cut in half by the clip. */
-    const padX=12;
+    const padX=geo.padX;
     const xMs=ms=>left+padX+(ms-first)/(end-first)*(W-left-right-padX*2),x=d=>xMs(N.dateMs(d)),y=v=>top+(high-v)/(high-low)*(H-top-bottom);
     const points=visible.map(r=>({...r,x:x(r.date),y:y(r.weight),ty:r.avg===null?null:y(r.avg)}));
     /* Same x and y closures as the primary series: there is one scale, so a
@@ -1169,8 +1425,8 @@ Object.assign(NXT, (()=>{
     const anchor=forecast?{x:forecast.mid.x1,y:forecast.mid.y1,fitted:true}:tail?{x:tail.x,y:tail.y,fitted:false}:null;
     // Distant goal lives on Journey (D3) — never as a chart reference line.
     return {visible,start,W,H,left,right,top,bottom,low,high,step,points,post,postByDate,segments,ticks,x,y,
-      todayX:x(state.date),futureDays,bands,forecast,anchor,forecastRead,canForecast,
-      plateau:N.detectPlateau(rows),goalRef:null};
+      todayX:x(state.date),futureDays,bands,forecast,anchor,forecastRead,forecastView,canForecast,
+      plateau:N.detectPlateau(rows),goalRef:null,geo,win};
   }
   /* The primary series is the canonical per-date row, which prefers Morning but
      falls back to whatever timing exists on days with no morning reading. That
@@ -1182,6 +1438,12 @@ Object.assign(NXT, (()=>{
     const d=p.weight-p.avg;
     if(Math.abs(d)<0.05)return 'On trend';
     return Math.abs(d).toFixed(1)+' kg '+(d<0?'below':'above')+' trend';
+  }
+  /* "0.7 kg below trend" / "on trend" / '' (no trend yet): the readouts' gap, as words (D148). */
+  function gapWords(p) {
+    if(!p||p.avg===null||p.avg===undefined||!Number.isFinite(p.weight))return '';
+    const d=p.weight-p.avg;
+    return Math.abs(d)<0.05?'on trend':Math.abs(d).toFixed(1)+' kg '+(d<0?'below':'above')+' trend';
   }
   function pointTiming(p) {
     const t=String(p&&p.timeOfDay||'').trim();
@@ -1196,7 +1458,7 @@ Object.assign(NXT, (()=>{
   function trajectoryHeadline(plateau) {
     const rate=N.finite(plateau&&plateau.weeklyRate);
     if(!plateau||!plateau.ok||rate===null)return 'Building your baseline';
-    if(plateau.status==='losing')return `Losing ${Math.abs(rate).toFixed(2)} kg per week`;
+    if(plateau.status==='losing')return `Losing ${Math.abs(rate).toFixed(2)} kg a week`;
     if(plateau.status==='flat')return plateau.plateauDays?`Trend is flat · ${plateau.plateauDays} days`:'Trend is flat';
     if(plateau.status==='gaining')return 'Trend is gaining';
     return 'Direction still settling';
@@ -1205,13 +1467,13 @@ Object.assign(NXT, (()=>{
   /* Cut journey and Evidence (proposed D95; the owner approved the direction on 2026-10-19). Presentation
      only: every figure is the engine's own — the start weight, the trend now (plateau.lastAvg), the goal
      range, the four-week rate and its 95% range (detectPlateau), the D37 1%-of-body-weight line (review()),
-     and the goal forecast (forecastGoal; its date is the D28 formula). What changes: the projection names
+     and the goal forecast (forecastGoal, dated by forecastView, D104). What changes: the projection names
      its date and both of its inputs (where the last three weeks put you today, and their pace), so the
      weeks add up on the card; the rate leads with its share of body weight and the word review() already
      uses; confidence says what it measures; a plateau only takes a card when there is one. */
-  function journeyHTML(forecastRead) {
+  function journeyHTML(forecastRead,view,opts={}) {
     if(!N.cfg().targetConfirmed)return '';
-    const rows=N.weights();
+    const rows=N.weights(),fv=view||N.forecastView(rows),fw=N.forecastWords(fv);
     const startW=N.finite(typeof START_WEIGHT!=='undefined'?START_WEIGHT:null);
     const seed=startW!==null?startW:(rows[0]?rows[0].weight:null);
     const lo=goalLow(),hi=goalHigh();
@@ -1225,11 +1487,13 @@ Object.assign(NXT, (()=>{
     const done=seed-cur,remain=Math.max(0,cur-hi);
     const cs=typeof settings!=='undefined'&&settings&&Number.isFinite(N.dateMs(settings.cutStart))&&settings.cutStart<=state.date?settings.cutStart:null;
     const first=cs||rows[0]?.date;
-    const elapsed=first?Math.round((N.dateMs(state.date)-N.dateMs(first))/86400000):0;
+    /* D104: "down in N weeks" ends where Now is measured once the forecast is not fresh, so an old figure is not
+       credited to the weeks since. */
+    const elapsed=first?Math.max(0,Math.round((N.dateMs(fv.asOfDate)-N.dateMs(first))/86400000)):0;
     const sinceTxt=elapsed>=14?`${Math.round(elapsed/7)} weeks`:`${elapsed} ${N.plural(elapsed,'day')}`;
     const dir=done>=.05?'down':done<=-.05?'up':'no change';
-    const f=forecastRead||N.forecastGoal(rows);
-    const arrive=remain>0&&f&&f.ok&&N.finite(f.weeks)!==null&&f.weeks>0?N.shortDate(N.dateAdd(state.date,f.weeks*7)):null;
+    /* The goal label's date is the anchored arrival (D104), shown only while the forecast is current. */
+    const arrive=remain>0&&fv.showArrival?N.shortDate(fv.arrivalDate):null;
     const leftTrav=Math.min(pct(seed),pct(cur)),widthTrav=Math.abs(pct(cur)-pct(seed));
     const leftBand=Math.min(pct(lo),pct(hi)),widthBand=Math.abs(pct(lo)-pct(hi));
     /* A net gain is ground to make up: drawn in the review hue, and the road ahead starts where it ends. */
@@ -1253,30 +1517,97 @@ Object.assign(NXT, (()=>{
     const low=inCut.length>=5?inCut.reduce((m,r)=>Number(r.weight)<Number(m.weight)?r:m):null;
     if(low)ms.push({d:low.date,t:`Lowest weigh-in ${Number(low.weight).toFixed(1)}`,low:true});
     ms.sort((x,y)=>x.d.localeCompare(y.d));
-    /* The next whole kilogram, at the projection's own pace from where you are now: an estimate, drawn dashed (I11). */
-    const pace=f&&f.ok&&N.finite(f.slope)!==null&&f.slope<0?f.slope:null;
+    /* The next whole kilogram, at the projection's own pace from its own origin (D104): an estimate, drawn dashed
+       (I11), dropped once that day has come without a reading to show it, or while the forecast is paused. */
+    const pace=fv.ok&&fv.current&&N.finite(fv.slopeKgWk)!==null&&fv.slopeKgWk<0?fv.slopeKgWk/7:null;
     let next=null;
-    if(pace&&remain>0){const k=Math.ceil(cur-1e-6)-1;if(k>=hi){next={k,d:N.dateAdd(state.date,Math.max(1,Math.round((cur-k)/-pace)))};}}
+    if(pace&&remain>0&&fv.modelOriginDate){
+      const k=Math.ceil(cur-1e-6)-1,from=N.finite(fv.originLevel)!==null?fv.originLevel:cur;
+      const d=k>=hi?N.dateAdd(fv.modelOriginDate,Math.max(1,Math.round((from-k)/-pace))):null;
+      if(d&&d>state.date)next={k,d};
+    }
     const play='<button type="button" class="st-share-b is-icon st-jr-play" aria-label="Play your cut" data-st-story><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 4.6v10.8L15.2 10z" fill="currentColor" stroke="none"/></svg></button>';
-    const share='<button type="button" class="st-share-b is-icon" aria-label="Share your cut" onclick="window.NXP&&NXP.shareProgress&&NXP.shareProgress()"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5.5 9.5H5a1.5 1.5 0 0 0-1.5 1.5v4.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V11A1.5 1.5 0 0 0 15 9.5h-.5"/></svg></button>';
+    /* NXP is a top-level const (a global binding, not a window property), so the handler names it directly. */
+    const share='<button type="button" class="st-share-b is-icon" aria-label="Share your cut" onclick="typeof NXP!==\'undefined\'&&NXP.shareProgress&&NXP.shareProgress()"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5.5 9.5H5a1.5 1.5 0 0 0-1.5 1.5v4.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V11A1.5 1.5 0 0 0 15 9.5h-.5"/></svg></button>';
     const hiTxt=Number.isInteger(hi)?String(hi):hi.toFixed(1);
-    const nowWord=N.shortDate(nl?nl.date:state.date);
+    /* D107 — "Now" is named for what it is: the fitted "Estimated level" on the day it is measured (D97), never
+       called a measurement; while the line has too few mornings it is the smoothed trend and says so; with no
+       trend yet it is the latest morning reading. */
+    const nowName=nl?'Estimated level':'Latest morning';
+    const nowWord=N.shortDate(nl?nl.date:(rows.at(-1)?rows.at(-1).date:state.date));
+    /* The caption ends where the level is measured (CONTRACTS §3): "now" only while that is today. */
+    const whenEnd=(nl?nl.date:(rows.at(-1)?rows.at(-1).date:state.date))===state.date?'now':nowWord;
+    const nowNoteTxt=!nl?'From your latest morning reading. An estimated level starts once three mornings make a trend.':nl.source==='trend'?'Estimated level is your smoothed trend for now. A fitted line needs ten mornings in three weeks.':'';
     /* The legend reads in rail order, so after a net gain "Now" comes before "Start". */
     const startLab=`<span><b class="vn-num">${seed.toFixed(1)}</b>Start${first?`<i>${esc(N.shortDate(first))}</i>`:''}</span>`;
-    const nowLab=`<span class="is-now"><b class="vn-num" data-st-jr-nowv>${cur.toFixed(1)}</b><em data-st-jr-noww>Now<i>${esc(nowWord)}</i></em></span>`;
+    /* The legend row is aria-hidden (the summary and the slider carry the full name). "Estimated level · 19 Oct"
+       wrapped to three lines in a column the Start and Goal labels fill in two, so the row shows "Est. level". */
+    const nowShort=nl?'Est. level':nowName;
+    const nowLab=`<span class="is-now"><b class="vn-num" data-st-jr-nowv>${cur.toFixed(1)}</b><em data-st-jr-noww>${nowShort}<i>${esc(nowWord)}</i></em></span>`;
     const days=lv.length?Math.max(0,Math.round((N.dateMs(state.date)-N.dateMs(lv[0].date))/864e5)):0;
     const canRewind=lv.length>=3;
     const payload={seed:+seed.toFixed(2),first:first||null,lo,hi,max:+max.toFixed(3),span:+span.toFixed(3),today:state.date,now:+cur.toFixed(2),nowWord,
       pts:lv.map(q=>[q.date,+q.value.toFixed(2)])};
-    const sum=`Start ${seed.toFixed(1)} kilograms${first?' on '+N.shortDate(first):''}, now ${cur.toFixed(1)}, goal ${lo} to ${hi}${arrive?', projected around '+arrive:''}.`;
+    const sum=`Start ${seed.toFixed(1)} kilograms${first?' on '+N.shortDate(first):''}, ${nowName.toLowerCase()} ${cur.toFixed(1)} on ${nowWord}, goal ${lo} to ${hi}${arrive?', projected around '+arrive+(fw.asOf?' '+fw.asOf:''):''}.`;
+    const railHTML=`<div class="vn-journey-rail st-jr-rail" ${canRewind?`role="slider" tabindex="0" aria-label="Rewind your cut" aria-valuemin="0" aria-valuemax="${days}" aria-valuenow="${days}" aria-valuetext="${esc(`${nowName}, ${nowWord}: ${cur.toFixed(1)} kilograms, ${Math.abs(done).toFixed(1)} ${dir}`)}" aria-describedby="st-jr-sum"`:`role="img" aria-label="${esc(sum)}"`}>
+        <div class="vn-journey-track"></div>
+        <div class="vn-journey-band" style="left:${leftBand}%;width:${Math.max(2,widthBand)}%"></div>
+        <div class="vn-journey-travel${back?' is-back':''}" style="left:${leftTrav}%;width:${Math.max(0,widthTrav)}%"></div>
+        <div class="st-jr-fut" hidden></div>
+        ${aheadW>0&&!beads.some(x=>!x.date)?`<div class="st-jr-ahead" style="left:${aheadFrom}%;width:${aheadW}%"></div>`:''}
+        ${beads.map(x=>`<i class="st-jr-bead${x.date?' is-on':''}" style="left:${pct(x.k)}%" data-k="${x.k}"></i>`).join('')}
+        <i class="st-jr-today" hidden style="left:${pct(cur)}%"></i>
+        <div class="vn-journey-now" style="left:${pct(cur)}%"></div>
+      </div>`;
+    /* Summary mode (spec §13.1, w4): the quiet surface the Weight page shows, closed by default; ⌄ Details opens
+       the rest in place (NXT.jrToggle, STRATA.morph). The default mode below is unchanged. Five kinds of fact stay
+       visibly distinct (§13.2): a recorded weigh-in (solid, ✓), a milestone reached on the estimated level (dashed
+       outline, under its own heading), the model's next-kilogram estimate (dashed, "estimate"), the rewind snapshot
+       (◷ capsule + Back to today, the Rate card gaining "Current analysis · as of <date>") and the Simulation box
+       (Evidence). "Start weight" is the saved setting; the plate's "First reading" is never called that (W6). */
+    if(opts&&opts.mode==='summary'){
+      const open=!!N.ui.jrOpen;
+      const wk=remain>0&&fv.showArrival&&fv.weeksRemaining!==undefined&&fv.weeksRemaining!==null?(fv.lowWeeksRemaining!==undefined&&fv.lowWeeksRemaining!==fv.highWeeksRemaining?`${fv.lowWeeksRemaining}–${fv.highWeeksRemaining} wk`:`${fv.weeksRemaining} wk`):'';
+      const goalWhen=arrive?`~${arrive}${wk?' · '+wk:''}`:'';
+      const sinceLine=`${dir}${first&&elapsed>0?` in ${sinceTxt}`:''}`;
+      const togo=remain>0?`<b class="vn-num"><span data-st-jr-togo data-st-num>${remain.toFixed(1)}</span> kg</b><span data-st-jr-togol>to go to the top of ${lo}–${esc(hiTxt)}</span>`:cur>=lo?'<b>In range</b><span>your goal range</span>':`<b class="vn-num">${(lo-cur).toFixed(1)} kg</b><span>below your goal range</span>`;
+      const startLabS=`<span class="is-start"><b class="vn-num">${seed.toFixed(1)}</b><em>Start weight</em>${first?`<i>${esc(N.shortDate(first))}</i>`:''}</span>`;
+      const nowLabS=`<span class="is-now"><b class="vn-num" data-st-jr-nowv>${cur.toFixed(1)}</b><em data-st-jr-noww>${nowName}<i>${esc(nowWord)}</i></em>${nl?'<u class="st-jr-est">estimate</u>':''}</span>`;
+      const goalLabS=`<span class="is-goal"><b class="vn-num">${lo}–${hi}</b><em>Goal range</em>${goalWhen?`<i>${esc(goalWhen)}</i>`:''}</span>`;
+      const recorded=ms.filter(x=>x.low),onLevel=ms.filter(x=>!x.low);
+      const chip=(x,cls,glyph)=>`<li><button type="button" class="st-jr-mc ${cls}"${canRewind?` data-st-jr-go="${x.d}"`:''}><i aria-hidden="true">${glyph}</i>${esc(x.t)} <em>${esc(N.shortDate(x.d))}</em></button></li>`;
+      const msHTML=(recorded.length||onLevel.length||next)?`<div class="st-jr-ms">
+          ${recorded.length?`<p class="st-jr-mh">Recorded</p><ul>${recorded.map(x=>chip(x,'is-rec','✓')).join('')}</ul>`:''}
+          ${onLevel.length||next?`<p class="st-jr-mh">Milestones · on your estimated level</p><ul>${onLevel.map(x=>chip(x,'is-lvl','◌')).join('')}${next?`<li><span class="st-jr-mc is-est"><i aria-hidden="true"></i>${next.k} kg <em>~${esc(N.shortDate(next.d))} · estimate</em></span></li>`:''}</ul>`:''}
+        </div>`:'';
+      const playB=lv.length>=7?'<button type="button" class="st-jr-act st-jr-play" data-st-story><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 4.6v10.8L15.2 10z" fill="currentColor" stroke="none"/></svg><span>Play your cut</span></button>':'';
+      const detB=`<button type="button" class="st-jr-act st-jr-det" id="st-jr-det" aria-expanded="${open}" aria-controls="st-jr-more" onclick="NXT.jrToggle()"><span>Details</span><i aria-hidden="true">⌄</i></button>`;
+      return `<section class="vn-journey st-jr is-sum${open?' is-open':''}" aria-label="Cut journey"${canRewind?` data-st-jr="${esc(JSON.stringify(payload))}"`:''}>
+      <div class="vn-sect-head"><p class="vn-h-sect">Cut journey</p>
+        <span class="vn-tiny st-jr-when">${first?esc(N.shortDate(first)):'Start'} → ${esc(whenEnd)}</span>${share}</div>
+      <div class="st-jr-hero">
+        <div><div class="st-jr-big vn-num"><span data-st-jr-done data-st-num>${Math.abs(done).toFixed(1)}</span><small>kg</small></div><p class="st-jr-sub" data-st-jr-sub>${sinceLine}</p></div>
+        <div class="st-jr-togo">${togo}</div>
+      </div>
+      ${canRewind?'<div class="st-jr-rw" hidden><span class="st-jr-rwc"><i aria-hidden="true">◷</i><span class="st-jr-rww">Rewound · </span><b data-st-jr-rwd></b><span class="st-sr"> · <span data-st-jr-rwk></span></span></span><button type="button" class="st-jr-back" hidden>Back to today</button></div>':''}
+      ${railHTML}
+      ${canRewind?`<p class="st-sr" id="st-jr-sum">${esc(sum)} Drag along the bar, or use the arrow keys, to rewind to an earlier day.</p>`:''}
+      <div class="st-jr-labs is-sum" aria-hidden="true">${back?nowLabS+startLabS:startLabS+nowLabS}${goalLabS}</div>
+      <div class="st-jr-acts">${playB}${detB}</div>
+      <div class="st-jr-more" id="st-jr-more"${open?'':' hidden'}>
+        ${nowNoteTxt?`<p class="vn-tiny st-jr-note">${esc(nowNoteTxt)}</p>`:''}
+        ${msHTML}
+      </div>
+    </section>`;
+    }
     return `<section class="vn-journey st-jr" aria-label="Cut journey"${canRewind?` data-st-jr="${esc(JSON.stringify(payload))}"`:''}>
       <div class="vn-sect-head"><p class="vn-h-sect">Cut journey</p>
-        <span class="vn-tiny st-jr-when">${first?esc(N.shortDate(first)):'Start'} → now</span>${lv.length>=7?play:''}${share}</div>
+        <span class="vn-tiny st-jr-when">${first?esc(N.shortDate(first)):'Start'} → ${esc(whenEnd)}</span>${lv.length>=7?play:''}${share}</div>
       <div class="st-jr-hero">
         <div><div class="st-jr-big vn-num"><span data-st-jr-done data-st-num>${Math.abs(done).toFixed(1)}</span><small>kg</small></div><p class="st-jr-sub" data-st-jr-sub>${dir}${first&&elapsed>0?` in ${esc(sinceTxt)}`:''}</p></div>
         <div class="st-jr-togo">${remain>0?`<b class="vn-num"><span data-st-jr-togo data-st-num>${remain.toFixed(1)}</span> kg</b><span data-st-jr-togol>to your ${esc(hiTxt)} kg goal</span>`:cur>=lo?'<b>In range</b><span>your goal range</span>':`<b class="vn-num">${(lo-cur).toFixed(1)} kg</b><span>below your goal range</span>`}</div>
       </div>
-      <div class="vn-journey-rail st-jr-rail" ${canRewind?`role="slider" tabindex="0" aria-label="Rewind your cut" aria-valuemin="0" aria-valuemax="${days}" aria-valuenow="${days}" aria-valuetext="${esc(`Today: ${cur.toFixed(1)} kilograms, ${Math.abs(done).toFixed(1)} ${dir}`)}" aria-describedby="st-jr-sum"`:`role="img" aria-label="${esc(sum)}"`}>
+      <div class="vn-journey-rail st-jr-rail" ${canRewind?`role="slider" tabindex="0" aria-label="Rewind your cut" aria-valuemin="0" aria-valuemax="${days}" aria-valuenow="${days}" aria-valuetext="${esc(`${nowName}, ${nowWord}: ${cur.toFixed(1)} kilograms, ${Math.abs(done).toFixed(1)} ${dir}`)}" aria-describedby="st-jr-sum"`:`role="img" aria-label="${esc(sum)}"`}>
         <div class="vn-journey-track"></div>
         <div class="vn-journey-band" style="left:${leftBand}%;width:${Math.max(2,widthBand)}%"></div>
         <div class="vn-journey-travel${back?' is-back':''}" style="left:${leftTrav}%;width:${Math.max(0,widthTrav)}%"></div>
@@ -1291,6 +1622,7 @@ Object.assign(NXT, (()=>{
         ${back?nowLab+startLab:startLab+nowLab}
         <span class="is-goal"><b class="vn-num">${lo}–${hi}</b>Goal${arrive?`<i>~${esc(arrive)}</i>`:''}</span>
       </div>
+      ${nowNoteTxt?`<p class="vn-tiny st-jr-note">${esc(nowNoteTxt)}</p>`:''}
       ${ms.length||next?`<div class="st-jr-ms"><p class="st-jr-mh">Milestones</p><ul>${ms.map(m=>`<li><button type="button" class="st-jr-mc${m.low?' is-low':''}"${canRewind?` data-st-jr-go="${m.d}"`:''}><i aria-hidden="true"></i>${esc(m.t)} <em>${esc(N.shortDate(m.d))}</em></button></li>`).join('')}${next?`<li><span class="st-jr-mc is-est"><i aria-hidden="true"></i>${next.k} kg <em>~${esc(N.shortDate(next.d))} · estimate</em></span></li>`:''}</ul></div>`:''}
       ${canRewind?'<div class="st-jr-backrow"><button type="button" class="st-jr-back" hidden>Back to today</button></div>':''}
     </section>`;
@@ -1299,9 +1631,12 @@ Object.assign(NXT, (()=>{
   function nowNote() {
     if(!N.cfg().targetConfirmed)return '';
     const nl=N.nowLevel();
-    return nl&&nl.source==='line'?'<p class="vn-tiny vn-mt3">The Cut journey’s “Now” is where the line through your last three weeks of mornings puts you. The chart’s trend line is smoother and runs about ten days behind a moving weight.</p>':'';
+    /* D107: the same names as the chart header and the Journey. */
+    return nl&&nl.source==='line'?`<p class="vn-tiny vn-mt3">The Cut journey’s “Estimated level” (${esc(N.shortDate(nl.date))}) is where the line through your last three weeks of mornings puts you: a fitted estimate, not a measurement. The chart’s smoothed trend runs about ten days behind a moving weight, and “Latest morning” is the reading itself.</p>`
+      :nl?'<p class="vn-tiny vn-mt3">The Cut journey’s “Estimated level” is your smoothed trend until the last three weeks hold ten mornings for a fitted line.</p>':'';
   }
-  function evidenceHTML(plateau,forecastRead) {
+  function evidenceHTML(plateau,forecastRead,view,opts={}) {
+    const fv=view||N.forecastView(N.weights()),fw=N.forecastWords(fv);
     const rate=N.finite(plateau&&plateau.weeklyRate),ref=N.finite(plateau&&plateau.lastAvg);
     const ok=!!(plateau&&plateau.ok)&&rate!==null;
     /* The D37 reading, exactly as review() takes it: the four-week rate over the trend now. */
@@ -1323,209 +1658,890 @@ Object.assign(NXT, (()=>{
       const axis=Math.max(2,Math.min(4,Math.abs(pct)+.3)),flat=N.flatKgWeek/ref*100;
       const w=v=>(Math.max(0,Math.min(axis,v))/axis*100).toFixed(2);
       /* D96 · What-if pace: drag the marker to try another pace. Plain arithmetic from where you are now to the
-         top of the goal range, shown as a what-if and dropped when you let go; nothing is stored or forecast. */
-      const nl=N.nowLevel(),nowV=nl?nl.value:null,canWhat=N.cfg().targetConfirmed&&nowV!==null&&nowV>goalHigh()+.05;
+         top of the goal range, shown as a what-if and dropped when you let go; nothing is stored or forecast.
+         D104: it counts from the day Now is measured (base), not from today, and rests while the forecast is
+         paused, since Now is then too old to start from. */
+      const nl=N.nowLevel(),nowV=nl?nl.value:null,canWhat=N.cfg().targetConfirmed&&fv.current&&nowV!==null&&nowV>goalHigh()+.05;
       const gl=`${rate<0?'Losing':'Gaining'} ${Math.abs(pct).toFixed(1)} percent of body weight a week; the 1 percent line is where losing quickly starts`;
-      const wdata={axis:+axis.toFixed(3),ref:+ref.toFixed(3),flat:+flat.toFixed(4),now:nowV===null?null:+nowV.toFixed(3),hi:goalHigh(),rate:+rate.toFixed(3),today:state.date};
-      gauge=`<div class="st-ev-g${canWhat?' is-what':''}" ${canWhat?`role="slider" tabindex="0" aria-label="What-if pace" aria-valuemin="0" aria-valuemax="${(axis*ref/100).toFixed(2)}" aria-valuenow="${Math.max(0,-rate).toFixed(2)}" aria-valuetext="${esc(`Your 4-week rate, ${Math.abs(rate).toFixed(2)} kilograms a week. Arrow keys try another pace.`)}" data-st-ev="${esc(JSON.stringify(wdata))}"`:`role="img" aria-label="${esc(gl)}"`}><div class="st-ev-z"><i class="z-flat" style="width:${w(flat)}%"></i><i class="z-steady" style="width:${(w(1)-w(flat)).toFixed(2)}%"></i><i class="z-fast" style="flex:1"></i></div><i class="st-ev-mk" style="left:${w(Math.max(0,-pct))}%"></i>${canWhat?'<i class="st-ev-trail" hidden></i><i class="st-ev-gk" hidden></i><span class="st-ev-gkl" hidden></span>':''}<div class="st-ev-zl" aria-hidden="true"><span>Flat</span>${axis<=2.2?`<span class="is-mid is-steady" style="left:${w((flat+1)/2)}%">Steady</span>`:''}<span class="is-mid" style="left:${w(1)}%">1% line</span><span>Fast</span></div></div>${canWhat?'<p class="st-ev-hint" aria-hidden="true">Drag the marker to try another pace</p><div class="st-ev-wi" hidden><p>What if</p><b></b><span></span></div>':''}`;
+      const wdata={axis:+axis.toFixed(3),ref:+ref.toFixed(3),flat:+flat.toFixed(4),now:nowV===null?null:+nowV.toFixed(3),hi:goalHigh(),rate:+rate.toFixed(3),today:state.date,base:nl?nl.date:state.date,nowName:nl?'estimated level':'latest morning'};
+      gauge=`<div class="st-ev-g${canWhat?' is-what':''}" ${canWhat?`role="slider" tabindex="0" aria-label="What-if pace" aria-valuemin="0" aria-valuemax="${(axis*ref/100).toFixed(2)}" aria-valuenow="${Math.max(0,-rate).toFixed(2)}" aria-valuetext="${esc(`Your ${N.rateSpan(plateau).label}, ${Math.abs(rate).toFixed(2)} kilograms a week. Arrow keys try another pace.`)}" data-st-ev="${esc(JSON.stringify(wdata))}"`:`role="img" aria-label="${esc(gl)}"`}><div class="st-ev-z"><i class="z-flat" style="width:${w(flat)}%"></i><i class="z-steady" style="width:${(w(1)-w(flat)).toFixed(2)}%"></i><i class="z-fast" style="flex:1"></i></div><i class="st-ev-mk" style="left:${w(Math.max(0,-pct))}%"></i>${canWhat?'<i class="st-ev-trail" hidden></i><i class="st-ev-gk" hidden></i><span class="st-ev-gkl" hidden></span>':''}<div class="st-ev-zl" aria-hidden="true"><span>Flat</span>${axis<=2.2?`<span class="is-mid is-steady" style="left:${w((flat+1)/2)}%">Steady</span>`:''}<span class="is-mid" style="left:${w(1)}%">1% line</span><span>Fast</span></div></div>${canWhat?'<p class="st-ev-hint" aria-hidden="true">Drag the marker to try another pace</p>':''}`;
     }
     const plateauLine=!ok?esc((plateau&&plateau.reason)||''):plateau.plateau?'':plateau.status==='losing'?'No plateau: still trending down.':esc(plateau.reason||'');
     const plateauTile=ok&&plateau.plateau?`<div class="st-ev-t is-wide is-watch"><p>Plateau</p><b>${esc(String(plateau.plateauDays))} days</b><span>${esc(plateau.reason||'')}</span></div>`:'';
-    /* Projection: the D28 date and the pace it runs at, so it adds up beside the four-week rate. */
+    /* Projection: the D28 date and the pace it runs at, so it adds up beside the four-week rate. D104: the date is
+       anchored at the forecast's origin (forecastView) and the weeks count from today to it; once the origin is not
+       fresh the tile says "as of" it and the start is "on" that day; once stale it pauses, names the last morning
+       weigh-in and prints no date. */
     let proj;
+    const read=!!(forecastRead&&forecastRead.ok&&N.finite(forecastRead.weeks)!==null);
     if(!N.cfg().targetConfirmed)proj=`<b>Set a goal</b><span>A projection needs a confirmed goal range.</span>`;
-    else if(forecastRead&&forecastRead.ok&&N.finite(forecastRead.weeks)!==null){
+    else if(read&&!fv.current)proj=`<b>Paused</b><span>${esc(fw.paused||'No recent morning weigh-in.')} ${esc(fw.restart||'Weigh in to refresh it.')}</span>`;
+    else if(read){
+      const asOf=fw.asOf?` ${fw.asOf.charAt(0).toUpperCase()}${fw.asOf.slice(1)}.`:'';
       if(forecastRead.weeks===0){
         const la=N.finite(forecastRead.lastAvg),under=la!==null&&la<goalLow();
-        proj=under?`<b>Below goal</b><span>The trend is under your goal range.</span>`:`<b>At goal</b><span>The trend is in your goal range.</span>`;
+        proj=under?`<b>Below goal</b><span>The trend is under your goal range.${esc(asOf)}</span>`:`<b>At goal</b><span>The trend is in your goal range.${esc(asOf)}</span>`;
       }
       else{
-        const d=N.shortDate(N.dateAdd(state.date,forecastRead.weeks*7)),pace=N.finite(forecastRead.slope)!==null?forecastRead.slope*7:null;
-        const range=forecastRead.lowWeeks!==forecastRead.weeks||forecastRead.highWeeks!==forecastRead.weeks?` <small>(${forecastRead.lowWeeks}–${forecastRead.highWeeks})</small>`:'';
-        /* The forecast starts where the line through the last three weeks sits today (fittedLevel), which
-           runs ahead of the trend figure; naming both inputs lets the weeks add up on the card. */
-        const lvl=N.finite(forecastRead.fittedLevel),nl=N.nowLevel(),same=lvl!==null&&nl&&Math.abs(nl.value-lvl)<.05;
-        const basis=pace===null?"At your last 3 weeks' pace":same?`From ${lvl.toFixed(1)} kg now, at your last 3 weeks' pace of ${sgn(pace)} kg/wk`:lvl!==null?`Your last 3 weeks: ${lvl.toFixed(1)} kg today, ${sgn(pace)} kg/wk`:`At your last 3 weeks' pace, ${sgn(pace)} kg/wk`;
-        proj=`<b class="vn-num">~<span data-st-num>${forecastRead.weeks}</span> wk${range}</b><em>around ${esc(d)}</em><span>${basis}. An estimate, not a measurement.</span>`;
+        const d=N.shortDate(fv.arrivalDate),pace=N.finite(fv.slopeKgWk),wk=fv.weeksRemaining,lo=fv.lowWeeksRemaining,hi=fv.highWeeksRemaining;
+        const range=lo!==wk||hi!==wk?` <small>(${lo}–${hi})</small>`:'';
+        /* The forecast starts where the line through the last three weeks sits on its origin day (fittedLevel),
+           which runs ahead of the trend figure; naming both inputs lets the weeks add up on the card. */
+        const lvl=N.finite(fv.originLevel),nl=N.nowLevel(),same=lvl!==null&&nl&&Math.abs(nl.value-lvl)<.05;
+        const on=fv.freshness==='aging'?'on '+N.shortDate(fv.modelOriginDate):'';
+        const basis=pace===null?"At your last 3 weeks' pace":same?`From ${lvl.toFixed(1)} kg ${on||'now'}, at your last 3 weeks' pace of ${sgn(pace)} kg/wk`:lvl!==null?`Your last 3 weeks: ${lvl.toFixed(1)} kg ${on||'today'}, ${sgn(pace)} kg/wk`:`At your last 3 weeks' pace, ${sgn(pace)} kg/wk`;
+        /* Projection range (CONTRACTS §3, W6): the arrival window as two dates, "Likely between", never a
+           percentage, and "an estimate, not a promise". Nothing here is dated while the forecast is paused (the
+           branch above prints no future date). */
+        const pr=fv.arrivalLow&&fv.arrivalHigh&&fv.arrivalLow!==fv.arrivalHigh?`<b>Projection range</b> · Likely between ${esc(N.shortDate(fv.arrivalLow))} and ${esc(N.shortDate(fv.arrivalHigh))}. `:'';
+        proj=`<b class="vn-num">~<span data-st-num>${wk}</span> wk${range}</b><em>around ${esc(d)}${fw.asOf?` · ${esc(fw.asOf)}`:''}</em><span>${pr}${basis}.${fw.restart?' '+esc(fw.restart):''} An estimate, not a promise.</span>`;
       }
     } else proj=`<b>Unavailable</b><span>${esc((forecastRead&&forecastRead.reason)||'Not enough recent weigh-ins for a projection.')}</span>`;
+    /* D107: this word is detectPlateau's half-width bucket, i.e. how tightly the rate is pinned down, so it is
+       named "Rate precision"; the Why fold's word is the read's own and keeps its own name. */
+    const rs=N.rateSpan(plateau);
     const conf=plateau&&plateau.confidence&&plateau.confidence!=='none'?plateau.confidence:null;
     const steps=conf==='high'?3:conf==='medium'?2:conf==='low'?1:0;
-    const confTxt=band?`The 4-week rate is known to within ±${band.half.toFixed(2)} kg a week.${conf==='high'?'':' More mornings and steadier readings tighten it.'}`:'How tightly the 4-week rate is known, from your morning readings.';
+    /* Rate range and Rate precision copy (CONTRACTS §4, W6): "Likely between A and B kg/wk over the last four
+       weeks." and "The 4-week rate is likely within ±X kg a week." No frequency is printed ("known to within",
+       "95%" and "9 in 10" are retired). An N-day rate names its own span in place of "four weeks". */
+    const over=rs.full?'four weeks':`${rs.days} days`;
+    const confTxt=band?`The ${rs.label} is likely within ±${band.half.toFixed(2)} kg a week.${conf==='high'?'':' More mornings and steadier readings tighten it.'}`:'How tightly the rate is pinned down, from your morning readings.';
+    const rangeTxt=band?`<b>Rate range</b> · Likely between ${Math.abs(band.hi)<=Math.abs(band.lo)?`${sgn(band.hi)} and ${sgn(band.lo)}`:`${sgn(band.lo)} and ${sgn(band.hi)}`} kg/wk over the last ${over}. `:'';
+    /* Rewind (spec §13.2): the journey replays the past, the analysis does not; while rewound this line reads
+       "Current analysis · as of <date>" (strata.js composes and unhides it with the journey's capsule, so the
+       words are not in a default render). */
+    const current=`<p class="wx-current" data-wx-current="${esc(N.shortDate(state.date))}" hidden></p>`;
     return `<section class="vn-evidence st-ev">
-      <p class="vn-h-sect">Evidence</p>
+      <p class="vn-h-sect">Evidence</p>${current}
       <div class="st-ev-rate ${tone}">
-        <div class="st-ev-rt"><p>4-week rate</p>${word?`<span class="st-ev-pill ${tone}"><i aria-hidden="true"></i>${esc(word)}</span>`:''}</div>
+        <div class="st-ev-rt"><p>${ok?esc(rs.label):'4-week rate'}</p>${word?`<span class="st-ev-pill ${tone}"><i aria-hidden="true"></i>${esc(word)}</span>`:''}</div>
         <div class="st-ev-rv vn-num"><span data-st-num>${rateV}</span>${rate===null?'':'<small> kg/wk</small>'}</div>
         ${pct!==null?`<p class="st-ev-pct">${pct>0?'+':''}${Math.abs(pct).toFixed(1)}% of body weight a week</p>`:''}
         ${gauge}
-        ${band||plateauLine?`<p class="st-ev-note">${band?`Likely between ${Math.abs(band.hi)<=Math.abs(band.lo)?`${sgn(band.hi)} and ${sgn(band.lo)}`:`${sgn(band.lo)} and ${sgn(band.hi)}`} kg/wk. `:''}${plateauLine}</p>`:''}
+        ${band||plateauLine?`<p class="st-ev-note">${rangeTxt}${plateauLine}</p>`:''}
       </div>
-      ${rateTrendHTML(sgn)}
+      ${opts.rax===false?'':rateTrendHTML(sgn)}
       ${plateauTile}
       <div class="st-ev-two">
         <div class="st-ev-t"><p>Projection</p>${proj}</div>
-        <div class="st-ev-t"><p>Confidence</p><b>${conf?esc(conf.charAt(0).toUpperCase()+conf.slice(1)):'—'}</b>${steps?`<div class="st-ev-meter" aria-hidden="true">${[1,2,3].map(k=>`<i${k<=steps?' class="on"':''} style="--k:${k}"></i>`).join('')}</div>`:''}<span>${esc(confTxt)}</span></div>
+        <div class="st-ev-t"><p>Rate precision</p><b>${conf?esc(conf.charAt(0).toUpperCase()+conf.slice(1)):'—'}</b>${steps?`<div class="st-ev-meter" aria-hidden="true">${[1,2,3].map(k=>`<i${k<=steps?' class="on"':''} style="--k:${k}"></i>`).join('')}</div>`:''}<span>${esc(confTxt)}</span></div>
       </div>
     </section>`;
   }
   function chartHTML() {
-    const model=chartModel();N.ui.chart=model;
-    const {visible,W,H,left,right,top,bottom}=model;
+    /* Compare (spec §11): the x-window widens over both compared windows; the model carries the view for the
+       plot's bands and the slot's table. The builders live after chartHTML. */
+    const cv=N.ui.compare?compareView():null;
+    const model=chartModel(undefined,undefined,undefined,chartGeo(),cv&&cv.ok?cv.win:null);model.compare=cv;N.ui.chart=model;
+    const {visible}=model;
     const latestKey=visible.length?visible.at(-1).date+':'+visible.at(-1).weight:'';
     const grew=!!(N.ui.lastPlotted&&latestKey&&latestKey!==N.ui.lastPlotted);
     N.ui.lastPlotted=latestKey;
-    const animClass=N.ui.chartAnim==='range'?' is-range-change':grew?' is-new-point':'';
+    const animClass=N.ui.chartAnim==='range'?' is-range-change':N.ui.chartAnim==='layer'?' is-layer-change':N.ui.chartAnim==='compare'?' is-compare-change':grew?' is-new-point':'';
     N.ui.chartAnim=null;
+    /* Weight "Instrument" (spec §2): the plate (interpretation, readouts, range row, layers, plot, slot) is the
+       page's first section and holds no nested section, then the highlights, the Cut journey and Analysis. The
+       builders are defined after chartHTML, outside the release gate's model slice. */
+    if(!visible.length)return emptyPlateHTML(model)+journeyHTML()+analysisHTML(model,null);
+    const {points,plateau,forecastRead}=model;
+    const sel=N.ui.selected?points.findIndex(p=>p.date===N.ui.selected):-1;
+    const idx=sel>=0?sel:points.length-1;
+    const after=typeof N.highlightsHTML==='function'?N.highlightsHTML():'';
+    return `${plateHTML(model,idx,animClass)}${after}
+      ${journeyHTML(forecastRead,model.forecastView,{mode:'summary'})}
+      ${analysisHTML(model,plateau)}`;
+  }
+  /* ---- Weight "Instrument" builders (spec §2–§7, §12, §14; proposed D118, D119) ------------------------------
+     Defined after chartHTML on purpose: the release gate reads chartModel…chartHTML as the weight chart's model,
+     and nothing here defines a scale. Every mark goes through the model's own x and y; every figure is the
+     engine's (chartModel, detectPlateau, forecastView, windowStats, trend). Presentation only. */
+  const RANGE_NAMES={14:'Last 2 weeks',30:'Last month',90:'Last 3 months'};
+  function rangeName(r=N.ui.range) {
+    if(r==='cut'||!r)return cutRangeDays()?'Since your cut started':'Since your first weigh-in';
+    return RANGE_NAMES[r]||`Last ${r} days`;
+  }
+  function spanText(a,b) { return a===b?N.shortDate(a):`${N.shortDate(a)}–${N.shortDate(b)}`; }
+  const kgSigned=v=>N.signedFixed(v,1,'−');
+  const rateSigned=v=>N.signedFixed(v,2,'−');
+  const daysBetween=(a,b)=>Math.round((N.dateMs(b)-N.dateMs(a))/864e5);
+  function chipHTML(tone,glyph,word) { return `<span class="wx-status ${tone}"><i aria-hidden="true">${glyph}</i>${esc(word)}</span>`; }
+  /* Review states only (spec §6.1): a word and a shape, never colour alone (I2). */
+  function statusChip(model) {
+    const pl=model.plateau,rate=N.finite(pl&&pl.weeklyRate),ref=N.finite(pl&&pl.lastAvg);
+    if(!pl||!pl.ok||rate===null)return '';
+    const lo=goalLow(),hi=goalHigh();
+    if(N.cfg().targetConfirmed&&ref!==null&&Number.isFinite(lo)&&Number.isFinite(hi)&&ref>=lo&&ref<=hi)return chipHTML('is-ok','✓','In range');
+    if(ref&&rate/ref*100<-1)return chipHTML('is-review','◆','Losing quickly');
+    if(pl.plateau)return chipHTML('is-review','◆','Plateau');
+    if(pl.status==='gaining')return chipHTML('is-concern','◆','Review');
+    return '';
+  }
+  /* The caption names the rate's own window (detectPlateau's 28 days ending today) and how many mornings it
+     holds; a long and a short form (the short one below 360 px). Freshness (D104) replaces the tail. */
+  function captionParts(model) {
+    const pl=model.plateau,fv=model.forecastView,rows=N.weights();
+    const win=N.windowStats(rows,state.date,N.plateauRules.windowDays).items;
+    let full,short;
+    if(pl&&pl.ok&&win.length){
+      const rs=N.rateSpan(pl),n=win.length,m=`${n} ${N.plural(n,'morning')}`;
+      full=`${rs.label} · ${m} to ${N.shortDate(win.at(-1).date)}`;
+      const to=N.shortDate(win.at(-1).date);short=rs.full?`Last 4 wk · ${m} to ${to}`:`${rs.days} days · ${m} to ${to}`;
+    }else{
+      const n=win.length,m=`${n} ${N.plural(n,'morning')}`;
+      const ready=model.points&&model.points.some(p=>p.avg!==null);
+      const need=ready?`a rate needs ${N.plateauRules.minReadings} mornings across ${N.plateauRules.minSpanDays} days`:'a trend needs 3 mornings within a week';
+      full=`${m} in 4 weeks · ${need}`;short=`${m} · ${ready?'rate after '+N.plateauRules.minReadings:'trend after 3'}`;
+    }
+    let tail='';
+    if(fv&&fv.freshness==='aging'){const d=fv.daysSinceObservation;tail=`As of ${N.shortDate(fv.modelOriginDate)} · ${d} ${N.plural(d,'day')} without a morning`;}
+    else if(fv&&(fv.freshness==='stale'||fv.freshness==='expired')&&fv.lastObservationDate)tail=`Paused · last morning ${N.shortDate(fv.lastObservationDate)}`;
+    return {full,short,tail,dates:win.length?spanText(win[0].date,win.at(-1).date):''};
+  }
+  function interpretationHTML(model) {
+    const c=captionParts(model),tail=c.tail?`<span class="wx-cap-tail"><i aria-hidden="true">◆</i>${esc(c.tail)}</span>`:'';
+    const expand=typeof N.expandChart==='function'?`<button type="button" class="wx-xbtn" aria-label="Expand chart" onclick="NXT.expandChart()"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12 3.5h4.5V8M8 16.5H3.5V12M16.5 3.5 11 9M3.5 16.5 9 11"/></svg></button>`:'';
+    return `<div class="wx-int">
+        <div class="wx-int-t"><h2 class="wx-h2" id="wx-h" aria-describedby="wx-cap">${esc(trajectoryHeadline(model.plateau))}</h2>${statusChip(model)}</div>
+        <p class="wx-cap" id="wx-cap"><span class="wx-cap-l">${esc(c.tail?c.full.split(' · ')[0]:c.full)}</span><span class="wx-cap-s" aria-hidden="true">${esc(c.tail?c.short.split(' · ')[0]:c.short)}</span>${tail}</p>
+        ${expand}
+      </div>`;
+  }
+  /* Readouts (spec §6.2): the legend and the selected day's figures in one row. The recorded reading, the gap to
+     its trend (U+2212, kg) and the smoothed trend; post-workout appears only on a day that has one. Never the
+     Estimated level (that belongs to the Journey). */
+  function readoutsHTML(model,idx) {
+    const p=model.points[idx],isLatest=idx===model.points.length-1,fv=model.forecastView;
+    const postRow=model.postByDate.get(p.date);
+    /* D148: the vs-trend gap is words on the reading's own sub line; the trend cell gets a sub line only when the
+       trend is not fresh or a past day is selected. */
+    let fresh='';
+    if(fv&&fv.freshness&&fv.freshness!=='fresh'&&fv.modelOriginDate)fresh=`<span class="wx-fresh is-old"><i aria-hidden="true">◆</i>As of ${esc(N.shortDate(fv.modelOriginDate))}</span>`;
+    return `<div class="wx-ro" role="group" aria-label="Selected day">
+        <div class="wx-cell wx-ca">
+          <div class="wx-lr"><span class="wx-lab"><i class="vn-key-raw raw" aria-hidden="true"></i><span id="n99-chart-date">${isLatest?'Latest morning':'Morning reading'}</span></span>${noteChipHTML(p.date)}</div>
+          <div class="wx-v vn-num" id="n99-chart-weight">${p.weight.toFixed(1)}<em>kg</em></div>
+          <div class="wx-sub"><span><span id="wx-date">${esc(dayDate(p.date))}</span><span class="wx-tm"> · <span id="n99-chart-timing">${esc(pointTiming(p))}</span></span><span class="wx-gap" id="wx-gap">${esc(gapWords(p))}</span></span></div>
+        </div>
+        <div class="wx-cell wx-cc">
+          <span class="wx-lab"><i class="vn-key-trend" aria-hidden="true"></i><span id="wx-lab-c">Smoothed trend</span></span>
+          <div class="wx-v wx-v-t vn-num" id="n99-chart-average">${p.avg===null?'—':p.avg.toFixed(1)}<em>kg</em></div>
+          <div class="wx-sub">${fresh}<span class="wx-on" id="wx-on"${isLatest?' hidden':''}>on ${esc(N.shortDate(p.date))}</span></div>
+        </div>
+        <div class="wx-cell wx-cd" id="n99-chart-post" ${postRow?'':'hidden'}>
+          <span class="wx-lab"><i class="vn-key-post post" aria-hidden="true"></i>Post-workout</span>
+          <b class="vn-num" id="n99-chart-post-weight">${postRow?postRow.weight.toFixed(1)+' kg':''}</b>
+          <small id="n99-chart-post-delta">${esc(postDelta(p,postRow))}</small>
+        </div>
+      </div>`;
+  }
+  /* Weekly steps (D41): a step per Mon–Sun week at that week's morning average, for every week of the range that
+     holds three mornings. The old loop stopped after 20 weeks (guard<20); a long cut now draws every week. */
+  function weeklySteps(m) {
+    const out=[];
+    if(!m.points||m.points.length<2)return out;
+    const rows=N.weights(),first=m.points[0].date,last=m.points.at(-1).date,left=m.left,right=m.W-m.right;
+    for(let st=N.weekStart(first),guard=0;st<=last&&guard<600;st=N.dateAdd(st,7),guard++){
+      const en=N.dateAdd(st,6),wEnd=en>state.date?state.date:en,days=daysBetween(st,wEnd)+1,w=N.windowStats(rows,wEnd,days);
+      if(!w||w.avg===null||w.n<3)continue;
+      const from=st<first?first:st,to=en>last?last:en;
+      out.push({st,en,x1:Math.max(left,m.x(from)),x2:Math.min(right,m.x(to)),y:m.y(w.avg),avg:w.avg,n:w.n});
+    }
+    return out;
+  }
+  /* Runs of four or more days without a morning reading inside the plotted window (and up to today). */
+  function gapRuns(m) {
+    const out=[],pts=m.points;
+    for(let i=1;i<pts.length;i++){const d=daysBetween(pts[i-1].date,pts[i].date)-1;if(d>=4)out.push({a:N.dateAdd(pts[i-1].date,1),b:N.dateAdd(pts[i].date,-1),days:d});}
+    const tailDays=pts.length?daysBetween(pts.at(-1).date,state.date):0;
+    if(tailDays>=4)out.push({a:N.dateAdd(pts.at(-1).date,1),b:state.date,days:tailDays,tail:true});
+    return out;
+  }
+  function layerState(model) {
+    const start=model.start,end=state.date;
+    const postN=N.timingRows('Post-workout').filter(r=>r.date>=start&&r.date<=end).length;
+    const notesN=Object.keys(N.chartNotes()).filter(d=>d>=start&&d<=end).length;
+    const weeks=weeklySteps(model).length;
+    const fv=model.forecastView,fr=model.forecastRead;
+    let projReason='';
+    if(!N.cfg().targetConfirmed)projReason='Needs a confirmed goal';
+    else if(fv&&(fv.freshness==='stale'||fv.freshness==='expired'))projReason='Paused · 3 mornings needed';
+    else if(!model.canForecast)projReason=fr&&fr.ok&&fr.weeks===0?'Trend is in your goal range':'Needs 3 weeks of steady mornings';
+    return [
+      {k:'weekly',key:'showWeekly',glyph:'<i class="wx-key-step" aria-hidden="true"></i>',name:'Weekly averages',why:weeks>=2?'':'Needs 2 weeks with 3 mornings'},
+      {k:'spread',key:'showSpread',glyph:'<i class="wx-key-band" aria-hidden="true"></i>',name:'Day-to-day spread',why:model.bands.length?'':'Needs 7 mornings in 14 days'},
+      {k:'post',key:'showPost',glyph:'<i class="vn-key-post post" aria-hidden="true"></i>',name:'Post-workout',why:postN?'':'No post-workout readings in this range'},
+      {k:'notes',key:'showNotes',glyph:'<i class="st-key-note" aria-hidden="true"></i>',name:`Notes · ${notesN}`,why:''},
+      {k:'forecast',key:'showForecast',glyph:'<i class="vn-key-proj dash" aria-hidden="true"></i>',name:'Projection',why:projReason}
+    ];
+  }
+  /* Range row (spec §6.3): range, one fixed transport slot (Replay / Stop / ↺ Latest, the same button in every
+     state) and Layers. The drawer under it is always in the DOM (hidden when closed), so the series names stay in
+     the chart's markup. */
+  /* The drawer's visible chip names are short (D148 fix); the full name stays for assistive tech and the note. */
+  const LAYER_SHORT={weekly:'Weekly',spread:'Spread',post:'Post-workout',notes:'Notes',forecast:'Projection'};
+  function rangeRowHTML(model,idx) {
     const ranges=[[14,'2W'],[30,'1M'],[90,'3M'],['cut','Cut']];
-    const rangeBtns=`<div class="vn-seg n99-segments" role="group" aria-label="Chart date range">${ranges.map(([r,l])=>{
-      const active=N.ui.range===r;
+    const seg=`<div class="vn-seg n99-segments wx-seg" role="group" aria-label="Chart date range">${ranges.map(([r,l])=>{
+      const active=N.ui.range===r||(r==='cut'&&!N.ui.range);
       return `<button type="button" aria-pressed="${active}" class="${active?'active':''}" onclick="NXT.setRange(${typeof r==='string'?`'${r}'`:r})"${r==='cut'?` aria-label="${cutRangeDays()?'Since your cut started, '+N.shortDate(settings.cutStart):'Since your first weigh-in'}"`:''}>${l}</button>`;
     }).join('')}</div>`;
-    if(!visible.length){
-      const emptyTitle=N.weights().length?'No weigh-ins in this period':'Your first weigh-in starts here';
-      const emptyBody=N.weights().length?'Choose Cut to see older entries, or log a current weight.':'Your actual readings will appear as dots. A trend line starts when a seven-day window has three readings.';
-      return `<section class="vn-weight n99-chart" id="vn-weight">
-        <h2 class="vn-h-sub">Building your baseline</h2>
-        <div class="vn-mt4">${rangeBtns}</div>
-        <div class="vn-chart-empty n99-chart-empty"><div class="n99-empty-number">—<small> kg</small></div>
-          <h3>${emptyTitle}</h3><p>${emptyBody}</p>${N.button('+ Log weight','apx95OpenQuickWeight()')}</div>
-        ${journeyHTML()}
-        <details class="vn-more-block"><summary>Why NXTFRM says this</summary>${N.diagnosisCard()}${nowNote()}${N.cfg().targetConfirmed?'<p class="vn-tiny vn-mt3">A weight range alone does not measure leanness.</p>':''}</details>
-      </section>`;
-    }
-    const {points,post,postByDate,segments,ticks,y,bands,forecast,anchor,plateau,forecastRead,canForecast,futureDays,todayX,low,high}=model;
-    const selected=Math.max(0,points.findIndex(p=>p.date===N.ui.selected));
-    const idx=N.ui.selected&&selected>=0?selected:points.length-1;
-    const p=points[idx],baseline=H-bottom,isLatest=!N.ui.selected||N.ui.selected===points.at(-1).date;
-    const px=v=>v.toFixed(2);
-    const headline=trajectoryHeadline(plateau);
-    /* D58: thin from the top tick down, so the kept ticks stay evenly spaced (it used to keep the top
-       tick as well as every other one, which could leave two labels one step apart). */
-    const narrowTicks=ticks.length>5?ticks.filter((_,i)=>(ticks.length-1-i)%2===0):ticks;
-    const bandFill=bands.map(run=>`<path d="M ${run.map(b=>`${px(b.x)} ${px(b.upper)}`).join(' L ')} L ${[...run].reverse().map(b=>`${px(b.x)} ${px(b.lower)}`).join(' L ')} Z" fill="${CHART.ink}" fill-opacity=".06" pointer-events="none"/>`).join('');
-    const today=futureDays?`<line x1="${px(todayX)}" x2="${px(todayX)}" y1="${top}" y2="${baseline}" stroke="${CHART.grid}" stroke-opacity=".12" pointer-events="none"/>`:'';
-    const cone=forecast?`<polygon points="${forecast.cone.map(([cx,cy])=>`${px(cx)},${px(cy)}`).join(' ')}" fill="url(#n99-chart-cone)" pointer-events="none"/>`:'';
-    const forecastLine=forecast?`<line class="vn-proj-line" x1="${px(forecast.mid.x1)}" y1="${px(forecast.mid.y1)}" x2="${px(forecast.mid.x2)}" y2="${px(forecast.mid.y2)}" stroke="${CHART.ink}" stroke-width="${CHART.lineForecast}" stroke-linecap="round" stroke-dasharray="2 5" stroke-opacity=".55" pointer-events="none"/>${forecast.endpoint?`<circle cx="${px(forecast.endpoint.x)}" cy="${px(forecast.endpoint.y)}" r="3.5" fill="none" stroke="${CHART.ink}" stroke-width="1.5" stroke-opacity=".7" pointer-events="none"/>`:''}`:'';
-    /* Diamonds, not circles: shape separates post-workout from morning without hue (I6). */
-    const postSeries=post.map(pt=>{
-      const s=3.4;
-      return `<path class="vn-post-mark" d="M${px(pt.x)} ${px(pt.y-s)}L${px(pt.x+s)} ${px(pt.y)}L${px(pt.x)} ${px(pt.y+s)}L${px(pt.x-s)} ${px(pt.y)}Z" fill="none" stroke="${CHART.inkSecondary}" stroke-width="1.5" pointer-events="none"/>`;
+    const isLatest=idx===model.points.length-1;
+    const layers=layerState(model),on=layers.filter(l=>N.ui[l.key]&&!l.why).length,open=!!N.ui.layersOpen;
+    const transport=`<button type="button" class="wx-tp" id="nxp-progress-latest" data-st-chart-replay data-wx-state="${isLatest?'idle':'historical'}">
+        <svg class="wx-tp-g is-idle" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.8v10.4L13 8z"/></svg><svg class="wx-tp-g is-playing" viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="4" width="8" height="8" rx="1.5"/></svg><svg class="wx-tp-g is-historical" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 1 0 1.5-3.5M3 2.6v2.6h2.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="wx-tp-t is-idle">Replay</span><span class="wx-tp-t is-playing">Stop</span><span class="wx-tp-t is-historical">Latest</span>
+      </button>`;
+    const lbtn=`<button type="button" class="wx-lyb" id="wx-lyb" aria-expanded="${open}" aria-controls="wx-layers" aria-label="Chart layers, ${on} on" onclick="NXT.toggleLayers()"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3 17 6.8 10 10.6 3 6.8z"/><path d="M3 10.2l7 3.8 7-3.8M3 13.6l7 3.8 7-3.8"/></svg>${on?`<b class="wx-badge" aria-hidden="true">${on}</b>`:''}</button>`;
+    const firstOff=layers.find(l=>l.why);
+    const chips=layers.map(l=>{
+      const pressed=!!N.ui[l.key]&&!l.why,rid=`wx-why-${l.k}`;
+      return `<button type="button" class="wx-lc${l.why?' is-off':''}" data-wx-layer="${l.k}" aria-pressed="${pressed}"${l.why?` aria-disabled="true" aria-describedby="${rid}"`:''} onclick="NXT.layerChip('${l.k}',this)">${l.glyph}<span aria-hidden="true">${esc(LAYER_SHORT[l.k]?LAYER_SHORT[l.k]+(l.k==='notes'?l.name.replace(/^Notes/,''):''):l.name)}</span><span class="st-sr">${esc(l.name)}</span>${l.why?`<small class="st-sr" id="${rid}">${esc(l.why)}</small>`:''}</button>`;
     }).join('');
-    const trendPaths=segments.map(seg=>`${seg.length>1?`<path d="${smoothPath(seg)} L ${seg.at(-1).x} ${baseline} L ${seg[0].x} ${baseline} Z" fill="url(#n99-chart-fill)" pointer-events="none"/>`:''}<path class="vn-trend-line" d="${smoothPath(seg)}" filter="url(#st-glow)" pathLength="1" fill="none" stroke="${CHART.ink}" stroke-width="${CHART.line}" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>${seg.length===1?`<circle cx="${seg[0].x}" cy="${seg[0].y}" r="${CHART.point}" fill="${CHART.ink}" pointer-events="none"/>`:''}`).join('');
-    const dateLabel=isLatest?'Latest morning':N.shortDate(p.date);
-    const postRow=postByDate.get(p.date);
-    const xLabs=(()=>{
-      const n=points.length<3?points.length:3;
-      if(!n)return '';
-      const idxs=n===1?[0]:n===2?[0,points.length-1]:[0,Math.round((points.length-1)/2),points.length-1];
-      return [...new Set(idxs)].map((i,k)=>{
-        const pt=points[i],anchor=k===0?'start':k===idxs.length-1?'end':'middle';
-        return `<text x="${px(pt.x)}" y="${H-8}" text-anchor="${anchor}" fill="${CHART.axisText}" font-size="11" pointer-events="none">${N.shortDate(pt.date)}</text>`;
-      }).join('');
-    })();
-    const togPost=`<button type="button" class="vn-tog" data-tog="post" aria-pressed="${!!N.ui.showPost}" onclick="NXT.setPostVisible(!NXT.ui.showPost)">
-      <span class="vn-tog-box" aria-hidden="true"></span>Post-workout
-      <svg class="vn-tog-key" width="10" height="10" aria-hidden="true"><path d="M5 1.2L8.8 5L5 8.8L1.2 5Z" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></button>`;
-    const togProj=canForecast?`<button type="button" class="vn-tog" data-tog="proj" aria-pressed="${!!N.ui.showForecast}" onclick="NXT.setForecastVisible(!NXT.ui.showForecast)">
-      <span class="vn-tog-box" aria-hidden="true"></span>Projection
-      <svg class="vn-tog-key" width="14" height="10" aria-hidden="true"><line x1="0" y1="5" x2="14" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="2 4" stroke-linecap="round"/></svg></button>`:'';
-    /* All range: the first weigh-in is marked so the whole journey reads at a glance.
-       Presentation only: the point is one the chart already plots. */
-    const first=points[0],isCut=!N.ui.range||N.ui.range==='cut';
-    const startLine=isCut&&points.length>=2&&first?`<line class="vn-start-ref" x1="${px(first.x)}" x2="${px(W-right)}" y1="${px(first.y)}" y2="${px(first.y)}" stroke="${CHART.ink}" stroke-opacity=".32" stroke-width="1" stroke-dasharray="2 5" pointer-events="none"/>`:'';
-    /* The start label sits at the right end of the start line, where the descent has left room. */
-    const startTxt=`Start ${first.weight.toFixed(1)} kg`,startW=16+startTxt.length*6.1;
-    const startMark=(isCut&&points.length>=2&&first)?`${startLine}<g pointer-events="none"><circle cx="${px(first.x)}" cy="${px(first.y)}" r="5" fill="none" stroke="${CHART.ink}" stroke-width="1.6"/></g><g class="st-pillg is-start-ref" pointer-events="none"><rect x="${px(W-right-startW-2)}" y="${px(Math.max(top+2,first.y-24))}" width="${px(startW)}" height="18" rx="9"/><text x="${px(W-right-2-startW/2)}" y="${px(Math.max(top+2,first.y-24)+12.6)}" text-anchor="middle">${startTxt}</text></g>`:'';
-    /* D50 — the range read: what this window says without scrubbing. Trend change from the
-       first to the last trend value plotted, the lowest morning reading, and how many of the
-       window's days were weighed. Descriptive only: no rate, no new statistic. */
-    const trPts=points.filter(q=>q.avg!==null);
-    const spanDays=Math.round((N.dateMs(points.at(-1).date)-N.dateMs(points[0].date))/864e5)+1;
-    const lowPt=points.reduce((m,q)=>q.weight<m.weight?q:m,points[0]);
-    const tChange=trPts.length>=2?trPts.at(-1).avg-trPts[0].avg:null;
-    const rangeRead=`<div class="st-rread" role="group" aria-label="This range">
-      <div><small>Trend change</small><b class="vn-num">${tChange===null?'—':(tChange>0?'+':tChange<0?'−':'')+Math.abs(tChange).toFixed(1)}<em>kg</em></b><span>${trPts.length>=2?'over '+(d=>d+' '+N.plural(d,'day'))(Math.round((N.dateMs(trPts.at(-1).date)-N.dateMs(trPts[0].date))/864e5)):'building'}</span></div>
-      <div><small>Lowest</small><b class="vn-num">${lowPt.weight.toFixed(1)}<em>kg</em></b><span>${esc(N.shortDate(lowPt.date))}</span></div>
-      <div><small>Weighed</small><b class="vn-num">${points.length}<em>/${spanDays}</em></b><span>${Math.round(points.length/spanDays*100)}% of days</span></div>
-    </div>`;
-    const dense=points.length>90;
-    const summary=`${points.length} ${N.plural(points.length,"reading")}, ${N.shortDate(points[0].date)} to ${N.shortDate(points.at(-1).date)}. Dashed steps mark each week’s morning average. The strip shows each reading against the trend: while you are cutting most land below it, because the trend averages the days before; several days above it in a row mean the drop is slowing.`
-      +(forecast?' Projection is a model estimate, shown dashed — not a measurement.':'');
-    return `<section class="vn-weight n99-chart" id="vn-weight">
-      <div class="vn-read">
-        <h2 class="vn-h-sub" id="vn-traj-headline">${esc(headline)}</h2>
-      </div>
-      <div class="vn-mhead" id="vn-mhead" aria-live="polite">
-        <div class="vn-mhead-row">
-          <div class="vn-mhead-cell">
-            <div class="st-mh-l"><span class="vn-metric-l" id="n99-chart-date">${esc(dateLabel)}</span>${noteChipHTML(p.date)}</div>
-            <div class="vn-metric-v vn-num" id="n99-chart-weight">${p.weight.toFixed(1)}<em>kg</em></div>
-            <small class="vn-tiny" id="n99-chart-timing">${esc(pointTiming(p))}</small>
-          </div>
-          <div class="vn-mhead-cell vn-mhead-right">
-            <span class="vn-metric-l">Trend</span>
-            <div class="vn-h-sub vn-num vn-trend-val" id="n99-chart-average">${p.avg===null?'—':p.avg.toFixed(2)}<em>kg</em></div>
-            <small class="vn-tiny st-gapline" id="n99-chart-coverage">${esc(gapLine(p))}</small>
-          </div>
-        </div>
-        <div class="vn-mhead-post" id="n99-chart-post" ${postRow?'':'hidden'}>
-          <span class="vn-metric-l">Post-workout</span>
-          <b class="vn-num" id="n99-chart-post-weight">${postRow?postRow.weight.toFixed(1)+' kg':''}</b>
-          <small class="vn-tiny" id="n99-chart-post-delta">${esc(postDelta(p,postRow))}</small>
-        </div>
-      </div>
-      <div class="vn-mt4 st-range-row">${rangeBtns}<button type="button" class="st-replay" data-st-chart-replay aria-label="Replay this range"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.8v10.4L13 8z" fill="currentColor"/></svg><span>Replay</span></button></div>
-      <div class="vn-chart-wrap" id="vn-chart-wrap" tabindex="0" role="application"
-        aria-label="Weight trend chart. Drag to inspect a day. Use left and right arrow keys; Escape returns to latest."
-        onpointerdown="NXT.scrub(event)" onpointermove="if(event.buttons)NXT.scrub(event)"
-        onkeydown="NXT.chartKey(event)">
-        <svg id="n99-chart-svg" class="n99-chart-svg vn-chart-svg${animClass}${points.length>45?' is-busy':''}" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="n99-chart-title n99-chart-desc">
-          <title id="n99-chart-title">Morning weight and smoothed trend${forecast?' with model projection':''}</title>
-          <desc id="n99-chart-desc">${points.length} ${N.plural(points.length,"weigh-in")}. Circles are morning readings. The solid line is the smoothed trend. Diamonds are post-workout when enabled. ${forecast?'A dashed faded line is a model projection, not a measurement. ':''}Y-axis covers recent readings only — the long-term goal is on Cut journey below.</desc>
-          <defs>
-            <clipPath id="vn-chart-clip"><rect id="vn-chart-clip-r" x="${left}" y="${top}" width="${W-left-right}" height="${H-top-bottom}"/></clipPath>
-            <linearGradient id="n99-chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".34"/><stop offset=".7" stop-color="${CHART.ink}" stop-opacity=".06"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity="0"/></linearGradient><filter id="st-glow" x="-10%" y="-40%" width="120%" height="180%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-            <linearGradient id="n99-chart-cone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".10"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity=".02"/></linearGradient>
-          </defs>
-          ${narrowTicks.map(t=>`<line x1="${left}" x2="${W-right}" y1="${t.y}" y2="${t.y}" stroke="${CHART.grid}" stroke-opacity="${CHART.gridOpacity}" pointer-events="none"/><text class="vn-ytick" x="${left-7}" y="${px(t.y+3.8)}" text-anchor="end" fill="${CHART.axisText}" font-size="11" pointer-events="none">${Number(t.value.toFixed(1))}</text>`).join('')}<text class="vn-yunit" x="${left-7}" y="${px(Math.max(11,Math.min(...narrowTicks.map(k=>k.y))-11))}" text-anchor="end" fill="${CHART.axisText}" font-size="10" pointer-events="none">kg</text>
-          <g clip-path="url(#vn-chart-clip)" pointer-events="none">
-            ${today}${cone}${bandFill}${noteFlags(points,top,baseline)}${trendPaths}${forecastLine}${postSeries}
-            ${points.map(pt=>`<circle class="vn-raw-dot" cx="${pt.x}" cy="${pt.y}" r="${dense?1.7:points.length>45?2.2:2.8}" fill="${CHART.raw}" fill-opacity="${dense?.5:points.length>45?.7:.85}"/>`).join('')}
-            <line id="n99-chart-cursor" x1="${p.x}" x2="${p.x}" y1="${top}" y2="${baseline}" stroke="${CHART.cursor}" stroke-opacity=".38" stroke-dasharray="3 4"/>
-            <circle id="st-chart-halo" class="st-halo" cx="${p.x}" cy="${p.y}" r="11" fill="${CHART.ink}"/>
-            <circle id="n99-chart-active" cx="${p.x}" cy="${p.y}" r="${CHART.pointActive}" fill="${CHART.active}" stroke="${CHART.activeRing}" stroke-width="2"/>
-            ${anchor&&forecast?`<circle cx="${px(anchor.x)}" cy="${px(anchor.y)}" r="4" fill="${CHART.ink}" stroke="${CHART.activeRing}" stroke-width="2"/>`:''}
-          </g>
-          ${startMark}
-          ${xLabs}
-        </svg>
-      </div>
-      <div class="vn-legend n99-legend" id="vn-legend">
-        <span><i class="vn-key-trend"></i>Trend</span>
-        <span><i class="vn-key-raw raw"></i>Morning</span>
-        ${N.ui.showPost?'<span><i class="vn-key-post post"></i>Post-workout</span>':''}
-        ${forecast?'<span><i class="vn-key-proj dash"></i>Projection</span>':''}
-        ${noteFlags(points,top,baseline)?'<span><i class="st-key-note"></i>Note</span>':''}
-      </div>
-      ${rangeRead}
-      <details class="st-csum-d"><summary>How to read this chart</summary><p class="vn-tiny" id="vn-csum">${esc(summary)}</p></details>
-      <div class="vn-togs">${togPost}${togProj}</div>
-      ${journeyHTML(forecastRead)}
-      ${evidenceHTML(plateau,forecastRead)}
-      <details class="vn-more-block"><summary>Why NXTFRM says this</summary>${N.diagnosisCard()}${N.reviewCard()}${nowNote()}${N.cfg().targetConfirmed?'<p class="vn-tiny vn-mt3">A weight range alone does not measure leanness.</p>':''}</details>
+    return `<div class="wx-rr">${seg}${transport}${lbtn}</div>
+      <div class="wx-layers" id="wx-layers" role="group" aria-label="Chart layers"${open?'':' hidden'}>
+        <span class="wx-fixed"><i class="vn-key-raw raw" aria-hidden="true"></i>Morning readings</span><span class="wx-fixed"><i class="vn-key-trend" aria-hidden="true"></i>Smoothed trend</span>${chips}
+        <p class="wx-lnote" id="wx-lnote" aria-live="polite">${esc(firstOff?`${firstOff.name} · ${firstOff.why}`:'')}</p>
+      </div>`;
+  }
+  /* The range summary (D50): what this window says without scrubbing. Trend change (first → last smoothed trend
+     plotted), the lowest morning and how many of the window's days were weighed. On Cut the first cell is the
+     First reading, a name of its own (never "Start", which is the Journey's saved start weight, W6). */
+  function rangeReadHTML(model) {
+    const pts=model.points,tr=pts.filter(q=>q.avg!==null),isCut=!N.ui.range||N.ui.range==='cut';
+    const days=daysBetween(model.start,state.date)+1;
+    const low=pts.reduce((m,q)=>q.weight<m.weight?q:m,pts[0]);
+    const ch=tr.length>=2?tr.at(-1).avg-tr[0].avg:null;
+    const change=`<div><small>Trend change</small><b class="vn-num">${ch===null?'—':kgSigned(ch)}<em>kg</em></b>${ch===null?'<span>building</span>':''}</div>`;
+    const first=`<div><small>First reading</small><b class="vn-num">${pts[0].weight.toFixed(1)}<em>kg</em></b><span>${esc(N.shortDate(pts[0].date))}</span></div>`;
+    const cells=`${isCut?first:change}
+        <div><small>Lowest</small><b class="vn-num">${low.weight.toFixed(1)}<em>kg</em></b><span>${esc(N.shortDate(low.date))}</span></div>
+        <div><small>Weighed</small><b class="vn-num">${pts.length}<em> of ${days} days</em></b></div>`;
+    return `<div class="wx-sum" role="group" aria-label="This range">
+        <p class="wx-sum-h"><span>${esc(rangeName())}</span>${compareButtonHTML()}</p>
+        <div class="wx-sum-c">${cells}</div>
+        ${isCut&&ch!==null?`<p class="wx-sum-x">Trend change <b class="vn-num">${kgSigned(ch)} kg</b></p>`:''}
+      </div>`;
+  }
+  function srSummary(model) {
+    const pts=model.points,tr=pts.filter(q=>q.avg!==null),low=pts.reduce((m,q)=>q.weight<m.weight?q:m,pts[0]),last=pts.at(-1);
+    const n=pts.length,parts=[`${rangeName()}: ${n} morning ${N.plural(n,'reading')}, ${longDate(pts[0].date).replace(/^\S+ /,'')} to ${longDate(last.date).replace(/^\S+ /,'')}.`];
+    if(tr.length>=2){const ch=tr.at(-1).avg-tr[0].avg;parts.push(`Smoothed trend from ${tr[0].avg.toFixed(1)} to ${tr.at(-1).avg.toFixed(1)} kilograms, ${Math.abs(ch)<.05?'unchanged':(ch<0?'down ':'up ')+Math.abs(ch).toFixed(1)}.`);}
+    parts.push(`Lowest ${low.weight.toFixed(1)} on ${longDate(low.date).replace(/^\S+ /,'')}.`);
+    if(last.avg!==null){const d=Number((last.weight-last.avg).toFixed(1));parts.push(`Latest morning ${last.weight.toFixed(1)}, ${d===0?'on trend':Math.abs(d).toFixed(1)+' '+(d<0?'below':'above')+' trend'}.`);}
+    if(model.forecast)parts.push('A dashed line is a model projection, not a measurement.');
+    parts.push('Use arrow keys to move between readings, Enter to open the day.');
+    return parts.join(' ');
+  }
+  /* The plate (spec §2): the only lit edge above the fold. No nested <section>: the contract reads the chart
+     HTML up to the first </section>. */
+  function plateHTML(model,idx,animClass) {
+    const p=model.points[idx],n=model.points.length,isLatest=idx===n-1;
+    return `<section class="wx-plate n99-chart${isLatest?'':' is-hist'}" id="vn-weight" aria-labelledby="wx-h" data-wx-timing="${pointTiming(p)==='Morning'?'morning':'other'}">
+      ${interpretationHTML(model)}
+      ${readoutsHTML(model,idx)}
+      ${rangeRowHTML(model,idx)}
+      <div class="vn-chart-wrap wx-wrap" id="vn-chart-wrap" tabindex="0" role="slider" aria-label="Weight chart, ${esc(rangeName().toLowerCase())}"
+        aria-valuemin="0" aria-valuemax="${n-1}" aria-valuenow="${idx}" aria-valuetext="${esc(pointWords(p))}" aria-describedby="wx-sr-sum"
+        onpointerdown="NXT.scrub(event)" onpointermove="NXT.scrub(event)" onpointerup="NXT.scrubUp(event)" onpointercancel="NXT.scrubCancel(event)"
+        onkeydown="NXT.chartKey(event)">${plotHTML(model,{idx,animClass})}</div>
+      ${legendHTML(model)}
+      <p class="st-sr" id="wx-sr-sum">${esc(srSummary(model))}</p>
+      <p class="st-sr" id="wx-sel-sr" aria-live="polite"></p>
+      <div class="wx-slot${model.compare?' is-cmp':''}" id="wx-slot" data-wx-slot="${N.ui.selected&&!isLatest?'select':'summary'}">${model.compare?compareHTML(model):rangeReadHTML(model)}${selectionHTML(model,idx)}</div>
       <input type="hidden" id="n99-chart-slider" value="${idx}" aria-hidden="true">
     </section>`;
+  }
+  /* The inspector (spec §8.4, §4; phone-first, D144). The plate's slot swaps from the range summary to this bar
+     while a day is selected: the selected date with × (Back to latest), the day's context from NXP.dayState (D105)
+     as a link to the day, then + Note and Open day. It is the same bar at every width. */
+  function selectionHTML(model,idx) {
+    const p=model.points[idx],isLatest=idx===model.points.length-1,ctx=dayContext(p.date);
+    const x=`<button type="button" class="wx-sel-x" id="wx-sel-x" aria-label="Back to latest" onclick="NXT.backToLatest()"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>`;
+    return `<div class="wx-sel" id="wx-sel" role="group" aria-label="Selected day">
+        <div class="wx-sel-r1"><span class="wx-sel-h">Selected · <span id="wx-sel-l"${isLatest?'':' hidden'}>Latest · </span><b id="wx-sel-d">${esc(dayDate(p.date))}</b></span>${x}</div>
+        <button type="button" class="wx-sel-ctx${ctx.quiet?' is-quiet':''}" id="wx-sel-ctx" data-date="${p.date}" onclick="NXT.openChartDay(this.dataset.date)" aria-label="${esc(ctx.text)}. Open in History"><span id="wx-sel-ctxt">${esc(ctx.text)}</span><i aria-hidden="true">›</i></button>
+        <div class="wx-sel-r3"><span id="wx-sel-note-h">${noteChipHTML(p.date,'wx-sel-note')}</span><button type="button" class="wx-sel-open" id="wx-sel-open" data-date="${p.date}" onclick="NXT.openChartDay(this.dataset.date)">Open day<i aria-hidden="true"> ›</i></button></div>
+      </div>`;
+  }
+  /* The day's context for the inspector: the D105 state from NXP.dayState ("Full Body A · In progress · 6 of 15
+     sets"), "Rest day", or the quiet "No training logged"; without NXP (node) the records themselves. */
+  const DS_SHORT={finished:'Finished',complete:'Sets complete',progress:'In progress',partial:'Partly logged',done:'Done',addon:'Add-on logged'};
+  function dayContext(date) {
+    const nxp=typeof NXP==='object'&&NXP&&typeof NXP.dayState==='function'?NXP:null;
+    let ds=null;try{ds=nxp?nxp.dayState(date,null,null):null;}catch(_){ds=null;}
+    const did=dayDidText(date);
+    if(ds){
+      if(ds.k==='rest'&&!ds.recorded.any)return {text:'Rest day',quiet:false,k:ds.k};
+      if(ds.lift&&(ds.recorded.workingSets>0||ds.finished)){
+        const sets=ds.detail||`${ds.recorded.workingSets} ${N.plural(ds.recorded.workingSets,'set')}`;
+        return {text:`${ds.label} · ${DS_SHORT[ds.k]||ds.w||'Logged'} · ${sets}`,quiet:false,k:ds.k};
+      }
+      if(ds.recorded.any)return {text:`${ds.label} · ${DS_SHORT[ds.k]||ds.w||'Done'}${did?' · '+did:''}`,quiet:false,k:ds.k};
+      if(ds.k==='excused'||ds.k==='moved')return {text:`${ds.label} · ${ds.w}`,quiet:false,k:ds.k};
+      if(ds.k==='today'||ds.k==='planned')return {text:`${ds.label} · ${ds.w}`,quiet:false,k:ds.k};
+      return {text:'No training logged',quiet:true,k:ds.k};
+    }
+    return did?{text:did,quiet:false,k:'records'}:{text:'No training logged',quiet:true,k:'none'};
+  }
+  function dayDidText(date) {
+    try{
+      const sets=(state.logs||[]).filter(r=>r&&r.date===date&&r.setType!=='warmup'),bits=[];
+      if(sets.length){const t=sets[0].dayType;bits.push((t?N.label(t):'Lifted')+' · '+sets.length+' '+N.plural(sets.length,'set'));}
+      const mins=(state.cardio||[]).filter(r=>r&&r.date===date).reduce((a,r)=>a+(Number(r.duration||r.minutes)||0),0);
+      if(mins>0)bits.push(Math.round(mins)+' min cardio');
+      return bits.join(' · ');
+    }catch(_){return '';}
+  }
+  /* Lane placement (spec §8.3): the date lane sits in the top lane (plot top + 6), centred on the cursor and
+     clamped 10 px from the plot's edges; if any plotted mark falls inside it, it flips to the bottom lane (above
+     the x-axis); if both lanes collide it is hidden, and the readouts carry the date. w and h are the lane's own
+     size in chart units. Pure geometry over the model's own marks, so a test can place every reading. */
+  function laneMarks(m,idx) {
+    const {points,segments,top,W,H,right,bottom}=m,base=H-bottom,plotR=W-right,n=points.length,out=[];
+    const dotR=(n>90?1.8:n>45?2.4:3)+1.4;
+    points.forEach((p,i)=>out.push({x:p.x,y:p.y,r:i===idx?6:dotR}));
+    segments.forEach(seg=>{for(let i=0;i<seg.length;i++){out.push({x:seg[i].x,y:seg[i].y,r:5});if(i)out.push({x:(seg[i].x+seg[i-1].x)/2,y:(seg[i].y+seg[i-1].y)/2,r:5});}});
+    (m.post||[]).forEach(pt=>out.push({x:pt.x,y:pt.y<top?top+5:pt.y>base?base-5:pt.y,r:5}));
+    if(N.ui.showNotes!==false&&n>=2){const a=points[0],b=points[n-1],t0=N.dateMs(a.date),t1=N.dateMs(b.date);
+      Object.keys(N.chartNotes()).filter(d=>d>=a.date&&d<=b.date).forEach(d=>out.push({x:a.x+(N.dateMs(d)-t0)/Math.max(1,t1-t0)*(b.x-a.x),y:top+6,r:6}));}
+    if(N.ui.showWeekly)weeklySteps(m).forEach(s=>{for(let x=s.x1;x<=s.x2;x+=8)out.push({x,y:s.y,r:1.5});});
+    if(m.forecast){const f=m.forecast.mid,len=Math.hypot(f.x2-f.x1,f.y2-f.y1)||1;for(let t=0;t<=len;t+=8)out.push({x:f.x1+(f.x2-f.x1)*t/len,y:f.y1+(f.y2-f.y1)*t/len,r:1.5});
+      if(m.forecast.endpoint)out.push({x:m.forecast.endpoint.x,y:m.forecast.endpoint.y,r:4});
+      const fv=m.forecastView;if(fv&&fv.showArrival){const t='Goal range · ~'+N.shortDate(fv.arrivalDate),w=18+t.length*5.9;out.push({x:plotR-w/2-4,y:top+14,r:0,w,h:20});}}
+    if(n>=7){const low=points.reduce((a,q)=>q.weight<a.weight?q:a,points[0]);if(low!==points[n-1])out.push({x:low.x,y:low.y,r:7});}
+    return out;
+  }
+  function lanePlace(m,idx,w,h) {
+    const p=m.points[idx];if(!p)return {lane:null};
+    const plotR=m.W-m.right,base=m.H-m.bottom;
+    const cx=Math.min(Math.max(p.x,m.left+10+w/2),plotR-10-w/2);
+    const marks=laneMarks(m,idx);
+    const hit=(r,k)=>{const rw=k.w||0,rh=k.h||0;return k.x+rw/2+k.r>r.x&&k.x-rw/2-k.r<r.x+r.w&&k.y+rh/2+k.r>r.y&&k.y-rh/2-k.r<r.y+r.h;};
+    for(const L of [{lane:'top',y:m.top+6},{lane:'bottom',y:base-6-h}]){
+      const rect={x:cx-w/2,y:L.y,w,h};
+      if(!marks.some(k=>hit(rect,k)))return {lane:L.lane,x:cx,y:L.y,w,h};
+    }
+    return {lane:null,x:cx,w,h};
+  }
+  /* A week on the chart (spec §8.6): the band spans that Monday to Sunday on the model's own x scale (clamped to
+     the plot), and the week's step is the same figure weeklySteps draws, found whether or not the layer is on. */
+  function weekBand(m,st) {
+    if(!m||!m.points||!m.points.length)return null;
+    const en=N.dateAdd(st,6),left=m.left,right=m.W-m.right;
+    const x1=Math.max(left,m.x(st)),x2=Math.min(right,m.x(en));
+    if(!(x2>x1))return null;
+    const inWk=m.points.map((q,i)=>({q,i})).filter(o=>o.q.date>=st&&o.q.date<=en);
+    const step=weeklySteps(m).find(s=>s.st===st)||null;
+    return {st,en,x1,x2,top:m.top,bottom:m.H-m.bottom,step,last:inWk.length?inWk[inWk.length-1].i:-1,n:inWk.length};
+  }
+  /* Back to latest (spec §8.6): the selection bar's ×, the strip's ↺ and the transport share this. The glide is
+     the presentation layer's (opts.glide), a jump under reduced motion. */
+  function backToLatest() {
+    const m=N.ui.chart;if(!m||!m.points||!m.points.length)return;
+    N.selectPoint(m.points.length-1,{clear:true,glide:true});
+  }
+  /* ‹ Weight (spec §8.6): History's day header returns to where Weight was: the range, the layers, Compare and
+     the selected day are restored before the tab renders; the selection and the scroll position after it. The
+     memory is cleared once used, and progress() drops it when Weight is reached any other way. */
+  function returnToWeight() {
+    const r=N.ui.returnTo;if(!r)return false;
+    N.ui.returnTo=null;N.ui.restoring=r;
+    N.ui.view=r.view||'overview';N.ui.range=r.range;N.ui.selected=r.selected;N.ui.compare=r.compare||null;
+    if(r.layers)for(const k of Object.keys(r.layers))if(k in N.ui)N.ui[k]=r.layers[k];
+    if(typeof switchTab==='function')switchTab('weight');
+    let tries=0;
+    const settle=()=>{
+      const m=N.ui.chart;
+      if(N.ui.restoring&&tries++<40){setTimeout(settle,25);return;}
+      N.ui.restoring=null;
+      if(m&&m.points&&m.points.length){const i=r.selected?m.points.findIndex(p=>p.date===r.selected):-1;N.selectPoint(i>=0?i:m.points.length-1,i>=0?{}:{clear:true});}
+      if(typeof window!=='undefined'&&window.scrollTo)window.scrollTo(0,Number(r.scrollY)||0);
+    };
+    settle();
+    return true;
+  }
+  /* The plot (spec §7.3), back to front: screen, grid, week bands, spread, area, post-workout, trend, readings,
+     weekly steps, notes, projection, lowest ring, selection, and the scale gutter. */
+  function plotHTML(m,o={}) {
+    const {points,post,segments,ticks,bands,forecast,anchor,futureDays,todayX,W,H,left,right,top,bottom,geo}=m;
+    const base=H-bottom,px=v=>Number(v).toFixed(2),plotR=W-right,gutterRight=!!(geo&&geo.gutter==='right');
+    const idx=o.idx===undefined?points.length-1:o.idx,p=points[idx],n=points.length;
+    const dotR=n>90?1.8:n>45?2.4:3;
+    let kept=ticks;while(kept.length>5)kept=kept.filter((_,i)=>(kept.length-1-i)%2===0);
+    const grid=kept.map(t=>`<line class="wx-grid" x1="${left}" x2="${plotR}" y1="${px(t.y)}" y2="${px(t.y)}"/>`).join('');
+    const tail=segments.at(-1)?.at(-1)||null;
+    const tickTxt=kept.map(t=>{
+      const v=Number(t.value.toFixed(1)),topTick=t===kept[kept.length-1]&&gutterRight;
+      return gutterRight?`<text class="vn-ytick wx-scale" x="${W-6}" y="${px(t.y+4)}" text-anchor="end">${v}${topTick?'<tspan class="wx-unit"> kg</tspan>':''}</text>`
+        :`<text class="vn-ytick" x="${left-7}" y="${px(t.y+3.8)}" text-anchor="end" fill="${CHART.axisText}" font-size="11">${v}</text>`;
+    }).join('')+(gutterRight?'':`<text class="vn-yunit" x="${left-7}" y="${px(Math.max(11,Math.min(...kept.map(k=>k.y))-11))}" text-anchor="end" fill="${CHART.axisText}" font-size="10">kg</text>`);
+    /* Gaps: four or more days without a morning are a hatched column, labelled in the bottom lane. */
+    const gaps=gapRuns(m).map(g=>{const x1=Math.max(left,m.x(g.a)-3),x2=Math.min(plotR,(g.tail?todayX:m.x(g.b))+3);return {...g,x1,x2};}).filter(g=>g.x2-g.x1>2);
+    const gapCols=gaps.map(g=>`<rect class="wx-gapcol" x="${px(g.x1)}" y="${top}" width="${px(g.x2-g.x1)}" height="${px(base-top)}"/>`).join('');
+    const gapLabs=gaps.filter(g=>g.x2-g.x1>=96).map(g=>({x:(g.x1+g.x2)/2,t:`No mornings ${spanText(g.a,g.b)}`}));
+    /* x dates in the bottom lane, dropped where a gap label sits. */
+    const xY=gutterRight?base+18:H-8;
+    const xIdx=n<3?[...new Set([0,n-1])]:[0,Math.round((n-1)/2),n-1];
+    /* Each tick keeps its slot only if its box clears the others by 10 px (first, last, then the middle one) and
+       clears the gap label; estimated at 7 px a character, so a short span shows fewer dates, never a collision. */
+    const wOf=t=>String(t).length*7,ext=(x,w,an)=>an==='start'?[x,x+w]:an==='end'?[x-w,x]:[x-w/2,x+w/2];
+    const cand=[...new Set(xIdx)].map((i,k,arr)=>({pt:points[i],anchor:arr.length===1?'start':k===0?'start':k===arr.length-1?'end':'middle'}));
+    const kept2=[],boxes=gapLabs.map(g=>ext(g.x,wOf(g.t),'middle'));
+    for(const l of [cand[0],cand[cand.length-1],...cand.slice(1,-1)].filter(Boolean)){
+      if(kept2.includes(l))continue;
+      const e=ext(l.pt.x,wOf(N.shortDate(l.pt.date)),l.anchor);
+      if(boxes.some(b=>e[0]<b[1]+10&&e[1]>b[0]-10))continue;
+      boxes.push(e);kept2.push(l);
+    }
+    const xLabs=kept2.sort((u,v)=>u.pt.x-v.pt.x)
+      .map(l=>`<text class="wx-x" x="${px(l.pt.x)}" y="${xY}" text-anchor="${l.anchor}"${gutterRight?'':` fill="${CHART.axisText}" font-size="11"`}>${esc(N.shortDate(l.pt.date))}</text>`).join('')
+      +gapLabs.map(g=>`<text class="wx-x wx-gaplab" x="${px(g.x)}" y="${xY}" text-anchor="middle">${esc(g.t)}</text>`).join('');
+    /* Optional layers (spec §9): drawn only when on. */
+    const steps=N.ui.showWeekly?weeklySteps(m):[];
+    let weekBands='';
+    if(N.ui.showWeekly&&n>1){
+      let k=0;for(let st=N.weekStart(points[0].date),guard=0;st<=points.at(-1).date&&guard<600;st=N.dateAdd(st,7),guard++,k++){
+        if(k%2)continue;const a=Math.max(left,m.x(st)),b=Math.min(plotR,m.x(N.dateAdd(st,7)));
+        if(b>a)weekBands+=`<rect class="st-band" x="${px(a)}" y="${top}" width="${px(b-a)}" height="${px(base-top)}"/>`;
+      }
+    }
+    const spread=N.ui.showSpread?bands.map(run=>`<path class="wx-spread" d="M ${run.map(b=>`${px(b.x)} ${px(b.upper)}`).join(' L ')} L ${[...run].reverse().map(b=>`${px(b.x)} ${px(b.lower)}`).join(' L ')} Z"/>`).join(''):'';
+    const area=segments.filter(s=>s.length>1).map(seg=>`<path class="wx-area" d="${smoothPath(seg)} L ${px(seg.at(-1).x)} ${px(base)} L ${px(seg[0].x)} ${px(base)} Z" fill="url(#wx-area-g)"/>`).join('');
+    /* Post-workout: hollow diamonds on the same scale, painted before the morning readings (contract); a value
+       off this scale becomes a chevron at the plot edge (the domain stays data-only, D2). */
+    const postSeries=post.map(pt=>{
+      const s=3.4;
+      if(pt.y<top)return `<path class="vn-post-mark is-off" d="M${px(pt.x)} ${px(top+2)}L${px(pt.x+4)} ${px(top+8)}L${px(pt.x-4)} ${px(top+8)}Z"/>`;
+      if(pt.y>base)return `<path class="vn-post-mark is-off" d="M${px(pt.x)} ${px(base-2)}L${px(pt.x+4)} ${px(base-8)}L${px(pt.x-4)} ${px(base-8)}Z"/>`;
+      return `<path class="vn-post-mark" d="M${px(pt.x)} ${px(pt.y-s)}L${px(pt.x+s)} ${px(pt.y)}L${px(pt.x)} ${px(pt.y+s)}L${px(pt.x-s)} ${px(pt.y)}Z" fill="none" stroke="${CHART.inkSecondary}" stroke-width="1.5"/>`;
+    }).join('');
+    const trend=segments.map(seg=>seg.length>1?`<path class="wx-under" d="${smoothPath(seg)}"/><path class="vn-trend-line" d="${smoothPath(seg)}" pathLength="1" fill="none" stroke="url(#st-tg)" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>`
+      :`<circle class="wx-trend-pt" cx="${px(seg[0].x)}" cy="${px(seg[0].y)}" r="${CHART.point}"/>`).join('');
+    const dots=points.map((pt,i)=>`<circle class="vn-raw-dot" cx="${px(pt.x)}" cy="${px(pt.y)}" r="${dotR}" style="--i:${i}"/>`).join('');
+    const stepMarks=steps.map(s=>`<line class="st-wstep" x1="${px(s.x1)}" x2="${px(s.x2)}" y1="${px(s.y)}" y2="${px(s.y)}"/>`).join('');
+    const notes=N.ui.showNotes===false?'':noteFlags(points,top,base);
+    const today=futureDays?`<line class="wx-today" x1="${px(todayX)}" x2="${px(todayX)}" y1="${top}" y2="${base}"/>`:'';
+    const cone=forecast?`<polygon points="${forecast.cone.map(([cx,cy])=>`${px(cx)},${px(cy)}`).join(' ')}" fill="url(#n99-chart-cone)"/>`:'';
+    const projLine=forecast?`<line class="vn-proj-line" x1="${px(forecast.mid.x1)}" y1="${px(forecast.mid.y1)}" x2="${px(forecast.mid.x2)}" y2="${px(forecast.mid.y2)}" stroke="${CHART.ink}" stroke-width="${CHART.lineForecast}" stroke-linecap="round" stroke-dasharray="2 5" stroke-opacity=".55"/>${forecast.endpoint?`<circle cx="${px(forecast.endpoint.x)}" cy="${px(forecast.endpoint.y)}" r="3.5" fill="none" stroke="${CHART.ink}" stroke-width="1.5" stroke-opacity=".7"/>`:''}${tail&&anchor&&Math.hypot(anchor.x-tail.x,anchor.y-tail.y)>3?`<line class="st-bridge" x1="${px(tail.x)}" y1="${px(tail.y)}" x2="${px(anchor.x)}" y2="${px(anchor.y)}"/>`:''}`:'';
+    const fv=m.forecastView;
+    let goalPill='';
+    if(forecast&&fv&&fv.showArrival){const t='Goal range · ~'+N.shortDate(fv.arrivalDate),w=18+t.length*5.9,gx=plotR-w-4,gy=top+4;goalPill=`<g class="st-pillg is-goal"><rect x="${px(gx)}" y="${px(gy)}" width="${px(w)}" height="20" rx="10"/><text x="${px(gx+w/2)}" y="${px(gy+13.6)}" text-anchor="middle">${esc(t)}</text></g>`;}
+    const low=n>=7?points.reduce((a,q)=>q.weight<a.weight?q:a,points[0]):null;
+    const lowRing=low&&low!==points.at(-1)?`<circle class="wx-low" cx="${px(low.x)}" cy="${px(low.y)}" r="6.5"/>`:'';
+    const hasStem=p.ty!==null&&p.ty!==undefined&&Math.abs(p.y-p.ty)>3;
+    /* Compare (spec §11): "Before" on the hatch, "This range" on a faint violet wash, an uncompared stretch between
+       them dimmed; the same marks are drawn in both windows (nothing shifted, nothing interpolated) and a veil
+       over the "before" window lowers their emphasis. The window labels take the bottom lane. */
+    const cv=m.compare&&m.compare.ok?m.compare:null;
+    let cmpBands='',cmpVeil='',cmpLabs='';
+    if(cv){
+      const A=cv.cw.before,B=cv.cw.current,bTo=B.to>state.date?state.date:B.to;
+      const xa1=Math.max(left,m.x(A.from)-3),xa2=Math.min(plotR,m.x(A.to)+3),xb1=Math.max(left,m.x(B.from)-3),xb2=Math.min(plotR,m.x(bTo)+3);
+      const band=(cls,x1,x2)=>x2-x1>1?`<rect class="${cls}" x="${px(x1)}" y="${top}" width="${px(x2-x1)}" height="${px(base-top)}"/>`:'';
+      cmpBands=band('wx-cmp-before',xa1,xa2)+band('wx-cmp-cur',xb1,xb2)+(xb1-xa2>4?band('wx-cmp-gap',xa2,xb1):'');
+      cmpVeil=band('wx-cmp-veil',xa1,xa2)+(xb1-xa2>4?band('wx-cmp-veil is-gap',xa2,xb1):'');
+      const lab=(x1,x2,t,short)=>{const w=x2-x1,full=t.length*5.9+6;return `<text class="wx-x wx-cmp-l" x="${px((x1+x2)/2)}" y="${xY}" text-anchor="middle">${esc(full<=w?t:short)}</text>`;};
+      cmpLabs=lab(xa1,xa2,`Before · ${spanText(A.from,A.to)}`,'Before')+lab(xb1,xb2,'This range','Now');
+    }
+    return `<svg id="n99-chart-svg" class="n99-chart-svg vn-chart-svg wx-svg${o.animClass||''}${n>45?' is-busy':''}" viewBox="0 0 ${W} ${H}" aria-hidden="true" focusable="false">
+        <defs>
+          <clipPath id="vn-chart-clip"><rect id="vn-chart-clip-r" x="${left}" y="${top}" width="${W-left-right}" height="${base-top}"/></clipPath>
+          <linearGradient id="st-tg" x1="${left}" y1="0" x2="${plotR}" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7C5CFF" stop-opacity=".6"/><stop offset=".55" stop-color="#B49AFF"/><stop offset="1" stop-color="#F3EEFF"/></linearGradient>
+          <linearGradient id="wx-area-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8B5CF6" stop-opacity=".16"/><stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/></linearGradient>
+          <linearGradient id="n99-chart-cone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${CHART.ink}" stop-opacity=".10"/><stop offset="1" stop-color="${CHART.ink}" stop-opacity=".02"/></linearGradient>
+          <pattern id="wx-hatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><line class="wx-hatch-l" x1="0" y1="0" x2="0" y2="6"/></pattern>
+        </defs>
+        <rect class="wx-screen" x="${left}" y="${top}" width="${W-left-right}" height="${px(base-top)}"/>
+        <line class="wx-hair" x1="${left}" x2="${plotR}" y1="${top}" y2="${top}"/><line class="wx-hair" x1="${left}" x2="${plotR}" y1="${px(base)}" y2="${px(base)}"/>
+        ${grid}
+        <g clip-path="url(#vn-chart-clip)" pointer-events="none">
+          ${cmpBands}${weekBands}${gapCols}${today}${cone}${spread}${area}${notes}${postSeries}${trend}${projLine}${dots}${stepMarks}${lowRing}${cmpVeil}
+          <line id="n99-chart-cursor" class="wx-cur" x1="${px(p.x)}" x2="${px(p.x)}" y1="${top}" y2="${px(base)}"/>
+          <line id="st-stem" class="st-stem" x1="${px(p.x)}" x2="${px(p.x)}" y1="${px(p.y)}" y2="${hasStem?px(p.ty):px(p.y)}" visibility="${hasStem&&idx!==n-1?'visible':'hidden'}"/>
+        </g>
+        ${anchor&&forecast?`<circle cx="${px(anchor.x)}" cy="${px(anchor.y)}" r="4" fill="${CHART.ink}" stroke="${CHART.activeRing}" stroke-width="2" pointer-events="none"/>`:''}
+        <circle id="st-chart-halo" class="st-halo" cx="${px(p.x)}" cy="${px(p.y)}" r="11" pointer-events="none"/>
+        <circle id="n99-chart-active" cx="${px(p.x)}" cy="${px(p.y)}" r="5" pointer-events="none"/>
+        ${goalPill}${tickTxt}${cv?cmpLabs:xLabs}
+      </svg>`;
+  }
+  /* Empty plate (spec §15): the same frame with its first step. Contextual-only weigh-ins (D14) are not denied:
+     they are named, with where to find them. */
+  function emptyPlateHTML(model) {
+    const other=N.weights().length?0:N.otherTimingCount();
+    const emptyTitle=N.weights().length?'No weigh-ins in this period':other?'No morning readings yet':'Your first weigh-in starts here';
+    const emptyBody=N.weights().length?'Choose Cut to see older entries, or log a current weight.':other?`${other} ${N.plural(other,'reading')} logged at other times of day ${other===1?'is':'are'} in History. The trend, rate and projection use morning weigh-ins only, so your first morning reading starts the chart.`:'Your actual readings will appear as dots. A trend line starts when a seven-day window has three readings.';
+    const ranges=[[14,'2W'],[30,'1M'],[90,'3M'],['cut','Cut']];
+    return `<section class="wx-plate n99-chart is-empty" id="vn-weight" aria-labelledby="wx-h">
+      <div class="wx-int"><div class="wx-int-t"><h2 class="wx-h2" id="wx-h">${N.weights().length?'Building your baseline':'Your first morning reading starts this chart'}</h2></div></div>
+      <div class="wx-rr"><div class="vn-seg n99-segments wx-seg" role="group" aria-label="Chart date range">${ranges.map(([r,l])=>{const a=N.ui.range===r||(r==='cut'&&!N.ui.range);return `<button type="button" aria-pressed="${a}" class="${a?'active':''}" onclick="NXT.setRange(${typeof r==='string'?`'${r}'`:r})">${l}</button>`;}).join('')}</div></div>
+      <div class="vn-chart-empty n99-chart-empty wx-empty"><div class="n99-empty-number">—<small> kg</small></div>
+        <h3>${emptyTitle}</h3><p>${emptyBody}</p>${N.button('+ Log morning weight','apx95OpenQuickWeight()')}</div>
+    </section>`;
+  }
+  /* Analysis (spec §14): quiet disclosure rows, each summary a real fact. Open state is memory only. */
+  function analysisRow(key,title,summary,body,o={}) {
+    N.ui.wxOpen=N.ui.wxOpen||{};
+    const open=!!N.ui.wxOpen[key];
+    if(o.action)return `<div class="wx-row" data-wx-row="${key}"><button type="button" class="wx-row-b" onclick="${o.action}"><span class="wx-row-l"><span class="wx-row-t">${esc(title)}</span><span class="wx-row-s">${esc(summary)}</span></span><i class="wx-chev" aria-hidden="true">›</i></button></div>`;
+    return `<div class="wx-row${open?' is-open':''}${o.cls?' '+o.cls:''}" data-wx-row="${key}"><button type="button" class="wx-row-b" aria-expanded="${open}" aria-controls="wx-p-${key}" onclick="NXT.wxRow('${key}')"><span class="wx-row-l"><span class="wx-row-t">${esc(title)}</span><span class="wx-row-s" id="wx-s-${key}">${esc(summary)}</span></span><i class="wx-chev" aria-hidden="true">›</i></button><div class="wx-row-p" id="wx-p-${key}"${open?'':' hidden'}>${body}</div></div>`;
+  }
+  function weeksSummary() {
+    const rows=N.weights(),ws=N.weekStart(state.date),prev=N.dateAdd(ws,-7);
+    const a=N.windowStats(rows,N.dateAdd(prev,6),7),b=N.windowStats(rows,N.dateAdd(prev,-1),7);
+    if(!a.n)return 'Monday to Sunday morning averages';
+    const chg=a.n>=3&&b.n>=3?a.avg-b.avg:null;
+    return `Week of ${N.shortDate(prev)}${chg===null?'':' '+kgSigned(chg)+' kg'} · ${a.n} of 7 mornings`;
+  }
+  function devSummary(model) {
+    const t=model.points.filter(q=>q.avg!==null&&Math.abs(q.weight-q.avg)>=.05);
+    if(t.length<4)return 'Needs 4 mornings with a trend';
+    const below=t.filter(q=>q.weight<q.avg).length,above=t.length-below;
+    return below>=above?`${below} of ${t.length} mornings below the trend this range`:`${above} of ${t.length} mornings above the trend this range`;
+  }
+  function analysisHTML(model,plateau) {
+    const rows=N.weights(),has=!!(model.points&&model.points.length);
+    const ev=has?evidenceParts(plateau,model.forecastRead,model.forecastView):null;
+    const how=`<div class="wx-how">
+        <p class="vn-tiny">Dots are morning readings. The solid line is the smoothed trend, an average that weights recent mornings more, so it runs behind a moving weight. A hatched column marks four or more days without a morning reading.</p>
+        <p class="vn-tiny vn-mt3"><b>Day-to-day spread</b> is the scatter of your mornings around the trend. <b>Rate range</b> is where the four-week rate likely sits, about ±2 standard errors of its line. <b>Projection range</b> is the spread of the projected arrival, about 2 in 3.</p>
+        ${nowNote()}${N.diagnosisCard()}${N.reviewCard()}${N.cfg().targetConfirmed?'<p class="vn-tiny vn-mt3">A weight range alone does not measure leanness.</p>':''}
+      </div>`;
+    const other=N.otherTimingCount(),latest=rows.at(-1);
+    const weighSum=latest?`Latest ${latest.weight.toFixed(1)} kg · ${N.shortDate(latest.date)}${other?` · ${other} other-time`:''}`:`0 morning readings${other?` · ${other} other-time`:''}`;
+    const out=[];
+    if(has){
+      out.push(analysisRow('weeks','Week by week',weeksSummary(),'<div class="wx-weeks" id="wx-weeks"></div>'));
+      out.push(analysisRow('rate','Rate',ev.summary,ev.html,{cls:'is-rate'}));
+      if(ev.rax)out.push(analysisRow('rax','Rate across your cut',ev.raxNote,ev.rax));
+      out.push(analysisRow('dev','Each day vs its trend',devSummary(model),`<div class="wx-dev" id="wx-dev"></div><p class="vn-tiny">Each bar is one morning against its own smoothed trend value. While you are cutting most mornings land below it, because the trend averages the days before; several days above it in a row mean the drop is slowing.</p>`));
+    }
+    out.push(analysisRow('how','How these numbers are made','Trend, rate, spread and projection explained',how));
+    out.push(analysisRow('all',`All weigh-ins · ${rows.length}`,weighSum,'',{action:'NXT.openWeightHistory()'}));
+    /* The Rate row leads when the cut is losing quickly (spec §15). */
+    if(ev&&ev.quick){const i=out.findIndex(r=>r.indexOf('data-wx-row="rate"')!==-1);if(i>0)out.unshift(out.splice(i,1)[0]);}
+    return `<section class="wx-an" aria-labelledby="wx-an-h"><h2 class="wx-an-h" id="wx-an-h">Analysis</h2>${out.join('')}</section>`;
+  }
+  function evidenceParts(plateau,forecastRead,view) {
+    const fv=view||N.forecastView(N.weights()),rate=N.finite(plateau&&plateau.weeklyRate),ref=N.finite(plateau&&plateau.lastAvg);
+    const raxOut={};
+    const html=evidenceHTML(plateau,forecastRead,fv,{rax:false});
+    const rax=rateTrendHTML(rateSigned,raxOut,fv);
+    const conf=plateau&&plateau.confidence&&plateau.confidence!=='none'?plateau.confidence:null;
+    const summary=plateau&&plateau.ok&&rate!==null?`${rateSigned(rate)} kg/wk${conf?` · Rate precision ${conf.charAt(0).toUpperCase()+conf.slice(1)}`:''}`:'Building: '+((plateau&&plateau.n)||0)+' mornings in 4 weeks';
+    return {html,rax,raxNote:raxOut.note||'',summary,quick:!!(plateau&&plateau.ok&&ref&&rate!==null&&rate/ref*100<-1)};
+  }
+  /* Analysis rows open in place; the open set lives in memory only (N.ui.wxOpen), so a repaint keeps it. */
+  function wxRow(key) {
+    N.ui.wxOpen=N.ui.wxOpen||{};
+    const row=typeof document!=='undefined'&&document.querySelector(`[data-wx-row="${key}"]`);
+    const open=!N.ui.wxOpen[key];N.ui.wxOpen[key]=open;
+    if(!row)return open;
+    row.classList.toggle('is-open',open);
+    const b=row.querySelector('.wx-row-b'),p=row.querySelector('.wx-row-p');
+    if(b)b.setAttribute('aria-expanded',String(open));
+    if(p)p.hidden=!open;
+    return open;
+  }
+  /* Layers drawer: opened and closed in place (no repaint); a chip sets its layer (D111's setLayer) and focus
+     returns to the same chip after the repaint. A disabled chip says why instead of toggling. */
+  function toggleLayers(force) {
+    N.ui.layersOpen=force===undefined?!N.ui.layersOpen:!!force;
+    const d=typeof document!=='undefined'&&document.getElementById('wx-layers'),b=d&&document.getElementById('wx-lyb');
+    const apply=()=>{if(d)d.hidden=!N.ui.layersOpen;if(b)b.setAttribute('aria-expanded',String(N.ui.layersOpen));
+      /* Inside Expand the drawer takes height from the plot (re-fit it, w5) rather than scrolling the body. */
+      if(N.ui.expanded&&XV.d&&typeof xvFit==='function'){xvFit();repaintPlot();}
+      else if(!N.ui.expanded&&N.ui.chartKind==='page'&&typeof document!=='undefined'&&document.getElementById('vn-chart-wrap'))repaintPlot();};
+    /* The drawer opens and closes as one movement (STRATA.morph, 240 ms; a plain change under reduced motion). */
+    const plate=d&&d.closest?d.closest('.wx-plate'):null;
+    if(plate&&typeof STRATA==='object'&&STRATA&&typeof STRATA.morph==='function')STRATA.morph(plate,apply);else apply();
+    /* The readouts and slot settle a frame after the drawer (their rows re-flow), so Expand fits once more. */
+    if(N.ui.expanded&&XV.d&&typeof requestAnimationFrame==='function')requestAnimationFrame(()=>{if(N.ui.expanded){xvFit();repaintPlot();xvSettle();}});
+    return N.ui.layersOpen;
+  }
+  function layerChip(name,el) {
+    if(el&&el.getAttribute('aria-disabled')==='true'){const why=el.querySelector('small'),full=el.querySelector('.st-sr'),note=document.getElementById('wx-lnote');if(why){if(note)note.textContent=(full?full.textContent+' · ':'')+why.textContent;if(typeof toast==='function')toast(why.textContent);}return;}
+    N.setLayer(name,undefined,()=>{const again=typeof document!=='undefined'&&document.querySelector(`[data-wx-layer="${name}"]`);if(again&&again.focus)again.focus({preventScroll:true});});
+  }
+  /* ---- Compare periods, presentation (spec §11, §12; D110 engine; w4) ----------------------------------------
+     N.ui.compare is memory only: null, or {kind, quantity}. compareView() reads the engine's windows and figures;
+     the plot takes its x-window from it and the slot shows the table. No significance language anywhere. */
+  const CMP_KINDS=[['previous','Previous'],['sameDays','Same days last month'],['completed','Completed'],['firstLast','First vs last 4 weeks']];
+  const CMP_QTY=[['avg','Average morning'],['trendChange','Trend change'],['low','Lowest morning']];
+  const RANGE_SHORT={14:'2W',30:'1M',90:'3M'};
+  function cmpRange() { return N.ui.range==='cut'||!N.ui.range?'cut':N.ui.range; }
+  function compareView(kind,quantity) {
+    const c=N.ui.compare||{};kind=kind||c.kind||'previous';quantity=quantity||c.quantity||'avg';
+    const range=cmpRange(),cw=N.compareWindows(range,kind,state.date);
+    if(!cw.ok)return {ok:false,kind,quantity,range,reason:cw.reason||'Not available',cw,cp:null,win:null};
+    const cp=N.comparePeriods(N.weights(),cw.before,cw.current,quantity);
+    return {ok:true,kind,quantity,range,cw,cp,win:{from:cw.before.from,to:cw.current.to},reason:cp.ok?'':cp.reason};
+  }
+  /* The first kind that compares on this range decides whether the capsule is live; the reason comes from the
+     default kind (W5 / D115: disabled with its reason, never hidden). */
+  function compareAvail() {
+    let why='';
+    for(const [k] of CMP_KINDS){const v=compareView(k,'avg');if(v.ok&&v.cp.ok)return {ok:true,kind:k,why:''};if(!why)why=v.reason;}
+    return {ok:false,kind:null,why:why||'Not enough mornings to compare'};
+  }
+  function compareButtonHTML() {
+    const on=!!N.ui.compare;
+    if(on)return '';
+    const a=compareAvail();
+    if(a.ok)return `<button type="button" class="wx-cmp-b" id="wx-cmp-b" aria-pressed="false" onclick="NXT.toggleCompare()"><i aria-hidden="true">⇄</i>Compare</button>`;
+    return `<span class="wx-cmp-off"><button type="button" class="wx-cmp-b is-off" id="wx-cmp-b" aria-pressed="false" aria-disabled="true" aria-describedby="wx-cmp-why" onclick="NXT.layerChip('compare',this)"><i aria-hidden="true">⇄</i>Compare</button><small id="wx-cmp-why">${esc(a.why)}</small></span>`;
+  }
+  function cmpKindWord(kind,range) {
+    const r=range==='cut'?'cut':RANGE_SHORT[range]||`${range} days`;
+    if(kind==='previous')return `Previous ${range==='cut'?'span':r}`;
+    if(kind==='completed')return Math.round(Number(range))<28?'Completed weeks':'Completed months';
+    return CMP_KINDS.find(k=>k[0]===kind)[1];
+  }
+  function cmpValue(s,quantity) {
+    if(!s)return '—';
+    if(quantity==='low')return s.low?`${s.low.weight.toFixed(1)} kg · ${N.shortDate(s.low.date)}`:'—';
+    if(quantity==='trendChange')return s.trendChange===null?'—':`${kgSigned(s.trendChange)} kg`;
+    return s.avg===null||s.avg===undefined?'—':`${s.avg.toFixed(1)} kg`;
+  }
+  function compareHTML(model) {
+    const cv=model.compare||compareView(),range=cv.range,qName=CMP_QTY.find(q=>q[0]===cv.quantity)[1];
+    const kinds=CMP_KINDS.filter(([k])=>k!=='firstLast'||range==='cut').map(([k])=>{
+      const v=k===cv.kind?cv:compareView(k,cv.quantity),live=v.ok&&v.cp.ok,why=live?'':(v.reason||'Not available'),rid=`wx-cmp-why-${k}`;
+      return `<button type="button" class="wx-lc${live?'':' is-off'}" data-wx-cmp-kind="${k}" aria-pressed="${k===cv.kind}"${live?'':` aria-disabled="true" aria-describedby="${rid}"`} onclick="NXT.setCompare({kind:'${k}'},this)"><span>${esc(cmpKindWord(k,range))}</span>${live?'':`<small id="${rid}">${esc(why)}</small>`}</button>`;
+    }).join('');
+    const qtys=CMP_QTY.map(([q,name])=>`<button type="button" class="wx-lc" data-wx-cmp-q="${q}" aria-pressed="${q===cv.quantity}" onclick="NXT.setCompare({quantity:'${q}'},this)"><span>${esc(name)}</span></button>`).join('');
+    const head=`<div class="wx-cmp-h"><p class="wx-sum-h"><span>${esc(rangeName())} vs ${esc(cmpKindWord(cv.kind,range).replace(/^(Previous|Completed|Same|First)/,m=>m.toLowerCase()))}</span></p><button type="button" class="wx-cmp-done" id="wx-cmp-done" onclick="NXT.setCompare(null)">Done</button></div>`;
+    let table='',foot='';
+    if(cv.cw&&cv.cw.before&&cv.cw.current){
+      const A=cv.cp?cv.cp.a:null,B=cv.cp?cv.cp.b:null,wa=cv.cw.before,wb=cv.cw.current;
+      const status=s=>s?(s.partial&&s.elapsed?`In progress · ${s.elapsed} of ${s.total} days`:s.completed?'Completed':''):'';
+      const row=(name,w,s)=>`<tr><th scope="row">${esc(name)}<small>${esc(spanText(w.from,w.to>state.date?state.date:w.to))}</small>${status(s)?`<small class="wx-cmp-st">${esc(status(s))}</small>`:''}</th><td>${s?`${s.n} of ${s.days}<small> · ${Math.round(s.coverage*100)}%</small>`:'—'}</td><td class="vn-num">${esc(cmpValue(s,cv.quantity))}</td></tr>`;
+      const ok=!!(cv.cp&&cv.cp.ok),diff=ok?cv.cp.diff:null;
+      table=`<table class="wx-cmp-t"><caption class="st-sr">${esc(qName)} in two windows: ${esc(wa.label||spanText(wa.from,wa.to))} and ${esc(wb.label||spanText(wb.from,wb.to))}.</caption>
+          <thead><tr><th scope="col">Window</th><th scope="col">Mornings</th><th scope="col">${esc(qName)}</th></tr></thead>
+          <tbody>${row('Before',wa,A)}${row('This range',wb,B)}
+          <tr class="is-chg"><th scope="row">Change</th><td></td><td class="vn-num"><b>${ok?esc(kgSigned(diff))+' kg':'—'}</b></td></tr></tbody></table>`;
+      const base=cv.quantity==='low'?'A difference between your lowest mornings in two windows, not a test.':cv.quantity==='trendChange'?'A difference between two changes in your smoothed trend, not a test.':'A difference between two averages of your mornings, not a test.';
+      foot=`<p class="wx-cmp-f">${base}</p>${ok&&cv.cp.roundingNote?'<p class="wx-cmp-f">Averages are rounded to 0.1 kg; the change uses the unrounded averages.</p>':''}${ok?'':`<p class="wx-cmp-f is-why"><i aria-hidden="true">◆</i>${esc(cv.cp?cv.cp.reason:cv.reason)}</p>`}`;
+    } else foot=`<p class="wx-cmp-f is-why"><i aria-hidden="true">◆</i>${esc(cv.reason||'Not available')}</p>`;
+    return `<div class="wx-cmp" id="wx-cmp" role="group" aria-label="Compare periods" onkeydown="if(event.key==='Escape'){event.preventDefault();event.stopPropagation();NXT.setCompare(null);}">
+        ${head}
+        <div class="wx-cmp-k wx-layers" role="group" aria-label="Comparison">${kinds}</div>
+        <div class="wx-cmp-k wx-layers" role="group" aria-label="Quantity">${qtys}</div>
+        ${table}${foot}
+      </div>`;
+  }
+  /* Compare on / off and its kind / quantity: memory only; the plot's x rescale crossfades 320 ms (is-compare-change),
+     instant under reduced motion. Focus returns to the control that was pressed, as a layer chip does. */
+  function setCompare(patch,el) {
+    if(el&&el.getAttribute&&el.getAttribute('aria-disabled')==='true'){const why=el.querySelector&&el.querySelector('small');if(why&&typeof toast==='function')toast(why.textContent);return N.ui.compare;}
+    const was=N.ui.compare;
+    if(patch===null)N.ui.compare=null;
+    else {const a=!was?compareAvail():null;N.ui.compare={kind:patch.kind||(was&&was.kind)||(a&&a.kind)||'previous',quantity:patch.quantity||(was&&was.quantity)||'avg'};}
+    if(!!was!==!!N.ui.compare){N.ui.selected=null;N.ui.chartAnim='compare';}
+    const after=()=>{
+      if(typeof document==='undefined')return;
+      const back=N.ui.compare?(patch&&patch.kind?`[data-wx-cmp-kind="${patch.kind}"]`:patch&&patch.quantity?`[data-wx-cmp-q="${patch.quantity}"]`:'#wx-cmp-done'):'#wx-cmp-b';
+      const el2=document.querySelector(back);if(el2&&el2.focus)el2.focus({preventScroll:true});
+    };
+    const wrap=typeof document!=='undefined'&&document.getElementById('vn-chart-wrap');
+    const paint=()=>{N.repaint();after();};
+    if(wrap&&typeof STRATA==='object'&&STRATA&&typeof STRATA.morph==='function')STRATA.morph(wrap,paint);else paint();
+    return N.ui.compare;
+  }
+  function toggleCompare() { return setCompare(N.ui.compare?null:{}); }
+  /* The plot's legend row under the chart, present only while an opt-in band is drawn: "Day-to-day spread" has
+     its own entry whenever the band is on (CONTRACTS §5); Compare names its two windows. */
+  function legendHTML(model) {
+    const items=[];
+    if(N.ui.showSpread&&model.bands&&model.bands.length)items.push('<span><i class="wx-key-band" aria-hidden="true"></i>Day-to-day spread</span>');
+    if(model.compare&&model.compare.ok)items.push('<span><i class="wx-key-before" aria-hidden="true"></i>Before</span><span><i class="wx-key-cur" aria-hidden="true"></i>This range</span>');
+    return items.length?`<p class="wx-leg" id="wx-leg" aria-label="Chart legend">${items.join('')}</p>`:'';
+  }
+  /* ---- Expand (spec §10; w4) ------------------------------------------------------------------------------
+     A <dialog> inside #weightPage (so the plate's stylesheet applies) re-hosts the SAME nodes, never a clone: the
+     readouts, range row, Layers drawer, chart wrap, legend, sr summaries and the slot move into it and one
+     placeholder of their height is left behind. The plot is re-rendered with chartGeo('expand') for the dialog's
+     remaining height. The restore list runs on every exit (×, Esc / cancel, swipe down on the top bar, Open day,
+     a tab switch, a page re-render): nodes back before the placeholder, placeholder removed, the plot re-rendered
+     for the page, scroll restored, focus on Expand, N.ui.expanded = false. No history entry. A View Transition
+     when available, an instant swap under reduced motion. "Show as table" swaps the plot for a plain table. */
+  const XV_MOVE=['.wx-ro','.wx-rr','#wx-layers','#vn-chart-wrap','#wx-leg','#wx-sr-sum','#wx-sel-sr','#wx-slot'];
+  const XV={nodes:null,parent:null,scrollY:0,btn:null,busy:false,d:null};
+  function reducedMotion() {
+    try{const de=document.documentElement;if(de&&de.getAttribute('data-nxp-motion')==='reduced')return true;return !!(typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(_){return false;}
+  }
+  function el(tag,cls,id) { const e=document.createElement(tag);if(cls)e.className=cls;if(id)e.id=id;return e; }
+  function xvDialog() {
+    let d=XV.d&&XV.d.isConnected!==false?XV.d:null;
+    if(d)return d;
+    d=el('dialog','wx-xv','wx-xv');d.setAttribute('aria-labelledby','wx-xv-h');
+    const top=el('div','wx-xv-top','wx-xv-top'),x=el('button','wx-xv-x','wx-xv-x'),h=el('h2','wx-xv-h','wx-xv-h'),r=el('span','wx-xv-r','wx-xv-r'),tb=el('button','wx-xv-tb','wx-xv-tb');
+    x.type='button';x.setAttribute('aria-label','Close');x.innerHTML='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+    h.textContent='Weight';h.appendChild(r);
+    tb.type='button';tb.setAttribute('aria-pressed','false');tb.textContent='Show as table';
+    top.appendChild(x);top.appendChild(h);top.appendChild(tb);
+    const body=el('div','wx-xv-body','wx-xv-body'),table=el('div','wx-xv-table','wx-xv-table'),foot=el('div','wx-xv-foot','wx-xv-foot');
+    table.hidden=true;
+    d.appendChild(top);d.appendChild(body);d.appendChild(table);d.appendChild(foot);
+    XV.d=d;XV.top=top;XV.body=body;XV.foot=foot;XV.table=table;XV.x=x;XV.tb=tb;XV.r=r;
+    if(d.addEventListener){
+      x.addEventListener('click',()=>collapseChart());
+      tb.addEventListener('click',()=>xvToggleTable());
+      d.addEventListener('cancel',e=>{e.preventDefault();collapseChart();});
+      /* A close the app did not run itself (e.g. the browser's close watcher). Lifting an open dialog out of the DOM
+         for a re-render also queues a close event; by the time it lands the dialog is open again, so it is ignored. */
+      d.addEventListener('close',()=>{if(!XV.busy&&N.ui.expanded&&!d.open)collapseChart({silent:true});});
+      /* Swipe down on the top bar closes (bindSheets' rule: 120 px, or 40 px fast). */
+      let y0=null,t0=0;
+      top.addEventListener('pointerdown',e=>{if(e.target&&e.target.closest&&e.target.closest('button'))return;y0=e.clientY;t0=Date.now();try{top.setPointerCapture(e.pointerId);}catch(_){}});
+      top.addEventListener('pointermove',e=>{if(y0===null)return;const dy=e.clientY-y0;if(dy>120||(dy>40&&dy/Math.max(1,Date.now()-t0)>.6)){y0=null;collapseChart();}});
+      const end=()=>{y0=null;};top.addEventListener('pointerup',end);top.addEventListener('pointercancel',end);
+    }
+    const host=document.getElementById('weightPage')||document.body;
+    if(host&&host.appendChild)host.appendChild(d);
+    return d;
+  }
+  function xvRangeWords() {
+    const m=N.ui.chart,cv=N.ui.compare&&m&&m.compare&&m.compare.ok?m.compare:null;
+    /* While comparing, the header names the two windows that are compared, not the widened x-window (w5). */
+    if(cv&&cv.cw&&cv.cw.before&&cv.cw.current){const w=cv.cw,end=x=>x.to>state.date?state.date:x.to;return `${spanText(w.before.from,end(w.before))} vs ${spanText(w.current.from,end(w.current))}`;}
+    return m&&m.start?`${rangeName()} · ${spanText(m.start,state.date)}`:rangeName();
+  }
+  /* The plot takes the dialog's remaining height: everything else in the dialog measured, the rest to the plot. */
+  function xvFit() {
+    const d=XV.d,wrap=document.getElementById('vn-chart-wrap');if(!d||!wrap)return;
+    const hh=e=>e&&Number(e.offsetHeight)||0;
+    const dh=Number(d.clientHeight)||chartSvh()||844;
+    const others=hh(XV.top)+hh(XV.foot)+[...(XV.body.children||[])].filter(c=>c!==wrap).reduce((s,c)=>s+hh(c),0);
+    const avail=dh-others-24;
+    N.ui.expandH=Math.max(232,Math.round(avail-(6+11+26)));
+    const w=Math.round(Number(wrap.clientWidth)||0);N.ui.chartW=N.ui.chartW||{};if(w>0)N.ui.chartW.expand=w;
+  }
+  /* After a re-fit, the rows around the plot may have re-flowed: take any remaining overflow off the plot (twice at most). */
+  function xvSettle() {
+    for(let i=0;i<2;i++){
+      const b=XV.body,over=b?Number(b.scrollHeight)-Number(b.clientHeight):0;
+      if(!(over>0)||!(N.ui.expandH>232))break;
+      N.ui.expandH=Math.max(232,N.ui.expandH-over);repaintPlot();
+    }
+  }
+  /* Re-render the plot in place for the current kind (page or expand), keeping the model, selection and lane. */
+  function repaintPlot() {
+    const wrap=typeof document!=='undefined'&&document.getElementById('vn-chart-wrap');if(!wrap)return null;
+    const cv=N.ui.compare?compareView():null;
+    const model=chartModel(undefined,undefined,undefined,chartGeo(),cv&&cv.ok?cv.win:null);model.compare=cv;N.ui.chart=model;
+    const pts=model.points||[];if(!pts.length)return model;
+    const sel=N.ui.selected?pts.findIndex(p=>p.date===N.ui.selected):-1,idx=sel>=0?sel:pts.length-1;
+    wrap.innerHTML=plotHTML(model,{idx});
+    wrap.setAttribute('aria-valuemax',pts.length-1);wrap.setAttribute('aria-valuenow',idx);
+    if(typeof STRATA==='object'&&STRATA&&typeof STRATA.dressChart==='function')STRATA.dressChart();
+    if(sel>=0)N.selectPoint(sel);
+    return model;
+  }
+  function expandChart(opts={}) {
+    if(typeof document==='undefined')return false;
+    const plate=document.getElementById('vn-weight'),wrap=document.getElementById('vn-chart-wrap');
+    const m=N.ui.chart;if(!plate||!wrap||!wrap.parentNode||!m||!m.points||!m.points.length)return false;
+    const rehost=!!opts.rehost;
+    if(N.ui.expanded&&!rehost)return true;
+    const nodes=XV_MOVE.map(s=>plate.querySelector?plate.querySelector(s):null).filter(Boolean);
+    if(!nodes.includes(wrap))nodes.splice(Math.min(3,nodes.length),0,wrap);
+    const d=xvDialog(),old=XV.nodes||[];
+    XV.nodes=nodes;XV.parent=nodes[0].parentNode;XV.btn=plate.querySelector?plate.querySelector('.wx-xbtn'):null;
+    if(!rehost)XV.scrollY=typeof window!=='undefined'&&Number(window.scrollY)||0;
+    const ph=el('div','wx-ph','wx-ph');ph.setAttribute('aria-hidden','true');
+    const r1=nodes[0].getBoundingClientRect?nodes[0].getBoundingClientRect():null,r2=nodes.at(-1).getBoundingClientRect?nodes.at(-1).getBoundingClientRect():null;
+    ph.style.height=Math.max(0,Math.round(r1&&r2?r2.bottom-r1.top:0))+'px';
+    const pick=sel=>nodes.find(n=>n.id===sel.slice(1)||(n.classList&&n.classList.contains&&n.classList.contains(sel.slice(1))));
+    const run=()=>{
+      /* A rehost replaces what the dialog held: the previous render's nodes are dropped first. */
+      if(rehost)for(const n of old)if(n&&n.parentNode&&!nodes.includes(n))n.parentNode.removeChild(n);
+      XV.parent.insertBefore(ph,nodes[0]);
+      for(const s of ['.wx-ro','#vn-chart-wrap','#wx-leg','#wx-sr-sum','#wx-sel-sr','#wx-slot']){const n=pick(s);if(n)XV.body.appendChild(n);}
+      for(const s of ['.wx-rr','#wx-layers']){const n=pick(s);if(n)XV.foot.appendChild(n);}
+      N.ui.expanded=true;N.ui.chartKind='expand';
+      /* A re-render detached and re-appended the dialog (premium-ui progress()), which drops it from the top
+         layer while the open attribute stays, so a rehost closes and shows it again. */
+      XV.busy=true;try{if(rehost&&d.open&&typeof d.close==='function')d.close();if(!d.open&&typeof d.showModal==='function')d.showModal();}catch(_){}XV.busy=false;
+      if(XV.r)XV.r.textContent=xvRangeWords();
+      xvFit();repaintPlot();
+      if(N.ui.xvTable)xvTableSync();
+    };
+    const vt=!rehost&&!reducedMotion()&&typeof document.startViewTransition==='function';
+    if(vt){
+      wrap.style.viewTransitionName='wx-plot';document.documentElement.setAttribute('data-st-xv','');
+      const done=()=>{wrap.style.viewTransitionName='';document.documentElement.removeAttribute('data-st-xv');};
+      try{const t=document.startViewTransition(run);t.finished.then(done,done);if(t.ready&&t.ready.catch)t.ready.catch(()=>{});}catch(_){done();run();}
+    } else run();
+    if(!rehost&&XV.x&&XV.x.focus)XV.x.focus({preventScroll:true});
+    return true;
+  }
+  function collapseChart(opts={}) {
+    if(typeof document==='undefined'||!N.ui.expanded)return false;
+    const d=XV.d,ph=document.getElementById('wx-ph'),nodes=XV.nodes||[],parent=ph&&ph.parentNode?ph.parentNode:XV.parent;
+    const wrap=document.getElementById('vn-chart-wrap');
+    const run=()=>{
+      /* 1 · the nodes back where the placeholder stands, the placeholder removed */
+      if(parent&&parent.insertBefore)for(const n of nodes)if(n)parent.insertBefore(n,ph&&ph.parentNode===parent?ph:null);
+      if(ph&&ph.remove)ph.remove();
+      /* 5 · the flag, first, so a render in step 2 sees the page state */
+      N.ui.expanded=false;N.ui.chartKind='page';
+      if(N.ui.xvTable){N.ui.xvTable=false;if(wrap)wrap.hidden=false;const lg=document.getElementById('wx-leg');if(lg)lg.hidden=false;if(XV.table){XV.table.hidden=true;XV.table.innerHTML='';}if(XV.tb)XV.tb.setAttribute('aria-pressed','false');}
+      XV.busy=true;try{if(d&&d.open&&typeof d.close==='function')d.close();}catch(_){}XV.busy=false;
+      /* 2 · the plot for the page */
+      if(opts.rerender!==false)repaintPlot();
+      /* 3 · the page's scroll */
+      if(opts.scroll!==false&&typeof window!=='undefined'&&window.scrollTo)window.scrollTo(0,XV.scrollY||0);
+      /* 4 · focus on Expand (skipped when leaving to History) */
+      if(opts.focus!==false){const b=(document.querySelector&&document.querySelector('#vn-weight .wx-xbtn'))||XV.btn;if(b&&b.focus)b.focus({preventScroll:true});}
+      XV.nodes=null;N.ui.xvRestores=(N.ui.xvRestores||0)+1;
+    };
+    const vt=!opts.silent&&!reducedMotion()&&typeof document.startViewTransition==='function'&&wrap;
+    if(vt){
+      wrap.style.viewTransitionName='wx-plot';document.documentElement.setAttribute('data-st-xv','');
+      const done=()=>{if(wrap)wrap.style.viewTransitionName='';document.documentElement.removeAttribute('data-st-xv');};
+      try{const t=document.startViewTransition(run);t.finished.then(done,done);if(t.ready&&t.ready.catch)t.ready.catch(()=>{});}catch(_){done();run();}
+    } else run();
+    return true;
+  }
+  /* Show as table (spec §10, §17): the range's mornings as a plain table — date, morning reading, smoothed trend
+     and the gap to it — with a caption and scoped headers; kg at 1 dp, U+2212. */
+  function chartTableHTML(model=N.ui.chart) {
+    const pts=model&&model.points?model.points:[];
+    const rows=[...pts].reverse().map(p=>`<tr><th scope="row">${esc(dayDate(p.date))}</th><td>${p.weight.toFixed(1)}</td><td>${p.avg===null||p.avg===undefined?'—':p.avg.toFixed(1)}</td><td>${p.avg===null||p.avg===undefined?'—':kgSigned(p.weight-p.avg)}</td></tr>`).join('');
+    return `<table class="wx-tbl"><caption>Morning readings and smoothed trend, kg · ${esc(xvRangeWords())}</caption>
+        <thead><tr><th scope="col">Date</th><th scope="col">Morning</th><th scope="col">Smoothed trend</th><th scope="col">vs trend</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  function xvTableSync() {
+    const wrap=document.getElementById('vn-chart-wrap'),lg=document.getElementById('wx-leg'),on=!!N.ui.xvTable;
+    if(XV.table){XV.table.hidden=!on;XV.table.innerHTML=on?chartTableHTML():'';}
+    if(wrap)wrap.hidden=on;if(lg)lg.hidden=on;
+    if(XV.tb){XV.tb.setAttribute('aria-pressed',String(on));XV.tb.textContent=on?'Show as chart':'Show as table';}
+  }
+  function xvToggleTable(force) { if(!N.ui.expanded)return false;N.ui.xvTable=force===undefined?!N.ui.xvTable:!!force;xvTableSync();return N.ui.xvTable; }
+  /* ⌄ Details on the Cut journey (spec §13.1–13.2): opens the rest in place, memory only (N.ui.jrOpen). */
+  function jrToggle(force) {
+    N.ui.jrOpen=force===undefined?!N.ui.jrOpen:!!force;
+    const more=typeof document!=='undefined'&&document.getElementById('st-jr-more'),b=more&&document.getElementById('st-jr-det');
+    const sec=more&&more.closest?more.closest('.st-jr'):null;
+    const apply=()=>{if(more)more.hidden=!N.ui.jrOpen;if(b)b.setAttribute('aria-expanded',String(N.ui.jrOpen));if(sec&&sec.classList)sec.classList.toggle('is-open',N.ui.jrOpen);};
+    if(sec&&typeof STRATA==='object'&&STRATA&&typeof STRATA.morph==='function')STRATA.morph(sec,apply);else apply();
+    return N.ui.jrOpen;
   }
   /* Defined after chartHTML on purpose: the release gate reads chartModel…chartHTML as the weight chart's
      model, and this separate chart has its own axes. */
   /* D96 · Rate across your cut: rateSeries() (the four-week rate read on every day of the cut) against
      review()'s own lines, the flat band and the 1% line (D37), which moves with body weight. One question:
      is the cut speeding up or slowing down? The sentence under it names the zone you are in and since when. */
-  function rateTrendHTML(sgn) {
+  function rateTrendHTML(sgn,out,view) {
     const rows=N.weights();
     const cs=typeof settings!=='undefined'&&settings&&Number.isFinite(N.dateMs(settings.cutStart))&&settings.cutStart<=state.date?settings.cutStart:null;
-    const rs=N.rateSeries(rows,cs||null);
+    /* D104 (stage 2 open item): once the forecast is not fresh the series ends where the analysis is measured
+       (forecastView().asOfDate), not on today, so the axis and the "as of" figures agree. */
+    const fv=view||N.forecastView(rows),to=fv&&fv.freshness&&fv.freshness!=='fresh'&&fv.asOfDate?fv.asOfDate:state.date;
+    const rs=N.rateSeries(rows,cs||null,to);
     if(rs.length<5)return '';
     const W=338,H=136,P={l:4,r:64,t:8,b:8},flat=N.flatKgWeek;
     const one=q=>-q.ref/100;
@@ -1543,6 +2559,7 @@ Object.assign(NXT, (()=>{
     const zTxt={fast:'Beyond the 1% line',steady:'In the steady zone',flat:'Inside the flat band',up:'Above zero'}[z];
     const ago=rs.find(q=>q.date===N.dateAdd(last.date,-28));
     const note=`${zTxt} ${i===0?`at every point since ${N.shortDate(rs[0].date)}`:`since ${N.shortDate(rs[i].date)}`}.${ago?` Four weeks ago it was ${sgn(ago.weeklyRate)} kg/wk.`:''}`;
+    if(out)out.note=`${zTxt} ${i===0?`at every point since ${N.shortDate(rs[0].date)}`:`since ${N.shortDate(rs[i].date)}`}`;
     /* Zone names sit in the right margin as text (they keep their size at any width), each at the middle of
        its band on the latest day; one that would touch a neighbour is left out. The 1% line keeps its label. */
     const yOne=Y(one(last)),labs=[{t:'1% line',y:yOne-8,c:'is-one'}];
@@ -1577,11 +2594,13 @@ Object.assign(NXT, (()=>{
     const isLatest=!N.ui.selected||N.ui.selected===m.points.at(-1).date;
     const text=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
     const html=(id,v)=>{const el=document.getElementById(id);if(el)el.innerHTML=v;};
-    text('n99-chart-date',isLatest?'Latest morning':N.shortDate(p.date));
+    /* The plate (D118): the label names the quantity, the date and timing sit on the line under the value. */
+    text('n99-chart-date',isLatest?'Latest morning':'Morning reading');
+    text('wx-date',dayDate(p.date));
     html('n99-chart-weight',p.weight.toFixed(1)+'<em>kg</em>');
-    html('n99-chart-average',p.avg===null?'—<em>kg</em>':p.avg.toFixed(2)+'<em>kg</em>');
-    text('n99-chart-coverage',gapLine(p));
+    html('n99-chart-average',p.avg===null?'—<em>kg</em>':p.avg.toFixed(1)+'<em>kg</em>');
     text('n99-chart-timing',pointTiming(p));
+    const plate=document.getElementById('vn-weight');if(plate&&plate.classList){plate.classList.toggle('is-hist',!isLatest);plate.setAttribute('data-wx-timing',pointTiming(p)==='Morning'?'morning':'other');}
     const postRow=m.postByDate?m.postByDate.get(p.date):null,postBox=document.getElementById('n99-chart-post');
     if(postBox)postBox.hidden=!postRow;
     text('n99-chart-post-weight',postRow?postRow.weight.toFixed(1)+' kg':'');
@@ -1590,25 +2609,146 @@ Object.assign(NXT, (()=>{
     line?.setAttribute('x1',p.x);line?.setAttribute('x2',p.x);dot?.setAttribute('cx',p.x);dot?.setAttribute('cy',p.y);
     const halo=document.getElementById('st-chart-halo');halo?.setAttribute('cx',p.x);halo?.setAttribute('cy',p.y);
     if(slider){slider.value=index;slider.setAttribute('aria-valuetext',N.shortDate(p.date)+', '+p.weight+' kilograms');}
+    /* Instrument plumbing (D111): the vs-trend cell, the label switch, the transport's state, the plate slot and
+       the slider's value text. Each writes only where its element exists; the plate markup lands in a later commit,
+       so today's chart is unchanged. opts.announce (pointer selections, once on pointerup) speaks the same words
+       through the polite region; keyboard steps rely on aria-valuetext instead. */
+    text('wx-gap',gapWords(p));
+    text('wx-lab-a',isLatest?'Latest morning':'Morning reading');
+    /* The trend cell keeps its name; on a historical day its sub line names the day ("on 28 Sept") in place of the
+       freshness word, since the full label does not fit beside the vs cell on a phone (D118 amends D111 here). */
+    text('wx-lab-c','Smoothed trend');
+    const on=document.getElementById('wx-on');if(on){on.textContent='on '+N.shortDate(p.date);on.hidden=isLatest;}
+    const transport=document.getElementById('nxp-progress-latest');
+    if(transport&&transport.getAttribute('data-wx-state')!=='playing')transport.setAttribute('data-wx-state',isLatest?'idle':'historical');
+    const slot=document.getElementById('wx-slot');
+    if(slot)slot.setAttribute('data-wx-slot',N.ui.selected?'select':'summary');
+    const words=pointWords(p),wrap=document.getElementById('vn-chart-wrap');
+    if(wrap&&wrap.getAttribute('role')==='slider'){wrap.setAttribute('aria-valuenow',index);wrap.setAttribute('aria-valuetext',words);}
+    if(opts&&opts.announce)text('wx-sel-sr',words);
+    /* The inspector (spec §8.4): the selection bar. */
+    if(document.getElementById('wx-sel')){
+      const ctx=dayContext(p.date),cb=document.getElementById('wx-sel-ctx');
+      text('wx-sel-d',dayDate(p.date));
+      const lat=document.getElementById('wx-sel-l');if(lat)lat.hidden=!isLatest;
+      if(cb){cb.dataset.date=p.date;cb.classList.toggle('is-quiet',!!ctx.quiet);cb.setAttribute('aria-label',(cb.querySelector('.wx-sel-k')?'That day: ':'')+ctx.text+'. Open in History');}
+      text('wx-sel-ctxt',ctx.text);
+      html('wx-sel-note-h',noteChipHTML(p.date,'wx-sel-note'));
+      const ob=document.getElementById('wx-sel-open');if(ob)ob.dataset.date=p.date;
+    }
+  }
+  /* "Monday 28 September: morning 83.1 kilograms, smoothed trend 83.7, 0.6 below trend." The screen-reader form of
+     the readouts; every figure is the point's own (1 dp, D107). */
+  const WEEKDAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  function longDate(d) { const t=new Date(N.dateMs(d));return `${WEEKDAYS[t.getUTCDay()]} ${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]}`; }
+  /* "Mon 19 Oct": the readouts' date line (spec §6.2). */
+  function dayDate(d) { const t=new Date(N.dateMs(d));return `${WEEKDAYS[t.getUTCDay()].slice(0,3)} ${N.shortDate(d)}`; }
+  function pointWords(p) {
+    if(!p)return '';
+    const morning=/^morning$/i.test(String(p.timeOfDay||'')),head=`${longDate(p.date)}: ${morning?'morning':'reading'} ${p.weight.toFixed(1)} kilograms`;
+    if(p.avg===null||p.avg===undefined)return head+', smoothed trend not ready yet.';
+    const d=Number((p.weight-p.avg).toFixed(1));
+    return `${head}, smoothed trend ${p.avg.toFixed(1)}, ${d===0?'on trend':Math.abs(d).toFixed(1)+' '+(d<0?'below':'above')+' trend'}.`;
+  }
+  /* Scrub intent (spec §8.1). A touch pointerdown only records where it started, so a vertical swipe that begins on
+     the plot scrolls the page (the wrap is touch-action: pan-y) and never selects a day. A horizontal move of at least
+     8 px that is more than 1.2 × the vertical one locks the gesture to the chart: the pointer is captured and every
+     move selects the nearest real reading (never an interpolated one). A short tap (< 8 px, < 350 ms) selects on
+     pointerup. A mouse (or a synthetic event with no pointer type) selects on pointerdown and drags to scrub. */
+  const SCRUB_LOCK_PX=8,SCRUB_LOCK_RATIO=1.2,SCRUB_TAP_MS=350;
+  let gesture=null;
+  const scrubNow=()=>typeof performance!=='undefined'&&performance.now?performance.now():Date.now();
+  function scrubIndex(event) {
+    const m=N.ui.chart,svg=document.getElementById('n99-chart-svg');
+    if(!m?.points?.length||!svg)return -1;
+    const bounds=svg.getBoundingClientRect();if(!(bounds.width>0))return -1;
+    const x=(event.clientX-bounds.left)/bounds.width*m.W;
+    return m.points.reduce((best,p,i)=>Math.abs(p.x-x)<Math.abs(m.points[best].x-x)?i:best,0);
+  }
+  function scrubPick(event,opts) { const i=scrubIndex(event);if(i>=0){N.selectPoint(i,opts);gesture&&(gesture.index=i);}return i; }
+  function scrubCapture(event) {
+    const wrap=document.getElementById('vn-chart-wrap');
+    if(wrap?.setPointerCapture){try{wrap.setPointerCapture(event.pointerId);}catch(_){}}
   }
   function scrub(event) {
-    const m=N.ui.chart,wrap=document.getElementById('vn-chart-wrap'),svg=document.getElementById('n99-chart-svg');
+    const m=N.ui.chart,svg=document.getElementById('n99-chart-svg');
     if(!m?.points?.length||!svg)return;
-    if(event.type==='pointerdown'&&wrap?.setPointerCapture){
-      try{wrap.setPointerCapture(event.pointerId);}catch(_){}
+    const touch=event.pointerType==='touch'||event.pointerType==='pen';
+    if(event.type==='pointerdown'){
+      if(!touch&&event.button>0)return;
+      gesture={id:event.pointerId,x0:event.clientX,y0:event.clientY,t0:scrubNow(),mode:touch?'pending':'drag',index:-1};
+      if(!touch){scrubCapture(event);scrubPick(event);}
+      return;
     }
-    const bounds=svg.getBoundingClientRect(),x=(event.clientX-bounds.left)/bounds.width*m.W;
-    const index=m.points.reduce((best,p,i)=>Math.abs(p.x-x)<Math.abs(m.points[best].x-x)?i:best,0);
-    N.selectPoint(index);
+    /* pointermove: only inside a gesture this chart started (hover does nothing yet). */
+    if(!gesture||gesture.id!==event.pointerId)return;
+    if(gesture.mode==='pending'){
+      const dx=event.clientX-gesture.x0,dy=event.clientY-gesture.y0;
+      if(Math.abs(dx)>=SCRUB_LOCK_PX&&Math.abs(dx)>SCRUB_LOCK_RATIO*Math.abs(dy)){gesture.mode='h';scrubCapture(event);}
+      else if(Math.abs(dx)>=SCRUB_LOCK_PX||Math.abs(dy)>=SCRUB_LOCK_PX){gesture.mode='v';return;}
+      else return;
+    }
+    if(gesture.mode==='v')return;
+    if(gesture.mode==='drag'&&event.buttons===0)return;
+    const i=scrubIndex(event);
+    if(i>=0&&i!==gesture.index){gesture.index=i;N.selectPoint(i);}
   }
+  function scrubUp(event) {
+    const g=gesture;
+    if(!g||g.id!==event.pointerId)return;
+    gesture=null;
+    const wrap=document.getElementById('vn-chart-wrap');
+    if(wrap?.releasePointerCapture){try{wrap.releasePointerCapture(event.pointerId);}catch(_){}}
+    if(g.mode==='pending'){
+      const moved=Math.hypot(event.clientX-g.x0,event.clientY-g.y0);
+      if(moved<SCRUB_LOCK_PX&&scrubNow()-g.t0<SCRUB_TAP_MS){const i=scrubIndex(event);if(i>=0)N.selectPoint(i,{announce:true});}
+      return;
+    }
+    /* One polite announcement for the reading a drag ended on. */
+    if((g.mode==='h'||g.mode==='drag')&&g.index>=0)N.selectPoint(g.index,{announce:true});
+  }
+  /* pointercancel: the browser took the gesture (a vertical scroll). Nothing is selected. */
+  function scrubCancel(event) { if(gesture&&(!event||gesture.id===event.pointerId))gesture=null; }
+  /* The reading nearest to `days` from point idx, strictly in that direction (PageUp / PageDown). */
+  function stepDays(points,idx,days) {
+    const target=N.dateMs(points[idx].date)+days*86400000;let best=idx;
+    for(let i=0;i<points.length;i++){
+      if(days<0?i>=idx:i<=idx)continue;
+      if(best===idx||Math.abs(N.dateMs(points[i].date)-target)<Math.abs(N.dateMs(points[best].date)-target))best=i;
+    }
+    return best;
+  }
+  /* Keyboard (spec §8.5): ← / → step between readings, Home / End go to the first / latest (End and Escape return to
+     latest), PageUp / PageDown move about a week, Enter opens the day in History, F opens Expand once it exists. */
   function chartKey(event) {
     const m=N.ui.chart;if(!m?.points?.length)return;
-    const n=m.points.length;
-    let idx=Math.max(0,m.points.findIndex(p=>p.date===N.ui.selected));
-    if(!N.ui.selected||idx<0)idx=n-1;
-    if(event.key==='ArrowRight'){N.selectPoint(Math.min(n-1,idx+1));event.preventDefault();}
-    else if(event.key==='ArrowLeft'){N.selectPoint(Math.max(0,idx-1));event.preventDefault();}
-    else if(event.key==='Escape'){N.selectPoint(n-1,{clear:true});event.preventDefault();}
+    const n=m.points.length,key=event.key;
+    let idx=N.ui.selected?m.points.findIndex(p=>p.date===N.ui.selected):-1;
+    if(idx<0)idx=n-1;
+    const go=(i,o)=>{N.selectPoint(i,o);event.preventDefault();};
+    if(key==='ArrowRight')go(Math.min(n-1,idx+1));
+    else if(key==='ArrowLeft')go(Math.max(0,idx-1));
+    else if(key==='Home')go(0);
+    else if(key==='End')go(n-1,{clear:true,glide:true});
+    /* Escape clears a selection; with nothing selected it is left to the host (inside Expand the dialog closes). */
+    else if(key==='Escape'){if(N.ui.selected)go(n-1,{clear:true,glide:true});}
+    else if(key==='PageUp')go(stepDays(m.points,idx,-7));
+    else if(key==='PageDown')go(stepDays(m.points,idx,7));
+    else if(key==='Enter'){event.preventDefault();openChartDay(m.points[idx].date);}
+    else if((key==='f'||key==='F')&&!event.metaKey&&!event.ctrlKey&&!event.altKey&&typeof N.expandChart==='function'){event.preventDefault();N.expandChart();}
+  }
+  /* Open day (spec §8.6): remember where Weight was (memory only), then show that day in History. */
+  function openChartDay(date) {
+    if(!Number.isFinite(N.dateMs(date)))return;
+    /* Leaving to History runs the Expand restore list first (focus is not returned, spec §10). */
+    if(N.ui.expanded)collapseChart({focus:false,rerender:false,scroll:false});
+    N.ui.returnTo={view:'overview',range:N.ui.range,selected:N.ui.selected,
+      layers:{showWeekly:N.ui.showWeekly,showSpread:N.ui.showSpread,showNotes:N.ui.showNotes,showPost:N.ui.showPost,showForecast:N.ui.showForecast},
+      compare:N.ui.compare,expanded:false,scrollY:typeof window!=='undefined'&&Number(window.scrollY)||0};
+    const nxp=typeof NXP==='object'&&NXP?NXP:null;
+    if(typeof switchTab==='function')switchTab('history');
+    if(nxp&&typeof nxp.historySelect==='function')setTimeout(()=>nxp.historySelect(date),80);
   }
   /* A repaint happens for many reasons — logging a set, saving a weigh-in,
      switching tabs. Only a deliberate range change should animate, so it is
@@ -1616,8 +2756,23 @@ Object.assign(NXT, (()=>{
      replay its reveal every time anything on the app changed. */
   function setRange(range) {N.ui.range=range;N.ui.selected=null;N.ui.chartAnim='range';N.repaint();}
   function setGoalVisible(on) {N.ui.showGoal=!!on;N.repaint();}
-  function setPostVisible(on) {N.ui.showPost=!!on;N.repaint();}
-  function setForecastVisible(on) {N.ui.showForecast=!!on;N.repaint();}
+  /* Chart layers (spec §9; D111): one memory-only flag each, no storage key. setPostVisible and setForecastVisible
+     stay as the wrappers they were. */
+  const LAYERS={weekly:'showWeekly',spread:'showSpread',notes:'showNotes',post:'showPost',forecast:'showForecast'};
+  function setLayer(name,on,after) {
+    const key=LAYERS[name];if(!key)return false;
+    const next=on===undefined?!N.ui[key]:!!on;
+    if(N.ui[key]===next)return next;
+    N.ui[key]=next;N.ui.chartAnim='layer';
+    /* The plot updates in place: the repaint runs inside STRATA.morph where it exists (instant under reduced
+       motion); the layer's own marks fade in through the is-layer-change class. */
+    const wrap=typeof document!=='undefined'&&document.getElementById('vn-chart-wrap');
+    const paint=()=>{N.repaint();if(typeof after==='function')after();};
+    if(wrap&&typeof STRATA==='object'&&STRATA&&typeof STRATA.morph==='function')STRATA.morph(wrap,paint);else paint();
+    return next;
+  }
+  function setPostVisible(on) {setLayer('post',!!on);}
+  function setForecastVisible(on) {setLayer('forecast',!!on);}
   function setView(view) {N.ui.view=view;N.repaint();}
   function strengthHTML() {
     const items=N.strengthItems();
@@ -1641,10 +2796,10 @@ Object.assign(NXT, (()=>{
   }
   /* D100 · The chart header's note chip for the shown day, and a faint flag on the plot for each note in range
      (one colour for every kind: the kind is a word in the chip and the tooltip, never a colour, I6). */
-  function noteChipHTML(date) {
+  function noteChipHTML(date,id='st-note-chip') {
     const n=N.chartNotes()[date];
     const label=n?`Note on ${N.shortDate(date)}: ${N.noteLabel(n.kind)}${n.text?', '+n.text:''}. Edit`:`Add a note for ${N.shortDate(date)}`;
-    return `<button type="button" class="st-note-chip${n?' has-note':''}" id="st-note-chip" data-date="${date}" onclick="NXT.openNote(this.dataset.date)" aria-label="${esc(label)}">${n?`<i aria-hidden="true"></i><span>${esc(N.noteLabel(n.kind))}${n.text?' · '+esc(n.text):''}</span>`:'<span>+ Note</span>'}</button>`;
+    return `<button type="button" class="st-note-chip${n?' has-note':''}" id="${id}" data-date="${date}" onclick="NXT.openNote(this.dataset.date)" aria-label="${esc(label)}">${n?`<i aria-hidden="true"></i><span>${esc(N.noteLabel(n.kind))}${n.text?' · '+esc(n.text):''}</span>`:'<span>+ Note</span>'}</button>`;
   }
   function noteFlags(points,top,baseline) {
     if(!points||points.length<2)return '';
@@ -1767,7 +2922,7 @@ Object.assign(NXT, (()=>{
     if(!(await ask))return;
     state.bws=state.bws.filter(x=>x!==r);N.commit('Weigh-in deleted');
   }
-  return {signed,smoothPath,trendReadText,chartModel,chartHTML,journeyHTML,selectPoint,scrub,chartKey,openNote,saveNote,removeNote,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
+  return {signed,smoothPath,chartGeo,chartGeoChanged,chartModel,chartHTML,plotHTML,weeklySteps,layerState,lanePlace,weekBand,dayContext,backToLatest,returnToWeight,journeyHTML,wxRow,toggleLayers,layerChip,compareView,compareAvail,compareHTML,setCompare,toggleCompare,legendHTML,expandChart,collapseChart,repaintPlot,chartTableHTML,xvToggleTable,jrToggle,selectPoint,pointWords,scrub,scrubUp,scrubCancel,chartKey,openChartDay,setLayer,openNote,saveNote,removeNote,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
 })());
 
 Object.assign(NXT, (()=>{
@@ -1853,7 +3008,11 @@ Object.assign(NXT, (()=>{
   function cardioModal(date,id) {
     const rec=id?(state.cardio||[]).find(r=>r&&r.id===id):null;
     const d=rec?rec.date:typeof date==='string'&&date<=state.date?date:state.date;
-    N.modal(rec?'Edit cardio':'Log cardio',`<form onsubmit="event.preventDefault();NXT.saveCardio(${rec?`'${esc(rec.id)}'`:''})"><label>Date<input id="n99-card-date" type="date" max="${state.date}" required value="${d}"></label><label>Activity<select id="n99-card-type">${(rec&&rec.type&&!CARDIO_TYPES.includes(rec.type)?[rec.type,...CARDIO_TYPES]:CARDIO_TYPES).map(t=>`<option${rec&&rec.type===t?' selected':''}>${esc(t)}</option>`).join('')}</select></label><div class="n99-form-grid"><label>Duration · minutes<input id="n99-card-min" type="number" min="1" max="600" step="1" inputmode="numeric" required${rec&&rec.duration!==''&&rec.duration!=null?` value="${esc(rec.duration)}"`:''}></label><label>Effort · 1–10<input id="n99-card-effort" type="number" min="1" max="10" step="1" inputmode="numeric" placeholder="Optional"${rec&&rec.intensity!==''&&rec.intensity!=null?` value="${esc(rec.intensity)}"`:''}></label></div><div class="n99-form-grid"><label>Speed · km/h<input id="n99-card-speed" type="number" min="0" max="80" step="0.1" inputmode="decimal" placeholder="Optional"${rec&&rec.speed!==''&&rec.speed!=null?` value="${esc(rec.speed)}"`:''}></label><label>Incline · %<input id="n99-card-incline" type="number" min="0" max="40" step="0.5" inputmode="decimal" placeholder="Optional"${rec&&rec.incline!==''&&rec.incline!=null?` value="${esc(rec.incline)}"`:''}></label></div><label>Average heart rate · optional<input id="n99-card-hr" type="number" min="30" max="240" inputmode="numeric"${rec&&rec.hr!==''&&rec.hr!=null?` value="${esc(rec.hr)}"`:''}></label><p class="n99-small">For easy cardio, use a pace where conversation feels comfortable. Speed or incline alone cannot establish your physiological Zone 2.</p><button class="n99-button" type="submit">${rec?'Save changes':'Save cardio'}</button>${rec?N.button('Delete this session',`NXT.deleteCardio('${esc(rec.id)}')`,true):''}</form>`);
+    const has=k=>rec&&rec[k]!==''&&rec[k]!=null;
+    const num=(id,k,min,max,step,mode,label,ph)=>`<label>${label}<input id="${id}" type="number" min="${min}" max="${max}" step="${step}" inputmode="${mode}"${ph?' placeholder="Optional"':''}${has(k)?` value="${esc(rec[k])}"`:''}></label>`;
+    /* D150 · Date, Activity, Duration, Speed, Incline, Save. Effort and Average heart rate sit behind one "More details" fold,
+       shut unless the record being edited already has either (they are stored and shown in History only; the engine reads duration). */
+    N.modal(rec?'Edit cardio':'Log cardio',`<form onsubmit="event.preventDefault();NXT.saveCardio(${rec?`'${esc(rec.id)}'`:''})"><label>Date<input id="n99-card-date" type="date" max="${state.date}" required value="${d}"></label><label>Activity<select id="n99-card-type">${(rec&&rec.type&&!CARDIO_TYPES.includes(rec.type)?[rec.type,...CARDIO_TYPES]:CARDIO_TYPES).map(t=>`<option${rec&&rec.type===t?' selected':''}>${esc(t)}</option>`).join('')}</select></label><label>Duration · minutes<input id="n99-card-min" type="number" min="1" max="600" step="1" inputmode="numeric" required${has('duration')?` value="${esc(rec.duration)}"`:''}></label><div class="n99-form-grid">${num('n99-card-speed','speed',0,80,0.1,'decimal','Speed · km/h',1)}${num('n99-card-incline','incline',0,40,0.5,'decimal','Incline · %',1)}</div><details class="n99-more"${has('intensity')||has('hr')?' open':''}><summary>More details</summary><div class="n99-form-grid">${num('n99-card-effort','intensity',1,10,1,'numeric','Effort · 1–10',1)}${num('n99-card-hr','hr',30,240,1,'numeric','Average heart rate',1)}</div></details><p class="n99-small">For easy cardio, use a pace where conversation feels comfortable. Speed or incline alone cannot establish your physiological Zone 2.</p><button class="n99-button" type="submit">${rec?'Save changes':'Save cardio'}</button></form>${rec?`<div class="n99-sheet-foot">${N.button('Delete this session',`NXT.deleteCardio('${esc(rec.id)}')`,true)}</div>`:''}`);
   }
   function saveCardio(id) {
     const duration=N.finite(val('n99-card-min')),intensity=N.finite(val('n99-card-effort')),speed=N.finite(val('n99-card-speed')),incline=N.finite(val('n99-card-incline')),hr=N.finite(val('n99-card-hr'));

@@ -77,102 +77,51 @@ const STRATA = (() => {
   /* ---- Progress chart finish: gradient trend, week bands, end label and a
      tooltip that follows NXT.selectPoint (the engine's own readout). Adds
      marks only; the model, scale and data are untouched. ------------------- */
+  /* Weight "Instrument" (D118, D119). Every mark is drawn by cut-support's plotHTML at 1 CSS px per unit, so
+     there is no text-scale hack and nothing is injected into the plot here any more (the end, Low and Start
+     pills, the in-plot deviation strip, the week bands and the scanner column are retired). This dresses the
+     page around the plot: the reading stagger, the lane's host, the "Each day vs its trend" strip in Analysis,
+     and a width watch that re-renders only for a real change (chartGeoChanged). */
   function dressProgress(page) {
     const svg = page.querySelector("#n99-chart-svg"), m = typeof NXT === "object" && NXT.ui && NXT.ui.chart;
     if (!svg || !m || !m.points || !m.points.length || svg.__st) return;
     svg.__st = true;
-    const defs = svg.querySelector("defs");
-    if (defs) defs.insertAdjacentHTML("beforeend", `<linearGradient id="st-tg" x1="${m.left}" y1="0" x2="${m.W - m.right}" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7C5CFF" stop-opacity=".55"/><stop offset=".55" stop-color="#B49AFF"/><stop offset="1" stop-color="#F3EEFF"/></linearGradient>`);
-    svg.querySelectorAll(".vn-trend-line").forEach(l => l.setAttribute("stroke", "url(#st-tg)"));
-    const seg = m.segments && m.segments[m.segments.length - 1], tail = seg && seg[seg.length - 1];
-    if (tail && !m.forecast) {
-      const txt = Number(tail.avg).toFixed(2), w = 14 + txt.length * 6.6, px = Math.min(m.W - m.right - w, tail.x - w / 2);
-      svg.insertAdjacentHTML("beforeend", `<g class="st-pillg is-end"><rect x="${px.toFixed(1)}" y="${(tail.y - 30).toFixed(1)}" width="${w.toFixed(1)}" height="20" rx="10"/><text x="${(px + w / 2).toFixed(1)}" y="${(tail.y - 16).toFixed(1)}" text-anchor="middle">${txt}</text></g>`);
-    }
-    /* Labels are drawn in viewBox units, so a narrow phone shrinks them. Scale the small
-       chart text back up to its intended size (capped) so 320px stays readable. */
-    const rw = svg.getBoundingClientRect().width;
-    if (rw > 0) svg.style.setProperty("--tsc", Math.min(1.4, Math.max(1, m.W / rw)).toFixed(3));
-    /* Instrument layer. Same points, same scale. (1) A "Vs trend" strip under the plot:
-       every morning reading as a bar above or below its own trend value, so daily noise
-       reads separately from the trend. Own panel, own zero line: never a second axis on
-       the plot. (2) A step per Mon-Sun week at that week's morning average (the figure in
-       Week by week), so the plot and the list are one object. (3) A scanner column. */
-    {
-      const g = svg.querySelector("g[clip-path]"), base0 = m.H - m.bottom, DAY0 = 86400000;
-      const sTop = base0 + 20, sBot = m.H - 30, mid = (sTop + sBot) / 2, half = (sBot - sTop) / 2;
-      const dev = m.points.map((q, i) => ({ i, x: q.x, d: q.avg !== null && q.avg !== undefined ? Number(q.weight) - Number(q.avg) : null })).filter(q => q.d !== null);
-      let strip = "";
-      if (dev.length >= 4) {
-        const mx = Math.max(.5, Math.ceil(Math.max(...dev.map(q => Math.abs(q.d))) * 2) / 2), kk = half / mx;
-        strip += `<line class="st-dev-axis" x1="${m.left}" x2="${(m.futureDays ? m.todayX : m.W - m.right).toFixed(1)}" y1="${mid.toFixed(1)}" y2="${mid.toFixed(1)}"/>`;
-        strip += `<text class="st-dev-t" x="${m.left + 2}" y="${(sTop - 6).toFixed(1)}">Each day vs its trend</text>`;
-        strip += dev.map((q, n) => {
-          const h = Math.max(2, Math.abs(q.d) * kk), up = q.d > 0;
-          return `<rect class="st-dev ${up ? "is-up" : "is-dn"}" data-i="${q.i}" style="--i:${n}" x="${(q.x - 2.6).toFixed(1)}" y="${(up ? mid - h : mid).toFixed(1)}" width="5.2" height="${h.toFixed(1)}" rx="2.6"/>`;
-        }).join("");
-      }
-      const cols = [];
-      if (m.points.length > 1 && typeof NXT.windowStats === "function") {
-        const rowsW = NXT.weights(), first = m.points[0].date, last = m.points[m.points.length - 1].date;
-        let st = NXT.weekStart(first);
-        for (let guard = 0; st <= last && guard < 20; guard++, st = NXT.dateAdd(st, 7)) {
-          const en = NXT.dateAdd(st, 6), endUse = en > last ? last : en, from = st < first ? first : st;
-          /* Same window as the Week by week row: the whole Mon-Sun week (to today for this week),
-             even when the range starts mid-week, so the step and the list always agree. */
-          const wEnd = en > state.date ? state.date : en, days = Math.round((NXT.dateMs(wEnd) - NXT.dateMs(st)) / DAY0) + 1, w = NXT.windowStats(rowsW, wEnd, days);
-          if (!w || w.avg === null || w.avg === undefined || w.n < 3) continue;
-          cols.push({ x1: Math.max(m.left, m.x(from)), x2: Math.min(m.W - m.right, m.x(endUse)), y: m.y(w.avg), avg: w.avg });
-        }
-      }
-      const steps = cols.map(c => `<line class="st-wstep" x1="${c.x1.toFixed(1)}" x2="${c.x2.toFixed(1)}" y1="${c.y.toFixed(1)}" y2="${c.y.toFixed(1)}"/>`).join("");
-      /* Projection end: the date the engine's horizon points to, on the mark itself. */
-      const fe = m.forecast && (m.forecast.endpoint || { x: m.forecast.mid.x2, y: m.forecast.mid.y2 }), fr = m.forecastRead;
-      if (fe && fr && fr.ok && fr.weeks > 0) {
-        const txt = "Goal range · ~" + shortDate(NXT.dateAdd(state.date, fr.weeks * 7)), w = 18 + txt.length * 5.9, px = m.W - m.right - w - 2, py = m.top + 4;
-        svg.insertAdjacentHTML("beforeend", `<g class="st-pillg is-goal"><rect x="${px.toFixed(1)}" y="${py.toFixed(1)}" width="${w.toFixed(1)}" height="20" rx="10"/><text x="${(px + w / 2).toFixed(1)}" y="${(py + 13.6).toFixed(1)}" text-anchor="middle">${txt}</text></g>`);
-      }
-      /* The projection starts from the fitted level (it leads the smoothed trend); a faint
-         dotted bridge keeps the two from reading as a break in the line. */
-      const tl = m.segments && m.segments.length ? m.segments[m.segments.length - 1].slice(-1)[0] : null;
-      if (m.forecast && tl && m.anchor && Math.hypot(m.anchor.x - tl.x, m.anchor.y - tl.y) > 3 && g) {
-        g.insertAdjacentHTML("beforeend", `<line class="st-bridge" x1="${tl.x.toFixed(1)}" y1="${tl.y.toFixed(1)}" x2="${m.anchor.x.toFixed(1)}" y2="${m.anchor.y.toFixed(1)}"/>`);
-      }
-      if (g) {
-        g.insertAdjacentHTML("beforeend", steps);
-        g.insertAdjacentHTML("beforebegin", `<rect id="st-scan" class="st-scan" x="0" y="${m.top}" width="30" height="${(sBot - m.top).toFixed(1)}" fill="url(#st-scan-g)" visibility="hidden"/>`);
-        g.querySelectorAll(".vn-raw-dot").forEach((d, i) => d.style.setProperty("--i", i));
-        const defs2 = svg.querySelector("defs");
-        defs2 && defs2.insertAdjacentHTML("beforeend", `<linearGradient id="st-scan-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B49AFF" stop-opacity="0"/><stop offset=".5" stop-color="#B49AFF" stop-opacity=".16"/><stop offset="1" stop-color="#B49AFF" stop-opacity="0"/></linearGradient>`);
-        g.insertAdjacentHTML("afterend", `<g class="st-devg" aria-hidden="true">${strip}</g>`);
-        const lg = page.querySelector("#vn-legend");
-        if (strip && lg && !lg.querySelector(".st-lg-dev")) lg.insertAdjacentHTML("beforeend", `<span class="st-lg-dev"><svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><path d="M1 8L4.5 1.5 8 8z" fill="none" stroke="#CDBBFF" stroke-width="1.3" stroke-linejoin="round"/></svg>Above trend</span><span class="st-lg-dev"><svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><path d="M1 1L4.5 7.5 8 1z" fill="#8B5CF6"/></svg>Below trend</span>`);
-      }
-    }
-    /* Week bands (Mon–Sun, alternate weeks), the lowest morning reading tagged,
-       and a stem from the selected reading to its trend. Marks only. */
-    const clip = svg.querySelector("g[clip-path]"), base = m.H - m.bottom, DAY = 86400000;
-    if (clip && m.points.length > 1) {
-      const t0 = NXT.dateMs(m.points[0].date), t1 = NXT.dateMs(m.points[m.points.length - 1].date), span = t1 - t0;
-      if (span > 0 && span <= 100 * DAY) {
-        const xm = ms => m.points[0].x + (ms - t0) / span * (m.points[m.points.length - 1].x - m.points[0].x);
-        let ms = NXT.dateMs(NXT.weekStart(m.points[0].date)), i = 0, out = "";
-        for (; ms <= t1; ms += 7 * DAY, i++) {
-          if (i % 2) continue;
-          const a = Math.max(m.left, xm(ms)), b = Math.min(m.W - m.right, xm(ms + 7 * DAY));
-          if (b > a) out += `<rect class="st-band" x="${a.toFixed(1)}" y="${m.top}" width="${(b - a).toFixed(1)}" height="${(base - m.top).toFixed(1)}"/>`;
-        }
-        clip.insertAdjacentHTML("afterbegin", out);
-      }
-      const low = m.points.reduce((b, p) => p.weight < b.weight ? p : b, m.points[0]);
-      if (m.points.length >= 7 && low !== m.points[m.points.length - 1]) {
-        const txt = "Low " + Number(low.weight).toFixed(1), w = 16 + txt.length * 6, px = Math.min(m.W - m.right - w, Math.max(m.left, low.x - w / 2));
-        svg.insertAdjacentHTML("beforeend", `<g class="st-pillg is-low"><rect x="${px.toFixed(1)}" y="${(low.y + 10).toFixed(1)}" width="${w.toFixed(1)}" height="18" rx="9"/><text x="${(px + w / 2).toFixed(1)}" y="${(low.y + 22.5).toFixed(1)}" text-anchor="middle">${txt}</text></g>`);
-      }
-      if (clip) clip.insertAdjacentHTML("beforeend", `<line id="st-stem" class="st-stem" y1="0" y2="0" x1="0" x2="0" visibility="hidden"/>`);
-    }
     const wrapEl = page.querySelector("#vn-chart-wrap");
     if (wrapEl && !wrapEl.querySelector(".st-tip")) { wrapEl.style.position = "relative"; wrapEl.insertAdjacentHTML("beforeend", `<div class="st-tip" hidden></div>`); }
+    const dev = page.querySelector("#wx-dev");
+    if (dev) drawDevStrip(dev, m);
+    watchChartWidth(wrapEl, m);
+  }
+  /* "Each day vs its trend" (moved off the plot into Analysis, W2): each morning reading as a bar above or below
+     its own trend value, on the plot's own x positions. Its own zero line; never a second axis on the plot. */
+  function drawDevStrip(host, m) {
+    const dev = m.points.map((q, i) => ({ i, x: q.x, d: q.avg !== null && q.avg !== undefined ? Number(q.weight) - Number(q.avg) : null })).filter(q => q.d !== null);
+    if (dev.length < 4) { host.innerHTML = ""; return; }
+    const H = 84, mid = H / 2, half = mid - 8, mx = Math.max(.5, Math.ceil(Math.max(...dev.map(q => Math.abs(q.d))) * 2) / 2), kk = half / mx;
+    const bw = Math.max(2, Math.min(5.2, (m.W - m.left - m.right) / Math.max(1, m.points.length) * .6));
+    const bars = dev.map((q, n) => {
+      const h = Math.max(2, Math.abs(q.d) * kk), up = q.d > 0;
+      return `<rect class="st-dev ${up ? "is-up" : "is-dn"}" data-i="${q.i}" style="--i:${n}" x="${(q.x - bw / 2).toFixed(1)}" y="${(up ? mid - h : mid).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="${(bw / 2).toFixed(1)}"/>`;
+    }).join("");
+    host.innerHTML = `<svg class="wx-dev-svg" viewBox="0 0 ${m.W} ${H}" aria-hidden="true"><line class="st-dev-axis" x1="${m.left}" x2="${(m.W - m.right).toFixed(1)}" y1="${mid}" y2="${mid}"/>${bars}<text class="wx-dev-k" x="${(m.W - 6).toFixed(1)}" y="${(mid - half + 4).toFixed(1)}" text-anchor="end">▲ above</text><text class="wx-dev-k" x="${(m.W - 6).toFixed(1)}" y="${(mid + half).toFixed(1)}" text-anchor="end">▼ below</text></svg>`;
+  }
+  /* Width watch: the chart is drawn for the wrap's measured width (NXT.ui.chartW[kind]). A change of more than
+     2 px, or of the 24 px svh bucket / orientation (window resize), re-renders the Weight page once. */
+  let chartRO = null, chartRT = 0;
+  function watchChartWidth(wrapEl, m) {
+    if (!wrapEl || !m.geo || !m.geo.kind || m.geo.kind === "legacy") return;
+    const kind = m.geo.kind, check = () => {
+      const cur = NXT.ui.chart, w = Math.round(wrapEl.clientWidth);
+      if (!cur || !cur.geo || !document.body.contains(wrapEl) || !(w > 0)) return;
+      NXT.ui.chartW = NXT.ui.chartW || {};
+      const was = NXT.ui.chartW[kind];
+      NXT.ui.chartW[kind] = w;
+      if (NXT.chartGeoChanged(cur.geo, NXT.chartGeo(kind)) && typeof renderWeight === "function") renderWeight();
+      else if (was !== w && Math.abs(w - cur.W) > 2 && typeof renderWeight === "function") renderWeight();
+    };
+    if (chartRO) chartRO.disconnect();
+    if (typeof ResizeObserver === "function") { chartRO = new ResizeObserver(() => { clearTimeout(chartRT); chartRT = setTimeout(check, 120); }); chartRO.observe(wrapEl); }
+    requestAnimationFrame(check);
   }
   /* ---- Week by week (D101) -----------------------------------------------------------------------------
      Every Monday-to-Sunday week of the cut, newest first. Each row leads with the change in morning average on
@@ -249,22 +198,45 @@ const STRATA = (() => {
       <p class="st-sr">${esc(sr)}.</p>
       <div class="wk-pf"><span>${esc(foot)}</span><button type="button" class="wk-go">Show on chart<span aria-hidden="true"> ›</span></button></div>`;
   }
+  /* Show on chart (spec §8.6): the band spans exactly that Monday to Sunday on the model's own x scale, the
+     week's step is drawn even with the Weekly layer off, the lane goes to week mode, the week's last reading is
+     selected and the plate scrolls into view. The pick clears when the selection leaves the week. */
+  function weekClear() {
+    const sv = document.getElementById("n99-chart-svg"), host = document.querySelector(".st-weeks");
+    WK.pick = null; LANE.week = null;
+    if (sv) sv.querySelectorAll(".st-weeksel,.st-weeksel-step").forEach(e => e.remove());
+    if (host) host.querySelectorAll(".wk-row.is-pick").forEach(e => e.classList.remove("is-pick"));
+  }
+  function weekDraw(sv, b, preview) {
+    sv.querySelectorAll(preview ? ".st-weeksel.is-preview" : ".st-weeksel,.st-weeksel-step").forEach(e => e.remove());
+    const gp = sv.querySelector("g[clip-path]"); if (!gp) return;
+    gp.insertAdjacentHTML("afterbegin", `<rect class="st-weeksel${preview ? " is-preview" : ""}" x="${b.x1.toFixed(1)}" y="${b.top}" width="${(b.x2 - b.x1).toFixed(1)}" height="${(b.bottom - b.top).toFixed(1)}" data-a="${b.st}" data-b="${b.en}"/>`);
+    if (!preview && b.step && !NXT.ui.showWeekly) gp.insertAdjacentHTML("beforeend", `<line class="st-wstep st-weeksel-step" x1="${b.step.x1.toFixed(1)}" x2="${b.step.x2.toFixed(1)}" y1="${b.step.y.toFixed(1)}" y2="${b.step.y.toFixed(1)}"/>`);
+  }
   function weekShowOnChart(li) {
     const mm = NXT.ui.chart, sv = document.getElementById("n99-chart-svg"), host = li.closest(".st-weeks");
     if (!mm || !sv || !host) return;
-    const a = li.dataset.a, b = li.dataset.b, inWk = mm.points.map((q, i) => ({ q, i })).filter(o => o.q.date >= a && o.q.date <= b);
-    sv.querySelectorAll(".st-weeksel").forEach(e => e.remove());
-    host.querySelectorAll(".wk-row.is-pick").forEach(e => e.classList.remove("is-pick"));
-    if (!inWk.length) { toast("That week is outside this chart range. Choose Cut to see it."); return; }
+    const b = NXT.weekBand(mm, li.dataset.a);
+    weekClear();
+    if (!b || b.last < 0) { toast("That week is outside this chart range. Choose Cut to see it."); return; }
     li.classList.add("is-pick");
-    const x1 = Math.max(mm.left, inWk[0].q.x - 8), x2 = Math.min(mm.W - mm.right, inWk[inWk.length - 1].q.x + 8);
-    const gp = sv.querySelector("g[clip-path]");
-    gp && gp.insertAdjacentHTML("afterbegin", `<rect class="st-weeksel" x="${x1.toFixed(1)}" y="${mm.top}" width="${(x2 - x1).toFixed(1)}" height="${(mm.H - mm.bottom - mm.top).toFixed(1)}" rx="8"/>`);
-    NXT.selectPoint(inWk[inWk.length - 1].i);
+    weekDraw(sv, b, false);
+    const w = WK.data && WK.data.weeks.find(x => x.st === b.st);
+    WK.pick = { idx: b.last, st: b.st, en: b.en };
+    LANE.week = { st: b.st, en: b.en, avg: w ? w.avg : (b.step ? b.step.avg : null) };
+    NXT.selectPoint(b.last);
     const wrapEl = document.getElementById("vn-chart-wrap"); wrapEl && wrapEl.scrollIntoView({ block: "center", behavior: reduced() ? "auto" : "smooth" });
   }
+  /* Desktop: hovering a row previews its band; the pointer leaving removes the preview. */
+  function weekHover(li, on) {
+    const mm = NXT.ui.chart, sv = document.getElementById("n99-chart-svg");
+    if (!mm || !sv) return;
+    if (!on) { sv.querySelectorAll(".st-weeksel.is-preview").forEach(e => e.remove()); return; }
+    if (WK.pick && WK.pick.st === li.dataset.a) return;
+    const b = NXT.weekBand(mm, li.dataset.a); if (b) weekDraw(sv, b, true);
+  }
   function dressWeeks(page, entering) {
-    const m = typeof NXT === "object" && NXT.ui && NXT.ui.chart, anchor = page.querySelector(".vn-togs") || page.querySelector("#vn-chart-wrap");
+    const m = typeof NXT === "object" && NXT.ui && NXT.ui.chart, anchor = page.querySelector("#wx-weeks");
     if (!m || !anchor || page.querySelector(".st-weeks") || typeof NXT.windowStats !== "function") return;
     const D = weeksData();
     if (!D || D.weeks.filter(w => w.avg !== null).length < 2) return;
@@ -273,11 +245,12 @@ const STRATA = (() => {
     const host = document.createElement("section");
     host.className = "st-weeks wk" + (entering && !reduced() ? " is-draw" : "") + (WK.all ? " is-all" : "");
     host.setAttribute("aria-label", "Week by week: the change in morning average, Monday to Sunday");
-    host.innerHTML = `<div class="wk-h"><h3>Week by week</h3><small>Mon–Sun morning average</small></div>
+    /* D118: the list lives in the Analysis row "Week by week", which carries the title. */
+    host.innerHTML = `<div class="wk-h"><small>Mon–Sun morning average</small></div>
       <div class="wk-leg" aria-hidden="true"><span>Week</span><span>Weekly change</span><span>Average</span></div>
       <ol class="wk-l">${list.map((w, k) => weekRowHTML(D, w, k, k >= SHOW)).join("")}</ol>
       ${list.length > SHOW ? `<div class="wk-morerow"><button type="button" class="wk-more" aria-expanded="${WK.all}">${WK.all ? "Show fewer" : `Show all ${list.length} weeks`}</button></div>` : ""}`;
-    anchor.insertAdjacentElement("afterend", host);
+    anchor.appendChild(host);
     host.addEventListener("click", e => {
       const more = e.target.closest(".wk-more");
       if (more) { WK.all = !WK.all; host.classList.toggle("is-all", WK.all); more.setAttribute("aria-expanded", String(WK.all)); more.textContent = WK.all ? "Show fewer" : `Show all ${list.length} weeks`; return; }
@@ -292,12 +265,19 @@ const STRATA = (() => {
       if (open) { WK.open.add(st); if (!panel.innerHTML.trim()) panel.innerHTML = weekPanelHTML(WK.data, w); panel.hidden = false; haptic("tick"); }
       else { WK.open.delete(st); panel.hidden = true; }
     });
+    if (window.matchMedia && matchMedia("(hover:hover)").matches) {
+      host.addEventListener("mouseover", e => { const li = e.target.closest(".wk-row"); if (li && !li.contains(e.relatedTarget)) weekHover(li, true); });
+      host.addEventListener("mouseout", e => { const li = e.target.closest(".wk-row"); if (li && !li.contains(e.relatedTarget)) weekHover(li, false); });
+    }
     weeksSync(m.points.length - 1);
   }
-  function weeksSync(index) {
+  /* Reverse link (spec §8.6): the week holding the chart's selection carries aria-current and a lit left rule;
+     the latest reading (no selection) lights nothing. */
+  function weeksSync(index, opts) {
     const host = document.querySelector(".st-weeks"), m = NXT.ui && NXT.ui.chart, p = m && m.points && m.points[index];
     if (!host || !p) return;
-    host.querySelectorAll(".wk-row").forEach(r => r.classList.toggle("is-on", p.date >= r.dataset.a && p.date <= r.dataset.b));
+    const none = (opts && opts.clear) || !NXT.ui.selected;
+    host.querySelectorAll(".wk-row").forEach(r => { const on = !none && p.date >= r.dataset.a && p.date <= r.dataset.b; r.classList.toggle("is-on", on); if (on) r.setAttribute("aria-current", "true"); else r.removeAttribute("aria-current"); });
   }
   /* ---- Performance list: fold the long tail ------------------------------
      The engine's rows and order are untouched. When there is recent history the
@@ -341,30 +321,52 @@ const STRATA = (() => {
     };
     list.insertAdjacentElement("afterend", btn);
   }
+  /* The lane (spec §8.3): the existing st-tip re-homed. It carries the date only ("Mon 28 Sept"; in week mode
+     "Week of 12 Oct · avg 82.2"), since the readouts hold every value. NXT.lanePlace puts it in the top lane,
+     flips it to the bottom lane when a plotted mark would be covered, and hides it when both lanes collide. It
+     stays while a day is selected and clears with the selection; nothing times it out. */
+  const LANE = { week: null };
   function progressTip(index, opts) {
     const m = NXT.ui.chart, wrapEl = document.getElementById("vn-chart-wrap"), svg = document.getElementById("n99-chart-svg");
     const tip = wrapEl && wrapEl.querySelector(".st-tip");
     if (!tip || !m || !m.points || !svg) return;
     const p = m.points[index];
-    if (!p || (opts && opts.clear) || state0.replay) { tip.hidden = true; const st0 = svg.querySelector("#st-stem"), sc0 = svg.querySelector("#st-scan"); if (st0) st0.setAttribute("visibility", "hidden"); if (sc0) sc0.setAttribute("visibility", "hidden"); return; }
-    const r = svg.getBoundingClientRect(), wr = wrapEl.getBoundingClientRect(), k = r.width / m.W;
-    svg.querySelectorAll(".st-dev.is-sel").forEach(e => e.classList.remove("is-sel"));
-    const selBar = svg.querySelector(`.st-dev[data-i="${index}"]`); if (selBar && !(opts && opts.clear)) selBar.classList.add("is-sel");
-    const scan = svg.querySelector("#st-scan");
-    if (scan) { scan.setAttribute("x", (p.x - 15).toFixed(1)); scan.setAttribute("visibility", "visible"); }
+    const dev = document.getElementById("wx-dev");
+    if (dev) { dev.querySelectorAll(".st-dev.is-sel").forEach(e => e.classList.remove("is-sel")); const bar = !(opts && opts.clear) && dev.querySelector(`.st-dev[data-i="${index}"]`); if (bar) bar.classList.add("is-sel"); }
+    if (!p || (opts && opts.clear) || state0.replay) { tip.hidden = true; tip.removeAttribute("data-lane"); const st0 = svg.querySelector("#st-stem"); if (st0) st0.setAttribute("visibility", "hidden"); return; }
+    const r = svg.getBoundingClientRect(), wr = wrapEl.getBoundingClientRect(), k = r.width / m.W || 1;
     const gap = p.avg !== null && p.avg !== undefined ? Number(p.weight) - Number(p.avg) : null, stem = svg.querySelector("#st-stem");
     if (stem) {
       if (gap !== null && p.ty !== null && p.ty !== undefined && Math.abs(p.y - p.ty) > 3) { stem.setAttribute("x1", p.x); stem.setAttribute("x2", p.x); stem.setAttribute("y1", p.y); stem.setAttribute("y2", p.ty); stem.setAttribute("visibility", "visible"); }
       else stem.setAttribute("visibility", "hidden");
     }
-    const nt = typeof NXT.chartNotes === "function" ? NXT.chartNotes()[p.date] : null;
-    const did = [dayDid(p.date), nt ? NXT.noteLabel(nt.kind) + (nt.text ? ": " + nt.text : "") : ""].filter(Boolean).join(" · ");
-    tip.innerHTML = `${did ? `<span class="st-tip-ctx">${esc(did)}</span>` : ""}<b>${esc(shortDate(p.date))}</b><span>Reading <em>${Number(p.weight).toFixed(1)}</em></span>${p.avg !== null ? `<span>Trend <em>${Number(p.avg).toFixed(2)}</em></span>` : ""}${gap !== null && Math.abs(gap) >= 0.05 ? `<span class="st-tip-gap">${Math.abs(gap).toFixed(1)} kg ${gap < 0 ? "below" : "above"} trend</span>` : ""}`;
-    tip.style.left = Math.min(Math.max(r.left - wr.left + p.x * k, 58), wr.width - 58) + "px";
+    const wk = LANE.week && p.date >= LANE.week.st && p.date <= LANE.week.en ? LANE.week : null;
+    tip.innerHTML = wk ? `<b>Week of ${esc(shortDate(wk.st))}</b><span>avg <em>${wk.avg === null ? "—" : Number(wk.avg).toFixed(1)}</em></span>` : `<b>${esc(laneDate(p.date))}</b>`;
     tip.hidden = false;
-    const hi = (p.ty !== null && p.ty !== undefined ? Math.min(p.y, p.ty) : p.y), lo = (p.ty !== null && p.ty !== undefined ? Math.max(p.y, p.ty) : p.y), h = tip.offsetHeight;
-    const above = r.top - wr.top + hi * k - h - 16;
-    tip.style.top = (above >= 0 ? above : Math.min(wr.height - h, r.top - wr.top + lo * k + 18)) + "px";
+    const w = tip.offsetWidth / k, h = tip.offsetHeight / k, place = NXT.lanePlace(m, index, w, h);
+    if (!place.lane) { tip.hidden = true; tip.removeAttribute("data-lane"); return; }
+    tip.setAttribute("data-lane", place.lane);
+    tip.style.left = (r.left - wr.left + place.x * k) + "px";
+    tip.style.top = (r.top - wr.top + place.y * k) + "px";
+  }
+  const LANE_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  function laneDate(d) { return LANE_DAYS[new Date(d + "T12:00:00Z").getUTCDay()] + " " + shortDate(d); }
+  /* Back to latest glides the cursor, marker and halo 240 ms (--st-out); a jump under reduced motion. */
+  let glideRaf = 0;
+  function glideCursor(fromX, fromY) {
+    const svg = document.getElementById("n99-chart-svg"), m = NXT.ui.chart, p = m && m.points && m.points[m.points.length - 1];
+    if (!svg || !p || reduced() || fromX === null || !Number.isFinite(fromX)) return;
+    const line = svg.querySelector("#n99-chart-cursor"), dot = svg.querySelector("#n99-chart-active"), halo = svg.querySelector("#st-chart-halo");
+    const t0 = performance.now(), dur = 240, ease = t => 1 - Math.pow(1 - t, 3);
+    cancelAnimationFrame(glideRaf);
+    const run = now => {
+      const t = Math.min(1, (now - t0) / dur), e = ease(t), x = fromX + (p.x - fromX) * e, y = fromY + (p.y - fromY) * e;
+      if (line) { line.setAttribute("x1", x); line.setAttribute("x2", x); }
+      if (dot) { dot.setAttribute("cx", x); dot.setAttribute("cy", y); }
+      if (halo) { halo.setAttribute("cx", x); halo.setAttribute("cy", y); }
+      if (t < 1) glideRaf = requestAnimationFrame(run);
+    };
+    glideRaf = requestAnimationFrame(run);
   }
   function stopReplay() {
     if (!state0.replay) return;
@@ -377,14 +379,17 @@ const STRATA = (() => {
   function bindProgressReplay(page) {
     const btn = page.querySelector("[data-st-chart-replay]");
     if (!btn) return;
+    /* The plate's transport (D118): one fixed slot whose state the markup and NXT.selectPoint keep in
+       data-wx-state. Idle replays the range, playing stops it, historical goes back to the latest reading.
+       Under reduced motion a replay jumps straight to the latest reading. */
     btn.onclick = () => {
       if (state0.replay) { stopReplay(); return; }
       const m = NXT.ui.chart, rect = document.getElementById("vn-chart-clip-r");
-      if (!m || !m.points || !m.points.length || !rect) return;
+      if (!m || !m.points || !m.points.length) return;
+      if (btn.getAttribute("data-wx-state") === "historical" || reduced() || !rect) { NXT.selectPoint(m.points.length - 1, { clear: true }); return; }
       const full = Number(rect.getAttribute("width")), x0 = Number(rect.getAttribute("x"));
-      if (reduced()) { NXT.selectPoint(m.points.length - 1, { clear: true }); return; }
       const dur = 6500, start = performance.now(), wrap = document.getElementById("vn-chart-wrap");
-      wrap && wrap.classList.add("is-replaying"); btn.querySelector("span").textContent = "Stop";
+      wrap && wrap.classList.add("is-replaying"); btn.setAttribute("data-wx-state", "playing");
       const run = now => {
         const k = Math.min(1, (now - start) / dur), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
         const xr = x0 + e * full; rect.setAttribute("width", Math.max(0, xr - x0));
@@ -393,7 +398,7 @@ const STRATA = (() => {
         if (k < 1) state0.replay = { raf: requestAnimationFrame(run), done };
         else done();
       };
-      const done = () => { state0.replay = null; rect.setAttribute("width", full); wrap && wrap.classList.remove("is-replaying"); btn.querySelector("span").textContent = "Replay"; NXT.selectPoint(m.points.length - 1, { clear: true }); };
+      const done = () => { state0.replay = null; rect.setAttribute("width", full); wrap && wrap.classList.remove("is-replaying"); btn.setAttribute("data-wx-state", "idle"); NXT.selectPoint(m.points.length - 1, { clear: true }); };
       state0.replay = { raf: requestAnimationFrame(run), done };
     };
   }
@@ -702,26 +707,10 @@ const STRATA = (() => {
       if (!e.isIntersecting) continue;
       io.unobserve(e.target);
       const el = e.target;
-      if (el.hasAttribute("data-st-view")) { el.classList.add("is-in", "st-play"); rollDec(el); }
+      if (el.hasAttribute("data-st-view")) el.classList.add("is-in", "st-play");
       if (el.classList.contains("st-rv")) { el.classList.add("st-rv-in"); revealNums(el); }
     }
   }, { threshold: 0.28, rootMargin: "0px 0px -6% 0px" }) : null;
-  function rollDec(root) {
-    const el = root.querySelector(".st-dec-val");
-    if (!el || reduced() || el.dataset.stRolled) return;
-    const m = /^([+\u2212-]?)(\d+(?:\.\d+)?)(.*)$/.exec(el.textContent.trim());
-    if (!m) return;
-    el.dataset.stRolled = "1";
-    const sign = m[1], target = parseFloat(m[2]), unit = m[3], dp = (m[2].split(".")[1] || "").length;
-    const t0 = performance.now(), dur = 900;
-    const step = now => {
-      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 4);
-      el.textContent = sign + (target * e).toFixed(dp) + unit;
-      if (k < 1) requestAnimationFrame(step);
-    };
-    el.textContent = sign + (0).toFixed(dp) + unit;
-    requestAnimationFrame(step);
-  }
   function bindView(page, entering) {
     const live = entering && !reduced() && io;
     page.querySelectorAll("[data-st-view]").forEach(el => {
@@ -731,7 +720,7 @@ const STRATA = (() => {
     if (!live) return;
     /* Cards that start below the fold wait for the scroll instead of animating unseen. */
     const fold = window.innerHeight || 800;
-    page.querySelectorAll(".st-bento>*, .vn-weight>*").forEach(el => {
+    page.querySelectorAll(".st-bento>*, #weightPage .wx-after, #weightPage .st-jr, #weightPage .wx-an").forEach(el => {
       if (el.getBoundingClientRect().top < fold * 0.96) return;
       el.classList.add("st-rv");
       io.observe(el);
@@ -749,7 +738,7 @@ const STRATA = (() => {
   const MAST = { home: "#homePage .st-head .st-h1", train: "#trainPage .nxp-train-chrome h1", weight: "#weightPage .nxp-progress-chrome h1", history: "#historyPage .vn-hist-chrome h1", more: "#morePage .vn-set-title" };
   const MORPH = [
     { name: "st-m-session", sel: { home: "#homePage .st-t-train .st-h2", train: "#trainPage .nxp-train-chrome h1, #trainPage .st-tbar-t" } },
-    { name: "st-m-trend", sel: { home: "#homePage .st-mini [data-st-odo]", weight: "#n99-chart-average" } },
+    { name: "st-m-trend", sel: { home: "#homePage .tf-log [data-st-odo]", weight: "#n99-chart-average" } },
     { name: "st-m-live", sel: { home: "#stLive", weight: "#stLive", history: "#stLive", more: "#stLive", train: "#trainPage .st-tbar" } }
   ];
   const scrollMemo = {};
@@ -779,6 +768,8 @@ const STRATA = (() => {
       return out;
     }
     navLast = to;
+    /* Leaving Weight runs the Expand restore list (spec §10): the chart goes back to its page before the tab changes. */
+    if (typeof NXT === "object" && NXT.ui && NXT.ui.expanded && typeof NXT.collapseChart === "function") NXT.collapseChart({ focus: false, rerender: false, scroll: false, silent: true });
     scrollMemo[shown] = window.scrollY || 0;
     const swap = () => {
       const target = navLast;
@@ -858,8 +849,8 @@ const STRATA = (() => {
   function bindTop() { window.addEventListener("scroll", queueTop, { passive: true }); window.addEventListener("resize", queueTop); queueTop(); }
 
   /* ---- D75 · Workout mini-player, live Train tab, screen stays awake ----------------------------------
-     A lift session that has started and is not finished (N.sessionLogs() has rows, N.planDone() is
-     false) follows you: on any other tab a glass pill above the dock shows the session, sets done of
+     A lift session that has started and is not finished (working sets logged, N.planDone() is false;
+     D105) follows you: on any other tab a glass pill above the dock shows the session, sets done of
      planned and the live rest countdown — tap it to return (it morphs into the workout header). The
      Train tab carries the same progress as a ring. While the workout itself is on screen the screen
      stays awake (Screen Wake Lock), so the rest timer never hides behind the lock screen. Everything
@@ -869,12 +860,17 @@ const STRATA = (() => {
     try {
       if (typeof NXT !== "object" || typeof template !== "function" || typeof state !== "object" || !state) return null;
       if (["Rest", "Zone2", "Floorball"].includes(state.dayType)) return null;
-      if (!NXT.sessionLogs().length || NXT.planDone()) return null;
-      const list = template() || [];
-      const total = list.reduce((a, e) => a + (Number(e.sets) || 0), 0);
-      const count = list.reduce((a, e) => a + Math.min(NXT.done(e.name), Number(e.sets) || 0), 0);
+      /* D105 — the same day state as the rail and the tile (records only, no coach read: this runs
+         every second). A session is live from its first working set (warm-ups alone do not start it)
+         until Finish; its count is the ring's, and its word says when every planned set is in. */
+      const ds = typeof NXP === "object" && NXP && typeof NXP.dayState === "function" ? NXP.dayState(state.date, null, null) : null;
+      if (ds ? !ds.inProgress : (!NXT.sessionLogs().some(r => r && r.setType !== "warmup") || NXT.planDone())) return null;
+      const list = ds ? [] : template() || [];
+      const total = ds ? ds.plan.plannedSets : list.reduce((a, e) => a + (Number(e.sets) || 0), 0);
+      const count = ds ? ds.loggedSets : list.reduce((a, e) => a + Math.min(NXT.done(e.name), Number(e.sets) || 0), 0);
       const rest = typeof apx96RestRemaining === "function" ? apx96RestRemaining() : 0;
-      return { name: NXT.label(state.dayType), count, total, rest };
+      /* The word is D105's own (ds.w: "In progress", "Planned sets complete"), never composed here. */
+      return { name: NXT.label(state.dayType), count, total, rest, word: ds && ds.w ? ds.w : "In progress" };
     } catch (e) { return null; }
   }
   function fmt(s) { return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
@@ -900,14 +896,76 @@ const STRATA = (() => {
     placeLive(liveEl);
     return liveEl;
   }
+  /* ---- D123 · Live dock hand-off (stage 5, C5) ---------------------------------------------------------
+     On Today the live row in the phone dock hides while the focus card's button is fully visible above the
+     dock: the card already says Resume. (The >= 1024 floating pill is left as D75 built it: the app is used
+     on the phone, owner 2026-10-20.) An IntersectionObserver on
+     `#homePage .tf-card .tf-cta`, bound in Today's hydrate and disconnected on every re-render or tab
+     change (one observer at a time, never two), reads the button against the viewport minus the dock's
+     own band (the tab row, not the live row, so showing the row cannot move the threshold). Visible means
+     fully inside; hidden means fewer than 24 px of the button remain — the band between holds the last
+     state, so nothing flickers at the edge. The same 1 s tick writes the card's rest ring and countdown
+     (`[data-tf-rest]`, `--tf-rest-pct`); it never re-renders Today. */
+  let ctaIO = null, ctaBtn = null, ctaVisible = false, ctaInset = -1, restSaid = 0;
+  function wideRail() { return !!(window.matchMedia && matchMedia("(min-width:1024px)").matches); }
+  function dockInset() {
+    const inner = document.querySelector(".tabs .tabs-inner");
+    if (inner) { const r = inner.getBoundingClientRect(); if (r.height) return Math.max(0, Math.round((window.innerHeight || 0) - r.top + 8)); }
+    return 0;
+  }
+  function unbindCta() { if (ctaIO) { ctaIO.disconnect(); ctaIO = null; } ctaBtn = null; ctaVisible = false; ctaInset = -1; }
+  function bindCta(page) {
+    unbindCta();
+    /* Phones only (owner, 2026-10-20): with the side rail (>= 1024) the floating pill keeps its D75 behaviour. */
+    if (!page || page.id !== "homePage" || wideRail() || typeof IntersectionObserver !== "function") return;
+    const btn = page.querySelector(".tf-card .tf-cta");
+    if (!btn) return;
+    const inset = dockInset(), h = btn.getBoundingClientRect().height || 54, t24 = Math.max(0, Math.min(1, 24 / h));
+    ctaInset = inset; ctaBtn = btn;
+    /* Read the first state now, so the row never flashes between the paint and the observer's first call. */
+    const r = btn.getBoundingClientRect();
+    ctaVisible = r.height > 0 && r.top >= 0 && r.bottom <= (window.innerHeight || 0) - inset;
+    ctaIO = new IntersectionObserver(list => {
+      const e = list[list.length - 1], was = ctaVisible, px = e.intersectionRect ? e.intersectionRect.height : 0;
+      if (!e.target.isConnected) return; /* a repaint replaced the card: the next tick rebinds to the new button */
+      if (e.isIntersecting && e.intersectionRatio >= 0.995) ctaVisible = true;
+      else if (!e.isIntersecting || px < 24) ctaVisible = false;
+      if (ctaVisible !== was) updateLive();
+    }, { rootMargin: "0px 0px -" + inset + "px 0px", threshold: [0, t24, 1] });
+    ctaIO.observe(btn);
+  }
+  /* The card's rest ring: digits, arc and (at most every 15 s) its spoken label; gone when the rest ends. */
+  function tickCardRest(rest) {
+    const b = document.querySelector("#homePage [data-tf-rest]");
+    if (!b) return;
+    const ring = b.closest(".tf-rest") || b;
+    if (!(rest > 0)) { if (!ring.hidden) ring.hidden = true; return; }
+    if (ring.hidden) ring.hidden = false;
+    const t = fmt(rest);
+    if (b.textContent !== t) b.textContent = t;
+    const total = (typeof NXP === "object" && NXP.ui && NXP.ui.restTotal) || 90;
+    ring.style.setProperty("--tf-rest-pct", String(Math.max(0, Math.min(1, rest / total)).toFixed(3)));
+    const now = Date.now();
+    if (now - restSaid >= 15000) {
+      restSaid = now;
+      const m = Math.floor(rest / 60), sec = rest % 60;
+      ring.setAttribute("aria-label", "Rest, " + (m ? m + " minute" + (m === 1 ? "" : "s") + " " : "") + sec + " second" + (sec === 1 ? "" : "s") + " left");
+    }
+  }
   function updateLive() {
     if (!document.body) return;
     const s = liveSession(), tab = currentTab();
     const inTrain = tab === "train";
     const el = ensureLive();
-    const show = !!s && !inTrain;
+    /* A resize can move the dock band (phone ↔ side rail): re-read it and rebind, still one observer. */
+    if (tab === "home" && !wideRail() && (!ctaIO || !ctaBtn.isConnected || dockInset() !== ctaInset)) bindCta(document.getElementById("homePage"));
+    else if (ctaIO && (tab !== "home" || wideRail())) unbindCta();
+    const held = tab === "home" && ctaVisible;
+    const show = !!s && !inTrain && !held;
+    el.classList.toggle("is-handoff", tab === "home");
     if (el.hidden === show) el.hidden = !show;
     document.body.classList.toggle("st-live-on", show);
+    if (tab === "home") tickCardRest(s ? s.rest : 0);
     const trainTab = document.querySelector('.tabs .tab[data-tab="train"]');
     if (trainTab) {
       trainTab.classList.toggle("is-live", !!s);
@@ -919,7 +977,7 @@ const STRATA = (() => {
       el.querySelector(".st-live-c").textContent = s.count + "/" + s.total + " sets";
       el.querySelector(".st-live-r").textContent = s.rest ? " · Rest " + fmt(s.rest) : "";
       el.classList.toggle("is-resting", s.rest > 0);
-      el.setAttribute("aria-label", "Return to workout: " + s.name + ", " + s.count + " of " + s.total + " sets" + (s.rest ? ", resting " + fmt(s.rest) : ""));
+      el.setAttribute("aria-label", "Return to workout: " + s.name + ", " + s.word + ", " + s.count + " of " + s.total + " sets" + (s.rest ? ", resting " + fmt(s.rest) : ""));
       const dock = document.querySelector(".tabs");
       if (dock && !el.classList.contains("is-docked")) { const r = dock.getBoundingClientRect(); if (r.height) el.style.setProperty("--st-live-bottom", Math.max(12, Math.round((window.innerHeight || 0) - r.top + 10)) + "px"); }
     }
@@ -1063,18 +1121,9 @@ const STRATA = (() => {
     toast.__strataIsland = true;
   }
 
-  /* ---- Weight chart: a glowing head on the latest trend value, a tick under the finger --------------- */
+  /* ---- Weight chart: a tick under the finger. (The glowing head on the trend's end is retired: the plate's
+     focal marks are the trend stroke, its value tag and the selected marker, D119.) ---------------------- */
   let lastScrub = -1;
-  function dressChartHead() {
-    const svg = document.getElementById("n99-chart-svg"), m = typeof NXT === "object" && NXT.ui && NXT.ui.chart;
-    if (!svg || !m || !Array.isArray(m.points) || svg.querySelector(".st-comet")) return;
-    const last = [...m.points].reverse().find(p => p && p.ty !== null && p.ty !== undefined && Number.isFinite(Number(p.ty)));
-    if (!last) return;
-    const g = document.createElementNS(NS, "g");
-    g.setAttribute("class", "st-comet"); g.setAttribute("aria-hidden", "true"); g.setAttribute("pointer-events", "none");
-    g.innerHTML = `<circle class="st-comet-halo" cx="${last.x}" cy="${last.ty}" r="11"/><circle class="st-comet-ring" cx="${last.x}" cy="${last.ty}" r="6.5"/><circle class="st-comet-core" cx="${last.x}" cy="${last.ty}" r="3.4"/>`;
-    svg.appendChild(g);
-  }
 
   /* ---- Stretchy large titles: pulling down past the top swells the page title, iOS-style ----------- */
   let stretchRaf = 0;
@@ -1360,7 +1409,7 @@ const STRATA = (() => {
     apx95SaveQuickWeight.__strataH = true;
   }
 
-  /* D103 · Today's weigh-in pill replays this morning's moment (same card, nothing new computed). */
+  /* D103, D121 · Today's Weight cell replays this morning's moment (same card, nothing new computed). */
   function moment() {
     try {
       if (typeof NXT !== "object" || typeof state !== "object" || !state) return false;
@@ -1370,7 +1419,7 @@ const STRATA = (() => {
   }
 
   /* ---- D103 · Morph: one region changes layout as one movement -------------------------------------
-     Today's coach deck fans out and folds back with a View Transition: each card in the region, its
+     Today's digest folds out and back with a View Transition: each row in the region, its
      header and everything after it on the page carry a transition name for the length of the change,
      so cards travel to their places and the page below slides instead of jumping. The page itself does
      not fade (the tab transition's root animation is switched off for it). Plain change without support,
@@ -1381,8 +1430,8 @@ const STRATA = (() => {
     const named = [];
     const tag = (el, n) => { if (el && el.getClientRects().length) { el.style.viewTransitionName = n; named.push(el); } };
     const untag = () => { named.splice(0).forEach(el => { el.style.viewTransitionName = ""; }); };
-    tag(scope.querySelector(".st-codeck-h"), "st-mh");
-    scope.querySelectorAll(".co-tile").forEach((el, i) => tag(el, "st-mo-" + i));
+    tag(scope.querySelector(".tf-dig-tg"), "st-mh");
+    scope.querySelectorAll(".tf-dig-list > li").forEach((el, i) => tag(el, "st-mo-" + i));
     const page = scope.closest(".page") || document.body;
     let k = 0;
     for (let el = scope; el && el !== page; el = el.parentElement)
@@ -1581,7 +1630,7 @@ const STRATA = (() => {
   /* ---- D87 · Touch light ---------------------------------------------------------------------------
      The tap ripple (D38), made continuous: glass catches light under the finger, the light follows it
      while pressed, and on release it opens out and fades. Off under reduced motion. */
-  const LIT = ".st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row,.st-dec-chip,.vn-row,.vn-set-row,.st-lrow>button,.co-tile,.st-wpill,.st-codeck-open,.st-share-b,.vn-set-act,.st-fin-done,.st-fin-cardio,.st-ask-acts button,.nxp-cal-day,.st-live,.st-dk-menu button";
+  const LIT = ".st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row,.vn-row,.vn-set-row,.st-lrow>button,.tf-za,.tf-zb,.tf-dig-row,.tf-act,.st-share-b,.vn-set-act,.st-fin-done,.st-fin-cardio,.st-ask-acts button,.nxp-cal-day,.st-live,.st-dk-menu button";
   let lit = null;
   function bindRipple() {
     const end = () => {
@@ -1776,9 +1825,9 @@ const STRATA = (() => {
     foldPerf(page);
     foldBody(page);
     if (page.id === "trainPage") bindTrain(page);
+    bindCta(page);
     bindProgressReplay(page);
     if (page.id === "weightPage") {
-      dressChartHead();
       /* D85's Share button is part of the Cut journey markup now (D95), so nothing is injected here. */
       bindJourney(page);
       bindEvidence(page);
@@ -1807,7 +1856,16 @@ const STRATA = (() => {
     bindSheets();
     if (typeof NXT === "object" && typeof NXT.selectPoint === "function" && !NXT.selectPoint.__strata) {
       const sp = NXT.selectPoint;
-      NXT.selectPoint = function (index, opts) { const o = sp.apply(this, arguments); try { progressTip(index, opts); weeksSync(index); weeksReplay(index); jrFromChart(index, opts); noteChipSync(index); if (index !== lastScrub && !(opts && opts.clear)) { if (lastScrub !== -1 && !JR.dragging) haptic("tick"); lastScrub = index; } } catch (e) {} return o; };
+      NXT.selectPoint = function (index, opts) {
+        let fx = null, fy = null;
+        if (opts && opts.glide) { const d = document.getElementById("n99-chart-active"); if (d) { fx = Number(d.getAttribute("cx")); fy = Number(d.getAttribute("cy")); } }
+        const o = sp.apply(this, arguments);
+        try {
+          if (WK.pick && (index !== WK.pick.idx || (opts && opts.clear))) weekClear();
+          progressTip(index, opts); weeksSync(index, opts); weeksReplay(index); jrFromChart(index, opts); noteChipSync(index);
+          if (opts && opts.glide) glideCursor(fx, fy);
+          if (index !== lastScrub && !(opts && opts.clear)) { if (lastScrub !== -1 && !JR.dragging) haptic("tick"); lastScrub = index; }
+        } catch (e) {} return o; };
       NXT.selectPoint.__strata = true;
     }
     bindCalSwipe();
@@ -1833,16 +1891,15 @@ const STRATA = (() => {
     }
     bindPress();
     queueSegs();
-    document.addEventListener("pointerup", e => {
-      const w = e.target && e.target.closest && e.target.closest("#vn-chart-wrap");
-      if (w) setTimeout(() => { const t = w.querySelector(".st-tip"); if (t) t.hidden = true; }, 1400);
-    }, true);
     let rt = 0;
     window.addEventListener("resize", () => {
       clearTimeout(rt);
       rt = setTimeout(() => {
         document.querySelectorAll("[data-st-cmap]").forEach(h => drawCompMap(h, false));
         fitTrain();
+        /* The weight plot's height follows the small viewport in 24 px buckets (D119): re-render only then. */
+        const cm = typeof NXT === "object" && NXT.ui && NXT.ui.chart;
+        if (cm && cm.geo && cm.geo.kind && cm.geo.kind !== "legacy" && document.getElementById("n99-chart-svg") && NXT.chartGeoChanged(cm.geo, NXT.chartGeo(cm.geo.kind)) && typeof renderWeight === "function") renderWeight();
       }, 150);
     });
     document.documentElement.classList.add("st-on");
@@ -1884,15 +1941,20 @@ const STRATA = (() => {
     const q = sel => sec.querySelector(sel);
     const set = (sel, t) => { const el = q(sel); if (el && t != null) { stopCount(el); el.textContent = t; } };
     const rail = q(".st-jr-rail"), dot = q(".vn-journey-now"), trav = q(".vn-journey-travel"), fut = q(".st-jr-fut"), today = q(".st-jr-today"), back = q(".st-jr-back"), when = q(".st-jr-when");
+    /* Rewind labelling (spec §13.2): the ◷ capsule with Back to today, and the Rate card's "Current analysis · as
+       of <date>" line, since rewinding replays the journey and not the model. */
+    const rw = q(".st-jr-rw"), cur = document.querySelector("#weightPage [data-wx-current]");
     const L = date ? jrAt(d, date) : null, last = d.pts[d.pts.length - 1][0];
     const isToday = !L || L.date >= last;
     sec.classList.toggle("is-rewind", !isToday);
     rtCursor(isToday ? null : L.date);
+    if (rw) rw.hidden = isToday;
+    if (cur) { cur.hidden = isToday; if (!isToday && !cur.firstChild) cur.innerHTML = `<i aria-hidden="true">◷</i>Current analysis · as of ${esc(cur.getAttribute("data-wx-current") || "")}`; }
     if (isToday) {
       JR.at = null; JR.k = null;
       const b = JR.base;
       set("[data-st-jr-done]", b.done); set("[data-st-jr-sub]", b.sub); set("[data-st-jr-togo]", b.togo); set("[data-st-jr-togol]", b.togol);
-      set("[data-st-jr-nowv]", b.nowv); jrWord("Now", b.noww); if (when) when.textContent = b.when;
+      set("[data-st-jr-nowv]", b.nowv); jrWord(b.nowName || "Est. level", b.noww); if (when) when.textContent = b.when;
       dot.style.left = jrPct(d, d.now) + "%"; trav.style.left = b.trav.left; trav.style.width = b.trav.width; trav.classList.toggle("is-back", b.trav.back);
       fut.hidden = true; today.hidden = true; if (back) back.hidden = true;
       sec.querySelectorAll(".st-jr-bead").forEach((x, i) => x.classList.toggle("is-on", !!b.beads[i]));
@@ -1907,8 +1969,9 @@ const STRATA = (() => {
     set("[data-st-jr-done]", Math.abs(done).toFixed(1));
     set("[data-st-jr-sub]", `${done >= .05 ? "down" : done <= -.05 ? "up" : "no change"} by ${ds}`);
     if (q("[data-st-jr-togo]")) { set("[data-st-jr-togo]", Math.max(0, togo).toFixed(1)); set("[data-st-jr-togol]", togo > 0 ? "to go that day" : "in your range that day"); }
-    set("[data-st-jr-nowv]", v.toFixed(1)); jrWord("Then", ds);
+    set("[data-st-jr-nowv]", v.toFixed(1)); jrWord("Estimated level", ds);
     if (when) when.textContent = (d.first ? shortDate(d.first) : shortDate(d.pts[0][0])) + " \u2192 " + ds;
+    if (rw) { const rd = rw.querySelector("[data-st-jr-rwd]"), rk = rw.querySelector("[data-st-jr-rwk]"); if (rd) rd.textContent = ds; if (rk) rk.textContent = `${Math.abs(done).toFixed(1)} kg ${done >= .05 ? "down" : done <= -.05 ? "up" : "no change"}`; }
     const pv = jrPct(d, v), ps = jrPct(d, d.seed), pn = jrPct(d, d.now);
     dot.style.left = pv + "%";
     trav.classList.toggle("is-back", v > d.seed + .05);
@@ -1930,7 +1993,7 @@ const STRATA = (() => {
     const q = sel => sec.querySelector(sel), tx = sel => { const el = q(sel); return el ? el.textContent : null; };
     const rail = q(".st-jr-rail"), trav = q(".vn-journey-travel");
     JR.base = { done: tx("[data-st-jr-done]"), sub: tx("[data-st-jr-sub]"), togo: tx("[data-st-jr-togo]"), togol: tx("[data-st-jr-togol]"), when: tx(".st-jr-when"),
-      nowv: tx("[data-st-jr-nowv]"), noww: tx("[data-st-jr-noww] i"), vt: rail.getAttribute("aria-valuetext"),
+      nowv: tx("[data-st-jr-nowv]"), noww: tx("[data-st-jr-noww] i"), nowName: (() => { const em = q("[data-st-jr-noww]"); return em && em.firstChild && em.firstChild.nodeType === 3 ? em.firstChild.nodeValue : null; })(), vt: rail.getAttribute("aria-valuetext"),
       trav: { left: trav.style.left, width: trav.style.width, back: trav.classList.contains("is-back") },
       beads: [...sec.querySelectorAll(".st-jr-bead")].map(b => b.classList.contains("is-on")) };
     const pick = x => {
@@ -2023,63 +2086,84 @@ const STRATA = (() => {
     let d; try { d = JSON.parse(g.getAttribute("data-st-ev")); } catch (e) { return; }
     if (!d || !(d.now > d.hi) || !(d.ref > 0)) return;
     const sec = g.closest(".st-ev"), knob = g.querySelector(".st-ev-gk"), lab = g.querySelector(".st-ev-gkl"), trail = g.querySelector(".st-ev-trail"), z = g.querySelector(".st-ev-z");
-    const wi = sec.querySelector(".st-ev-wi"), hint = sec.querySelector(".st-ev-hint");
-    if (!knob || !lab || !trail || !z || !wi) return;
+    const hint = sec.querySelector(".st-ev-hint");
+    if (!knob || !lab || !trail || !z) return;
     const mkPct = Math.min(d.axis, Math.max(0, -d.rate) / d.ref * 100), mkAt = mkPct / d.axis * 100;
     const base = { vt: g.getAttribute("aria-valuetext"), now: g.getAttribute("aria-valuenow") };
     const hiTxt = Number.isInteger(d.hi) ? String(d.hi) : Number(d.hi).toFixed(1), flatKg = d.flat / 100 * d.ref;
-    let cur = null, drag = false, t = 0, lastStep = null;
+    let cur = null, drag = false, lastStep = null, wi = null;
+    /* The Simulation box (spec §13.3, W8 / D117) exists only once the gauge has been dragged: a hatched neutral box
+       with its assumption, a Reset capsule and, past the 1% line, a review-toned ◆ word. It stays until Reset, Esc
+       or the tab is left (the page re-render drops it); never in a default render. */
+    function box() {
+      if (wi && wi.isConnected) return wi;
+      const after = hint || g;
+      after.insertAdjacentHTML("afterend", `<div class="wx-sim" role="group" aria-label="Simulation, what if"><p class="wx-sim-h"><i aria-hidden="true">◌</i>Simulation · What if</p><b></b><span class="wx-sim-s"></span><span class="wx-sim-fast" hidden><i aria-hidden="true">◆</i>faster than the 1% line</span><button type="button" class="wx-sim-reset">Reset</button></div>`);
+      wi = after.nextElementSibling;
+      wi.querySelector(".wx-sim-reset").addEventListener("click", () => { reset(); g.focus({ preventScroll: true }); });
+      return wi;
+    }
     function show(p) {
-      clearTimeout(t);
       p = Math.max(0, Math.min(d.axis, p)); cur = p;
-      const kg = p / 100 * d.ref, at = p / d.axis * 100;
-      g.classList.remove("is-back"); sec.classList.add("is-whatif");
-      knob.hidden = false; lab.hidden = false; trail.hidden = false; wi.hidden = false; wi.classList.remove("is-out"); if (hint) hint.hidden = true;
+      const kg = p / 100 * d.ref, at = p / d.axis * 100, w = box();
+      sec.classList.add("is-whatif");
+      knob.hidden = false; lab.hidden = false; trail.hidden = false; if (hint) hint.hidden = true;
       knob.style.left = at + "%"; lab.style.left = Math.max(10, Math.min(90, at)) + "%";
       trail.style.left = Math.min(at, mkAt) + "%"; trail.style.width = Math.abs(mkAt - at) + "%";
       lab.textContent = "−" + kg.toFixed(2) + " kg/wk";
-      const b = wi.querySelector("b"), sp = wi.querySelector("span");
+      const b = w.querySelector("b"), sp = w.querySelector(".wx-sim-s"), fast = w.querySelector(".wx-sim-fast");
+      fast.hidden = !(p > 1);
+      const nowName = d.nowName || "estimated level";
       let vt;
       if (kg <= flatKg) {
         b.textContent = "No arrival at this pace";
-        sp.textContent = `Under ${flatKg.toFixed(2)} kg a week the trend reads as flat. A what-if, not a forecast.`;
+        sp.textContent = `Under ${flatKg.toFixed(2)} kg a week the trend reads as flat. A what-if, not a forecast or a target.`;
         vt = `What if ${kg.toFixed(2)} kilograms a week: no arrival, the trend reads as flat`;
       } else {
-        const weeks = (d.now - d.hi) / kg, date = NXT.dateAdd(d.today, Math.max(1, Math.round(weeks * 7))), wk = Math.max(1, Math.round(weeks));
-        b.textContent = `${hiTxt} kg around ${shortDate(date)}`;
-        sp.textContent = `About ${wk} ${wk === 1 ? "week" : "weeks"} at −${kg.toFixed(2)} kg/wk from ${Number(d.now).toFixed(1)} kg now${p > 1 ? ", past the 1% line" : ""}. A what-if, not a forecast.`;
-        vt = `What if ${kg.toFixed(2)} kilograms a week: ${hiTxt} kilograms around ${shortDate(date)}`;
+        /* D104: counted from the day Now is measured (d.base), which can be before today. */
+        const from = d.base || d.today;
+        /* The date runs from d.base; "About N weeks" counts from today to that date, as weeksRemaining does, so the
+           what-if and the Projection tile on one card count weeks the same way (verification of D104). */
+        const weeks = (d.now - d.hi) / kg, date = NXT.dateAdd(from, Math.max(1, Math.round(weeks * 7)));
+        const wk = Math.max(1, Math.round((Date.parse(date + "T12:00:00") - Date.parse(d.today + "T12:00:00")) / 864e5 / 7));
+        const assume = `At −${kg.toFixed(2)} kg/wk from your ${nowName} of ${Number(d.now).toFixed(1)} kg on ${shortDate(from)}`;
+        if (date <= d.today) {
+          b.textContent = "Already past at this pace";
+          sp.textContent = `${assume}, the top of your goal range (${hiTxt} kg) would have come before today. Weigh in to see where you are. A what-if, not a forecast or a target.`;
+          vt = `What if ${kg.toFixed(2)} kilograms a week: ${hiTxt} kilograms would fall before today`;
+        } else {
+          b.textContent = `${hiTxt} kg around ${shortDate(date)} · about ${wk} ${wk === 1 ? "week" : "weeks"}`;
+          sp.textContent = `${assume}, the top of your goal range (${hiTxt} kg) would come around ${shortDate(date)}. A what-if, not a forecast or a target.`;
+          vt = `What if ${kg.toFixed(2)} kilograms a week: ${hiTxt} kilograms around ${shortDate(date)}`;
+        }
       }
       g.setAttribute("aria-valuenow", kg.toFixed(2)); g.setAttribute("aria-valuetext", vt);
       const step = Math.round(kg * 10);
       if (drag && lastStep !== null && step !== lastStep) haptic("tick");
       lastStep = step;
     }
-    function reset(delay) {
-      clearTimeout(t);
-      t = setTimeout(() => {
-        if (cur === null) return;
-        cur = null; lastStep = null;
-        g.classList.add("is-back"); knob.style.left = mkAt + "%"; lab.hidden = true; trail.hidden = true; wi.classList.add("is-out");
-        g.setAttribute("aria-valuetext", base.vt); g.setAttribute("aria-valuenow", base.now);
-        t = setTimeout(() => { knob.hidden = true; wi.hidden = true; wi.classList.remove("is-out"); g.classList.remove("is-back"); sec.classList.remove("is-whatif"); if (hint) hint.hidden = false; }, reduced() ? 0 : 520);
-      }, delay);
+    function reset() {
+      if (cur === null) return;
+      cur = null; lastStep = null;
+      knob.style.left = mkAt + "%"; lab.hidden = true; trail.hidden = true; knob.hidden = true;
+      g.setAttribute("aria-valuetext", base.vt); g.setAttribute("aria-valuenow", base.now);
+      sec.classList.remove("is-whatif"); if (hint) hint.hidden = false;
+      if (wi) { wi.remove(); wi = null; }
     }
     const fromX = x => { const r = z.getBoundingClientRect(); return Math.max(0, Math.min(1, (x - r.left) / r.width)) * d.axis; };
     g.addEventListener("pointerdown", e => { if (e.button > 0) return; drag = true; g.classList.add("is-drag"); try { g.setPointerCapture(e.pointerId); } catch (_) {} show(fromX(e.clientX)); });
     g.addEventListener("pointermove", e => { if (drag) show(fromX(e.clientX)); });
-    const up = () => { if (!drag) return; drag = false; g.classList.remove("is-drag"); reset(1800); };
+    const up = () => { if (!drag) return; drag = false; g.classList.remove("is-drag"); };
     g.addEventListener("pointerup", up); g.addEventListener("pointercancel", up);
     g.addEventListener("keydown", e => {
       const stepPct = 0.05 / d.ref * 100;
       let p = cur === null ? mkPct : cur;
       if (e.key === "ArrowRight" || e.key === "ArrowUp") p += stepPct;
       else if (e.key === "ArrowLeft" || e.key === "ArrowDown") p -= stepPct;
-      else if (e.key === "Escape" && cur !== null) { e.preventDefault(); reset(0); return; }
+      else if (e.key === "Escape" && cur !== null) { e.preventDefault(); reset(); return; }
       else return;
       e.preventDefault(); show(p);
     });
-    g.addEventListener("blur", () => { if (cur !== null) reset(700); });
   }
 
   /* ---- D99 · Play your cut ---------------------------------------------------------------------------------
@@ -2087,7 +2171,7 @@ const STRATA = (() => {
      the fastest week, the lifts, the mornings weighed and where it is heading, ending on the share card (D85).
      Every figure is the engine's: the Cut journey's start and Now (D97), Mon–Sun morning averages with at least
      three readings (the Week by week rule), strengthItems() and its words (I12), the weigh-ins themselves and
-     forecastGoal(). Nothing is stored. Under reduced motion nothing moves and nothing advances by itself. */
+     forecastGoal(), dated by forecastView() (D104). Nothing is stored. Under reduced motion nothing moves and nothing advances by itself. */
   const SYD = 6500;
   let SY = null;
   const syLong = d => { try { return new Date(d + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }); } catch (e) { return shortDate(d); } };
@@ -2103,11 +2187,15 @@ const STRATA = (() => {
     const first = cs || rows[0].date;
     const conf = !!N.cfg().targetConfirmed, lo = typeof goalLow === "function" ? Number(goalLow()) : NaN, hi = typeof goalHigh === "function" ? Number(goalHigh()) : NaN;
     const nl = N.nowLevel(rows), now = nl ? nl.value : rows[rows.length - 1].weight;
+    /* D107: the story names its "now" as the Journey does: the estimated level, or the latest morning without one. */
+    const nowName = nl ? "estimated level" : "latest morning", nowDate = nl ? nl.date : rows[rows.length - 1].date;
     const days = Math.max(0, Math.round((N.dateMs(state.date) - N.dateMs(first)) / 864e5));
-    const since = days >= 14 ? Math.round(days / 7) + " weeks" : days + " " + N.plural(days, "day");
+    /* D104: the kilograms down are measured where Now is; once the forecast is not fresh, "in N weeks" ends there. */
+    const fv = N.forecastView(rows), upTo = Math.max(0, Math.round((N.dateMs(fv.asOfDate) - N.dateMs(first)) / 864e5));
+    const since = upTo >= 14 ? Math.round(upTo / 7) + " weeks" : upTo + " " + N.plural(upTo, "day");
     const weighed = new Set(rows.filter(r => r.date >= first).map(r => r.date));
     const lv = N.levelSeries(rows).filter(q => q.date >= first);
-    return { N, rows, seed, first, conf, lo, hi, now, days, since, weighed, lv, done: seed - now, goal: conf && Number.isFinite(lo) && Number.isFinite(hi) };
+    return { N, rows, seed, savedStart: startW !== null, nowName, nowDate, first, conf, lo, hi, now, days, since, fv, weighed, lv, done: seed - now, goal: conf && Number.isFinite(lo) && Number.isFinite(hi) };
   }
   function syBar(F, cls) {
     const max = Math.max(F.seed, F.now, F.goal ? F.hi : F.now) + .6, min = Math.min(F.goal ? F.lo : F.now, F.now, F.seed) - 1.2, span = Math.max(.8, max - min);
@@ -2118,7 +2206,7 @@ const STRATA = (() => {
   }
   function storyChapters(F) {
     const N = F.N, ch = [], dir = F.done >= .05 ? "down" : F.done <= -.05 ? "up" : "no change";
-    ch.push({ k: "start", eye: "Day one", num: F.seed.toFixed(1), unit: "kg", sub: `${syLong(F.first)}. The first morning of your cut.`,
+    ch.push({ k: "start", eye: "Day one", num: F.seed.toFixed(1), unit: "kg", sub: `${syLong(F.first)}. ${F.savedStart ? "Your saved start weight, the day your cut began." : "Your first morning reading."}`,
       vis: `<div class="st-sy-seed" aria-hidden="true"><i></i><i></i><i></i><b></b></div>${F.goal ? `<p class="st-sy-goal">Goal · ${F.lo}–${F.hi} kg</p>` : ""}` });
     const togo = F.goal ? (F.now > F.hi ? `${(F.now - F.hi).toFixed(1)} kg to your ${F.hi} kg goal.` : F.now >= F.lo ? "You are in your goal range." : "You are below your goal range.") : "";
     ch.push({ k: "down", eye: "So far", num: Math.abs(F.done).toFixed(1), unit: "kg " + (dir === "no change" ? "" : dir), sub: `In ${F.since}. ${togo}`.trim(), vis: syBar(F) });
@@ -2149,11 +2237,14 @@ const STRATA = (() => {
       /* A long cut folds two or three weeks into a row and shrinks the dots, so the grid never outgrows the screen. */
       const rows7 = Math.ceil(n / 7), per = rows7 > 20 ? 21 : rows7 > 10 ? 14 : 7, sz = per === 21 ? 8 : per === 14 ? 11 : rows7 > 8 ? 12 : 16, gp = per === 21 ? 4 : per === 14 ? 6 : rows7 > 8 ? 6 : 8;
       ch.push({ k: "morn", eye: "Your mornings", num: String(got), unit: "of " + total, sub: `days weighed since ${shortDate(F.first)}. Each one tightens the trend.`, vis: `<div class="st-sy-days" style="--c:${per};--s:${sz}px;--g:${gp}px" aria-hidden="true">${cells.join("")}</div>` }); }
-    const f = NXT.forecastGoal(F.rows), share = '<button type="button" class="st-sy-share"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5.5 9.5H5a1.5 1.5 0 0 0-1.5 1.5v4.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V11A1.5 1.5 0 0 0 15 9.5h-.5"/></svg>Share your cut</button>';
-    if (!F.goal) ch.push({ k: "next", eye: "What's next", num: F.now.toFixed(1), unit: "kg now", sub: "Set a goal range in Settings to see where this is heading.", vis: share });
-    else if (F.now <= F.hi) ch.push({ k: "next", eye: "Where you are", num: F.now.toFixed(1), unit: "kg now", sub: F.now >= F.lo ? `Inside your ${F.lo}–${F.hi} kg goal range. A weight range alone does not measure leanness.` : `Below your ${F.lo}–${F.hi} kg goal range.`, vis: share });
-    else if (f.ok && f.weeks > 0) ch.push({ k: "next", eye: "What's next", num: "~" + f.weeks, unit: f.weeks === 1 ? "week" : "weeks", sub: `To ${F.hi} kg around ${shortDate(NXT.dateAdd(state.date, f.weeks * 7))}, at your last 3 weeks' pace of ${sySigned(f.slope * 7)} kg/wk. An estimate, not a measurement.`, vis: share });
-    else ch.push({ k: "next", eye: "What's next", num: (F.now - F.hi).toFixed(1), unit: "kg to go", sub: (f.reason || "Keep weighing in.").replace(/([^.])$/, "$1."), vis: share });
+    const v = F.fv, fw = NXT.forecastWords(v), share = '<button type="button" class="st-sy-share"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5.5 9.5H5a1.5 1.5 0 0 0-1.5 1.5v4.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V11A1.5 1.5 0 0 0 15 9.5h-.5"/></svg>Share your cut</button>';
+    if (!F.goal) ch.push({ k: "next", eye: "What's next", num: F.now.toFixed(1), unit: "kg, " + F.nowName, sub: `${shortDate(F.nowDate)}. Set a goal range in Settings to see where this is heading.`, vis: share });
+    else if (F.now <= F.hi) ch.push({ k: "next", eye: "Where you are", num: F.now.toFixed(1), unit: "kg, " + F.nowName, sub: F.now >= F.lo ? `Inside your ${F.lo}–${F.hi} kg goal range. A weight range alone does not measure leanness.` : `Below your ${F.lo}–${F.hi} kg goal range.`, vis: share });
+    /* D104: the anchored arrival, counted from today and said "as of" the last reading once it is not fresh; a
+       paused forecast keeps the reason-style chapter and names the last morning weigh-in instead of a date. */
+    else if (v.showArrival) ch.push({ k: "next", eye: "What's next", num: "~" + v.weeksRemaining, unit: v.weeksRemaining === 1 ? "week" : "weeks", sub: `To ${F.hi} kg around ${shortDate(v.arrivalDate)}${fw.asOf ? ", " + fw.asOf : ""}, at your last 3 weeks' pace of ${sySigned(v.slopeKgWk)} kg/wk. An estimate, not a measurement.`, vis: share });
+    else if (v.ok && v.weeks > 0 && fw.paused) ch.push({ k: "next", eye: "What's next", num: (F.now - F.hi).toFixed(1), unit: "kg to go", sub: `${fw.paused} ${fw.restart || "Weigh in to see where this is heading."}`, vis: share });
+    else ch.push({ k: "next", eye: "What's next", num: (F.now - F.hi).toFixed(1), unit: "kg to go", sub: (v.reason || "Keep weighing in.").replace(/([^.])$/, "$1."), vis: share });
     return ch;
   }
   function story() {
@@ -2274,7 +2365,7 @@ const STRATA = (() => {
         <h2 class="st-goal-t" id="st-goal-t">You’re in your goal range</h2>
         ${syBar(F, "is-goal")}
         <div class="st-goal-facts"><div><b data-st-num>${Math.abs(F.done).toFixed(1)}</b><span>kg ${F.done >= 0 ? "down" : "up"}</span></div><div><b data-st-num>${weeks}</b><span>${weeks === 1 ? "week" : "weeks"}</span></div><div><b data-st-num>${F.weighed.size}</b><span>mornings weighed</span></div></div>
-        <p class="st-goal-sub">Now ${F.now.toFixed(1)} kg, inside ${kgTxt(F.lo)}–${kgTxt(F.hi)} kg. A weight range alone does not measure leanness.</p>
+        <p class="st-goal-sub">${F.nowName.charAt(0).toUpperCase() + F.nowName.slice(1)} ${F.now.toFixed(1)} kg, inside ${kgTxt(F.lo)}–${kgTxt(F.hi)} kg. A weight range alone does not measure leanness.</p>
         <div class="st-goal-acts"><button type="button" class="st-goal-share">Share your cut</button><button type="button" class="st-goal-done">Done</button></div>
       </div>`;
     document.body.appendChild(el);
@@ -2291,7 +2382,9 @@ const STRATA = (() => {
     if (!reduced()) requestAnimationFrame(() => { el.classList.add("is-in"); el.querySelectorAll("[data-st-num]").forEach(countNum); });
     else el.classList.add("is-in", "is-still");
   }
-  return { observatory, closeObservatory, hydrate, install, odoSet, stopReplay, sky, haptic, story, storyClose, goalMoment, goalCheck, moment, morph, glance: () => { glTouch = 0; showGlance(); }, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
+  /* The chart re-drawn in place (Expand, w4): the lane host, deviation strip and width watch for the new svg. */
+  function dressChart() { const pg = document.getElementById("weightPage"); if (pg) dressProgress(pg); }
+  return { observatory, closeObservatory, hydrate, install, odoSet, stopReplay, dressChart, sky, haptic, story, storyClose, goalMoment, goalCheck, moment, morph, glance: () => { glTouch = 0; showGlance(); }, openDock: tab => { const b = document.querySelector('.tabs .tab[data-tab="' + tab + '"]'); if (b) openDock(b); } };
 })();
 STRATA.install();
 if (typeof NXT === "object" && NXT && typeof NXT.repaint === "function" && document.readyState !== "loading") {

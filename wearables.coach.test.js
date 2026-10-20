@@ -683,10 +683,25 @@ test("data: contextual-only weigh-ins are counted and never treated as morning r
 });
 
 test("staleness: an insight whose newest evidence is 14 days old shows; 15 days old is dropped", () => {
+  /* D104 exempts the morning weigh-in nudge (below), which this test used to observe the rule through. The rule
+     itself is unchanged, so it is now observed on the weight decision: with mornings stopped, a stored check-in
+     still makes review() cautious, and that insight's evidence is the last morning reading. */
+  const careful = k => { const fx = dataWorld(k); fx.settings.cutSupport.recovery = { [TODAY]: { energy: 1, soreness: 2, sleep: "" } }; return load(fx); };
+  const fourteen = byDomain(careful(14).C.insights().all, "weight");
+  assert.strictEqual(fourteen.length, 1);
+  assert.strictEqual(fourteen[0].evidence[0].date, add(TODAY, -14));
+  assert.strictEqual(byDomain(careful(15).C.insights().all, "weight").length, 0);
+});
+
+test("D104 · the morning weigh-in nudge is about an absence, so it outlives the 14-day rule", () => {
   const fourteen = byDomain(load(dataWorld(14)).C.insights().all, "data");
   assert.strictEqual(fourteen.length, 1);
   assert.strictEqual(fourteen[0].evidence[0].date, add(TODAY, -14));
-  assert.strictEqual(byDomain(load(dataWorld(15)).C.insights().all, "data").length, 0);
+  for (const k of [15, 28]) {
+    const x = byDomain(load(dataWorld(k)).C.insights().all, "data");
+    assert.strictEqual(x.length, 1, k + " days");
+    assert.deepStrictEqual([x[0].id, x[0].title, x[0].evidence[0].date], ["data.morning", `No morning weigh-in for ${k} days`, add(TODAY, -k)]);
+  }
 });
 
 test("dismissal hides an insight until its evidence changes, and is remembered under id|fingerprint", () => {

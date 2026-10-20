@@ -622,9 +622,6 @@ body:has(.tabs.vn-recede) .toast{
   box-shadow:inset 0 0 0 1px var(--vn-violet-line);
 }
 
-#weightPage .vn-weight{
-  display:block;padding:0;margin:0;background:none;border:0;box-shadow:none;
-}
 #weightPage .vn-h-sect{
   font-size:13px;font-weight:600;letter-spacing:.01em;color:var(--vn-ink-2);margin:0;
 }
@@ -639,40 +636,8 @@ body:has(.tabs.vn-recede) .toast{
 #weightPage .vn-num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 #weightPage .vn-ink-3{color:var(--vn-ink-3);font-weight:500}
 
-#weightPage .vn-read{padding-bottom:var(--vn-s4)}
-#weightPage .vn-read .vn-h-sub{margin-top:var(--vn-s2)}
 
 /* Stable metric header — fixed slots, no reflow on scrub */
-#weightPage .vn-mhead{
-  min-height:72px;padding-block:var(--vn-s3);
-  border-top:1px solid var(--vn-line);
-}
-#weightPage .vn-mhead-row{
-  display:flex;align-items:flex-end;justify-content:space-between;gap:var(--vn-s4);
-}
-#weightPage .vn-mhead-cell{min-width:0;flex:1}
-#weightPage .vn-mhead-right{text-align:right}
-#weightPage .vn-metric-l{
-  display:block;font-size:11px;font-weight:600;letter-spacing:.09em;
-  text-transform:uppercase;color:var(--vn-ink-3);
-}
-#weightPage .vn-metric-v{
-  font-size:34px;font-weight:660;letter-spacing:-.03em;line-height:1.02;
-  color:var(--vn-ink);margin-top:4px;min-height:1.1em;
-}
-#weightPage .vn-metric-v em,
-#weightPage .vn-trend-val em{
-  font-style:normal;font-size:max(11px,.44em);font-weight:560;color:var(--vn-ink-3);margin-left:3px;
-}
-#weightPage .vn-trend-val{
-  font-size:19px;font-weight:600;color:var(--vn-violet-lift);margin-top:4px;min-height:1.2em;
-}
-#weightPage .vn-mhead-post{
-  display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px;
-  margin-top:var(--vn-s3);min-height:28px;
-}
-#weightPage .vn-mhead-post[hidden]{display:none}
-#weightPage .vn-mhead-post b{font-size:14px;color:var(--vn-ink)}
 
 /* Range segments */
 #weightPage .vn-seg,
@@ -714,69 +679,26 @@ body:has(.tabs.vn-recede) .toast{
   padding:var(--vn-s6) var(--vn-s4);text-align:center;color:var(--vn-ink-2);
 }
 
-#weightPage .vn-legend,
-#weightPage .n99-legend{
-  display:flex;flex-wrap:wrap;gap:var(--vn-s4);margin-top:var(--vn-s3);
-}
-#weightPage .vn-legend span,
-#weightPage .n99-legend span{
-  display:inline-flex;align-items:center;gap:6px;
-  font-size:11.5px;color:var(--vn-ink-3);font-weight:520;
-}
-#weightPage .vn-key-trend,
-#weightPage .vn-key-raw,
-#weightPage .vn-key-post,
-#weightPage .vn-key-proj,
-#weightPage .n99-legend i{
+#weightPage .vn-key-trend,#weightPage .vn-key-raw,#weightPage .vn-key-post,#weightPage .vn-key-proj{
   display:inline-block;width:14px;height:8px;flex:none;
 }
-#weightPage .vn-key-trend,
-#weightPage .n99-legend i:not(.raw):not(.post):not(.dash):not(.target){
+#weightPage .vn-key-trend{
   background:linear-gradient(90deg,transparent 0,var(--vn-violet) 0);
   height:2.25px;border-radius:1px;align-self:center;
 }
-#weightPage .vn-key-raw,
-#weightPage .n99-legend i.raw{
+#weightPage .vn-key-raw{
   width:6px;height:6px;border-radius:50%;background:#79818F;align-self:center;
 }
-#weightPage .vn-key-post,
-#weightPage .n99-legend i.post{
+#weightPage .vn-key-post{
   width:8px;height:8px;background:none;
   box-shadow:inset 0 0 0 1.4px #79818F;
   transform:rotate(45deg);align-self:center;
 }
-#weightPage .vn-key-proj,
-#weightPage .n99-legend i.dash{
+#weightPage .vn-key-proj{
   height:0;border-top:2px dashed rgba(139,92,246,.55);background:none;align-self:center;
 }
 
 /* Series toggles */
-#weightPage .vn-togs{
-  display:flex;flex-wrap:wrap;gap:var(--vn-s2);margin-top:var(--vn-s4);
-}
-#weightPage .vn-tog{
-  display:inline-flex;align-items:center;gap:8px;min-height:44px;
-  padding:0 12px 0 10px;border:0;border-radius:var(--vn-r-control);
-  background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--vn-line-2);
-  color:var(--vn-ink-2);font:inherit;font-size:13.5px;font-weight:540;cursor:pointer;
-  -webkit-tap-highlight-color:transparent;
-  transition:background var(--vn-t-state) var(--vn-ease), color var(--vn-t-state) var(--vn-ease);
-}
-#weightPage .vn-tog-box{
-  width:16px;height:16px;border-radius:5px;flex:none;display:grid;place-items:center;
-  box-shadow:inset 0 0 0 1.5px var(--vn-ink-4);font-size:10px;color:transparent;
-}
-#weightPage .vn-tog[aria-pressed="true"]{
-  background:var(--vn-violet-dim);color:var(--vn-ink);box-shadow:inset 0 0 0 1px var(--vn-violet-line);
-}
-#weightPage .vn-tog[aria-pressed="true"] .vn-tog-box{
-  background:var(--vn-violet);box-shadow:none;color:#fff;
-}
-#weightPage .vn-tog[aria-pressed="true"] .vn-tog-box::after{
-  content:"";width:8px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;
-  transform:rotate(-45deg) translate(1px,-1px);
-}
-#weightPage .vn-tog-key{margin-left:2px;opacity:.9}
 
 /* Journey rail — not a time series */
 #weightPage .vn-journey{
@@ -834,8 +756,6 @@ body:has(.tabs.vn-recede) .toast{
 #weightPage .vn-row-s{font-size:12.5px;color:var(--vn-ink-3);display:block;margin-top:1px}
 #weightPage .vn-row-v{font-size:15px;font-weight:600;color:var(--vn-ink);text-align:right;white-space:nowrap}
 #weightPage .vn-chev{color:var(--vn-ink-4);font-size:17px}
-#weightPage .vn-weighins{margin-top:var(--vn-s5);padding-inline:0;cursor:pointer}
-#weightPage .vn-weighins:active{background:rgba(255,255,255,.028)}
 
 #weightPage .vn-status{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:580}
 #weightPage .vn-status i{width:7px;height:7px;border-radius:50%;flex:none;display:block;background:var(--vn-ink-4)}
@@ -868,19 +788,16 @@ body:has(.tabs.vn-recede) .toast{
 @media (max-width:359px){
   #weightPage .vn-progress-chrome h1,
   #weightPage .nxp-progress-chrome h1{font-size:23px}
-  #weightPage .vn-metric-v{font-size:30px}
-  #weightPage .vn-h-sub{font-size:17px}
+    #weightPage .vn-h-sub{font-size:17px}
   #weightPage .vn-row{gap:var(--vn-s3)}
   #weightPage .vn-seg button,
   #weightPage .n99-segments button{font-size:12px}
 }
 
 @media (prefers-reduced-motion:reduce){
-  #weightPage .vn-tog{transition:none}
-  #weightPage .n99-chart-svg.is-range-change,
+    #weightPage .n99-chart-svg.is-range-change,
   #weightPage .n99-chart-svg.is-new-point{animation:none}
 }
-:root[data-nxp-motion="reduced"] #weightPage .vn-tog{transition:none}
 
 /* ==========================================================================
    HISTORY  —  calendar-first audit trail. Scoped to #historyPage.

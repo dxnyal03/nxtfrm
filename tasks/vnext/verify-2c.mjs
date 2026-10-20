@@ -328,9 +328,10 @@ async function run() {
 
   /* ---- Interpretation without interaction ---- */
   const read = await page.evaluate(() => ({
-    headline: document.getElementById('vn-traj-headline')?.textContent || '',
-    body: document.getElementById('vn-traj-read')?.textContent || '',
-    mhead: document.getElementById('vn-mhead')?.textContent || '',
+    /* Weight "Instrument" (D118): the interpretation is #wx-h and the readouts are .wx-ro. */
+    headline: document.getElementById('wx-h')?.textContent || '',
+    body: document.getElementById('wx-cap')?.textContent || '',
+    mhead: document.querySelector('.wx-ro')?.textContent || '',
   }));
   results.read = read;
   results.pass.interpretation = !!(read.headline && read.headline !== '—' && read.mhead);
@@ -342,7 +343,7 @@ async function run() {
   const forecastOn = await page.evaluate(() => ({
     hasLine: !!document.querySelector('.vn-proj-line, line[stroke-dasharray="2 5"]'),
     model: !!NXT.ui.chart?.forecast,
-    label: (document.getElementById('vn-legend')?.textContent || '').includes('Projection'),
+    label: document.querySelector('#wx-layers [data-wx-layer="forecast"]')?.getAttribute('aria-pressed') === 'true',
   }));
   await page.evaluate(() => { NXT.setForecastVisible(false); });
   results.forecast = { defaultHas: forecastDefault.hasForecast, whenOn: forecastOn };
@@ -359,7 +360,8 @@ async function run() {
   const weak = await page.evaluate(() => ({
     canForecast: !!NXT.ui.chart?.canForecast,
     drawn: !!NXT.ui.chart?.forecast,
-    tog: !!document.querySelector('.vn-tog[data-tog="proj"]'),
+    /* W5 (D115): the chip stays visible but disabled with its reason when the projection is not available. */
+    tog: !!document.querySelector('#wx-layers [data-wx-layer="forecast"]:not([aria-disabled="true"])'),
   }));
   results.forecast.weak = weak;
   results.pass.forecastOmittedWeak = !weak.drawn && !weak.tog;
@@ -399,7 +401,7 @@ async function run() {
   const scrub = await page.evaluate(async () => {
     const wrap = document.getElementById('vn-chart-wrap');
     const svg = document.getElementById('n99-chart-svg');
-    const mhead = document.getElementById('vn-mhead');
+    const mhead = document.querySelector('.wx-ro');
     if (!wrap || !svg || !mhead) return { ok: false, reason: 'missing nodes' };
     const before = {
       h: mhead.getBoundingClientRect().height,
@@ -466,7 +468,7 @@ async function run() {
   const sparse = await page.evaluate(() => ({
     points: NXT.ui.chart?.points?.length || 0,
     emptyMsg: !!document.querySelector('.vn-chart-empty, .n99-chart-empty'),
-    headline: document.getElementById('vn-traj-headline')?.textContent || document.querySelector('.vn-h-sub')?.textContent || '',
+    headline: document.getElementById('wx-h')?.textContent || document.querySelector('.vn-h-sub')?.textContent || '',
   }));
   results.sparse = sparse;
   results.pass.sparseHonest = sparse.points < 10;

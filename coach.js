@@ -4,7 +4,7 @@
    only: no model call, no composite score (D9), only canonical Morning weigh-ins
    in anything weight-related (D14), and nothing emitted for features that
    D49/D55 switched off. It CALLS the existing engine (review, detectPlateau,
-   trendStats, weights, workRows, sessionRows, bestSet, aimFor, coachFor,
+   trendStats, weights, workRows, sessionRows, realSessionRows, bestSet, aimFor, coachFor,
    strengthItems, activityWeeks, activitySummary, typeFor, templateFor,
    setDayType, commit) and changes none of it. The UI renders what this returns.
 
@@ -176,7 +176,8 @@
                  today keeps the EWMA continuous); 4+ → watch; only
                  post-workout/scan readings and no morning one → watch
      Coordinator: drop a candidate whose newest evidence date is > 14 days
-     old; a cautious weight decision (tone 'watch', or a title/action about
+     old, except data.morning, which is about an absence (D104); a cautious
+     weight decision (tone 'watch', or a title/action about
      recovery or slipping lifts) turns strength.ready into strength.hold
      (info), and trainAdvice() into a hold the same way; hide dismissed
      id|fingerprint pairs; keep one per domain (highest
@@ -193,7 +194,7 @@
             liftDays; partial days count as done; planned as in context.week)
       sets, tonnage, vsPrev:{sets, tonnage}   (activityWeeks; null before the
             first activity record or when there is no previous week)
-      outcomes:{beat, matched, below, exercises}  (D20: each exercise's best
+      outcomes:{beat, matched, below, form, exercises}  (D20: each exercise's best
             working set vs its previous session at that gym — the finish
             summary's rule; exercises = exercise-sessions, compared or not)
       cardio:{min, target, sessions}
@@ -481,7 +482,7 @@ Object.assign(NXT, (() => {
     if (!silenceable()) return {aim: null, coach: null};
     const rows = ix.byName.get(name) || [];
     return pinned({gym, dayType: type, logs: rows}, () => {
-      const keep = new Set(N.sessionRows(name, gym, state.date, 100).slice(-3).map(s => s.date));
+      const keep = new Set(N.realSessionRows(name, gym, state.date, 100).slice(-3).map(s => s.date));
       return pinned({logs: rows.filter(r => keep.has(r.date))}, () => {
         const a = N.aimFor(name), c = N.coachFor(name);
         return {
@@ -634,6 +635,10 @@ Object.assign(NXT, (() => {
     return out;
   }
   function stale(c, date) {
+    /* D104: the morning weigh-in nudge is about an absence, so its evidence (the last morning reading) ages by
+       design. It is exempt from the 14-day drop: it stays until a morning weigh-in is logged, whether or not a
+       forecast is pending (it vanished on day 15, the day the forecast pauses). */
+    if (c.id === "data.morning") return false;
     const ds = c.evidence.map(e => e.date).filter(isDate).sort();
     return ds.length > 0 && gap(ds[ds.length - 1], date) > T.STALE_DAYS;
   }
@@ -879,10 +884,11 @@ Object.assign(NXT, (() => {
     if (!watch && !flat) return [];
     const weeks = flat && pl.plateauDays ? Math.round(pl.plateauDays / 7) : null;
     const evidence = [{label: "Decision", value: r.title, date: ctx.weight.lastMorningDate}];
-    if (ctx.weight.confidence) evidence.push({label: "Confidence", value: ctx.weight.confidence});
+    /* D107: detectPlateau's confidence is the precision of the rate, and is named that (Evidence and Today agree). */
+    if (ctx.weight.confidence) evidence.push({label: "Rate precision", value: ctx.weight.confidence});
     if (weeks) evidence.push({label: "Plateau", value: "about " + count(weeks, "week")});
     const rate = pl && pl.ok && pl.weeklyRate !== null
-      ? `Four-week trend ${pl.weeklyRate > 0 ? "+" : ""}${pl.weeklyRate.toFixed(2)} kg/wk from ${pl.n} morning weigh-ins over ${pl.spanDays} days`
+      ? `${(s => s.charAt(0).toUpperCase() + s.slice(1))(N.rateSpan(pl).label)} ${N.signedFixed(pl.weeklyRate, 2)} kg/wk from ${pl.n} morning weigh-ins over ${pl.spanDays} days`
       : `${ctx.weight.trend.current.n} morning readings this week and ${ctx.weight.trend.previous.n} the week before`;
     return [insight({
       id: "weight.review", domain: "weight", severity: watch ? "watch" : "info",
@@ -890,8 +896,8 @@ Object.assign(NXT, (() => {
       body: watch ? (r.reason || r.message || "") : (pl.reason || r.reason || ""),
       evidence,
       why: {
-        noticed: watch ? `The weight decision reads “${r.title}”.` : `The four-week trend is level${weeks ? ` (about ${count(weeks, "week")})` : ""}.`,
-        evidence: `${rate}${ctx.weight.confidence ? `; confidence ${ctx.weight.confidence}` : ""}.`,
+        noticed: watch ? `The weight decision reads “${r.title}”.` : `The ${N.rateSpan(pl).label} is level${weeks ? ` (about ${count(weeks, "week")})` : ""}.`,
+        evidence: `${rate}${ctx.weight.confidence ? `; rate precision ${ctx.weight.confidence}` : ""}.`,
         matters: r.message || "Morning weigh-ins decide the trend.",
         canDo: `${r.action ? r.action + ". " : ""}Nothing changes automatically.`
       },
@@ -940,7 +946,8 @@ Object.assign(NXT, (() => {
 
   /* ---- coordinator -------------------------------------------------------------
      1 evaluators propose (0–n each); 2 candidates whose newest evidence is older
-     than 14 days are dropped; 3 a cautious weight decision (tone watch, or a
+     than 14 days are dropped (not the morning weigh-in nudge, D104); 3 a
+     cautious weight decision (tone watch, or a
      title/action about recovery or slipping lifts) turns "move up" into "hold"
      (info); 4 dismissed id|fingerprint pairs are hidden; 5 one insight per
      domain (highest severity, evaluator order breaks ties — so a catch-up
@@ -981,7 +988,7 @@ Object.assign(NXT, (() => {
       if (!groups.has(k)) groups.set(k, {date: r.date, gym: w.gym, name: w.name, sets: []});
       groups.get(k).sets.push(r);
     }
-    let beat = 0, matched = 0, below = 0, exercises = 0;
+    let beat = 0, matched = 0, below = 0, form = 0, exercises = 0;
     for (const g of [...groups.values()].sort((a, b) => (a.date + a.gym + a.name).localeCompare(b.date + b.gym + b.name))) {
       exercises++;
       const prev = pinned({logs: ix.byName.get(g.name) || []}, () => N.sessionRows(g.name, g.gym, g.date, 100)).at(-1);
@@ -989,9 +996,12 @@ Object.assign(NXT, (() => {
       const a = N.bestSet(g.sets), b = N.bestSet(prev.sets);
       if (!a || !b) continue;
       const dw = Number(a.weight) - Number(b.weight), dr = Number(a.reps) - Number(b.reps);
-      if (dw > 0 || (dw === 0 && dr > 0)) beat++; else if (dw === 0 && dr === 0) matched++; else below++;
+      if (dw > 0 || (dw === 0 && dr > 0)) beat++; else if (dw === 0 && dr === 0) matched++;
+      else if (g.sets.length && g.sets.every(r => r.form === true)) form++;   /* D152: marked Focusing on form, not a decline */
+      else below++;
     }
-    return {beat, matched, below, exercises};
+    /* `form` appears only when the owner marked something (D152), so every other week keeps its shape. */
+    return form ? {beat, matched, below, form, exercises} : {beat, matched, below, exercises};
   }
   function reviewOf(ws, we) {
     const ix = index(), canon = N.weights();
@@ -1028,8 +1038,8 @@ Object.assign(NXT, (() => {
     if (missedL.length) lines.push("Missed: " + missedL.map(x => `${weekday(x.date).slice(0, 3)} ${x.label}`).join(", "));
     if (excusedL.length) lines.push("Excused: " + excusedL.map(x => `${weekday(x.date).slice(0, 3)} ${x.label}${x.reason && x.reason !== "other" ? ` (${x.reason})` : ""}`).join(", "));
     if (movedL.length) lines.push("Moved: " + movedL.map(x => `${weekday(x.date).slice(0, 3)} ${x.label}${x.movedTo ? ` → ${dayShort(x.movedTo)}` : ""}`).join(", "));
-    const compared = outcomes.beat + outcomes.matched + outcomes.below;
-    if (compared) lines.push(`Best set vs last time: ${outcomes.beat} beat · ${outcomes.matched} matched · ${outcomes.below} below`);
+    const compared = outcomes.beat + outcomes.matched + outcomes.below + (outcomes.form || 0);
+    if (compared) lines.push(`Best set vs last time: ${outcomes.beat} beat · ${outcomes.matched} matched · ${outcomes.below} below${outcomes.form ? ` · ${outcomes.form} form` : ""}`);
     const order = ["Improving", "Holding steady", "Watch", "Review"].filter(s => words[s]);
     if (order.length) lines.push("Tracked lifts on Sunday: " + order.map(s => `${words[s]} ${s}`).join(" · "));
     if (cur) lines.push(`Cardio: ${cur.cardioMin} of ${cardio.target} min · ${count(cur.cardioSessions, "session")}`);
@@ -1101,7 +1111,7 @@ Object.assign(NXT, (() => {
         if (c.kind !== "load") return same;
         const r = windowed({work: N.workRows()}, state.date, () => N.review());
         if (!cautious(r)) return same;
-        const last = N.sessionRows(exercise, state.gym, state.date, 100).at(-1), best = last ? N.bestSet(last.sets) : null;
+        const last = N.realSessionRows(exercise, state.gym, state.date, 100).at(-1), best = last ? N.bestSet(last.sets) : null;
         if (!best) return same;
         const w = Number(best.weight), n = Number(best.reps), aimReps = Number(c.reps), title = String(r.title || "");
         return Object.assign({}, c, {
