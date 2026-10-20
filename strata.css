@@ -3325,7 +3325,9 @@ html::after{content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;opa
   /* D154 · progressive blur: full frost at the edge, clear at the foot, so content melts into glass under the status bar. */
   background:linear-gradient(180deg,rgba(7,6,11,.5) 0%,rgba(7,6,11,.28) 55%,rgba(7,6,11,0) 100%);
   -webkit-backdrop-filter:blur(20px) saturate(1.4);backdrop-filter:blur(20px) saturate(1.4);
-  -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 45%,transparent 100%);mask-image:linear-gradient(to bottom,#000 0,#000 45%,transparent 100%)}
+  -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 45%,transparent 100%);mask-image:linear-gradient(to bottom,#000 0,#000 45%,transparent 100%);
+  opacity:0;transition:opacity .3s cubic-bezier(.32,.72,0,1)}/* at rest nothing is under it; the frost arrives with the first scroll and leaves during a workout (updateTop) */
+#stTop.is-scrolled .st-top-scrim{opacity:1}
 @media (prefers-reduced-transparency:reduce){#stTop .st-top-scrim{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(180deg,rgba(7,6,11,.96) 0%,rgba(7,6,11,.8) 55%,rgba(7,6,11,0) 100%)}}
 #stTop .st-top-bar{position:absolute;left:50%;top:calc(var(--nxt-safe-top,0px) + 8px);height:34px;padding:0 18px;border-radius:999px;border:0;margin:0;
   background:linear-gradient(180deg,rgba(46,40,70,.62),rgba(24,21,36,.62));
