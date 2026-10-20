@@ -41,7 +41,11 @@ const NXT = (() => {
   /* What the pickers offer. typeNames() stays the validation list, so a stored plan that
      still holds a hidden type keeps saving. */
   const pickTypes = (keep) => typeNames().filter(k=>k!=="Floorball"||(typeof FEATURES!=="undefined"&&FEATURES.floorball)||k===keep);
-  const ui = {view:"overview", range:30, showGoal:false, showPost:false, showForecast:false, selected:null, draft:null, lastFocus:null};
+  /* Weight chart state lives here, in memory only (no storage key). D109 adds the layer flags (Weekly averages and
+     Day-to-day spread off, Notes on, Projection and Post-workout off as before), the Layers drawer and Expand flags,
+     the compare request, the Open day return point and the measured chart widths. */
+  const ui = {view:"overview", range:30, showGoal:false, showPost:false, showForecast:false, selected:null, draft:null, lastFocus:null,
+    showWeekly:false, showSpread:false, showNotes:true, layersOpen:false, expanded:false, compare:null, returnTo:null, chartW:{}, wxWide:false};
   function cfg() {
     if(!settings.cutSupport || typeof settings.cutSupport!=="object" || Array.isArray(settings.cutSupport))settings.cutSupport={};
     const c=settings.cutSupport;
@@ -376,6 +380,94 @@ const NXT = (() => {
     const change=current.n>=3&&previous.n>=3?current.avg-previous.avg:null;
     const priorChange=previous.n>=3&&earlier.n>=3?previous.avg-earlier.avg:null;
     return {current,previous,earlier,change,priorChange,percent:change!==null?change/previous.avg*100:null};
+  }
+  /* Compare periods (Weight "Instrument", spec §11; proposed D110). A presentation of figures the app already has
+     (D9): the morning readings in two calendar windows, their count and coverage, average, lowest, and the smoothed
+     trend at each end. It reads the canonical morning set only (cleanRows), so a post-workout or other-time reading
+     can never enter a window. The difference is returned unrounded; rounding to 0.1 kg happens on screen, and
+     roundingNote says when the printed averages would not subtract to the printed change. Nothing here is a test of
+     significance, and nothing here writes. */
+  const COMPARE_MIN_MORNINGS=3,COMPARE_MIN_COVERAGE=.3;
+  function spanLabel(from,to) {
+    if(from===to)return shortDate(from);
+    return from.slice(0,7)===to.slice(0,7)?`${Number(from.slice(8))}–${shortDate(to)}`:`${shortDate(from)}–${shortDate(to)}`;
+  }
+  function daysIn(from,to) { return Math.round((dateMs(to)-dateMs(from))/DAY)+1; }
+  function monthStart(d) { return d.slice(0,8)+"01"; }
+  function monthEnd(d) { const n=new Date(dateMs(monthStart(d)));n.setUTCMonth(n.getUTCMonth()+1,0);return n.toISOString().slice(0,10); }
+  function shiftMonth(d,k) { const n=new Date(dateMs(monthStart(d)));n.setUTCMonth(n.getUTCMonth()+k);return n.toISOString().slice(0,10); }
+  /* One window: {from, to, label, days, partial, elapsed, total, completed}. A window never runs past today. */
+  function compareWindow(from,to,extra) { return {from,to,label:spanLabel(from,to),days:daysIn(from,to),partial:false,completed:false,...(extra||{})}; }
+  /* The two windows a comparison kind names. Kinds: 'previous' (the matched window immediately before),
+     'sameDays' (the same elapsed calendar days of last month), 'completed' (the last completed weeks or months,
+     labelled completed), 'firstLast' (first vs last 4 weeks of the cut; Cut range only). Returns {kind, range,
+     before, current, ok, reason}; before/current are null when the kind cannot apply. */
+  function compareWindows(range=30,kind="previous",today=state.date) {
+    const out=(before,current,reason)=>({kind,range,before,current,ok:!!(before&&current)&&!reason,reason:reason||""});
+    const cutStart=typeof settings!=="undefined"&&settings&&Number.isFinite(dateMs(settings.cutStart))&&settings.cutStart<=today?settings.cutStart:null;
+    let days=range==="cut"?(cutStart?daysIn(cutStart,today):null):Math.round(Number(range));
+    if(kind==="firstLast") {
+      if(range!=="cut")return out(null,null,"Only for the Cut range");
+      if(!cutStart)return out(null,null,"Needs a cut start date");
+      if(days<56)return out(null,null,"Needs 8 weeks of cut");
+      return out(compareWindow(cutStart,dateAdd(cutStart,27),{name:"First 4 weeks"}),compareWindow(dateAdd(today,-27),today,{name:"Last 4 weeks"}));
+    }
+    if(!(days>0))return out(null,null,"Needs a cut start date");
+    if(kind==="sameDays") {
+      const ms=monthStart(today),elapsed=daysIn(ms,today),total=daysIn(ms,monthEnd(today));
+      const pms=shiftMonth(today,-1),pTotal=daysIn(pms,monthEnd(pms)),pTo=dateAdd(pms,Math.min(elapsed,pTotal)-1);
+      return out(compareWindow(pms,pTo,{name:"Same days last month"}),compareWindow(ms,today,{name:"This month",partial:elapsed<total,elapsed,total}));
+    }
+    if(kind==="completed") {
+      if(range==="cut")return out(null,null,"Not for the Cut range");
+      if(days<28) {
+        /* Weeks: Mon–Sun, ending before this week; as many as the range holds (2W → two weeks). */
+        const n=Math.max(1,Math.round(days/7)),end=dateAdd(weekStart(today),-1);
+        const cFrom=dateAdd(end,1-7*n),bTo=dateAdd(cFrom,-1),bFrom=dateAdd(bTo,1-7*n);
+        return out(compareWindow(bFrom,bTo,{completed:true,unit:"week",count:n}),compareWindow(cFrom,end,{completed:true,unit:"week",count:n}));
+      }
+      const n=Math.max(1,Math.round(days/30)),cFrom=shiftMonth(today,-n),cTo=dateAdd(monthStart(today),-1),bFrom=shiftMonth(today,-2*n),bTo=dateAdd(cFrom,-1);
+      return out(compareWindow(bFrom,bTo,{completed:true,unit:"month",count:n}),compareWindow(cFrom,cTo,{completed:true,unit:"month",count:n}));
+    }
+    if(kind!=="previous")return out(null,null,"Unknown comparison");
+    const cFrom=dateAdd(today,1-days),bTo=dateAdd(cFrom,-1);
+    return out(compareWindow(dateAdd(bTo,1-days),bTo,{name:"Before"}),compareWindow(cFrom,today,{name:"This range"}));
+  }
+  /* Figures for one window. trendFirst/trendLast are the smoothed trend on the window's first and last morning,
+     and only when the trend is ready on both (it carries in from the readings before the window). */
+  function periodStats(rows,series,w) {
+    const to=w.to>state.date?state.date:w.to,days=daysIn(w.from,to);
+    const ws=windowStats(rows,to,days),items=ws.items;
+    let low=null;for(const r of items)if(!low||r.weight<low.weight)low={weight:r.weight,date:r.date};
+    const inWin=series.filter(r=>r.date>=w.from&&r.date<=to),first=inWin[0],last=inWin.at(-1);
+    const trendFirst=first&&first.avg!==null?first.avg:null,trendLast=last&&last.avg!==null?last.avg:null;
+    const coverage=days>0?ws.n/days:0;
+    let reason="";
+    if(ws.n<COMPARE_MIN_MORNINGS||coverage<COMPARE_MIN_COVERAGE)reason=`${ws.n} ${plural(ws.n,"morning")} in ${w.label} — too few to compare`;
+    const trendReason=trendFirst===null||trendLast===null?(ws.n?`Smoothed trend not ready at the ${trendFirst===null?"start":"end"} of ${w.label}`:`No mornings in ${w.label}`):"";
+    return {from:w.from,to,label:w.label,n:ws.n,days,coverage,avg:ws.avg,low,trendFirst,trendLast,
+      trendChange:trendFirst!==null&&trendLast!==null&&inWin.length>1?trendLast-trendFirst:null,trendReason,
+      partial:!!w.partial,elapsed:w.elapsed||null,total:w.total||null,completed:!!w.completed,ok:!reason,reason};
+  }
+  /* comparePeriods(rows, before, current, quantity): before/current are {from,to} windows (compareWindows' own, or
+     any two). quantity is 'avg' (Average morning, the default), 'trendChange' or 'low' (Lowest morning). diff is
+     current − before, unrounded. */
+  function comparePeriods(rows=weights(),before,current,quantity="avg") {
+    const morning=cleanRows(rows),series=trend(morning);
+    const win=w=>w&&w.from&&w.to?{...w,label:w.label||spanLabel(w.from,w.to)}:null;
+    const a=win(before),b=win(current);
+    if(!a||!b)return {a:null,b:null,quantity,diff:null,ok:false,reason:"No windows to compare",roundingNote:false};
+    const A=periodStats(morning,series,a),B=periodStats(morning,series,b);
+    const pick=s=>quantity==="low"?(s.low?s.low.weight:null):quantity==="trendChange"?s.trendChange:s.avg;
+    const va=pick(A),vb=pick(B);
+    let reason=!A.ok?A.reason:!B.ok?B.reason:"";
+    if(!reason&&quantity==="trendChange"&&(va===null||vb===null))reason=(va===null?A:B).trendReason||"Trend not ready";
+    const ok=!reason&&va!==null&&vb!==null,diff=ok?vb-va:null;
+    /* The change is the unrounded difference. When the two printed (0.1 kg) values would not subtract to the
+       printed change, the screen adds a one-line footnote saying so. */
+    const r1=v=>Number(v.toFixed(1));
+    const roundingNote=ok&&Math.abs(r1(r1(vb)-r1(va))-r1(diff))>1e-9;
+    return {a:A,b:B,quantity,diff,ok,reason,roundingNote};
   }
   function workRows() {
     return (Array.isArray(state.logs)?state.logs:[]).filter(r=>r&&r.setType!=="warmup"&&Number.isFinite(dateMs(r.date))&&r.date<=state.date&&finite(r.weight)!==null&&Number(r.weight)>=0&&finite(r.reps)>0&&Number.isInteger(Number(r.reps)));
@@ -1126,7 +1218,7 @@ const NXT = (() => {
   }
   function openReview() { const r=review(),s=trendStats();modal('Your weekly review',`${reviewCard(true)}<div class="n99-stats">${metric('This week',s.current.avg===null?'—':s.current.avg.toFixed(1)+' kg',s.current.n+' '+plural(s.current.n,'weigh-in'))}${metric('Previous week',s.previous.avg===null?'—':s.previous.avg.toFixed(1)+' kg',s.previous.n+' '+plural(s.previous.n,'weigh-in'))}</div><p>These are transparent coaching rules, not a medical assessment. Weight windows use calendar days. Strength compares the same exercise and gym across repeated sessions.</p><p>No food intake is recorded, so your actual deficit and the cause of a plateau are unknown. Any change to your plan stays your choice.</p><div class="n99-stack">${CALORIES_ENABLED?button('Review calorie guide','NXT.openCalories()',true):''}${FEATURES.checkin?button('Update recovery check-in','apx96OpenReadiness()',true):''}${button('Done','closeModal()')}</div>`); }
   // Views and integrations are defined below, before install() runs.
-  return {cfg,copy,ui,old,defaults,features:FEATURES,flatKgWeek:PLATEAU_FLAT_KG_WEEK,levelSeries,nowLevel,rateSeries,forecastView,forecastWords,chartNotes,noteLabel,noteKinds:NOTE_KINDS.slice(),pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,plural,label,signedFixed,rateSpan,otherTimingCount,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
+  return {cfg,copy,ui,old,defaults,features:FEATURES,flatKgWeek:PLATEAU_FLAT_KG_WEEK,levelSeries,nowLevel,rateSeries,forecastView,comparePeriods,compareWindows,forecastWords,chartNotes,noteLabel,noteKinds:NOTE_KINDS.slice(),pickTypes,coachFor,split,names,typeNames,finite,dateMs,dateAdd,weekStart,shortDate,plural,label,signedFixed,rateSpan,otherTimingCount,weights,timingRows,cleanRows,windowStats,ewmaTrend,trend,trendConfidence,forecastGoal,detectPlateau,trendStats,workRows,sessionRows,strengthItems,review,estimate,cardioWeek,completedWeek,activityWeeks,activitySummary,typeFor,templateFor,targetFor,done,planDone,cue,bestSet,aimFor,cautionOf,caution,logSuggestion,logAdherence,adherenceHTML,adaptiveTDEE,diagnose,maybeSnapshotTDEE,formulaTDEE,tdeeCardHTML,snapshot,repaint,rebaseProgramme,commit,modal,button,heading,card,metric,reviewCard,diagnosisCard,calorieCard,weekHTML,home,openCalories,profileInputs,previewCalories,saveCalories,openReview};
 })();
 
 Object.assign(NXT, (()=>{
@@ -1194,18 +1286,64 @@ Object.assign(NXT, (()=>{
     if(!d||!Number.isFinite(N.dateMs(d))||d>state.date)return null;
     return Math.round((N.dateMs(state.date)-N.dateMs(d))/86400000)+1;
   }
-  function chartModel(rows=N.weights(),range=N.ui.range,showGoal=N.ui.showGoal) {
+  /* Chart geometry (Weight "Instrument", spec §7.1; proposed D109). chartModel() takes its frame from here instead
+     of literals. With no kind (N.ui.chartKind unset), or wherever nothing can be measured (node tests, no window
+     size), it is exactly the frame the chart has always had — 420 × 460 viewBox units, left gutter 34, right 8, top
+     28, bottom 110, readings 12 inside the edges — so the default render and every contract test are unchanged.
+     The measured kinds ('page', 'wide', 'expand') use 1 SVG unit = 1 CSS px, so text never scales: W is the wrap's
+     measured width (N.ui.chartW[kind], set by the presentation layer) or an estimate from the viewport, and the plot
+     height comes from the small viewport height (100svh), which Safari's collapsing toolbar does not change. */
+  const GEO_LEGACY={W:420,H:460,left:34,right:8,top:28,bottom:110,padX:12,plotH:322,gutter:"left",kind:"legacy"};
+  const clampN=(lo,v,hi)=>Math.min(hi,Math.max(lo,v));
+  /* The small viewport height from a hidden 100svh probe (falls back to innerHeight where svh is unsupported). */
+  function chartSvh() {
+    const w=typeof window!=="undefined"?window:null,vh=w&&Number(w.innerHeight);
+    if(typeof document==="undefined"||!document.body||!document.createElement)return vh>0?vh:null;
+    let probe=document.getElementById("wx-svh");
+    if(!probe){
+      probe=document.createElement("div");probe.id="wx-svh";probe.setAttribute("aria-hidden","true");
+      probe.style.cssText="position:fixed;top:0;left:0;width:0;height:100vh;height:100svh;visibility:hidden;pointer-events:none";
+      document.body.appendChild(probe);
+    }
+    const h=Number(probe.offsetHeight);
+    return h>0?h:(vh>0?vh:null);
+  }
+  function chartGeo(kind=N.ui.chartKind) {
+    if(!kind||kind==="legacy")return {...GEO_LEGACY};
+    const w=typeof window!=="undefined"?window:null,vw=w&&Number(w.innerWidth);
+    if(!(vw>0))return {...GEO_LEGACY};
+    const svh=chartSvh()||Number(w.innerHeight)||844;
+    const narrow=vw<360,gutter=narrow?12:16,platePad=narrow?10:14;
+    const measured=N.ui.chartW&&Number(N.ui.chartW[kind]);
+    const W=Math.round(measured>0?measured:kind==="expand"?vw-2*gutter:kind==="wide"?clampN(580,vw-140-24-340-2*platePad,820):vw-2*gutter-2*platePad);
+    const plotH=Math.round(kind==="wide"?clampN(300,svh-470,440):kind==="expand"?Math.max(232,(N.ui.expandH>0?N.ui.expandH:svh-324)):clampN(232,Math.round(svh*.355),320));
+    const left=6,right=42,top=11,bottom=26;
+    return {W,H:top+plotH+bottom,left,right,top,bottom,padX:9,plotH,gutter:"right",kind,svh};
+  }
+  /* Re-render only for a real change: width by more than 2 px, the svh bucket (24 px steps), or orientation. A
+     geometry that has not changed this way keeps the chart (and its dressing) as it is. */
+  function chartGeoChanged(prev,next) {
+    if(!prev||!next)return true;
+    if(prev.kind!==next.kind)return true;
+    if(Math.abs((prev.W||0)-(next.W||0))>2)return true;
+    const bucket=g=>Math.floor((Number(g.svh)||0)/24),orient=g=>(g.W||0)>=(Number(g.svh)||0);
+    return bucket(prev)!==bucket(next)||orient(prev)!==orient(next);
+  }
+  function chartModel(rows=N.weights(),range=N.ui.range,showGoal=N.ui.showGoal,geo=chartGeo(),win=null) {
     /* "Cut" (D51) replaces "All": from settings.cutStart, or from the first weigh-in when no
        cut start is saved, to today. The window grows with every reading and always opens on
        the starting point. */
     if(range==='cut')range=cutRangeDays()||0;
-    const series=N.trend(rows),start=range?N.dateAdd(state.date,1-range):rows[0]?.date||N.dateAdd(state.date,-29);
+    /* win {from, to} (Compare, spec §11) widens the x-window over both compared windows; null keeps the range. */
+    const winTo=win&&win.to&&win.to<state.date?win.to:state.date;
+    const series=N.trend(rows),start=win&&win.from?win.from:range?N.dateAdd(state.date,1-range):rows[0]?.date||N.dateAdd(state.date,-29);
     /* D52: taller plot (H 392→460) and thin side margins (20→8); the wrap runs edge to edge
        across the card, so the plot uses the full card width. */
     /* D58: the plot's left edge is moved in by a label gutter (8→34), so tick numbers sit beside
        the plot instead of on it and no reading, start marker or step ever paints over them. */
-    const visible=series.filter(r=>r.date>=start),W=420,H=460,left=34,right=8,top=28,bottom=110;
-    if(!visible.length)return {visible,start,W,H,left,right,top,bottom,low:null,high:null,step:null};
+    /* The frame comes from chartGeo() (D109); its default is the frame these two decisions set. */
+    const visible=series.filter(r=>r.date>=start&&r.date<=winTo),{W,H,left,right,top,bottom}=geo;
+    if(!visible.length)return {visible,start,W,H,left,right,top,bottom,low:null,high:null,step:null,geo,win};
     /* D2 — Y-domain from visible morning readings + trend ONLY.
        Goal band, target reference, forecast cone/endpoint, confidence band
        extremes and post-workout must never stretch the recent-trajectory scale. */
@@ -1213,10 +1351,10 @@ Object.assign(NXT, (()=>{
     /* Post-workout is contextual only (D8): never enters trend/plateau/forecast
        maths, and also never enters this domain. Drawn through the same scale
        when toggled on; readings outside the plot simply clip. */
-    const postRows=N.ui.showPost?N.timingRows('Post-workout').filter(r=>r.date>=start&&r.date<=state.date):[];
+    const postRows=N.ui.showPost?N.timingRows('Post-workout').filter(r=>r.date>=start&&r.date<=winTo):[];
     // showGoal is accepted for API compatibility but must not affect the domain (D2/D3).
     void showGoal;
-    const bandRows=(N.trendConfidence(rows)||[]).filter(r=>r.date>=start&&r.date<=state.date);
+    const bandRows=(N.trendConfidence(rows)||[]).filter(r=>r.date>=start&&r.date<=winTo);
     const forecastRead=N.forecastGoal(rows),forecastView=N.forecastView(rows);
     /* Projection is off by default. Omit entirely when forecastGoal reports
        insufficient evidence (!ok) rather than drawing a weak estimate (I11),
@@ -1230,10 +1368,10 @@ Object.assign(NXT, (()=>{
     const low=Math.floor((dataLow-step*.6)/step)*step,high=Math.ceil((rawHigh+step*.6)/step)*step;
     // Future strip only when a projection is actually drawn — still same px/day.
     const futureDays=fc?fc.futureDays:0;
-    const first=N.dateMs(start),end=Math.max(N.dateMs(state.date),first+86400000)+futureDays*86400000;
+    const first=N.dateMs(start),end=Math.max(N.dateMs(winTo),first+86400000)+futureDays*86400000;
     /* D51: readings sit 12 units inside the plot edges, so the first and last day's dots and the
        selected-point halo are never cut in half by the clip. */
-    const padX=12;
+    const padX=geo.padX;
     const xMs=ms=>left+padX+(ms-first)/(end-first)*(W-left-right-padX*2),x=d=>xMs(N.dateMs(d)),y=v=>top+(high-v)/(high-low)*(H-top-bottom);
     const points=visible.map(r=>({...r,x:x(r.date),y:y(r.weight),ty:r.avg===null?null:y(r.avg)}));
     /* Same x and y closures as the primary series: there is one scale, so a
@@ -1270,7 +1408,7 @@ Object.assign(NXT, (()=>{
     // Distant goal lives on Journey (D3) — never as a chart reference line.
     return {visible,start,W,H,left,right,top,bottom,low,high,step,points,post,postByDate,segments,ticks,x,y,
       todayX:x(state.date),futureDays,bands,forecast,anchor,forecastRead,forecastView,canForecast,
-      plateau:N.detectPlateau(rows),goalRef:null};
+      plateau:N.detectPlateau(rows),goalRef:null,geo,win};
   }
   /* The primary series is the canonical per-date row, which prefers Morning but
      falls back to whatever timing exists on days with no morning reading. That
@@ -1619,7 +1757,7 @@ Object.assign(NXT, (()=>{
       <div class="vn-mt4 st-range-row">${rangeBtns}<button type="button" class="st-replay" data-st-chart-replay aria-label="Replay this range"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.8v10.4L13 8z" fill="currentColor"/></svg><span>Replay</span></button></div>
       <div class="vn-chart-wrap" id="vn-chart-wrap" tabindex="0" role="application"
         aria-label="Weight trend chart. Drag to inspect a day. Use left and right arrow keys; Escape returns to latest."
-        onpointerdown="NXT.scrub(event)" onpointermove="if(event.buttons)NXT.scrub(event)"
+        onpointerdown="NXT.scrub(event)" onpointermove="NXT.scrub(event)" onpointerup="NXT.scrubUp(event)" onpointercancel="NXT.scrubCancel(event)"
         onkeydown="NXT.chartKey(event)">
         <svg id="n99-chart-svg" class="n99-chart-svg vn-chart-svg${animClass}${points.length>45?' is-busy':''}" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="n99-chart-title n99-chart-desc">
           <title id="n99-chart-title">Morning weight and smoothed trend${forecast?' with model projection':''}</title>
@@ -1731,25 +1869,127 @@ Object.assign(NXT, (()=>{
     line?.setAttribute('x1',p.x);line?.setAttribute('x2',p.x);dot?.setAttribute('cx',p.x);dot?.setAttribute('cy',p.y);
     const halo=document.getElementById('st-chart-halo');halo?.setAttribute('cx',p.x);halo?.setAttribute('cy',p.y);
     if(slider){slider.value=index;slider.setAttribute('aria-valuetext',N.shortDate(p.date)+', '+p.weight+' kilograms');}
+    /* Instrument plumbing (D111): the vs-trend cell, the label switch, the transport's state, the plate slot and
+       the slider's value text. Each writes only where its element exists; the plate markup lands in a later commit,
+       so today's chart is unchanged. opts.announce (pointer selections, once on pointerup) speaks the same words
+       through the polite region; keyboard steps rely on aria-valuetext instead. */
+    text('wx-gap',p.avg===null||p.avg===undefined||!Number.isFinite(p.weight)?'—':N.signedFixed(p.weight-p.avg,1,'−')+' kg');
+    text('wx-lab-a',isLatest?'Latest morning':'Morning reading');
+    text('wx-lab-c',isLatest?'Smoothed trend':'Smoothed trend · on '+N.shortDate(p.date));
+    const transport=document.getElementById('nxp-progress-latest');
+    if(transport&&transport.getAttribute('data-wx-state')!=='playing')transport.setAttribute('data-wx-state',isLatest?'idle':'historical');
+    const slot=document.getElementById('wx-slot');
+    if(slot)slot.setAttribute('data-wx-slot',N.ui.selected?'select':'summary');
+    const words=pointWords(p),wrap=document.getElementById('vn-chart-wrap');
+    if(wrap&&wrap.getAttribute('role')==='slider'){wrap.setAttribute('aria-valuenow',index);wrap.setAttribute('aria-valuetext',words);}
+    if(opts&&opts.announce)text('wx-sel-sr',words);
+  }
+  /* "Monday 28 September: morning 83.1 kilograms, smoothed trend 83.7, 0.6 below trend." The screen-reader form of
+     the readouts; every figure is the point's own (1 dp, D107). */
+  const WEEKDAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  function longDate(d) { const t=new Date(N.dateMs(d));return `${WEEKDAYS[t.getUTCDay()]} ${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]}`; }
+  function pointWords(p) {
+    if(!p)return '';
+    const morning=/^morning$/i.test(String(p.timeOfDay||'')),head=`${longDate(p.date)}: ${morning?'morning':'reading'} ${p.weight.toFixed(1)} kilograms`;
+    if(p.avg===null||p.avg===undefined)return head+', smoothed trend not ready yet.';
+    const d=Number((p.weight-p.avg).toFixed(1));
+    return `${head}, smoothed trend ${p.avg.toFixed(1)}, ${d===0?'on trend':Math.abs(d).toFixed(1)+' '+(d<0?'below':'above')+' trend'}.`;
+  }
+  /* Scrub intent (spec §8.1). A touch pointerdown only records where it started, so a vertical swipe that begins on
+     the plot scrolls the page (the wrap is touch-action: pan-y) and never selects a day. A horizontal move of at least
+     8 px that is more than 1.2 × the vertical one locks the gesture to the chart: the pointer is captured and every
+     move selects the nearest real reading (never an interpolated one). A short tap (< 8 px, < 350 ms) selects on
+     pointerup. A mouse (or a synthetic event with no pointer type) selects on pointerdown and drags to scrub. */
+  const SCRUB_LOCK_PX=8,SCRUB_LOCK_RATIO=1.2,SCRUB_TAP_MS=350;
+  let gesture=null;
+  const scrubNow=()=>typeof performance!=='undefined'&&performance.now?performance.now():Date.now();
+  function scrubIndex(event) {
+    const m=N.ui.chart,svg=document.getElementById('n99-chart-svg');
+    if(!m?.points?.length||!svg)return -1;
+    const bounds=svg.getBoundingClientRect();if(!(bounds.width>0))return -1;
+    const x=(event.clientX-bounds.left)/bounds.width*m.W;
+    return m.points.reduce((best,p,i)=>Math.abs(p.x-x)<Math.abs(m.points[best].x-x)?i:best,0);
+  }
+  function scrubPick(event,opts) { const i=scrubIndex(event);if(i>=0){N.selectPoint(i,opts);gesture&&(gesture.index=i);}return i; }
+  function scrubCapture(event) {
+    const wrap=document.getElementById('vn-chart-wrap');
+    if(wrap?.setPointerCapture){try{wrap.setPointerCapture(event.pointerId);}catch(_){}}
   }
   function scrub(event) {
-    const m=N.ui.chart,wrap=document.getElementById('vn-chart-wrap'),svg=document.getElementById('n99-chart-svg');
+    const m=N.ui.chart,svg=document.getElementById('n99-chart-svg');
     if(!m?.points?.length||!svg)return;
-    if(event.type==='pointerdown'&&wrap?.setPointerCapture){
-      try{wrap.setPointerCapture(event.pointerId);}catch(_){}
+    const touch=event.pointerType==='touch'||event.pointerType==='pen';
+    if(event.type==='pointerdown'){
+      if(!touch&&event.button>0)return;
+      gesture={id:event.pointerId,x0:event.clientX,y0:event.clientY,t0:scrubNow(),mode:touch?'pending':'drag',index:-1};
+      if(!touch){scrubCapture(event);scrubPick(event);}
+      return;
     }
-    const bounds=svg.getBoundingClientRect(),x=(event.clientX-bounds.left)/bounds.width*m.W;
-    const index=m.points.reduce((best,p,i)=>Math.abs(p.x-x)<Math.abs(m.points[best].x-x)?i:best,0);
-    N.selectPoint(index);
+    /* pointermove: only inside a gesture this chart started (hover does nothing yet). */
+    if(!gesture||gesture.id!==event.pointerId)return;
+    if(gesture.mode==='pending'){
+      const dx=event.clientX-gesture.x0,dy=event.clientY-gesture.y0;
+      if(Math.abs(dx)>=SCRUB_LOCK_PX&&Math.abs(dx)>SCRUB_LOCK_RATIO*Math.abs(dy)){gesture.mode='h';scrubCapture(event);}
+      else if(Math.abs(dx)>=SCRUB_LOCK_PX||Math.abs(dy)>=SCRUB_LOCK_PX){gesture.mode='v';return;}
+      else return;
+    }
+    if(gesture.mode==='v')return;
+    if(gesture.mode==='drag'&&event.buttons===0)return;
+    const i=scrubIndex(event);
+    if(i>=0&&i!==gesture.index){gesture.index=i;N.selectPoint(i);}
   }
+  function scrubUp(event) {
+    const g=gesture;
+    if(!g||g.id!==event.pointerId)return;
+    gesture=null;
+    const wrap=document.getElementById('vn-chart-wrap');
+    if(wrap?.releasePointerCapture){try{wrap.releasePointerCapture(event.pointerId);}catch(_){}}
+    if(g.mode==='pending'){
+      const moved=Math.hypot(event.clientX-g.x0,event.clientY-g.y0);
+      if(moved<SCRUB_LOCK_PX&&scrubNow()-g.t0<SCRUB_TAP_MS){const i=scrubIndex(event);if(i>=0)N.selectPoint(i,{announce:true});}
+      return;
+    }
+    /* One polite announcement for the reading a drag ended on. */
+    if((g.mode==='h'||g.mode==='drag')&&g.index>=0)N.selectPoint(g.index,{announce:true});
+  }
+  /* pointercancel: the browser took the gesture (a vertical scroll). Nothing is selected. */
+  function scrubCancel(event) { if(gesture&&(!event||gesture.id===event.pointerId))gesture=null; }
+  /* The reading nearest to `days` from point idx, strictly in that direction (PageUp / PageDown). */
+  function stepDays(points,idx,days) {
+    const target=N.dateMs(points[idx].date)+days*86400000;let best=idx;
+    for(let i=0;i<points.length;i++){
+      if(days<0?i>=idx:i<=idx)continue;
+      if(best===idx||Math.abs(N.dateMs(points[i].date)-target)<Math.abs(N.dateMs(points[best].date)-target))best=i;
+    }
+    return best;
+  }
+  /* Keyboard (spec §8.5): ← / → step between readings, Home / End go to the first / latest (End and Escape return to
+     latest), PageUp / PageDown move about a week, Enter opens the day in History, F opens Expand once it exists. */
   function chartKey(event) {
     const m=N.ui.chart;if(!m?.points?.length)return;
-    const n=m.points.length;
-    let idx=Math.max(0,m.points.findIndex(p=>p.date===N.ui.selected));
-    if(!N.ui.selected||idx<0)idx=n-1;
-    if(event.key==='ArrowRight'){N.selectPoint(Math.min(n-1,idx+1));event.preventDefault();}
-    else if(event.key==='ArrowLeft'){N.selectPoint(Math.max(0,idx-1));event.preventDefault();}
-    else if(event.key==='Escape'){N.selectPoint(n-1,{clear:true});event.preventDefault();}
+    const n=m.points.length,key=event.key;
+    let idx=N.ui.selected?m.points.findIndex(p=>p.date===N.ui.selected):-1;
+    if(idx<0)idx=n-1;
+    const go=(i,o)=>{N.selectPoint(i,o);event.preventDefault();};
+    if(key==='ArrowRight')go(Math.min(n-1,idx+1));
+    else if(key==='ArrowLeft')go(Math.max(0,idx-1));
+    else if(key==='Home')go(0);
+    else if(key==='End'||key==='Escape')go(n-1,{clear:true});
+    else if(key==='PageUp')go(stepDays(m.points,idx,-7));
+    else if(key==='PageDown')go(stepDays(m.points,idx,7));
+    else if(key==='Enter'){event.preventDefault();openChartDay(m.points[idx].date);}
+    else if((key==='f'||key==='F')&&!event.metaKey&&!event.ctrlKey&&!event.altKey&&typeof N.expandChart==='function'){event.preventDefault();N.expandChart();}
+  }
+  /* Open day (spec §8.6): remember where Weight was (memory only), then show that day in History. */
+  function openChartDay(date) {
+    if(!Number.isFinite(N.dateMs(date)))return;
+    N.ui.returnTo={view:'overview',range:N.ui.range,selected:N.ui.selected,
+      layers:{showWeekly:N.ui.showWeekly,showSpread:N.ui.showSpread,showNotes:N.ui.showNotes,showPost:N.ui.showPost,showForecast:N.ui.showForecast},
+      compare:N.ui.compare,expanded:false,scrollY:typeof window!=='undefined'&&Number(window.scrollY)||0};
+    const nxp=typeof NXP==='object'&&NXP?NXP:null;
+    if(typeof switchTab==='function')switchTab('history');
+    if(nxp&&typeof nxp.historySelect==='function')setTimeout(()=>nxp.historySelect(date),80);
   }
   /* A repaint happens for many reasons — logging a set, saving a weigh-in,
      switching tabs. Only a deliberate range change should animate, so it is
@@ -1757,8 +1997,18 @@ Object.assign(NXT, (()=>{
      replay its reveal every time anything on the app changed. */
   function setRange(range) {N.ui.range=range;N.ui.selected=null;N.ui.chartAnim='range';N.repaint();}
   function setGoalVisible(on) {N.ui.showGoal=!!on;N.repaint();}
-  function setPostVisible(on) {N.ui.showPost=!!on;N.repaint();}
-  function setForecastVisible(on) {N.ui.showForecast=!!on;N.repaint();}
+  /* Chart layers (spec §9; D111): one memory-only flag each, no storage key. setPostVisible and setForecastVisible
+     stay as the wrappers they were. */
+  const LAYERS={weekly:'showWeekly',spread:'showSpread',notes:'showNotes',post:'showPost',forecast:'showForecast'};
+  function setLayer(name,on) {
+    const key=LAYERS[name];if(!key)return false;
+    const next=on===undefined?!N.ui[key]:!!on;
+    if(N.ui[key]===next)return next;
+    N.ui[key]=next;N.repaint();
+    return next;
+  }
+  function setPostVisible(on) {setLayer('post',!!on);}
+  function setForecastVisible(on) {setLayer('forecast',!!on);}
   function setView(view) {N.ui.view=view;N.repaint();}
   function strengthHTML() {
     const items=N.strengthItems();
@@ -1908,7 +2158,7 @@ Object.assign(NXT, (()=>{
     if(!(await ask))return;
     state.bws=state.bws.filter(x=>x!==r);N.commit('Weigh-in deleted');
   }
-  return {signed,smoothPath,chartModel,chartHTML,journeyHTML,selectPoint,scrub,chartKey,openNote,saveNote,removeNote,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
+  return {signed,smoothPath,chartGeo,chartGeoChanged,chartModel,chartHTML,journeyHTML,selectPoint,pointWords,scrub,scrubUp,scrubCancel,chartKey,openChartDay,setLayer,openNote,saveNote,removeNote,copyWeighIns,importScans,readScanFile,previewScanImport,commitScanImport,parseStrataScans,setRange,setGoalVisible,setPostVisible,setForecastVisible,setView,strengthHTML,bodyHTML,progress,openWaist,saveWaist,deleteWaist,openWeightHistory,editWeight,saveWeightEdit,deleteWeight};
 })());
 
 Object.assign(NXT, (()=>{
