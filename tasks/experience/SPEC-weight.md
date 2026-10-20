@@ -1,5 +1,11 @@
 # SPEC · Progress → Weight · "The Instrument" (build spec)
 
+> **Owner ruling 2026-10-20 — phone first.** "Remove the desktop, I'm using this mainly on phone." Every desktop /
+> wide-width item in this document is withdrawn: the two-column layout (W4 / D114), the persistent inspector strip, the
+> 1280/1440 budgets and acceptance criteria. Wider viewports keep the existing single 680 px column (D59) and must not
+> break; nothing else is built or measured for them. Phone viewports: 320×568, 375×667, 390×844, 393×852, 430×932.
+
+
 Status: **design spec for Stage 3 + 4 build**, synthesised 19 Oct 2026.
 
 Base: the winning proposal, `weight-1/PROPOSAL.md` ("The Instrument"). This spec adds the best ideas from `weight-2` ("Calm analyst") and `weight-3` ("Two scales of depth"), and fixes every flaw the three judges raised (§1).

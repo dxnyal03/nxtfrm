@@ -97,3 +97,10 @@ paths; full deterministic gate (`node --test *.test.js` and each suite); report.
   (nothing applied). Disposable probe output stays in `~/Library/Caches/DanDev/nxtfrm/experience/`.
 - Next deliverable: a runnable visual checkpoint of Today and Weight (`?scenario=` fixtures, local preview on
   port 8766 via `.claude/launch.json` → `nxtfrm-experience`), one cross-review, owner fixes, then Stage 6.
+
+## Owner ruling · 2026-10-20 14:45 SGT — phone first
+
+"Remove the desktop, I'm using this mainly on phone." Withdrawn: the Weight two-column layout (W4 / D114), the desktop
+inspector strip, the desktop live-pill item, and every 768 / 1280 / 1440 acceptance criterion in stages 3–8. The
+checkpoint and QA viewports are 320×568, 375×667, 390×844, 393×852 and 430×932; wider viewports keep the existing
+single column and only need to not break. Stage 6 keeps the same rule for the remaining pages.

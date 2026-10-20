@@ -1,5 +1,11 @@
 # SPEC · Today briefing (stage 5)
 
+> **Owner ruling 2026-10-20 — phone first.** "Remove the desktop, I'm using this mainly on phone." Every desktop /
+> wide-width item in this document is withdrawn: the two-column layout (W4 / D114), the persistent inspector strip, the
+> 1280/1440 budgets and acceptance criteria. Wider viewports keep the existing single 680 px column (D59) and must not
+> break; nothing else is built or measured for them. Phone viewports: 320×568, 375×667, 390×844, 393×852, 430×932.
+
+
 **Status:** buildable synthesis, for owner approval and then implementation. Presentation only: no calculation, storage key, record shape or coach-threshold change. No new file, so `sw.js`, `?v=` and `RELEASE` (163) are untouched.
 
 **Base:** Today #1 (task-first, judges' winner 2 of 3). Grafted from #3: the two-zone Weight/Cardio log strip directly under the focus card, the concern taking over the context line, and a pure `NXP.pickToday()` with no engine-file edit. Grafted from #2: live-row hand-off keyed to the **button**, de-duplication of an action that repeats Resume, the Lifts row reading the last *completed* session, the conditional rail legend, and the rendered sparkline data states (No rate / Paused / amber aging).
