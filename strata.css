@@ -164,9 +164,7 @@
 #cloudLocalBanner .cloud-local-banner-login,#cloudLocalBanner .cloud-local-banner-dismiss{position:relative;min-height:44px;margin-block:-4px}
 #cloudLocalBanner .cloud-local-banner-login{isolation:isolate;background:none !important;box-shadow:none !important}
 #cloudLocalBanner .cloud-local-banner-login::before{content:"";position:absolute;inset:4px 0;z-index:-1;border-radius:999px;background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);pointer-events:none}
-.st-t-dec .st-link.st-why{position:relative;isolation:isolate;min-height:44px !important;margin-block:-6px;background:none !important;box-shadow:none !important}
-.st-t-dec .st-link.st-why::before{content:"";position:absolute;inset:6px 0;z-index:-1;border-radius:999px;background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);pointer-events:none}
-.st-t-dec .st-dec-chip.st-dec-conf{min-height:44px}
+
 #historyPage .nxp-history-filters button{min-height:44px !important}
 /* D42 asked for day cells of 44px or more; aspect-ratio:1 and min-height:0 !important (further down this file) held them at 36px */
 #historyPage .nxp-cal-grid>.nxp-cal-day{aspect-ratio:auto !important;min-height:44px !important}
@@ -249,7 +247,6 @@ body{font-family:var(--st-font);color:var(--st-ink)}
 /* ---- TILES ------------------------------------------------------------------ */
 .st-bento{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .st-bento>*{grid-column:1/-1;min-width:0}
-.st-bento>.st-half{grid-column:span 1}
 .st-tile{
   position:relative;isolation:isolate;overflow:hidden;display:block;width:100%;box-sizing:border-box;text-align:left;
   padding:20px;border-radius:var(--st-r);border:1px solid var(--st-tile-line);
@@ -270,8 +267,6 @@ button.st-tile:active{transform:scale(.985)}
 @media (hover:hover){.st-tile:hover::after{opacity:1}}
 .st-tile-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;min-height:24px}
 .st-tile-head .vn-text{min-height:44px;margin:-10px -8px -10px 0}
-.st-tile-foot{display:flex;justify-content:flex-end;margin-top:6px}
-.st-tile-foot .vn-text{min-height:44px}
 
 /* ---- ACTIONS ---------------------------------------------------------------- */
 .st-cta{
@@ -316,38 +311,13 @@ button.st-tile:active{transform:scale(.985)}
   background:rgba(var(--st-hl),.05) !important;border:1px solid rgba(var(--st-hl),.1) !important;color:var(--st-ink) !important;border-radius:16px !important;
 }
 
-/* ---- RING ------------------------------------------------------------------- */
-.st-ring{position:relative;display:inline-grid;place-items:center;width:78px;height:78px;flex:none}
-.st-ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
-.st-ring circle{fill:none;stroke-width:6;stroke-linecap:round}
-.st-ring .st-ring-bg{stroke:rgba(var(--st-hl),.08)}
-.st-ring .st-ring-fg{stroke:var(--rc);stroke-dashoffset:var(--off)}
-.st-ring b{position:relative;font:550 20px/1 var(--st-font-d);letter-spacing:-.02em;margin-top:-6px}
-.st-ring small{position:absolute;bottom:17px;font:500 10.5px var(--st-font);color:var(--st-ink-3)}
-.st-enter .st-ring .st-ring-fg{animation:st-ring 1.2s var(--st-glide) .15s both}
-@keyframes st-ring{from{stroke-dashoffset:var(--len)}}
 
 /* ---- TODAY ------------------------------------------------------------------ */
 .st-today{padding-bottom:12px}
 .st-train-row{display:flex;align-items:center;justify-content:space-between;gap:14px}
 .st-train-id{min-width:0}
-.st-t-train .st-meta{margin-top:6px}
-.st-t-dec.vn-tone-watch{--c:var(--vn-review,#B8842A)}
-.st-evid{display:flex;flex-wrap:wrap;gap:8px 18px;font:450 13.5px var(--st-font);color:var(--st-ink-3)}
-.st-evid b{margin-left:6px;color:var(--st-ink);font-weight:550}
-.st-half{display:flex !important;flex-direction:column;justify-content:space-between;gap:10px;min-height:168px;padding:18px}
-.st-half-body{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
-.st-half .st-ring{width:72px;height:72px}
-.st-word{font:550 24px/1.1 var(--st-font-d);letter-spacing:-.02em}
-.st-half .vn-status{font-size:12.5px}
 
-/* Hero: the one big number on Today. */
-.st-hero{padding:18px 18px 14px}
-.st-hero-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.st-hero-eb{margin:14px 0 0;font:550 12px/1.3 var(--st-font);letter-spacing:.07em;text-transform:uppercase;color:var(--st-ink-3);min-height:16px;transition:color .2s}
-.st-hero.is-scrubbing .st-hero-eb,.st-hero.is-replaying .st-hero-eb{color:var(--st-accent-lift)}
-.st-big{display:flex;align-items:baseline;gap:8px;margin:2px 0 0}
-.st-big small{font:450 22px var(--st-font);color:var(--st-ink-3)}
+
 .st-odo{
   display:inline-flex;font:250 76px/1 var(--st-font-d);letter-spacing:-.045em;font-variant-numeric:tabular-nums;
   background:linear-gradient(180deg,#FFFFFF 30%,#CBB8FF 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
@@ -358,17 +328,6 @@ button.st-tile:active{transform:scale(.985)}
 .st-od-s i{font-style:normal;height:1em;line-height:1em;display:block;background:inherit;-webkit-background-clip:text;background-clip:text}
 .st-od,.st-od-s,.st-od-s i,.st-od-x{background:linear-gradient(180deg,#FFFFFF 30%,#CBB8FF 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .st-od-x{display:inline-block;height:1em;line-height:1em}
-.st-hero.is-scrubbing .st-od-s,.st-hero.is-replaying .st-od-s{transition-duration:.28s}
-.st-hero-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:10px;font:450 14px var(--st-font);color:var(--st-ink-3)}
-.st-rate b{color:var(--st-ink);font-weight:550}
-.st-hero-chart{margin:10px -4px 0;touch-action:pan-y;min-height:170px}
-.st-hero-chart svg{display:block;overflow:visible;outline:none;cursor:crosshair}
-.st-hero-chart svg:focus-visible{outline:2px solid var(--st-accent);outline-offset:4px;border-radius:8px}
-.st-hero-foot{display:flex;align-items:center;gap:14px;margin-top:4px}
-.st-hero-foot .st-link{margin-left:auto}
-.st-key{display:inline-flex;align-items:center;gap:7px;font:500 12.5px var(--st-font);color:var(--st-ink-3)}
-.st-key-line{width:16px;height:3px;border-radius:2px;background:var(--st-weight);box-shadow:0 0 8px var(--st-weight)}
-.st-key-dot{width:6px;height:6px;border-radius:50%;background:rgba(var(--st-hl),.6)}
 
 /* Shared chart marks */
 .st-grid{stroke:rgba(var(--st-hl),.06);stroke-width:1}
@@ -387,7 +346,6 @@ button.st-tile:active{transform:scale(.985)}
 @keyframes st-draw{to{stroke-dashoffset:0}}
 @keyframes st-fade{to{opacity:1}}
 
-.st-hero-chart{position:relative}
 .st-band{fill:rgba(var(--st-hl),.028)}
 .st-pillg rect{fill:rgba(20,18,30,.9);stroke:rgba(180,154,255,.45);stroke-width:1}
 .st-pillg text{fill:var(--st-ink);font:590 11.5px var(--st-font);font-variant-numeric:tabular-nums}
@@ -405,55 +363,11 @@ button.st-tile:active{transform:scale(.985)}
 #weightPage .vn-chart-wrap .st-tip{top:0}
 #weightPage .st-band{fill:rgba(var(--st-hl),.028)}
 
-.st-wbig{display:flex;align-items:baseline;gap:6px}
-.st-wbig small{font:450 15px var(--st-font);color:var(--st-ink-3)}
-.st-odo.st-odo-sm{font-size:44px;font-weight:250}
-.st-t-weight .st-meta b{color:var(--st-ink);font-weight:550}
-.st-rowtile{display:flex !important;align-items:center;gap:12px;padding:18px 18px 18px 20px}
-.st-rowtile-l{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
-.st-rowtile .st-word{font-size:22px}
-.st-rowtile-c{font-style:normal;font-size:22px;color:var(--st-ink-4)}
 
-/* Weekly bars */
-.st-bars{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;align-items:end;gap:10px;height:132px;margin:6px 0 12px}
-.st-bar{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
-.st-bar b{font:550 12.5px var(--st-font);color:var(--st-ink-2);margin-bottom:6px}
-.st-bar i{display:block;width:100%;max-width:46px;height:calc(var(--h) * 80px);border-radius:12px;background:rgba(var(--st-hl),.11);transform-origin:bottom}
-.st-bar small{margin-top:7px;font:500 10.5px var(--st-font);color:var(--st-ink-4);white-space:nowrap}
-.st-bar.is-now b{color:var(--st-weight)}
-.st-bar.is-now i{background:linear-gradient(180deg,var(--st-weight),color-mix(in srgb,var(--st-accent) 70%,#000));box-shadow:0 8px 22px -6px color-mix(in srgb,var(--st-accent) 70%,transparent)}
-.st-enter .st-bar i{animation:st-grow .9s var(--st-spring) both;animation-delay:calc(var(--i) * 80ms + .15s)}
+
 @keyframes st-grow{from{transform:scaleY(0)}}
 
-/* 5-week calendar */
-.st-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
-.st-cal-h{font:550 10.5px var(--st-font);color:var(--st-ink-4);text-align:center;padding-bottom:2px}
-.st-cal-d{
-  position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;aspect-ratio:1;border-radius:11px;
-  background:rgba(var(--st-hl),.03);font:500 11.5px var(--st-font);color:var(--st-ink-4);
-}
-.st-cal-d em{font-style:normal;line-height:1}
-.st-cal-d.is-w{background:color-mix(in srgb,var(--st-weight) 11%,transparent);color:var(--st-ink-2)}
-.st-cal-d.is-active{background:color-mix(in srgb,var(--st-lift) 22%,transparent);color:var(--st-ink)}
-.st-cal-d.is-today{box-shadow:inset 0 0 0 1.5px var(--st-accent-lift);color:var(--st-ink)}
-.st-cal-d.is-fut{opacity:.35}
-.st-cal-m{display:flex;gap:3px;height:5px}
-.st-cal-m i,.st-cal-k i{display:inline-block;width:5px;height:5px}
-.m-lift{border-radius:50%;background:var(--st-lift);box-shadow:0 0 6px var(--st-lift)}
-.m-cardio{border-radius:50%;box-shadow:inset 0 0 0 1.4px var(--st-cardio)}
-.m-floor{background:var(--st-floor);transform:rotate(45deg) scale(.85)}
-.m-w{width:9px !important;height:3px !important;border-radius:2px;background:color-mix(in srgb,var(--st-weight) 45%,transparent)}
-.st-cal-k{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px;font:500 12px var(--st-font);color:var(--st-ink-3)}
-.st-cal-k span{display:inline-flex;align-items:center;gap:6px}
-.st-enter .st-cal-d{animation:st-pop .5s var(--st-spring) both;animation-delay:calc(var(--i) * 12ms + .1s)}
-@keyframes st-pop{from{opacity:0;transform:scale(.6)}}
 
-/* Scan tile */
-.st-scan-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.st-scan-c{display:flex;flex-direction:column;gap:3px;padding:12px 13px;border-radius:var(--st-r-2);background:rgba(var(--st-hl),.04)}
-.st-scan-c small{font:590 12px var(--st-font);color:var(--c)}
-.st-scan-c b{font:350 24px/1.1 var(--st-font-d);letter-spacing:-.02em}
-.st-scan-c b em{font:450 12px var(--st-font);font-style:normal;color:var(--st-ink-3);margin-left:3px}
 
 /* Quick actions */
 .st-quick{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 6px}
@@ -466,10 +380,6 @@ button.st-tile:active{transform:scale(.985)}
 .st-qa:active{transform:scale(.95)}
 .st-more{margin-top:8px}
 
-/* Week strip inside its tile */
-.st-t-week .vn-week{margin:0}
-.st-t-week .vn-week-c{border-radius:14px}
-.st-t-week .vn-week-c.is-today{background:color-mix(in srgb,var(--st-accent) 22%,transparent) !important;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--st-accent-lift) 70%,transparent) !important}
 
 /* ---- ENTRANCE + SCROLL REVEAL -------------------------------------------------
    Plays when a tab is entered, never on the repaint that follows logging a set
@@ -487,8 +397,6 @@ button.st-tile:active{transform:scale(.985)}
 .st-enter .st-bento>*:nth-child(n+7){animation-delay:.14s}
 .st-enter .st-plan-row{animation-delay:calc(var(--i,0) * 25ms + .06s)}
 @keyframes st-enter-rise{from{opacity:0;transform:translateY(6px)}}
-@keyframes st-rise{from{opacity:0;transform:translateY(16px) scale(.985)}}
-
 /* ---- DOCK --------------------------------------------------------------------
    A floating glass capsule with a sliding highlight. Focused Train still
    recedes it (D6 unchanged). */
@@ -835,7 +743,6 @@ button.st-refc:active{transform:scale(.97)}
   box-shadow:0 -20px 60px -20px rgba(0,0,0,.9) !important;
 }
 
-
 /* ---- BUTTON SHAPES (one system) -------------------------------------------
    Icon buttons are circles, actions are capsules. */
 .st-cta,.st-ghost,.n99-button,.st-finish,.st-qa,.st-chip{border-radius:999px !important}
@@ -862,7 +769,6 @@ html.st-sheet-open main{transform:scale(.94) translateY(10px);filter:brightness(
   .n99-modal .sheet{animation:none !important}
 }
 :root[data-nxp-motion="reduced"].st-sheet-open main{transform:none}
-
 
 /* ---- SETTINGS › TRAINING + ROUTINE EDITOR (D22) --------------------------- */
 .st-settings .st-set-sec{margin-top:22px}
@@ -969,7 +875,6 @@ html.st-sheet-open main{transform:scale(.94) translateY(10px);filter:brightness(
 .st-diff small{font:450 12.5px/1.35 var(--st-font);color:var(--st-ink-3)}
 .st-diff em{font-style:normal;height:36px;display:grid;place-items:center;padding:0 16px;border-radius:999px;background:rgba(255,194,74,.18);color:#FFD58A;font:590 14px var(--st-font)}
 
-
 /* ---- ANATOMY: lens + session map ------------------------------------------ */
 /* Bleed: the worked region, zoomed, running off the right edge behind the
    title. It is decoration; the muscles are named in text. */
@@ -1003,22 +908,9 @@ html.st-sheet-open main{transform:scale(.94) translateY(10px);filter:brightness(
 .st-plan-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .st-plan-h .st-sect{margin:0 !important}
 
-
 /* ---- TODAY v2: dense, aligned ------------------------------------------- */
 .st-today .st-bento{gap:12px}
-.st-minis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.st-mini{display:flex !important;flex-direction:column;align-items:flex-start;gap:6px;min-height:118px;padding:14px !important;border-radius:22px !important}
-.st-mini .st-cat{font-size:10.5px;letter-spacing:.07em}
-.st-mini .st-cat::before{width:6px;height:6px}
-.st-mini-v{display:flex;align-items:baseline;gap:3px;margin-top:auto;font:550 24px/1 var(--st-font-d);letter-spacing:-.03em;color:var(--st-ink);white-space:nowrap}
-.st-mini-v b{font:inherit}
-.st-mini-v small{font:500 12px var(--st-font);color:var(--st-ink-3);letter-spacing:0}
-.st-mini-v .st-odo.st-odo-sm{font-size:26px;font-weight:300}
-.st-mini-w{font-size:17px;letter-spacing:-.02em;white-space:normal;line-height:1.15}
-.st-mini .st-meta{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.st-mini-bar{display:block;width:100%;height:4px;border-radius:2px;background:rgba(var(--st-hl),.1);overflow:hidden}
-.st-mini-bar i{display:block;height:100%;background:var(--st-cardio);border-radius:inherit}
-.st-center{text-align:center}
+
 .st-tweek{margin-top:18px;padding-top:14px;border-top:1px solid rgba(var(--st-hl),.07)}
 .st-tweek-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font:500 12.5px var(--st-font);color:var(--st-ink-3)}
 .st-tweek-h .vn-text{min-height:36px;padding:0;font-size:13px}
@@ -1026,20 +918,11 @@ html.st-sheet-open main{transform:scale(.94) translateY(10px);filter:brightness(
 .st-today .vn-week-t{font-size:11px !important;white-space:nowrap}
 .st-today .vn-week{grid-template-columns:repeat(7,minmax(0,1fr)) !important;gap:2px !important;margin:0 !important;overflow:visible !important}
 .st-today .vn-week-c{min-height:54px;min-width:0 !important;border-radius:12px !important;padding:0 !important}
-.st-t-dec .st-tile-head{margin-bottom:6px}
-.st-t-dec .st-link{min-height:32px;font-size:14px}
-.st-scan-g{grid-template-columns:repeat(4,minmax(0,1fr)) !important;gap:6px !important;margin-bottom:0 !important}
-.st-scan-c{padding:10px 8px !important;border-radius:14px !important;gap:2px !important;align-items:flex-start}
-.st-scan-c small{font-size:11px !important}
-.st-scan-c b{font:500 19px/1.1 var(--st-font-d) !important}
-.st-scan-c b em{font-size:10.5px !important;margin-left:1px !important}
-.st-scan-d{font:550 11.5px var(--st-font);color:var(--st-ink-3)}
-.st-scan-d.is-dn{color:#DCD0FF}
+
 .st-quick{display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px !important;margin:16px 0 4px !important}
 .st-qa{justify-content:center;padding:0 8px !important;min-height:48px;font-size:14px !important;gap:6px !important;white-space:nowrap}
 .st-qa span{width:22px !important;height:22px !important;font-size:15px !important;flex:none}
 .st-more{margin-top:4px !important}
-
 
 .st-count{display:inline-flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:72px;flex:none}
 .st-count-v{display:flex;align-items:baseline;gap:2px}
@@ -1048,7 +931,6 @@ html.st-sheet-open main{transform:scale(.94) translateY(10px);filter:brightness(
 .st-count-u{font:500 12px var(--st-font);color:var(--st-ink-3)}
 .st-count-bar{width:72px;height:4px;margin-top:6px;border-radius:2px;background:rgba(var(--st-hl),.1);overflow:hidden}
 .st-count-bar i{display:block;height:100%;border-radius:inherit;background:var(--rc)}
-
 
 /* ---- PROGRESS / HISTORY polish ------------------------------------------- */
 #historyPage .nxp-cal-head{display:flex !important;align-items:center;gap:8px}
@@ -1072,7 +954,6 @@ html.st-sheet-open main{transform:scale(.94) translateY(10px);filter:brightness(
 #weightPage .vn-perf-row:last-child{border-bottom:0}
 #weightPage .vn-perf-name{font:550 15.5px var(--st-font) !important}
 
-
 /* ---- TYPE: calmer scale (owner feedback: less bold, less cluttered) ------ */
 .st-h1{font-size:28px !important;letter-spacing:-.02em}
 .st-h2{font-size:22px !important}
@@ -1084,7 +965,7 @@ html.st-sheet-open main{transform:scale(.94) translateY(10px);filter:brightness(
 .st-ex-title{font-size:26px !important;letter-spacing:-.025em !important}
 .st-card-t{font-size:19px !important}
 .st-refc b{font-size:17px !important}
-.st-mini-w{font-size:16px !important}
+
 .st-rt-l b{font-size:17px !important}
 .tabs .tab .tab-label{font-weight:500 !important}
 .tabs .tab.active .tab-label{font-weight:600 !important}
@@ -1111,17 +992,9 @@ body,button,input{-webkit-font-smoothing:antialiased}
   .st-exnav button{padding:0 8px;font-size:13.5px}
   .st-chip{padding:0 13px}
   #trainPage .st-train.st-train-active{padding:0 16px 12px}
-  .st-minis{gap:8px}
-  .st-mini{padding:12px !important;min-height:108px}
-  .st-mini-v{font-size:20px}
-  .st-mini-v .st-odo.st-odo-sm{font-size:22px}
-  .st-mini-w{font-size:15px}
   .st-qa{font-size:13px !important;padding:0 6px !important}
   .st-qa span{display:none !important}
-  .st-scan-c b{font-size:16px !important}
-  .st-scan-vs{display:none}
   .st-today .vn-week-t{font-size:10px !important;letter-spacing:-.02em}
-  .st-scan-vs{display:none}
   .st-today .vn-week-t{font-size:10px !important;letter-spacing:-.02em}
   .st-bleed{right:-16px;width:calc(42% + 16px)}
   .st-mm-f .nxa{width:70px;height:140px}
@@ -1152,9 +1025,7 @@ body,button,input{-webkit-font-smoothing:antialiased}
   .st-tr-name{font-size:13.5px}
   .st-tr-count{font-size:11.5px}
   .st-tile{padding:16px}
-  .st-half{min-height:156px;padding:15px}
   .st-segs{grid-template-columns:1fr}
-  .st-bars{gap:6px}
 }
 @media (min-width:560px){
   .st-odo{font-size:88px}
@@ -1193,8 +1064,7 @@ body,button,input{-webkit-font-smoothing:antialiased}
 .st-eyebrow,.nxp-history-weekday,.vn-h-sect{text-transform:none !important;letter-spacing:0 !important;font:500 14px/1.25 var(--st-font) !important;color:var(--st-ink-3) !important}
 .st-cat{text-transform:none !important;letter-spacing:0 !important;font:560 13px/1.2 var(--st-font) !important;color:var(--st-ink-2) !important}
 .st-cat::before{display:none !important}
-.st-mini .st-cat{font-size:12.5px !important;gap:7px}
-.st-mini .st-cat::before{display:inline-block !important;width:6px !important;height:6px !important;background:var(--c,var(--st-accent-lift)) !important;box-shadow:none !important}
+
 .st-done .st-cat{justify-content:center}
 
 /* -- Progress · Weight: chart runs to the card's edge; the morning-vs-trend strip sits under it -- */
@@ -1304,7 +1174,7 @@ body,button,input{-webkit-font-smoothing:antialiased}
 #trainPage .st-sect,#weightPage h3,#weightPage h2:not(.wx-h2),#historyPage .nxp-cal-month{font:590 18px/1.25 var(--st-font) !important;letter-spacing:-.01em !important;text-transform:none !important;color:var(--st-ink) !important}
 #historyPage .nxp-cal-month span{font-weight:590 !important}
 /* Labels: no uppercase, no tracking, one muted voice. */
-.nxp-caption,.nxp-progress-body-heading,.vn-perf-kicker,.vn-set-eyebrow,.st-eyebrow,.st-hero-eb,#trainPage small,.vn-h-sect{text-transform:none !important;letter-spacing:0 !important;font:550 13px/1.3 var(--st-font) !important;color:var(--st-ink-3) !important}
+.nxp-caption,.nxp-progress-body-heading,.vn-perf-kicker,.vn-set-eyebrow,.st-eyebrow,#trainPage small,.vn-h-sect{text-transform:none !important;letter-spacing:0 !important;font:550 13px/1.3 var(--st-font) !important;color:var(--st-ink-3) !important}
 .st-mm-f small{text-transform:none !important;letter-spacing:0 !important;font-size:11px !important}
 /* Rows that sat loose on the canvas become Today-style tiles. */
 #weightPage details.nxp-disclosure{
@@ -1375,22 +1245,6 @@ body:has(.st-train-active){overflow:visible !important}
 .st-rest .vn-rest-actions .n99-button:first-child{background:rgba(var(--st-hl),.07) !important;color:var(--st-ink) !important}
 @media (prefers-reduced-motion:reduce){#trainPage .st-train-active .st-log{transition:none}.st-rest .nxp-rest-rail span{transition:none !important}}
 
-/* Weekly recap tile (Home, Sunday / Monday). */
-.st-recap .st-rc-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin-top:2px}
-.st-recap .st-rc-stats>div{display:flex;flex-direction:column;gap:3px;min-width:0;padding:0 12px}
-.st-recap .st-rc-stats>div:first-child{padding-left:0}
-.st-recap .st-rc-stats>div+div{border-left:1px solid var(--st-tile-line)}
-.st-recap .st-rc-stats b{font:300 30px/1.05 var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink);white-space:nowrap}
-.st-recap .st-rc-stats b small{font:400 13px var(--st-font);color:var(--st-ink-3);letter-spacing:0;margin-left:2px}
-.st-recap .st-rc-stats span{font:550 13px/1.2 var(--st-font);color:var(--st-ink-2)}
-.st-recap .st-rc-stats em{font:400 12px/1.25 var(--st-font);font-style:normal;color:var(--st-ink-3)}
-.st-recap .st-rc-best{list-style:none;margin:16px 0 0;padding:12px 0 0;border-top:1px solid var(--st-tile-line);display:flex;flex-direction:column;gap:2px}
-.st-recap .st-rc-best li{display:flex;align-items:center;gap:10px;min-height:36px}
-.st-recap .st-rc-best li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:500 14.5px var(--st-font);color:var(--st-ink)}
-.st-recap .st-rc-best li b{font:600 14.5px var(--st-font);color:var(--st-ink);white-space:nowrap}
-.st-recap .st-rc-best li i{font:550 11.5px/1 var(--st-font);font-style:normal;color:var(--st-lean);display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;background:rgba(196,181,253,.12)}
-.st-recap .st-rc-best li i::before{content:"";border-left:3.5px solid transparent;border-right:3.5px solid transparent;border-bottom:5.5px solid currentColor}
-@media (max-width:359px){.st-recap .st-rc-stats b{font-size:25px}.st-recap .st-rc-stats>div{padding:0 8px}}
 
 /* =====================================================================================
    ONE TYPEFACE. The system face (SF on iPhone and Mac) for everything: text, numerals,
@@ -1421,15 +1275,13 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 #homePage span.vn-row-t{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 15/500 */
 #homePage span.vn-row-s{font-size:var(--fs-cap) !important;font-weight:var(--fw-reg) !important}/* 12.5/400 */
 #homePage p.st-meta{font-size:var(--fs-label) !important;font-weight:var(--fw-reg) !important}/* 13/450 */
-#homePage .st-tweek-h span{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12.5/500 */
-#homePage .st-mini-v small{font-size:var(--fs-cap) !important;font-weight:var(--fw-med) !important}/* 12/500 */
-#homePage span.st-mini-v{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 16/550 */
+#homePage .st-tweek-h span{font-size:calc(var(--fs-cap)*var(--tf-s,1)) !important;font-weight:var(--fw-med) !important}/* 12.5/500 · scales with Larger text (A-25) */
+/* 12/500 */
+/* 16/550 */
 #homePage button.st-link{font-size:var(--fs-body) !important;font-weight:var(--fw-med) !important}/* 14/550 */
-#homePage .st-evid span{font-size:var(--fs-label) !important;font-weight:var(--fw-reg) !important}/* 13.5/450 */
-#homePage .st-evid b{font-size:var(--fs-label) !important;font-weight:var(--fw-med) !important}/* 13.5/550 */
-#homePage span.st-scan-vs{font-size:var(--fs-label) !important;font-weight:var(--fw-reg) !important}/* 13/450 */
-#homePage .st-scan-c small{font-size:var(--fs-micro) !important;font-weight:var(--fw-med) !important}/* 11/590 */
-#homePage span.st-scan-d{font-size:var(--fs-micro) !important;font-weight:var(--fw-med) !important}/* 11.5/550 */
+/* 13/450 */
+/* 11/590 */
+/* 11.5/550 */
 #homePage .vn-more summary{font-size:var(--fs-row) !important;font-weight:var(--fw-med) !important}/* 15/500 */
 #homePage .nxp-rec-source strong{font-size:var(--fs-sect) !important;font-weight:var(--fw-head) !important}/* 17/650 */
 #homePage .nxp-home-kcal strong{font-size:var(--fs-sect) !important;font-weight:var(--fw-head) !important}/* 18/650 */
@@ -1513,7 +1365,6 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 /* The Body-tab accordion chevron uses the same stroke. */
 #weightPage .vn-evo-sec>h2[data-st-fold]::after{content:"" !important;width:18px;height:18px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 5l7 7-7 7'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 5l7 7-7 7'/%3E%3C/svg%3E") center/contain no-repeat;opacity:.7}
 
-
 /* Glass cards (Train): Aim, Best last time and Coach share one material: a frosted layer, a light
    edge that fades around the card (drawn with a masked hairline), an inner top highlight and a soft
    violet glow. Coach (D25) carries the most light. The entrance only plays when the exercise
@@ -1570,11 +1421,9 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 #trainPage .st-coach .st-coach-h{font-size:var(--fs-sect) !important;font-weight:var(--fw-semi) !important;line-height:1.15 !important}
 @media (max-width:359px){#trainPage .st-coach .st-coach-h{font-size:16px !important}}
 
-
 #trainPage .st-coach .st-coach-k{font-size:12px !important;font-weight:590 !important;line-height:1 !important}
 #trainPage .st-coach .st-coach-hint{font-size:11.5px !important;line-height:1 !important}
 #trainPage .st-coach .st-coach-n{font-size:var(--fs-label) !important;line-height:1.4 !important}
-
 
 /* D27 finish moments: quiet, factual, only when true */
 .st-moments{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
@@ -1585,13 +1434,10 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 #trainPage .st-moments li{text-align:left !important}
 #trainPage .st-moments li span{font:520 14px/1.3 var(--st-font) !important;text-align:left !important;color:inherit !important}
 
-
 /* D28 weight highlights */
-
 
 .st-slow{margin:0 0 16px}
 #weightPage .st-slow{font:450 14px/1.45 var(--st-font) !important;color:var(--st-ink-3) !important}
-.st-tweek-top{margin-top:16px;margin-bottom:14px}
 
 /* Week strip: a glass rail with a glowing today. Same markup; styling only. */
 #homePage .st-tweek{border-top:0;padding-top:0}
@@ -1611,16 +1457,13 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
   box-shadow:inset 0 1px 0 rgba(255,255,255,.34),inset 0 0 0 1px rgba(196,166,255,.6),0 6px 22px rgba(124,77,255,.5),0 0 34px rgba(124,77,255,.28) !important}
 #homePage .st-tweek .vn-week-c.is-today .vn-week-d{color:#fff !important}
 #homePage .st-tweek .vn-week-c.is-today .vn-week-t{color:#fff !important;font-weight:650 !important}
-#homePage .st-tweek .vn-week-m i{width:6px;height:6px;background:var(--st-accent-lift,#b18aff);box-shadow:0 0 9px rgba(177,138,255,.9),0 0 2px #fff}
 @media (prefers-reduced-transparency:reduce){#homePage .st-tweek .vn-week{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(40,36,60,.9)}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){#homePage .st-tweek .vn-week{background:rgba(40,36,60,.85)}}
 @media (max-width:359px){#homePage .st-tweek .vn-week{padding:4px !important;gap:1px !important}}
 
-
 /* Week rail: roomier cells */
 #homePage .st-tweek .vn-week{padding:8px !important;gap:4px !important}
 #homePage .st-today .st-tweek .vn-week-c{min-height:72px !important;justify-content:center;gap:7px}
-#homePage .st-tweek .vn-week-m{height:6px}
 @media (max-width:359px){#homePage .st-tweek .vn-week{padding:6px !important;gap:2px !important}#homePage .st-today .st-tweek .vn-week-c{min-height:68px !important}}
 
 /* Week rail: every session type has its own hue, and always its own text label (never colour alone) */
@@ -1637,7 +1480,6 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 #homePage .st-tweek .vn-week-c:not(.is-k-rest) .vn-week-d{color:color-mix(in srgb,var(--k) 70%,#9a97aa) !important}
 #homePage .st-tweek .vn-week-c.is-k-rest:not(.is-today){background:transparent;box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.05)}
 #homePage .st-tweek .vn-week-c.is-k-rest .vn-week-t{color:var(--st-ink-4,#6b6880) !important;font-weight:450 !important}
-#homePage .st-tweek .vn-week-c .vn-week-m i{background:var(--k);box-shadow:0 0 9px color-mix(in srgb,var(--k) 80%,transparent),0 0 2px #fff}
 /* Today keeps the glow, in its own hue */
 #homePage .st-tweek .vn-week-c.is-today{background:linear-gradient(180deg,color-mix(in srgb,var(--k) 55%,transparent),color-mix(in srgb,var(--k) 26%,transparent)) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.34),inset 0 0 0 1px color-mix(in srgb,var(--k) 70%,#fff),0 6px 22px color-mix(in srgb,var(--k) 55%,transparent),0 0 34px color-mix(in srgb,var(--k) 30%,transparent) !important}
 #homePage .st-tweek .vn-week-c.is-today .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-d{color:#fff !important}
@@ -1653,17 +1495,11 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 #homePage .st-tweek .vn-week-c.is-k-rest::after{opacity:.25}
 #homePage .st-tweek .vn-week-d{font-size:11px !important;font-weight:700 !important;letter-spacing:.08em !important}
 #homePage .st-tweek .vn-week-t{font-size:13px !important;letter-spacing:-.01em}
-/* done marker: a lit bar along the base instead of a tiny dot */
-#homePage .st-tweek .vn-week-m{height:5px;width:100%;justify-content:center}
-#homePage .st-tweek .vn-week-c .vn-week-m i{width:60%;height:4px;border-radius:3px;
-  background:linear-gradient(90deg,color-mix(in srgb,var(--k) 70%,#fff),var(--k));
-  box-shadow:0 0 10px color-mix(in srgb,var(--k) 85%,transparent),0 0 2px #fff}
 /* today: lifted, brighter, with a soft halo */
 #homePage .st-tweek .vn-week-c.is-today{transform:translateY(-2px);
   background:linear-gradient(180deg,color-mix(in srgb,var(--k) 62%,#fff 6%),color-mix(in srgb,var(--k) 30%,transparent)) !important;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 0 0 1px color-mix(in srgb,var(--k) 60%,#fff),0 10px 26px color-mix(in srgb,var(--k) 55%,transparent),0 0 40px color-mix(in srgb,var(--k) 32%,transparent) !important}
 #homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:13.5px !important}
-#homePage .st-tweek .vn-week-c.is-today .vn-week-m i{background:#fff;box-shadow:0 0 10px rgba(255,255,255,.9)}
 @media (prefers-reduced-motion:no-preference){#homePage .st-tweek .vn-week-c{transition:transform .25s ease,box-shadow .25s ease,background .25s ease}}
 @media (max-width:359px){#homePage .st-today .st-tweek .vn-week-c{min-height:76px !important}#homePage .st-tweek .vn-week-t{font-size:11.5px !important}}
 @media (max-width:359px){#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:10.5px !important;letter-spacing:-.03em}#homePage .st-tweek .vn-week{padding:7px !important;gap:3px !important}}
@@ -1692,15 +1528,7 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 #homePage .st-tweek .vn-week-c.is-today .vn-week-d{transform:scale(1.14);color:#fff !important;
   background:linear-gradient(180deg,color-mix(in srgb,var(--k) 85%,#fff 8%),color-mix(in srgb,var(--k) 55%,#000));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 0 3px color-mix(in srgb,var(--k) 28%,transparent),0 8px 22px color-mix(in srgb,var(--k) 60%,transparent),0 0 30px color-mix(in srgb,var(--k) 38%,transparent) !important}
-/* done: a small check badge on the ring */
-#homePage .st-tweek .vn-week-m{position:absolute;top:-3px;right:calc(50% - 26px);height:16px;width:16px;display:block}
-#homePage .st-tweek .vn-week-c .vn-week-m i{width:16px;height:16px;border-radius:50%;background:var(--k);box-shadow:0 0 0 2px #14121f,0 0 10px color-mix(in srgb,var(--k) 80%,transparent);position:relative}
-#homePage .st-tweek .vn-week-c .vn-week-m i::after{content:"";position:absolute;left:5px;top:3.5px;width:4px;height:7px;border:solid #0d0b16;border-width:0 2px 2px 0;transform:rotate(40deg)}
-#homePage .st-tweek .vn-week-c.is-today .vn-week-m i{background:#fff}
-@media (max-width:359px){#homePage .st-tweek .vn-week-d{width:34px;height:34px;font-size:12.5px !important}#homePage .st-tweek .vn-week::before{top:18px}#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:10px !important;letter-spacing:-.02em !important}#homePage .st-tweek .vn-week-m{right:calc(50% - 22px)}}
-#homePage .st-tweek .vn-week-m{top:-2px;right:calc(50% - 20px);width:14px;height:14px}
-#homePage .st-tweek .vn-week-c .vn-week-m i{width:14px;height:14px}
-#homePage .st-tweek .vn-week-c .vn-week-m i::after{left:4.5px;top:2.5px}
+@media (max-width:359px){#homePage .st-tweek .vn-week-d{width:34px;height:34px;font-size:12.5px !important}#homePage .st-tweek .vn-week::before{top:18px}#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:10px !important;letter-spacing:-.02em !important}}
 
 /* Week rail v2 — glass, quiet glow (matches the app's cards) */
 #homePage .st-tweek .vn-week{padding:12px 6px 10px !important;border-radius:22px;
@@ -1726,8 +1554,6 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
   box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -6px 12px rgba(0,0,0,.14),0 6px 14px color-mix(in srgb,var(--k) 26%,rgba(0,0,0,.3)) !important}
 #homePage .st-tweek .vn-week-c.is-today .vn-week-d::before{background:linear-gradient(150deg,rgba(255,255,255,.8),color-mix(in srgb,var(--k) 70%,#fff) 60%,color-mix(in srgb,var(--k) 70%,transparent))}
 #homePage .st-tweek .vn-week-c.is-today .vn-week-t{color:#fff !important}
-#homePage .st-tweek .vn-week-c .vn-week-m i{box-shadow:0 0 0 2px rgba(20,18,31,.9) !important}
-#homePage .st-tweek .vn-week-m{top:-3px}
 @media (prefers-reduced-transparency:reduce){#homePage .st-tweek .vn-week{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(40,36,60,.9) !important}#homePage .st-tweek .vn-week-d{-webkit-backdrop-filter:none;backdrop-filter:none}}
 @media (max-width:359px){#homePage .st-tweek .vn-week{padding:10px 4px 8px !important}#homePage .st-tweek .vn-week::after{top:27px}}
 #homePage .st-tweek .vn-week::after{display:none}
@@ -1740,76 +1566,20 @@ html body :where(*:not(svg *)){font-family:var(--st-font) !important}
 @media (max-width:359px){#homePage .st-tweek .vn-week-t,#homePage .st-tweek .vn-week-c.is-today .vn-week-t{font-size:10px !important;letter-spacing:-.02em !important}}
 
 /* Today · NXTFRM decision: evidence as glass chips with a real sparkline and a 3-step confidence meter (D36) */
-.st-t-dec .st-why{padding:0 12px;border-radius:999px;min-height:32px;background:rgba(var(--st-hl),.06);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.12)}
-.st-dec-ev{display:grid;grid-template-columns:1.35fr 1fr;gap:10px;margin-top:16px}
-.st-dec-chip{position:relative;display:flex;align-items:center;gap:10px;min-width:0;padding:11px 12px;border-radius:16px;
-  background:linear-gradient(160deg,rgba(255,255,255,.075),rgba(255,255,255,.02) 60%,rgba(124,77,255,.05));
-  -webkit-backdrop-filter:blur(12px) saturate(1.25);backdrop-filter:blur(12px) saturate(1.25);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(var(--st-hl),.08)}
-.st-dec-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
-.st-dec-txt small{font-size:var(--fs-micro,11px);font-weight:var(--fw-med,550);color:var(--st-ink-3)}
-.st-dec-txt b{font-size:var(--fs-body,14.5px);font-weight:var(--fw-semi,600);color:var(--st-ink);white-space:nowrap;text-transform:capitalize}
-.st-dec-trend .st-dec-txt b{text-transform:none}
-.st-dec-ico{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;color:var(--st-ink-2);background:rgba(var(--st-hl),.07);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.12)}
-.st-dec-trend.is-down{--e:#C4B5FD}.st-dec-trend.is-up{--e:#F0709A}.st-dec-trend.is-flat{--e:#b9b5cc}
-.st-dec-trend .st-dec-ico{color:var(--e);background:color-mix(in srgb,var(--e) 14%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--e) 35%,transparent)}
-.st-dec-spark{margin-left:auto;flex:0 0 auto;color:var(--e)}
-.st-dec-bars{margin-left:auto;display:flex;gap:3px;align-items:flex-end}
-.st-dec-bars i{width:5px;border-radius:2px;background:rgba(var(--st-hl),.14)}
-.st-dec-bars i:nth-child(1){height:8px}.st-dec-bars i:nth-child(2){height:12px}.st-dec-bars i:nth-child(3){height:16px}
-.st-dec-bars i.on{background:var(--st-accent-lift,#b18aff)}
-.vn-tone-watch .st-dec-bars i.on{background:var(--vn-review,#B8842A)}
-@media (max-width:359px){.st-dec-ev{grid-template-columns:1fr}.st-dec-spark{width:52px}}
-@media (prefers-reduced-transparency:reduce){.st-dec-chip{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(40,36,60,.9)}}
-.st-dec-ev{grid-template-columns:1fr;gap:8px}
-.st-dec-conf{padding:9px 12px}
-.st-dec-conf .st-dec-txt{flex-direction:row;align-items:baseline;gap:8px}
-.st-dec-spark{width:72px}
 
 /* ── Motion pass (D38) ─────────────────────────────────────────────────────
    Entrance plays when a card is first seen after a tab change (strata.js adds .st-play / .st-rv-in);
    a repaint after logging stays still. Every loop and entrance has a reduced-motion path. */
-button.st-dec-chip{border:0;font:inherit;color:inherit;text-align:left;width:100%;cursor:pointer;transition:transform .2s var(--st-out,ease),box-shadow .25s}
-button.st-dec-chip:active{transform:scale(.975)}
-@media (hover:hover){button.st-dec-chip:hover{transform:translateY(-1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(var(--st-hl),.16),0 8px 20px rgba(0,0,0,.25)}}
-.st-dec-chip::after{content:"›";margin-left:6px;color:var(--st-ink-4,#6b6880);font-size:18px;line-height:1;transition:transform .2s var(--st-out,ease),color .2s;flex:0 0 auto}
-.st-dec-chip:active::after{transform:translateX(3px);color:var(--st-ink-2)}
-.st-dec-bars,.st-dec-spark{margin-left:auto}
+
 /* tap ripple (all tiles, chips, quick actions, CTA) */
 .st-ripple{position:absolute;inset:0;border-radius:inherit;overflow:hidden;pointer-events:none;z-index:0}
 .st-ripple i{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.22),rgba(177,138,255,.12) 45%,transparent 70%);transform:scale(.1);opacity:1;animation:st-rip .6s var(--st-out,ease-out) forwards}
 @keyframes st-rip{to{transform:scale(1);opacity:0}}
-.st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row,.st-dec-chip{position:relative}
+.st-tile,.st-qa,.st-cta,.st-chip,.st-plan-row{position:relative}
 /* scroll-in for cards that start below the fold */
 .st-rv{opacity:0;transform:translateY(22px) scale(.985);transition:opacity .6s ease,transform .75s var(--st-spring,cubic-bezier(.2,.9,.3,1.2))}
 .st-rv.st-rv-in{opacity:1;transform:none}
 .st-enter .st-rv{animation:none !important}
-
-@media (prefers-reduced-motion:no-preference){
-  /* decision card: sparkline draws, dot lands, arrow breathes, meter climbs, hairline sweeps once */
-  .st-t-dec.st-play .st-tile-head,.st-t-dec.st-play h2,.st-t-dec.st-play .st-body{animation:st-rise .7s var(--st-spring,ease) both}
-  .st-t-dec.st-play h2{animation-delay:.07s}.st-t-dec.st-play .st-body{animation-delay:.14s}
-  .st-t-dec.st-play .st-dec-chip{animation:st-rise .7s var(--st-spring,ease) both}
-  .st-t-dec.st-play .st-dec-trend{animation-delay:.22s}.st-t-dec.st-play .st-dec-conf{animation-delay:.3s}
-  .st-t-dec.st-play .st-dec-line{stroke-dasharray:1;stroke-dashoffset:1;animation:st-draw 1.15s cubic-bezier(.3,.7,.2,1) .45s forwards}
-  .st-t-dec.st-play .st-dec-dot{opacity:0;transform-box:fill-box;transform-origin:center;animation:st-pop .45s var(--st-spring,ease) 1.5s forwards}
-  .st-t-dec.is-in .st-dec-dot{animation-name:st-dot-pulse;animation-duration:2.6s;animation-delay:2s;animation-iteration-count:infinite;opacity:1;transform-box:fill-box;transform-origin:center}
-  .st-t-dec.st-play .st-dec-bars i{transform-origin:bottom;animation:st-grow .6s var(--st-spring,ease) both}
-  .st-t-dec.st-play .st-dec-bars i:nth-child(1){animation-delay:.55s}.st-t-dec.st-play .st-dec-bars i:nth-child(2){animation-delay:.65s}.st-t-dec.st-play .st-dec-bars i:nth-child(3){animation-delay:.75s}
-  .st-t-dec.is-in .st-dec-trend.is-down .st-dec-ico svg{animation:st-nudge-dn 2.4s ease-in-out 1.6s infinite}
-  .st-t-dec.is-in .st-dec-trend.is-up .st-dec-ico svg{animation:st-nudge-up 2.4s ease-in-out 1.6s infinite}
-  .st-t-dec.is-in .st-dec-trend:not(.is-flat) .st-dec-ico{animation:st-ico-ring 3.2s ease-out 1.8s infinite}
-  .st-t-dec::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;
-    background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.1) 48%,rgba(177,138,255,.14) 52%,transparent 65%);background-size:250% 100%;background-position:120% 0}
-  .st-t-dec.st-play::after{animation:st-sweep 1.5s ease .35s 1 both}
-  .st-t-dec.vn-tone-watch.is-in{animation:st-watch 4.2s ease-in-out 1.2s infinite}
-}
-@keyframes st-nudge-dn{0%,100%{transform:translateY(-1.5px)}50%{transform:translateY(2px)}}
-@keyframes st-nudge-up{0%,100%{transform:translateY(1.5px)}50%{transform:translateY(-2px)}}
-@keyframes st-ico-ring{0%{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--e) 35%,transparent),0 0 0 0 color-mix(in srgb,var(--e) 40%,transparent)}70%,100%{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--e) 35%,transparent),0 0 0 9px transparent}}
-@keyframes st-dot-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.45)}}
-@keyframes st-sweep{0%{opacity:1;background-position:120% 0}100%{opacity:0;background-position:-40% 0}}
-@keyframes st-watch{0%,100%{box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),0 0 0 0 rgba(184,132,42,0)}50%{box-shadow:inset 0 0 0 1px rgba(184,132,42,.45),0 0 26px rgba(184,132,42,.16)}}
 @media (prefers-reduced-motion:reduce){.st-rv{opacity:1;transform:none;transition:none}.st-ripple{display:none}}
 
 /* ── Canvas polish (D39) ───────────────────────────────────────────────────
@@ -1885,7 +1655,6 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 .st-pillg.is-goal rect{fill:rgba(20,18,30,.86);stroke:rgba(205,187,255,.45)}
 .st-pillg.is-goal text{fill:var(--st-ink);font:590 10.5px var(--st-font)}
 
-
 /* Week by week options */
 .wx-chip{display:inline-flex;align-items:center;gap:3px;justify-self:start;padding:4px 9px 4px 7px;border-radius:99px;font:600 12.5px/1 var(--st-font);font-variant-numeric:tabular-nums;color:var(--st-ink-2);
   background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.02));box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(var(--st-hl),.1)}
@@ -1897,9 +1666,9 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 
 /* ================= All-screens pass (D42): one glass system, one pill, one numeral ================= */
 /* Today */
-.st-scan-c .wx-chip{margin-top:6px;padding:3px 8px 3px 6px;font-size:12px}
+
 .wx-chip.is-watch{color:#E7B45A;background:linear-gradient(160deg,rgba(184,132,42,.16),rgba(184,132,42,.04));box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(184,132,42,.34)}
-.st-scan-c b.vn-num{font-weight:300 !important;letter-spacing:-.02em}
+
 .st-cta{box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 12px 26px -12px rgba(124,58,237,.65)}
 /* Train */
 #trainPage .st-train .st-entry .nxp-stepper-row input::placeholder{color:rgba(var(--st-hl),.2)}
@@ -1951,7 +1720,7 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 ::selection{background:rgba(139,92,246,.5);color:#fff}
 html{caret-color:#B49AFF;-webkit-tap-highlight-color:transparent}
 :where(button,a,[role=button],summary,select,textarea,input,[tabindex]):focus-visible{outline:2px solid rgba(180,154,255,.8) !important;outline-offset:3px}
-.vn-num,.st-odo,.st-mini-v,.st-qw-field input,.nxp-stepper-row input,.vn-row-v{font-variant-numeric:tabular-nums}
+.vn-num,.st-odo,.st-qw-field input,.nxp-stepper-row input,.vn-row-v{font-variant-numeric:tabular-nums}
 
 /* Radii onto three steps: tiles, inner cards, controls */
 #morePage .vn-set-group,#morePage .vn-set-block,#morePage .apx96-card{border-radius:var(--r-tile) !important}
@@ -1964,18 +1733,6 @@ html{caret-color:#B49AFF;-webkit-tap-highlight-color:transparent}
 @keyframes st-toast-in{from{opacity:0;translate:0 -14px;scale:.94}}
 
 /* ---- Today: the three mini tiles become one glass instrument strip ---- */
-#homePage .st-minis{gap:0;padding:4px;border-radius:var(--r-tile);
-  background:linear-gradient(160deg,rgba(255,255,255,.075),rgba(255,255,255,.02) 60%,rgba(124,77,255,.05));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(var(--st-hl),.08),0 18px 36px -24px rgba(0,0,0,.8);
-  -webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3)}
-#homePage .st-minis>.st-tile{background:none !important;box-shadow:none !important;border:0 !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;
-  border-radius:20px !important;min-height:108px;padding:13px 12px !important;position:relative}
-#homePage .st-minis>.st-tile+.st-tile::before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:1px;background:rgba(var(--st-hl),.09);display:block !important;opacity:1 !important;inset:18px auto 18px 0 !important;border-radius:0 !important;transform:none !important}
-#homePage .st-minis>.st-tile:active{background:rgba(255,255,255,.04) !important}
-#homePage .st-mini-v,#homePage .st-mini-v b,#homePage .st-minis .st-odo{font-family:var(--st-font-d) !important;font-weight:300 !important;font-size:26px !important;letter-spacing:-.03em !important;line-height:1 !important}
-#homePage .st-mini-v.st-mini-w{font:550 15.5px/1.2 var(--st-font) !important;letter-spacing:-.01em !important;white-space:normal}
-#homePage .st-minis .st-cat{font-size:12px !important}
-@media (prefers-reduced-transparency:reduce){#homePage .st-minis{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(32,29,46,.95)}}
 
 /* ---- Sheets and forms: one field recipe everywhere ---- */
 .n99-modal #n99-modal-title{font:600 22px/1.2 var(--st-font) !important;letter-spacing:-.015em !important}
@@ -2070,7 +1827,7 @@ html{caret-color:#B49AFF;-webkit-tap-highlight-color:transparent}
 #trainPage .st-coach-h{font-size:var(--fs-sect) !important;font-weight:var(--fw-semi) !important}
 #trainPage .st-coach-n{font-size:var(--fs-label) !important}
 #historyPage .nxp-cal-day b{font-size:var(--fs-label) !important;font-weight:var(--fw-semi) !important}
-#homePage .st-scan-c b em{font-size:var(--fs-micro) !important}
+
 #morePage .st-settings h2{font-size:var(--fs-hero) !important;font-weight:var(--fw-semi) !important}
 #morePage .st-rt-l b{font-size:var(--fs-row) !important;font-weight:var(--fw-semi) !important}
 #morePage .st-settings summary{font-size:var(--fs-row) !important}
@@ -2161,7 +1918,6 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #homePage .st-tweek-h{align-items:baseline;gap:10px}
 #homePage .st-tweek-h .vn-text{white-space:nowrap;flex:0 0 auto}
 /* Lifts mini with a recent outcome */
-.st-mini-lifts .st-mini-v small{font-size:12px;font-weight:550;color:var(--st-ink-3);margin-left:3px}
 
 
 /* Five range options (2W 1M 3M Cut All) on a 320px phone: the row stays one line, each
@@ -2176,26 +1932,8 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
    reduced-motion path. Status stays a word first, shape second, hue third. */
 
 /* -- Today: Decision trend chip as a 28-day mini chart -- */
-.st-dec-ev.has-plot{grid-template-columns:1fr !important}
-.st-dec-chip.st-dec-chart{flex-direction:column;align-items:stretch;gap:8px;padding:12px 12px 8px}
-.st-dec-chart .st-dec-top{display:flex;align-items:center;gap:10px;min-width:0}
-.st-dec-range{margin-left:auto;font:550 12.5px var(--st-font);color:var(--st-ink-2);white-space:nowrap;font-variant-numeric:tabular-nums}
-.st-dec-plot{display:block;width:100%;height:auto;aspect-ratio:300/64;color:var(--e);overflow:visible}
-.st-dec-plot .st-dec-raw{fill:var(--st-ink-3);opacity:.45}
-.st-dec-plot .st-dec-dot{stroke:#14121f;stroke-width:1.5}
-.st-dec-chart .vn-chev,.st-dec-chart::after{display:none}
-@media (prefers-reduced-motion:no-preference){
-  .st-t-dec.st-play .st-dec-area{opacity:0;animation:st-fade .7s var(--st-out) 1.1s forwards}
-  .st-t-dec.st-play .st-dec-raw{opacity:0;animation:st-cm-fade .5s var(--st-out) .3s forwards}
-}
-@keyframes st-cm-fade{to{opacity:.45}}
-:root[data-nxp-motion="reduced"] .st-dec-area,:root[data-nxp-motion="reduced"] .st-dec-raw{animation:none !important}
-:root[data-nxp-motion="reduced"] .st-dec-area{opacity:1 !important}
-:root[data-nxp-motion="reduced"] .st-dec-raw{opacity:.45 !important}
 
-/* -- Today: minis never truncate; recap names wrap -- */
-.st-mini .st-meta{white-space:normal !important;overflow:visible !important;text-overflow:clip !important;line-height:1.25}
-.st-recap .st-rc-best li span{white-space:normal !important;overflow:visible !important;text-overflow:clip !important;line-height:1.3}
+
 
 /* -- Progress › Weight: range read -- */
 #weightPage .st-csum-d{margin:10px 0 0}
@@ -2299,12 +2037,11 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 .st-h2,.st-h3,.vn-perf-name,#trainPage .st-next .st-h3,#weightPage .wx-h2,#weightPage .wx-v,#weightPage .wx-gap,#weightPage .wx-cd b,#weightPage .wx-tp,#weightPage .wx-sum-c b{font-family:var(--st-font-d) !important;letter-spacing:-.025em !important}
 .st-h2{font-weight:620 !important}.st-h3{font-weight:600 !important}
 .st-eyebrow,.st-head .st-eyebrow{font-family:var(--st-font-d) !important;font-weight:520 !important;letter-spacing:.01em !important;color:color-mix(in srgb,var(--st-accent-lift) 70%,var(--st-ink-3)) !important}
-.st-odo,.st-od,.st-od-s i,#weightPage .st-perf-best,.st-recap .st-rc-stats b,.st-mini-v,.st-mini-v b,#homePage .st-minis .st-odo,.st-count-v b,.st-scan-c b,#weightPage .st-jr-big,#trainPage .st-cmeter-h .vn-num b{
+.st-odo,.st-od,.st-od-s i,#weightPage .st-perf-best,.st-count-v b,#weightPage .st-jr-big,#trainPage .st-cmeter-h .vn-num b{
   font-family:var(--st-font-d) !important;font-weight:220 !important;font-feature-settings:"tnum" 1,"ss01" 1;
 }
-.st-dec-txt b,.st-dec-range,#weightPage .st-perf-pill,.st-cat{font-family:var(--st-font-d) !important}
+#weightPage .st-perf-pill,.st-cat{font-family:var(--st-font-d) !important}
 .st-cat{font-weight:560 !important;letter-spacing:.02em !important}
-.st-dec-txt b{font-weight:560 !important;letter-spacing:-.01em !important}
 
 /* ---- Material: lit glass on every card --------------------------------------- */
 .st-tile,#weightPage .vn-perf-rows,#weightPage .nxp-progress-body-section,#historyPage .vn-hist-calendar,#historyPage .nxp-history-calendar,#historyPage .vn-hist-day,#morePage .vn-set-group,#morePage .vn-set-block,#trainPage .nxp-train-idle-copy,#trainPage .st-cmeter{
@@ -2324,17 +2061,324 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 
 /* ---- Signature 1 · Today hero: the training card is lit in its session hue --- */
 #homePage .st-t-train{
-  padding:22px 20px 20px !important;
+  padding:var(--tf-pad,22px 20px 20px) !important;
   background:
     radial-gradient(140% 85% at 15% -10%,color-mix(in srgb,var(--c) 42%,transparent),transparent 62%),
     radial-gradient(80% 60% at 110% 10%,color-mix(in srgb,var(--c) 18%,transparent),transparent 70%),
     linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.01)),rgba(16,15,24,.78) !important;
   box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 40px 80px -40px color-mix(in srgb,var(--c) 55%,transparent),0 30px 60px -32px rgba(0,0,0,.95) !important;
 }
-#homePage .st-t-train .st-h2{font-size:38px !important;line-height:1 !important;font-weight:650 !important;letter-spacing:-.045em !important;margin-top:6px !important;
+#homePage .st-t-train .st-h2{font-size:calc(38px*var(--tf-s,1)) !important;/* scales with Larger text (A-25); the declaration was already !important */line-height:1 !important;font-weight:650 !important;letter-spacing:-.045em !important;margin-top:6px !important;
   background:linear-gradient(180deg,#fff 40%,color-mix(in srgb,var(--c) 45%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent}
 #homePage .st-t-train .st-cta{box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 14px 30px -12px rgba(124,58,237,.85),0 0 0 1px rgba(255,255,255,.08) inset !important}
 #homePage .st-head .st-h1{font-size:34px !important}
+
+/* ---- Today brief (stage 5) · masthead context line and the focus card ------------------------------
+   Every selector is #homePage .tf-* (or the cue sheet's own .tf-anat-s). Type scales with --tf-s (larger
+   text, F8), rhythm with --tf-gap; compact = max-height 740px, narrow = max-width 359px. No !important. */
+#homePage{--tf-s:1;--tf-gap:12px;--tf-pad:18px 20px 18px;--tf-cap:54px;--tf-cta:54px}
+:root[data-nxp-size="large"] #homePage{--tf-s:1.12}
+@media (max-height:740px){#homePage{--tf-gap:10px;--tf-pad:16px;--tf-cap:46px;--tf-cta:50px}}
+@media (max-width:359px){#homePage{--tf-gap:8px;--tf-pad:13px 16px 14px;--tf-cta:48px}}
+/* One line, never wrapped or cut: a fragment that does not fit wraps onto the hidden second row. */
+/* Ink, not ink-2: the line sits on the sky's lightest haze (sampled ≈ rgb(101,85,138) at 10:00), where ink-2 measures 3.3:1. */
+#homePage .tf-ctx{display:flex;flex-wrap:wrap;height:20px;overflow:hidden;margin:6px 0 0;font:450 calc(14px*var(--tf-s))/20px var(--st-font);color:var(--st-ink)}
+#homePage .tf-f{white-space:nowrap}
+#homePage .tf-f b{font-weight:600;color:var(--st-ink)}
+#homePage .tf-sep{white-space:pre;color:var(--st-ink-2)}
+@media (max-width:359px){#homePage .tf-ctx{height:18px;font-size:calc(13px*var(--tf-s));line-height:18px}}
+
+#homePage .tf-head{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;margin-bottom:4px}
+#homePage .tf-state{display:flex;align-items:center;gap:7px;min-width:0;margin:0;font:560 calc(12.5px*var(--tf-s))/16px var(--st-font-d);color:var(--st-ink-2)}
+#homePage .tf-state span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#homePage .tf-sh{flex:none;width:12px;height:12px;color:var(--c)}
+#homePage .tf-cap{position:relative;flex:none;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:0;border-radius:999px;cursor:pointer;
+  background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);color:var(--btn-ink);font:560 calc(13px*var(--tf-s))/1 var(--st-font-d);white-space:nowrap}
+#homePage .tf-cap::after{content:"";position:absolute;inset:-6px -2px}
+#homePage .tf-cap span{opacity:.75}
+#homePage .tf-h{margin:0;font:inherit}
+#homePage .tf-card .tf-title{position:relative;display:inline-flex;align-items:center;gap:10px;max-width:100%;padding:0;border:0;text-align:left}
+#homePage .tf-card button.tf-title{cursor:pointer}
+#homePage .tf-card button.tf-title::after{content:"";position:absolute;inset:-4px -6px}
+#homePage .tf-chev{display:grid;place-items:center;flex:none;width:18px;height:18px;border-radius:50%;background:rgba(var(--st-hl),.1);color:var(--st-ink-2)}
+#homePage .tf-chev svg{width:12px;height:12px}
+@media (max-width:359px){#homePage .tf-card .tf-title{font-size:30px}}
+
+/* The tape: one cell per planned working set. */
+#homePage .tf-tape{display:flex;gap:6px;height:7px;margin-top:var(--tf-gap)}
+#homePage .tf-tg{display:flex;gap:3px;min-width:0}
+#homePage .tf-tg i{flex:1 1 0;min-width:2px;height:100%;border-radius:2px;background:rgba(var(--st-hl),.13)}
+#homePage .tf-tg i.is-on{background:var(--c);box-shadow:0 0 8px color-mix(in srgb,var(--c) 55%,transparent)}
+#homePage .tf-tg.is-cur i:not(.is-on){background:transparent;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 85%,#fff)}
+#homePage .tf-tg.is-bar{border-radius:2px;background:rgba(var(--st-hl),.13);overflow:hidden}
+#homePage .tf-tg.is-bar i{display:block;min-width:0;background:var(--c)}
+@keyframes tf-lit{from{opacity:.15;transform:scaleY(.4)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:no-preference){
+  :root:not([data-nxp-motion="reduced"]) #homePage.st-enter .tf-tg i.is-on{animation:tf-lit 180ms var(--st-out) both;animation-delay:calc(var(--i,0)*16ms)}
+}
+#homePage .tf-tl{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:16px;margin-top:6px}
+/* The count's second fragment drops whole when it has no room (never cut mid-word). */
+#homePage .tf-count{display:flex;flex-wrap:wrap;min-width:0;height:16px;overflow:hidden;font:500 calc(12.5px*var(--tf-s))/16px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-count>span{white-space:pre}
+#homePage .tf-count b{font-weight:600;color:var(--st-ink)}
+#homePage .tf-plan-tg{position:relative;flex:none;display:inline-flex;align-items:center;gap:3px;padding:0;border:0;background:none;cursor:pointer;
+  color:var(--btn-text);font:600 calc(12.5px*var(--tf-s))/16px var(--st-font-d)}
+#homePage .tf-plan-tg::after{content:"";position:absolute;inset:-14px -10px}
+#homePage .tf-plan-tg i{font-style:normal;transition:transform .18s var(--st-out)}
+#homePage .tf-plan-tg[aria-expanded="true"] i{transform:rotate(90deg)}
+#homePage .tf-plan{margin:8px 0 0;padding:0;list-style:none}
+#homePage .tf-plan li{display:flex;justify-content:space-between;gap:12px;font:450 calc(13.5px*var(--tf-s))/20px var(--st-font);color:var(--st-ink-2)}
+#homePage .tf-plan li b{flex:none;font:560 calc(12px*var(--tf-s))/20px var(--st-font-d);color:color-mix(in srgb,var(--c) 55%,#fff)}
+
+/* L1 insets inside the card: the cue, the now well, the receipt, the next session. */
+#homePage .tf-well,#homePage .tf-receipt,#homePage .tf-next{border-radius:var(--r-card);background:rgba(var(--st-hl),.045);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.07)}
+#homePage .tf-well{display:flex;align-items:center;gap:6px;margin-top:var(--tf-gap)}
+#homePage .tf-well-b{display:flex;flex-direction:column;align-items:flex-start;flex:1;min-width:0;min-height:44px;padding:7px 14px 6px;border:0;border-radius:inherit;background:none;color:inherit;text-align:left;cursor:pointer}
+#homePage .tf-well-b>span{max-width:100%}
+#homePage .tf-k{font:500 calc(12px*var(--tf-s))/16px var(--st-font);color:var(--st-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#homePage .tf-wt{font:600 calc(15px*var(--tf-s))/20px var(--st-font-d);letter-spacing:-.01em;color:var(--st-ink)}
+#homePage .tf-cue .tf-wt{font-size:calc(14.5px*var(--tf-s))}
+#homePage .tf-now .tf-wt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* One line of note keeps the card inside its budget (A-2, A-7); the whole note stays in the button's name. */
+#homePage .tf-wn{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden;font:450 calc(12.5px*var(--tf-s))/17px var(--st-font);color:var(--st-ink-3)}
+/* Under 360 the cue and the now well keep the structured target only (§4.3); the note stays in the button's name and in Train. */
+@media (max-width:359px){#homePage .tf-well .tf-wn{display:none}
+  /* …and the structured target and the state line wrap to a second line rather than being cut (I6: the words stay). */
+  #homePage .tf-now .tf-wt{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-height:18px}
+  #homePage .tf-state span{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-height:14px;text-overflow:clip}}
+#homePage .tf-rest{position:relative;flex:none;display:grid;place-content:center;justify-items:center;width:52px;height:52px;margin-right:8px;padding:0;border:0;border-radius:50%;background:none;color:var(--st-ink);cursor:pointer}
+#homePage .tf-rest svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+#homePage .tf-rest circle{fill:none;stroke-width:3}
+#homePage .tf-rest .t{stroke:rgba(var(--st-hl),.12)}
+#homePage .tf-rest .a{stroke:var(--c);stroke-linecap:round;stroke-dasharray:1 1;stroke-dashoffset:calc(1 - var(--tf-rest-pct,0))}
+@media (prefers-reduced-motion:no-preference){:root:not([data-nxp-motion="reduced"]) #homePage .tf-rest .a{transition:stroke-dashoffset 1s linear}}
+#homePage .tf-rest b{font:500 calc(14px*var(--tf-s))/16px var(--st-font-d);font-variant-numeric:tabular-nums}
+#homePage .tf-rest small{font:500 11px/12px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-note{margin:var(--tf-gap) 0 0;font:450 calc(13px*var(--tf-s))/18px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-receipt{margin-top:var(--tf-gap);padding:10px 14px}
+#homePage .tf-oc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none}
+#homePage .tf-oc li{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:6px;min-width:0}
+#homePage .tf-oc b{font:300 calc(26px*var(--tf-s))/28px var(--st-font-d);font-variant-numeric:tabular-nums;color:var(--st-ink)}
+#homePage .tf-oc span{display:flex;align-items:center;gap:5px;font:500 calc(12px*var(--tf-s))/16px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-oc i{font-style:normal;font-size:11px;color:var(--c)}
+#homePage .tf-oc .is-below i{color:var(--st-ink-3)}
+#homePage .tf-rc-cap{margin:6px 0 0;font:450 calc(12.5px*var(--tf-s))/17px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-moment{display:flex;gap:6px;margin:4px 0 0;font:560 calc(13px*var(--tf-s))/18px var(--st-font-d);color:var(--st-ink)}
+#homePage .tf-moment i{font-style:normal;color:var(--c)}
+/* Narrow: counters stack evenly and the moment (a celebration) yields its two lines to the task. */
+@media (max-width:359px){#homePage .tf-oc li{flex-direction:column}#homePage .tf-moment{display:none}}
+#homePage .tf-meter{display:flex;flex-direction:column;gap:8px;margin-top:var(--tf-gap)}
+#homePage .tf-meter>span{display:block;height:6px;border-radius:3px;background:rgba(var(--st-hl),.1);overflow:hidden}
+#homePage .tf-meter>span i{display:block;height:100%;border-radius:inherit;background:var(--c)}
+#homePage .tf-meter b{font:300 calc(26px*var(--tf-s))/28px var(--st-font-d);font-variant-numeric:tabular-nums;color:var(--st-ink)}
+#homePage .tf-meter small{margin-left:3px;font:500 calc(13px*var(--tf-s))/1 var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-next{display:flex;flex-direction:column;align-items:flex-start;width:100%;margin-top:var(--tf-gap);padding:11px 14px;border:0;color:inherit;text-align:left;cursor:pointer}
+#homePage .tf-next .tf-k i{display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;background:var(--st-lift);vertical-align:1px}
+#homePage .tf-opts{display:flex;flex-wrap:wrap;gap:8px;margin-top:var(--tf-gap)}
+#homePage .tf-opts .tf-opt{padding:0 14px;font-size:calc(14px*var(--tf-s))}
+@media (max-width:359px){#homePage .tf-opts .tf-opt{padding:0 12px;font-size:calc(13px*var(--tf-s))}}
+#homePage .tf-addon{display:flex;align-items:center;gap:7px;margin:10px 0 0;font:500 calc(12.5px*var(--tf-s))/16px var(--st-font);color:var(--st-ink-2)}
+
+/* The rail stays the D48 capsules; the card owns its header and the conditional legend. */
+#homePage .tf-card .tf-rail{margin-top:14px}
+#homePage .tf-card .st-tweek [data-rail] .st-cap{height:var(--tf-cap)}
+#homePage .tf-rail-h{height:18px;min-height:18px;margin-bottom:8px}
+#homePage .tf-rail-h .vn-text{position:relative;min-height:18px;line-height:18px}
+#homePage .tf-rail-h .vn-text::after{content:"";position:absolute;inset:-13px -8px}
+/* "today in progress" drops whole when the header has no room for it, never wrapping the count. */
+#homePage .tf-rh{display:flex;flex-wrap:wrap;min-width:0;height:18px;overflow:hidden;line-height:18px}
+#homePage .tf-rh>span{white-space:nowrap}
+@media (max-width:359px){#homePage .tf-ip{display:none}}
+#homePage .tf-legend{display:flex;flex-wrap:wrap;gap:4px 12px;margin:8px 0 0;font:500 calc(11px*var(--tf-s))/14px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-legend span{display:inline-flex;align-items:center;gap:5px}
+#homePage .tf-lg-m{width:11px;height:11px;color:var(--st-ink-2)}
+
+/* The button, always last: the page's only primary, or glass when the task is a review. */
+#homePage .tf-card .tf-cta{min-height:var(--tf-cta);margin-top:16px}
+/* Compact (375×667) and narrow (320×568): the measured fit — the rail, tape and button gaps close by 2–4 px each so
+   the button and the log strip's Zone A clear the dock; nothing is dropped. */
+:is(#homePage,.tf-anat-s) .tf-glass{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border:0;border-radius:999px;cursor:pointer;
+  background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);color:var(--btn-ink);font:600 calc(15px*var(--tf-s,1))/1 var(--st-font-d)}
+#homePage .tf-glass.tf-cta{width:100%;margin-top:16px;font-size:calc(16px*var(--tf-s))}
+#homePage .tf-glass span[aria-hidden]{font-size:18px;opacity:.8}
+/* Compact (375×667) and narrow (320×568): the measured fit — the masthead, the well, the rail, the tape and the button
+   close their gaps by 2–4 px each so the button and the log strip's Zone A clear the dock; nothing is dropped. */
+@media (max-height:740px){#homePage .st-head{margin-bottom:10px}#homePage .tf-ctx{margin-top:4px}#homePage .tf-well{margin-top:8px}#homePage .tf-well-b{padding:6px 14px 5px}#homePage .tf-card .tf-rail{margin-top:12px}#homePage .tf-card .tf-cta,#homePage .tf-glass.tf-cta{margin-top:12px}#homePage .tf-tl{margin-top:4px}#homePage .tf-tape{margin-top:8px}}
+@media (max-width:359px){#homePage .tf-head{min-height:30px}#homePage .tf-card .tf-rail{margin-top:12px}#homePage .tf-rail-h{margin-bottom:6px}#homePage .tf-card .tf-cta,#homePage .tf-glass.tf-cta{margin-top:12px}#homePage .tf-receipt{padding:8px 12px}#homePage .st-head{margin-bottom:8px}}
+
+/* The cue sheet: the carried insight's evidence, suggestion and what it rests on. */
+.tf-anat-s .tf-anat{display:grid;gap:12px;margin:14px 0}
+.tf-anat-s .tf-anat dt{font:600 11.5px/14px var(--st-font-d);color:var(--st-ink-3)}
+.tf-anat-s .tf-anat dd{margin:4px 0 0;font:500 13.5px/18px var(--st-font);color:var(--st-ink-2)}
+
+/* ---- Today brief (stage 5) · log strip, lead interpretation, digest (C3, C4) ---------------------------
+   L2 instrument glass for the log strip and the lead, L1 quiet glass for the digest. None of these carry
+   .st-tile (its forced background would need !important to change), so each draws its own material from
+   the shared tokens. No !important. */
+#homePage .tf-log,#homePage .tf-lead{position:relative;isolation:isolate;border-radius:var(--r-card);background:var(--st-tile),rgba(18,17,27,.72);box-shadow:var(--st-tile-hl),var(--st-depth)}
+#homePage .tf-log::before,#homePage .tf-lead::before{content:"";position:absolute;inset:0;z-index:2;padding:1px;border-radius:inherit;pointer-events:none;opacity:.4;background:var(--st-edge);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+@media (prefers-reduced-transparency:reduce){#homePage .tf-log,#homePage .tf-lead,#homePage .tf-dig-tile{background:rgba(30,27,44,.96)}}
+
+/* With the weigh-in pill gone (D121) the masthead ends at the context line; the card follows at the §2 rhythm. */
+#homePage .st-head{margin-bottom:15px}
+@media (max-height:740px){#homePage .st-head{margin-bottom:12px}}
+@media (max-width:359px){#homePage .st-head{margin-bottom:10px}}
+
+/* Log strip: two cells, each a Zone A (log / replay) over a Zone B (explain, open Progress). */
+#homePage .tf-log{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);overflow:hidden}
+#homePage .tf-lc{position:relative;display:grid;grid-template-rows:auto 1fr;min-width:0;overflow:hidden}
+#homePage .tf-lc+.tf-lc{box-shadow:inset 1px 0 0 var(--st-tile-line)}
+#homePage .tf-za,#homePage .tf-zb{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;width:100%;margin:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit}
+#homePage .tf-za{gap:1px;min-height:80px;padding:8px 12px 7px}
+#homePage .tf-zb{gap:0;min-height:50px;padding:5px 12px 6px;box-shadow:inset 0 1px 0 var(--st-tile-line)}
+#homePage .tf-za:active,#homePage .tf-zb:active{background:rgba(var(--st-hl),.04)}
+#homePage .tf-za:focus-visible,#homePage .tf-zb:focus-visible{z-index:3}
+/* Rows inside clipped tiles (the log cells, the digest and evidence rows, the wells): the 2 px lavender ring sits inside
+   the row with a soft halo, since the global 3 px outside offset is cut off by the tile's overflow. */
+#homePage .tf-za:focus-visible,#homePage .tf-zb:focus-visible,#homePage .tf-dig-row:focus-visible,#homePage .tf-well-b:focus-visible,#homePage .tf-next:focus-visible{outline-offset:-4px;border-radius:14px;box-shadow:inset 0 0 0 8px rgba(205,187,255,.14)}
+/* The unlogged Weight zone is lit (the D103 pill's job, D121): a hue corner bloom and a hue edge on this zone only. */
+#homePage .tf-za.is-lit{background:radial-gradient(120% 110% at 0% 0%,color-mix(in srgb,var(--c) 58%,transparent),transparent 64%),linear-gradient(180deg,color-mix(in srgb,var(--c) 12%,transparent),transparent 70%);box-shadow:inset 0 0 44px -10px color-mix(in srgb,var(--c) 55%,transparent),inset 0 1px 0 color-mix(in srgb,var(--c) 45%,rgba(255,255,255,.3))}
+#homePage .tf-za.is-lit::before{content:"";position:absolute;inset:0;padding:1px;border-radius:var(--r-card) 0 0 0;pointer-events:none;
+  background:linear-gradient(155deg,color-mix(in srgb,var(--c) 88%,#fff),color-mix(in srgb,var(--c) 55%,transparent) 48%,color-mix(in srgb,var(--c) 18%,transparent) 80%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+#homePage .tf-lr{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:2px 4px;width:100%;min-width:0}/* the state keeps its word: it wraps under the label rather than clipping */
+#homePage .tf-ll{display:inline-flex;align-items:center;gap:6px;flex:none;font:600 calc(12.5px*var(--tf-s))/16px var(--st-font-d);color:var(--st-ink)}
+#homePage .tf-ll i{width:6px;height:6px;border-radius:50%;background:var(--c)}
+#homePage .tf-ls{display:inline-flex;align-items:center;gap:4px;min-width:0;overflow:hidden;white-space:nowrap;font:600 calc(11px*var(--tf-s))/14px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-ls.is-ok{color:var(--st-accent-lift)}
+#homePage .tf-za.is-lit .tf-ls{color:var(--st-ink-2)}/* ink-3 measures 3.8:1 on the lit bloom */
+#homePage .tf-tick,#homePage .tf-lsm{flex:none;width:11px;height:11px}
+#homePage .tf-lv{display:flex;align-items:baseline;gap:3px;margin-top:2px;color:var(--st-ink)}
+#homePage .tf-lv b{font:300 calc(28px*var(--tf-s))/30px var(--st-font-d);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+#homePage .tf-lv small{font:500 calc(13px*var(--tf-s))/1 var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-lv.is-task{display:block;min-height:30px;font:600 calc(17px*var(--tf-s))/30px var(--st-font-d);letter-spacing:-.01em}
+#homePage .tf-lsub{display:flex;flex-wrap:wrap;max-width:100%;height:15px;overflow:hidden;font:400 calc(12px*var(--tf-s))/15px var(--st-font);color:var(--st-ink-3)}/* fragments drop whole, never mid-word */
+#homePage .tf-lsub>span{white-space:pre}
+#homePage .tf-lsub .is-old{color:var(--st-review);font-weight:600}
+#homePage .tf-zl{display:block;max-width:100%;padding-right:10px;font:500 calc(11px*var(--tf-s))/13px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-zl i{position:absolute;top:6px;right:9px;font-style:normal;font-size:13px;line-height:13px}
+#homePage .tf-zf{font:560 calc(13px*var(--tf-s))/16px var(--st-font-d);color:var(--st-ink-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+#homePage .tf-zf b{font-weight:600;color:var(--st-ink)}
+#homePage .tf-zp{display:block;width:100%;color:var(--c)}
+#homePage .tf-spark{display:block;overflow:visible}
+#homePage .tf-sp-raw{fill:var(--st-ink-3);opacity:.4}
+#homePage .tf-sp-end{fill:currentColor;stroke:#14121f;stroke-width:1.2}
+#homePage .tf-spark.is-paused{opacity:.4;filter:saturate(.2)}
+#homePage .tf-sp-n{display:flex;gap:6px;height:24px;align-items:center}
+#homePage .tf-sp-n i{width:7px;height:7px;border-radius:50%;box-shadow:inset 0 0 0 1.4px currentColor;opacity:.7}
+#homePage .tf-sp-n i.is-on{background:currentColor;opacity:1}
+#homePage .tf-cm{display:block;width:100%;height:4px;margin-top:8px;border-radius:2px;background:rgba(var(--st-hl),.1);overflow:hidden}
+#homePage .tf-cm i{display:block;height:100%;border-radius:inherit;background:var(--c)}
+/* Larger text under 430px: one column, each cell's zones side by side. */
+@media (max-width:429px){
+  :root[data-nxp-size="large"] #homePage .tf-log{grid-template-columns:minmax(0,1fr)}
+  :root[data-nxp-size="large"] #homePage .tf-lc{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto}
+  :root[data-nxp-size="large"] #homePage .tf-lc+.tf-lc{box-shadow:inset 0 1px 0 var(--st-tile-line)}
+  :root[data-nxp-size="large"] #homePage .tf-zb{box-shadow:inset 1px 0 0 var(--st-tile-line)}
+}
+@media (max-width:359px){
+  #homePage .tf-za{padding:10px 11px 8px}#homePage .tf-zb{padding:7px 11px 8px}
+  #homePage .tf-lv b{font-size:calc(25px*var(--tf-s))}
+  #homePage .tf-ls{font-size:calc(11px*var(--tf-s))}
+  #homePage .tf-lv.is-task{font-size:calc(15.5px*var(--tf-s))}
+}
+
+/* Lead: eyebrow, observation, body (three lines, then More), and the run-in anatomy rows. */
+#homePage .tf-lead{--c:var(--co-weight);padding:12px 18px 14px;scroll-margin-top:16px}
+#homePage .tf-lead.is-calm{background:radial-gradient(120% 90% at 0% 0%,color-mix(in srgb,var(--st-weight) 25%,transparent),transparent 58%),var(--st-tile),rgba(18,17,27,.72)}
+#homePage .tf-lead.is-act::before{opacity:1;background:linear-gradient(155deg,color-mix(in srgb,var(--c) 70%,#fff) 0%,color-mix(in srgb,var(--c) 42%,transparent) 26%,rgba(255,255,255,.05) 58%,color-mix(in srgb,var(--c) 52%,transparent) 100%)}
+#homePage .tf-lead.is-act{background:radial-gradient(130% 92% at 10% -14%,color-mix(in srgb,var(--c) 30%,transparent),transparent 62%),var(--st-tile),rgba(17,16,26,.78)}
+#homePage .tf-lead.is-watch::before{opacity:.85;background:linear-gradient(155deg,color-mix(in srgb,var(--st-review) 85%,#fff) 0%,color-mix(in srgb,var(--st-review) 45%,transparent) 30%,rgba(255,255,255,.04) 60%,color-mix(in srgb,var(--st-review) 55%,transparent) 100%)}
+#homePage .tf-lead.is-watch{background:radial-gradient(120% 90% at 0% 0%,color-mix(in srgb,var(--st-review) 16%,transparent),transparent 58%),var(--st-tile),rgba(18,17,27,.74)}
+@keyframes tf-edge{0%{opacity:.85}35%{opacity:1;filter:brightness(1.6)}100%{opacity:.85}}
+@media (prefers-reduced-motion:no-preference){:root:not([data-nxp-motion="reduced"]) #homePage.st-enter .tf-lead.is-watch::before{animation:tf-edge 600ms var(--st-out) 1}}
+#homePage .tf-le{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:22px;margin-bottom:6px}
+#homePage .tf-le-t{display:flex;flex-wrap:wrap;align-items:center;gap:2px 12px;min-width:0}
+#homePage .tf-le-d{display:inline-flex;align-items:center;gap:7px;font:500 calc(12px*var(--tf-s))/16px var(--st-font);color:var(--st-ink-2)}
+#homePage .tf-le-d .co-gl,#homePage .tf-gd .co-gl{color:color-mix(in srgb,var(--c) 78%,#fff)}
+#homePage .tf-sev{display:inline-flex;align-items:center;gap:6px;font:560 calc(12px*var(--tf-s))/16px var(--st-font-d);color:var(--st-ink-2)}
+#homePage .tf-sv{display:inline-block;flex:none;width:7px;height:7px;border-radius:50%}
+#homePage .tf-sv.is-calm{box-shadow:inset 0 0 0 1.4px var(--st-ok)}
+#homePage .tf-sv.is-act{background:var(--st-ok)}
+#homePage .tf-sv.is-watch{width:6px;height:6px;margin:0 1px;border-radius:1.5px;background:var(--st-review);transform:rotate(45deg)}
+#homePage .tf-sev.is-watch{color:color-mix(in srgb,var(--st-review) 55%,#fff)}
+#homePage .tf-tx{position:relative;flex:none;display:inline-flex;align-items:center;gap:3px;padding:0;border:0;background:none;cursor:pointer;color:var(--btn-text);font:600 calc(12.5px*var(--tf-s))/16px var(--st-font-d)}
+#homePage .tf-tx::after{content:"";position:absolute;inset:-14px -10px}
+#homePage .tf-tx i{font-style:normal}
+#homePage .tf-lead-h{margin:0;font:600 calc(18px*var(--tf-s))/24px var(--st-font-d);letter-spacing:-.02em;color:var(--st-ink);text-wrap:balance}
+#homePage .tf-lead-h:focus{outline:none}
+#homePage .tf-lead-h:focus-visible{outline:2px solid var(--btn-text);outline-offset:4px;border-radius:6px}
+#homePage .tf-lead-b{margin:6px 0 0;font:400 calc(14.5px*var(--tf-s))/21px var(--st-font);color:var(--st-ink-2)}
+#homePage .tf-lead-b.is-clamp:not(.is-open){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+#homePage .tf-more{margin-top:2px}
+/* Run-in rows: the label leads its own line and the value flows after it, so a short row is one line at every width. */
+#homePage .tf-anat{display:grid;gap:6px;margin:8px 0 0}
+#homePage .tf-anat>div{display:block;min-width:0;font:500 calc(13.5px*var(--tf-s))/21px var(--st-font);color:var(--st-ink-2)}
+#homePage .tf-anat dt{display:inline;margin-right:8px;font:600 calc(11.5px*var(--tf-s))/21px var(--st-font-d);color:var(--st-ink-3)}
+#homePage .tf-anat dd{display:inline;margin:0}
+#homePage .tf-anat dd>span{vertical-align:baseline}
+#homePage .tf-chips{display:inline;margin:0;padding:0;list-style:none}
+#homePage .tf-chips li{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:0 5px;max-width:100%;margin:0 4px 2px 0;padding:1px 8px;border-radius:12px;vertical-align:baseline;background:rgba(var(--st-hl),.06);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.09)}
+#homePage .tf-chip-l{font:500 calc(12px*var(--tf-s))/17px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-chip-d{color:var(--st-ink-4)}
+#homePage .tf-chip-v{font:560 calc(12.5px*var(--tf-s))/17px var(--st-font-d);color:var(--st-ink)}
+#homePage .tf-meter3{display:inline-flex;align-items:flex-end;gap:3px;margin-right:7px;vertical-align:baseline}
+#homePage .tf-meter3 i{width:4px;border-radius:1.5px;background:rgba(var(--st-hl),.16)}
+#homePage .tf-meter3 i:nth-child(1){height:6px}#homePage .tf-meter3 i:nth-child(2){height:9px}#homePage .tf-meter3 i:nth-child(3){height:12px}
+#homePage .tf-meter3 i.on{background:var(--st-accent-lift)}
+#homePage .tf-act{min-height:44px;margin-top:8px;padding:0 14px;font-size:calc(14px*var(--tf-s))}
+#homePage .tf-anat dd>span+.tf-act{display:flex;width:max-content}
+@media (max-width:359px){#homePage .tf-lead{padding:12px 14px}}
+
+/* The concern line (D122): ◆ Watch · title · Read below ↓, one line; the trailing words drop first. */
+#homePage button.tf-ctx{position:relative;width:100%;padding:0;border:0;background:none;cursor:pointer;text-align:left;color:var(--st-ink)}
+#homePage button.tf-ctx::after{content:"";position:absolute;inset:-12px 0}
+#homePage .tf-ctx .tf-w{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:color-mix(in srgb,var(--st-review) 38%,#fff)}/* the word lightens on the haze; the ◆ keeps the full amber */
+#homePage .tf-ctx .tf-wt-t{white-space:normal;font-weight:600}
+#homePage .tf-ctx .tf-rb{color:var(--st-ink)}
+
+/* Digest: one L1 tile of 58px hairline rows: More insights · N, then Recent evidence. */
+#homePage .tf-dig-tile{border-radius:var(--r-card);background:rgba(var(--st-hl),.028);box-shadow:inset 0 0 0 1px var(--st-tile-line),var(--st-tile-hl);overflow:hidden}
+#homePage .tf-dig-row{position:relative;display:flex;align-items:center;gap:12px;width:100%;min-height:58px;margin:0;padding:9px 16px;border:0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;list-style:none}
+#homePage .tf-dig-row::-webkit-details-marker{display:none}
+#homePage .tf-dig-row:active{background:rgba(var(--st-hl),.04)}
+#homePage .tf-dig-tile>*+.tf-dig-row,#homePage .tf-dig-list>li+li,#homePage .tf-dig-list{box-shadow:inset 0 1px 0 var(--st-tile-line)}
+#homePage .tf-dig-list{margin:0;padding:0;list-style:none}
+#homePage .tf-gds{display:flex;flex:none;min-width:30px}
+#homePage .tf-gds .tf-gd+.tf-gd{margin-left:-9px}
+#homePage .tf-gd{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:50%;background:color-mix(in srgb,var(--c) 16%,rgba(18,17,27,.9));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 30%,transparent)}
+#homePage .tf-gds .tf-gd{width:22px;height:22px}
+#homePage .tf-gd .co-gl{width:14px;height:14px}
+#homePage .tf-dig-tx{display:flex;flex-direction:column;flex:1;min-width:0}
+#homePage .tf-dig-t{display:flex;align-items:center;gap:8px;font:600 calc(15px*var(--tf-s))/20px var(--st-font-d);color:var(--st-ink)}
+#homePage .tf-pill{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:rgba(var(--st-hl),.1);font:600 calc(12px*var(--tf-s))/1 var(--st-font-d);color:var(--st-ink)}
+#homePage .tf-dig-p{display:flex;flex-wrap:wrap;height:17px;overflow:hidden;font:400 calc(13px*var(--tf-s))/17px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-dig-p span{white-space:pre}
+#homePage .tf-dig-ct{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:600 calc(14.5px*var(--tf-s))/20px var(--st-font-d);color:var(--st-ink)}
+#homePage .tf-dig-cs{display:flex;flex-wrap:wrap;align-items:center;height:17px;min-width:0;overflow:hidden;white-space:nowrap;font:400 calc(13px*var(--tf-s))/17px var(--st-font);color:var(--st-ink-3)}
+#homePage .tf-dig-cs b{font-weight:500;color:var(--st-ink-2)}
+#homePage .tf-dig-cs .tf-sp{white-space:pre}
+#homePage .tf-dl{font-weight:600;color:var(--st-ink-2)}
+#homePage .tf-dl.is-good{color:var(--st-accent-lift)}
+#homePage .tf-dl.is-watch{color:color-mix(in srgb,var(--st-review) 60%,#fff)}
+#homePage .tf-chv{flex:none;font-style:normal;font-size:18px;line-height:1;color:var(--st-ink-4);transition:transform .18s var(--st-out)}
+#homePage .tf-dig-tg[aria-expanded="true"] .tf-chv,#homePage .tf-dig-i[open]>summary .tf-chv{transform:rotate(90deg)}
+#homePage .tf-dig-x{padding:2px 16px 14px 58px}
+#homePage .tf-dig-b{margin:0;font:400 calc(14px*var(--tf-s))/20px var(--st-font);color:var(--st-ink-2)}
+#homePage .tf-dig-tools{display:flex;justify-content:flex-end;margin-top:10px}
+#homePage .tf-dig-sub{margin:0;padding:10px 16px 2px;box-shadow:inset 0 1px 0 var(--st-tile-line);font:500 calc(11px*var(--tf-s))/14px var(--st-font);color:var(--st-ink-4)}
+#homePage .tf-dig-sub+.tf-dig-row{box-shadow:none}
+@media (max-width:359px){#homePage .tf-dig-row{padding:9px 12px;gap:10px}#homePage .tf-dig-x{padding:2px 12px 12px}}
+@media (prefers-reduced-motion:reduce){#homePage .tf-chv{transition:none}}
+:root[data-nxp-motion="reduced"] #homePage .tf-chv{transition:none}
+/* Sparkline entry: the line draws once on tab entry; static under reduced motion. */
+@keyframes tf-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes tf-fade{from{opacity:0}}
+@media (prefers-reduced-motion:no-preference){
+  :root:not([data-nxp-motion="reduced"]) #homePage.st-enter .tf-sp-line{stroke-dasharray:1;animation:tf-draw 520ms var(--st-out) both}
+  :root:not([data-nxp-motion="reduced"]) #homePage.st-enter .tf-sp-raw,:root:not([data-nxp-motion="reduced"]) #homePage.st-enter .tf-sp-end{animation:tf-fade 440ms var(--st-out) both}
+}
 
 /* ---- Signature 2 · the dock's active tab is a lit capsule ------------------ */
 .tabs .tabs-inner.st-dock::before{
@@ -2371,12 +2415,6 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
   #weightPage h1,#historyPage h1,#morePage h1{font-size:31px !important}
 }
 /* The three minis are one instrument strip (D44): the strip carries the lit edge, not each tile. */
-#homePage .st-minis{position:relative;isolation:isolate;box-shadow:var(--st-depth) !important}
-#homePage .st-minis::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;z-index:2;background:var(--st-edge);
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
-#homePage .st-minis>.st-tile{background:none !important;box-shadow:none !important}
-#homePage .st-minis>.st-tile:first-child::before{display:none !important}
-#homePage .st-minis>.st-tile+.st-tile::before{padding:0 !important;-webkit-mask:none !important;mask:none !important;background:rgba(var(--st-hl),.09) !important}
 
 /* ---- D53 · bolder moves ------------------------------------------------------ */
 /* Page mastheads: every page title sits on its own light bloom, in the page's hue. */
@@ -2442,7 +2480,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #homePage .st-t-train .st-ghost{right:-34px !important;top:-30px !important;font-size:150px !important;opacity:.32 !important;
   background:linear-gradient(215deg,color-mix(in srgb,var(--c) 55%,transparent) 10%,transparent 60%) !important;-webkit-background-clip:text !important;background-clip:text !important}
 @media (max-width:359px){#homePage .st-t-train .st-ghost{font-size:120px !important}}
-@media (max-width:359px){#homePage .st-t-train{padding:20px 14px 18px !important}}
+@media (max-width:359px){#homePage .st-t-train{padding:var(--tf-pad,20px 14px 18px) !important}}
 
 /* =============================================================================
    D56 · Buttons: one capsule family
@@ -2468,13 +2506,13 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 .st-cta>span[aria-hidden]{display:grid;place-items:center;width:28px;height:28px;margin-right:-6px;border-radius:50%;font-size:18px;line-height:1;
   background:rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
 /* ---- Tier 2 · glass ------------------------------------------------------- */
-.n99-button.secondary,.st-chip,.st-link.st-why,.st-qa,#historyPage .nxp-cal-nav button,#historyPage .nxp-cal-today,.st-fold,.n99-modal .n99-icon,#morePage .vn-set-back,.st-dec-chip{
+.n99-button.secondary,.st-chip,.st-link.st-why,.st-qa,#historyPage .nxp-cal-nav button,#historyPage .nxp-cal-today,.st-fold,.n99-modal .n99-icon,#morePage .vn-set-back,.tf-glass{/* .tf-glass: Today's glass capsules join the tier, so the forced body font (html,body,button … !important) cannot take them off Geist (D56) */
   border-radius:999px !important;border:0 !important;
   background:var(--btn-glass) !important;box-shadow:var(--btn-glass-shadow) !important;
   color:var(--btn-ink) !important;font-family:var(--st-font-d) !important;font-weight:560 !important;letter-spacing:-.005em !important;
 }
-.st-dec-chip{border-radius:18px !important}                       /* evidence chips hold a chart, so they stay rounded rectangles */
-.st-dec-chip.st-dec-trend{background:linear-gradient(160deg,rgba(255,255,255,.075),rgba(255,255,255,.02) 60%,rgba(124,77,255,.06)) !important}
+                       /* evidence chips hold a chart, so they stay rounded rectangles */
+
 .st-link.st-why{color:var(--btn-text) !important}
 .st-qa>span[aria-hidden]{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;font-weight:500;color:#fff;
   background:color-mix(in srgb,var(--c,var(--st-accent)) 75%,#000 10%);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 4px 10px -4px var(--c,var(--st-accent))}
@@ -2965,38 +3003,15 @@ html.nx-reveal .tabs{animation:nx-dock-in .42s cubic-bezier(.32,.72,0,1) .06s ba
 }
 
 /* ---- Today · Coach stack: one lit-glass tile per insight --------------------------------- */
-.st-tile.co-tile{--c:var(--co-schedule);padding:18px 20px 12px}
-.co-tile.is-d-schedule{--c:var(--co-schedule)}
-.co-tile.is-d-strength{--c:var(--co-strength)}
-.co-tile.is-d-cardio{--c:var(--co-cardio)}
-.co-tile.is-d-weight{--c:var(--co-weight)}
-.co-tile.is-d-data{--c:var(--co-data)}
+
 /* act: lit edge and bloom in the domain's hue. watch: the default quiet edge. info: plain. */
-.st-tile.co-tile.is-act{
-  --st-edge:linear-gradient(155deg,color-mix(in srgb,var(--c) 70%,#fff) 0%,color-mix(in srgb,var(--c) 42%,transparent) 26%,rgba(255,255,255,.05) 58%,color-mix(in srgb,var(--c) 52%,transparent) 100%);
-  background:
-    radial-gradient(130% 92% at 10% -14%,color-mix(in srgb,var(--c) 36%,transparent),transparent 62%),
-    radial-gradient(80% 60% at 108% 6%,color-mix(in srgb,var(--c) 14%,transparent),transparent 70%),
-    linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.012)),rgba(17,16,26,.78) !important;
-  box-shadow:var(--st-depth),0 34px 64px -42px color-mix(in srgb,var(--c) 75%,transparent) !important;
-}
-.st-tile.co-tile.is-info{background:
-  radial-gradient(120% 90% at 0% 0%,color-mix(in srgb,var(--c) 11%,transparent),transparent 55%),
-  linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01)),rgba(18,17,27,.72) !important}
 
 /* eyebrow: the domain's small shape and word, then severity as a word and a 6px shape;
    Dismiss is the quiet text button at the right (the tile-head rule keeps it 44px tall). */
-.co-eb{margin-bottom:8px}
-.co-tags{display:flex;flex:1 1 auto;flex-wrap:wrap;align-items:center;gap:2px 12px;min-width:0}
-.co-dom{flex:0 1 auto;min-width:0;gap:7px}
-.co-gl{display:block;width:14px;height:14px;flex:none;color:color-mix(in srgb,var(--c) 78%,#fff)}
-.co-sev{display:inline-flex;align-items:center;gap:7px;flex:none;font:560 12px/1 var(--st-font-d) !important;color:var(--st-ink-2)}
-.co-sh{display:block;width:6px;height:6px;flex:none;border-radius:50%;background:#8B5CF6}
-.co-tile.is-watch .co-sh{border-radius:1.5px;background:#B8842A;transform:rotate(45deg)}
-.co-eb .vn-text{flex:none;min-width:44px;margin-right:-10px;padding:0 10px;font-size:14px}
 
-.co-title{margin:0;font:600 18px/1.25 var(--st-font-d) !important;letter-spacing:-.02em !important;color:var(--st-ink);text-wrap:balance}
-.co-body{margin:6px 0 0;font:400 14.5px/1.5 var(--st-font);color:var(--st-ink-2)}
+.co-gl{display:block;width:14px;height:14px;flex:none;color:color-mix(in srgb,var(--c) 78%,#fff)}
+
+.co-sh{display:block;width:6px;height:6px;flex:none;border-radius:50%;background:#8B5CF6}
 
 /* evidence: glass chips, "label · value" */
 .co-chips{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 0;padding:0;list-style:none}
@@ -3007,55 +3022,10 @@ html.nx-reveal .tabs{animation:nx-dock-in .42s cubic-bezier(.32,.72,0,1) .06s ba
 .co-chip-v{font:560 12.5px/1.35 var(--st-font-d) !important;color:var(--st-ink);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 
 /* the engine's action as the primary capsule, then Why: a fold with four short labelled lines */
-.co-act{display:flex;width:100%;min-height:48px;margin:14px 0 0;padding:0 16px}
-.co-act.is-q{align-items:center;justify-content:center;gap:8px;border:0;border-radius:999px;cursor:pointer;color:var(--btn-ink,#EDE8FF);
-  background:var(--btn-glass);box-shadow:var(--btn-glass-shadow);font:560 15px/1 var(--st-font-d) !important;-webkit-tap-highlight-color:transparent}
-.co-act.is-q span{font-size:18px;line-height:1;opacity:.7}
-.co-act.is-q:active{transform:scale(.975)}
-.co-act.is-q:focus-visible{outline:2px solid #CDBBFF;outline-offset:3px}
-.co-why{margin:4px 0 0}
-.co-act+.co-why{margin-top:2px}
-.co-why>summary{display:inline-flex;align-items:center;gap:3px;min-height:44px;padding:0 6px 0 0;list-style:none;cursor:pointer;-webkit-tap-highlight-color:transparent;
-  font:560 13px/1 var(--st-font);color:var(--btn-text,#CDBBFF)}
-.co-why>summary::-webkit-details-marker{display:none}
-.co-why>summary i{font-style:normal;font-size:17px;line-height:1;transition:transform .2s var(--st-out)}
-.co-why[open]>summary i{transform:rotate(90deg)}
-.co-why>summary:focus-visible{outline:2px solid #CDBBFF;outline-offset:2px;border-radius:8px}
-.co-why dl{display:grid;gap:12px;margin:0 0 8px;padding:2px 0 0}
-.co-why dt{margin:0 0 3px;font:560 11.5px/1.2 var(--st-font);letter-spacing:.01em;color:var(--st-ink-3)}
-.co-why dd{margin:0;font:400 13.5px/1.5 var(--st-font);color:var(--st-ink-2)}
 
 /* ---- Today · Week in review ------------------------------------------------------------- */
-.co-review{--c:var(--co-schedule)}
-.co-open{position:absolute;inset:0;z-index:1;width:100%;height:100%;margin:0;padding:0;border:0;border-radius:inherit;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-.co-open:active{background:rgba(var(--st-hl),.035)}
-.co-open:focus-visible{outline:2px solid #CDBBFF;outline-offset:-4px}
-.co-review .co-got{position:relative;z-index:2}
-.co-fig{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:14px 0 0;padding:14px 0 0;border-top:1px solid rgba(var(--st-hl),.07)}
-.co-fig-c{display:flex;flex-direction:column;gap:3px;min-width:0;padding:0 9px}
-.co-fig-c:first-child{padding-left:0}
-.co-fig-c:last-child{padding-right:0}
-.co-fig-c+.co-fig-c{border-left:1px solid rgba(var(--st-hl),.07)}
-.co-fig-c small{font:500 11.5px/1.2 var(--st-font);color:var(--st-ink-3)}
-.co-fig-c b{display:block;font:300 25px/1.05 var(--st-font-d) !important;letter-spacing:-.03em;color:var(--st-ink);white-space:nowrap;font-variant-numeric:tabular-nums}
-.co-fig-c b em{margin-left:1px;font:500 12.5px var(--st-font) !important;font-style:normal;letter-spacing:0;color:var(--st-ink-3)}
-.co-fig-s{display:flex;align-items:flex-start;gap:3px;min-height:29px;font:500 11.5px/1.25 var(--st-font);color:var(--st-ink-3)}
-.co-fig-s svg{display:block;width:10px;height:10px;flex:none;margin-top:1.5px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
-.co-fig-s.is-good{color:var(--st-lean)}
-.co-fig-s.is-up{color:var(--st-fat)}
-.co-out{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:12px 0 0;font:500 13px/1.35 var(--st-font);color:var(--st-ink-2)}
-.co-out-l{flex:0 0 100%;font:500 11.5px/1.2 var(--st-font);color:var(--st-ink-3)}
-.co-out span:not(.co-out-l){display:inline-flex;align-items:center;gap:6px}
-.co-out b{font-weight:650;color:var(--st-ink)}
-.co-out i{display:block;width:6px;height:6px;flex:none;border-radius:50%;background:var(--oc)}
-.co-out .is-beat{--oc:var(--st-lean)}
-.co-out .is-same{--oc:var(--st-accent)}
-.co-out .is-below{--oc:var(--st-fat)}
-.co-xm{margin:6px 0 0;font:450 12.5px/1.4 var(--st-font);color:var(--st-ink-3)}
-.co-more{display:flex;align-items:center;justify-content:flex-end;gap:2px;margin:8px 0 2px;font:560 13px/1 var(--st-font-d);color:var(--btn-text,#CDBBFF)}
-.co-more i{font-style:normal;font-size:17px;line-height:1}
+
 /* Monday's old "Last week" recap (strata.js) says the same thing; it shows only when the review does not. */
-.co-rv-on .st-recap{display:none !important}
 
 /* ---- Sheets: catch-up confirmation, excuse, week review --------------------------------- */
 .n99-modal .co-sheet .co-lead{margin:10px 0 0;font:400 14.5px/1.5 var(--st-font);color:var(--st-ink-2)}
@@ -3175,23 +3145,15 @@ html.nx-reveal .tabs{animation:nx-dock-in .42s cubic-bezier(.32,.72,0,1) .06s ba
 
 /* ---- Reduced motion: the final state is the state ---------------------------------------- */
 @media (prefers-reduced-motion:reduce){
-  .co-why>summary i,.co-row,.co-open{transition:none}
-  .co-row:active,.co-act.is-q:active{transform:none}
+  .co-row{transition:none}
+  .co-row:active{transform:none}
 }
-:root[data-nxp-motion="reduced"] .co-why>summary i,
-:root[data-nxp-motion="reduced"] .co-row,
-:root[data-nxp-motion="reduced"] .co-open{transition:none}
-:root[data-nxp-motion="reduced"] .co-row:active,:root[data-nxp-motion="reduced"] .co-act.is-q:active{transform:none}
+
+:root[data-nxp-motion="reduced"] .co-row{transition:none}
+:root[data-nxp-motion="reduced"] .co-row:active{transform:none}
 @media (max-width:359px){
-  .st-tile.co-tile{padding:16px 16px 10px}
-  .co-title{font-size:17px}
-  .co-fig{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:14px}
-  .co-fig-c:nth-child(3){padding-left:0;border-left:0}
-  .co-fig-c:nth-child(2){padding-right:0}
+
   .n99-modal .co-sheet .co-day{grid-template-columns:46px minmax(0,1fr) auto;gap:8px}
-}
-@media (min-width:600px){
-  .co-fig-c{padding:0 14px}
 }
 
 /* ===== Ascension · polish ===== */
@@ -3591,44 +3553,20 @@ body .toast.st-island.is-quiet{position:fixed !important;width:1px !important;he
 /* ---- D103 · Today: the weigh-in pill ----------------------------------------------------------------------------
    Under the greeting: a lit "Log morning weight" until this morning's reading is in (warm orb, as D81's chip), then
    the reading on quiet glass with a filled check. Replaces the 04–12 chip. */
-#homePage .st-wpill{position:relative;display:inline-flex;align-items:center;gap:9px;min-height:40px;margin-top:12px;padding:0 16px 0 12px;border:0;border-radius:999px;cursor:pointer;
-  -webkit-tap-highlight-color:transparent;font:600 14.5px/1 var(--st-font-d);color:var(--st-ink);background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.04));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.08),0 10px 24px -14px rgba(139,92,246,.8);transition:transform .18s cubic-bezier(.25,.8,.25,1)}
-#homePage .st-wpill::after{content:"";position:absolute;inset:-3px -2px}/* 46 pt effective */
-#homePage .st-wpill>i{flex:none;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff7ed,#f6b48a 55%,#d37732);box-shadow:0 0 12px rgba(246,180,138,.8)}
-#homePage .st-wpill b{font:inherit;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
-#homePage .st-wpill span{font:450 13.5px/1 var(--st-font);color:var(--st-ink-2)}
-#homePage .st-wpill.is-done{gap:8px;padding:0 15px 0 8px;background:linear-gradient(180deg,rgba(var(--st-hl),.07),rgba(var(--st-hl),.03)),rgba(14,12,24,.42);
-  box-shadow:inset 0 1px 0 rgba(var(--st-hl),.08),inset 0 0 0 1px rgba(var(--st-hl),.08)}/* darker glass: the pill sits on the brightest part of the sky */
-#homePage .st-wpill.is-done>i{display:grid;place-items:center;width:24px;height:24px;color:#15121f;background:var(--st-weight);box-shadow:0 0 14px rgba(180,154,255,.5)}
-#homePage .st-wpill.is-done>i svg{width:13px;height:13px}
-#homePage .st-wpill:active{transform:scale(.97)}
-#homePage .st-wpill:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:3px}
+
+/* 46 pt effective */
+
+/* darker glass: the pill sits on the brightest part of the sky */
 
 /* ---- D103 · Today: the coach deck -------------------------------------------------------------------------------
    Two or more coach notes fold into one deck: the top note shows its kind and headline on glass, the next two lie
    beneath as lit edges (iOS notification stack). A tap fans the deck out into the full notes; Show less folds it.
    STRATA.morph turns either change into one movement; reduced motion swaps in place. */
-#homePage .st-codeck{grid-column:1/-1;position:relative;min-width:0}
-#homePage .st-codeck-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:6px 2px 10px 4px}
-#homePage .st-codeck-t{display:inline-flex;align-items:center;gap:9px;margin:0;font:600 17px/1.2 var(--st-font-d) !important;letter-spacing:-.015em !important;color:var(--st-ink)}
-#homePage .st-codeck-n{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 7px;border-radius:999px;box-sizing:border-box;font:600 12.5px/1 var(--st-font-d);color:var(--st-ink-2);background:rgba(var(--st-hl),.09);font-variant-numeric:tabular-nums}
-#homePage .st-codeck-tg{min-height:44px;margin-right:-8px;padding:0 8px;font-size:14.5px}
-#homePage .st-codeck-b{position:relative;display:grid;gap:12px}
-#homePage .st-codeck-open{display:none}
+
 /* folded */
-#homePage .st-codeck:not(.is-open) .st-codeck-b{gap:0;padding-bottom:24px}
-#homePage .st-codeck:not(.is-open) .co-tile{grid-area:1/1;margin:0}
-#homePage .st-codeck:not(.is-open) .co-tile:first-child{z-index:3;padding-bottom:18px}
-#homePage .st-codeck:not(.is-open) .co-tile:first-child :is(.co-body,.co-chips,.co-act,.co-why,.co-fig,.co-out,.co-xm,.co-more,.co-open){display:none}
-#homePage .st-codeck:not(.is-open) .co-tile:first-child :is(.co-dismiss,.co-got){visibility:hidden}/* keeps the head row's height, so the title does not move when the deck opens */
-#homePage .st-codeck:not(.is-open) .co-tile:not(:first-child){position:absolute;top:0;left:0;right:0;bottom:24px;transform-origin:50% 100%;pointer-events:none}
-#homePage .st-codeck:not(.is-open) .co-tile:not(:first-child)>*{visibility:hidden}
-#homePage .st-codeck:not(.is-open) .co-tile:nth-child(2){z-index:2;transform:translateY(12px) scale(.95);opacity:.88}
-#homePage .st-codeck:not(.is-open) .co-tile:nth-child(3){z-index:1;transform:translateY(24px) scale(.9);opacity:.6}
-#homePage .st-codeck:not(.is-open) .co-tile:nth-child(n+4):not(.st-codeck-open){visibility:hidden}
-#homePage .st-codeck:not(.is-open) .st-codeck-open{display:block;position:absolute;top:0;left:0;right:0;bottom:24px;z-index:4;margin:0;padding:0;border:0;border-radius:var(--st-r);background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
-#homePage .st-codeck-open:focus-visible{outline:2px solid var(--st-accent-lift);outline-offset:2px}
+
+/* keeps the head row's height, so the title does not move when the deck opens */
+
 /* the morph: cards keep their stacking order while they travel; the page does not fade */
 :root[data-st-morph]::view-transition-old(root),:root[data-st-morph]::view-transition-new(root){animation:none}
 :root[data-st-morph]::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.32,.72,0,1)}
@@ -3710,14 +3648,15 @@ body .toast.st-island.is-quiet{position:fixed !important;width:1px !important;he
 .st-ripple.is-held i{transform:scale(.62);opacity:1}
 .st-ripple.is-out i{transform:scale(1.12);opacity:0;transition:transform .55s cubic-bezier(.32,.72,0,1),opacity .55s ease}
 
-
 /* ---- D75b · The live session is part of the dock ---------------------------------------------------------------- */
 .tabs>.st-live.is-docked{position:relative !important;left:auto !important;bottom:auto !important;transform:none !important;width:100% !important;max-width:none !important;
   min-height:0;height:58px;margin:0 0 6px;padding:6px 16px 6px 8px;border-radius:24px;box-sizing:border-box;
   background:radial-gradient(120% 140% at 0% 50%,rgba(139,92,246,.3),transparent 62%),linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02)) !important;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(205,187,255,.12) !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;overflow:hidden}
 .tabs>.st-live.is-docked .st-live-t{flex:1}
-@media (prefers-reduced-motion:no-preference){.tabs>.st-live.is-docked:not([hidden]){animation:st-live-grow .55s cubic-bezier(.32,.72,0,1) both !important}}
+@media (prefers-reduced-motion:no-preference){.tabs>.st-live.is-docked:not([hidden]){animation:st-live-grow var(--st-live-grow,.55s) cubic-bezier(.32,.72,0,1) both !important}}
+/* D123 · On Today the row comes back from the hand-off in the state tier (200 ms), not the first-arrival .55 s. */
+.tabs>.st-live.is-docked.is-handoff{--st-live-grow:var(--st-t-state,200ms)}
 @keyframes st-live-grow{from{height:0;margin-bottom:0;padding-top:0;padding-bottom:0;opacity:0}}
 :root[data-nxp-motion="reduced"] .tabs>.st-live.is-docked{animation:none !important}
 body.st-live-on main::after{height:76px}
@@ -3825,7 +3764,6 @@ body.st-live-on main::after{height:76px}
 @keyframes st-wm-halo{0%{transform:scale(.3);opacity:0}40%{opacity:1}100%{transform:scale(1.8);opacity:0}}
 :root[data-nxp-motion="reduced"] .st-wm,:root[data-nxp-motion="reduced"] .st-wm *{animation:none !important;stroke-dashoffset:0 !important}
 @media (prefers-reduced-motion:reduce){.st-wm-tr{stroke-dashoffset:0}}
-
 
 /* ---- D94 · Depth while scrolling: cards recede as they pass under the frosted top bar ---------------------------- */
 @supports (animation-timeline: view()){
