@@ -2368,6 +2368,28 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #homePage .tf-dig-b{margin:0;font:400 calc(14px*var(--tf-s))/20px var(--st-font);color:var(--st-ink-2)}
 #homePage .tf-dig-tools{display:flex;justify-content:flex-end;margin-top:10px}
 #homePage .tf-dig-sub{margin:0;padding:10px 16px 2px;box-shadow:inset 0 1px 0 var(--st-tile-line);font:500 calc(11px*var(--tf-s))/14px var(--st-font);color:var(--st-ink-4)}
+/* Latest Evo scan tile (D147): one L2 glass button, coral/body bloom, four metric cells with change pills. */
+#homePage .tf-scan{margin:0}
+#homePage .tf-sc{position:relative;isolation:isolate;display:flex;flex-direction:column;gap:8px;width:100%;min-height:44px;margin:0;padding:12px 14px 14px;border:0;border-radius:var(--r-card);cursor:pointer;font:inherit;text-align:left;color:var(--st-ink);background:radial-gradient(120% 100% at 0% 0%,color-mix(in srgb,var(--st-fat) 17%,transparent),transparent 62%),var(--st-tile),rgba(18,17,27,.72);box-shadow:var(--st-tile-hl),var(--st-depth);transition:transform .2s var(--st-out)}
+#homePage .tf-sc:active{transform:scale(.985)}
+#homePage .tf-sc:focus-visible{outline:2px solid rgba(205,187,255,.7);outline-offset:2px}
+#homePage .tf-sc-h{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:28px}
+#homePage .tf-sc-t{min-width:0;font:600 calc(14.5px*var(--tf-s))/20px var(--st-font-d);color:var(--st-ink)}
+#homePage .tf-sc-m{font-weight:400;color:var(--st-ink-3)}
+#homePage .tf-sc-go{flex:none;display:inline-flex;align-items:center;gap:3px;min-height:44px;margin:-8px -4px -8px 0;padding:0 4px 0 8px;font:600 calc(13px*var(--tf-s))/1 var(--st-font);color:color-mix(in srgb,var(--st-fat) 55%,#fff)}
+#homePage .tf-sc-go i{font-style:normal;font-size:18px;line-height:1}
+#homePage .tf-sc-r{font:400 calc(13px*var(--tf-s))/18px var(--st-font);color:var(--st-ink-2);text-wrap:balance}
+#homePage .tf-sc-g{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+#homePage .tf-sc-c{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;padding:10px 8px;border-radius:14px;background:rgba(var(--st-hl),.04)}
+#homePage .tf-sc-c small{font:500 calc(11px*var(--tf-s))/14px var(--st-font);color:var(--c)}
+#homePage .tf-sc-c b{font:300 calc(19px*var(--tf-s))/1.1 var(--st-font-d);letter-spacing:-.02em}
+#homePage .tf-sc-c b em{margin-left:1px;font:450 calc(10.5px*var(--tf-s)) var(--st-font);font-style:normal;color:var(--st-ink-3)}
+#homePage .tf-sc-c .wx-chip{margin-top:6px;padding:3px 7px 3px 5px;font-size:calc(12px*var(--tf-s))}
+@media (max-width:359px){#homePage .tf-sc-c{padding:9px 6px}#homePage .tf-sc-c b{font-size:calc(16px*var(--tf-s))}#homePage .tf-sc-c .wx-chip{padding:3px 5px 3px 4px}}
+@media (prefers-reduced-motion:reduce){#homePage .tf-sc{transition:none}#homePage .tf-sc:active{transform:none}}
+:root[data-nxp-motion="reduced"] #homePage .tf-sc{transition:none}
+:root[data-nxp-motion="reduced"] #homePage .tf-sc:active{transform:none}
+@media (prefers-reduced-transparency:reduce){#homePage .tf-sc{background:rgba(30,27,44,.96)}}
 #homePage .tf-dig-sub+.tf-dig-row{box-shadow:none}
 @media (max-width:359px){#homePage .tf-dig-row{padding:9px 12px;gap:10px}#homePage .tf-dig-x{padding:2px 12px 12px}}
 @media (prefers-reduced-motion:reduce){#homePage .tf-chv{transition:none}}

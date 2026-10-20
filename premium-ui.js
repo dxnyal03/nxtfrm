@@ -329,7 +329,7 @@ const NXP = (() => {
       const sub=perfLabel==='Building'?'Building · no comparable sessions yet':perfLabel==='Older history'&&lastPerfDate?`Older history · last ${N.shortDate(lastPerfDate)}`:`${perfLabel} · ${lifts.length} ${N.plural(lifts.length,'lift')}`;
       return {sub,label:`Lifts: ${sub}. Open Performance.`};
     })();
-    const digest=digestHTML({pick,r,plateau,rows,liftsRow,button:btn&&btn.label});
+    const digest=digestHTML({pick,r,plateau,rows,liftsRow,button:btn&&btn.label})+scanTileHTML();
     const surfaces=pick.lead.place==='afterFocus'?leadTile+logStrip:logStrip+leadTile;
     document.getElementById('homePage').innerHTML=`<div class="vn-today st-today">
       <div class="vn-pad">
@@ -712,25 +712,35 @@ const NXP = (() => {
           ${p.dl}
         </section>`;
   }
-  /* Recent evidence · latest Evo scan as one row (D42 tones: less fat is good news, less muscle is
-     something to watch, scale weight neutral; the arrow and number always carry the direction). */
-  function scanRowHTML(){
+  /* Latest Evo scan tile (D42 semantics, D106 "latest", D147): the newest scan, even without a weight,
+     with the figures it has. Change pills read by metric: less fat is good news, less muscle is
+     something to watch (never a claim it was kept), scale weight is neutral; arrow and number always
+     carry the direction. The one-line read is built from the same deltas, no score. */
+  function scanTileHTML(){
     const scans=bodyScanSource().filter(s=>s&&['bodyFat','fatMass','muscleMass','weight'].some(k=>N.finite(s[k])!==null));
     if(!scans.length)return '';
     const L=scans.at(-1),P=scans.at(-2)||null;
-    const part=(k,label,unit)=>{
-      const v=N.finite(L[k]);if(v===null)return null;
+    const ARW={dn:'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v7.5M2.8 6.6 6 9.8l3.2-3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',up:'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10V2.5M2.8 5.4 6 2.2l3.2 3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',eq:'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'};
+    const tone=(k,dir)=>dir==='eq'?'is-none':k==='muscleMass'?(dir==='dn'?'is-watch':'is-none'):k==='weight'?'is-none':(dir==='dn'?'is-down':'is-up');
+    const read=[],aria=[];
+    const cell=(k,label,unit,c,word)=>{
+      const v=N.finite(L[k]);if(v===null)return '';
       const pv=P?N.finite(P[k]):null,d=pv===null?null:v-pv,dir=d===null?null:Math.abs(d)<0.05?'eq':d<0?'dn':'up';
-      const tone=!dir||dir==='eq'||k==='weight'?'':k==='muscleMass'?(dir==='dn'?' is-watch':''):dir==='dn'?' is-good':'';
-      const u=unit==='%'?'%':' kg',uw=unit==='%'?'percent':'kilograms';
-      return {h:`${label} <b class="vn-num">${v.toFixed(1)}</b>${u}${d===null?'':` <span class="tf-dl${tone}">${dir==='eq'?'=':dir==='dn'?'↓':'↑'}${dir==='eq'?'':Math.abs(d).toFixed(1)}</span>`}`,
-        a:`${label} ${v.toFixed(1)} ${uw}${d===null?'':dir==='eq'?', unchanged':`, ${dir==='dn'?'down':'up'} ${Math.abs(d).toFixed(1)}`}`};
+      const amt=d===null?'':Math.abs(d).toFixed(1),uw=unit==='%'?'percent':'kilograms';
+      aria.push(`${label} ${v.toFixed(1)} ${uw}${d===null?'':dir==='eq'?', unchanged':`, ${dir==='dn'?'down':'up'} ${amt}${k==='muscleMass'&&dir==='dn'?', one to watch':''}`}`);
+      if(d!==null&&word)read.push({k,dir,t:dir==='eq'?`${word} unchanged`:`${word} ${dir==='dn'?'down':'up'} ${amt}${unit==='%'?'':' kg'}${unit==='%'?' pts':''}`+(k==='muscleMass'&&dir==='dn'?' (watch)':'')});
+      return `<span class="tf-sc-c" style="--c:${c}"><small>${label}</small><b class="vn-num">${v.toFixed(1)}<em>${unit}</em></b>${d===null?'':`<span class="wx-chip ${tone(k,dir)}">${ARW[dir]}${dir==='eq'?'0.0':amt}</span>`}</span>`;
     };
-    const parts=[part('bodyFat','Fat','%')||part('fatMass','Fat mass','kg'),part('muscleMass','Muscle','kg')].filter(Boolean);
-    if(!parts.length){const wt=part('weight','Weight','kg');if(wt)parts.push(wt);}
-    return `<button type="button" class="tf-dig-row tf-ev" style="--c:var(--st-fat)" onclick="NXT.ui.view='body';switchTab('weight')" aria-label="${esc(`Latest Evo scan, ${N.shortDate(L.date)}: ${parts.map(x=>x.a).join('; ')}. Open Body.`)}">
-            <span class="tf-gd" aria-hidden="true">${coIcon('weight')}</span><span class="tf-dig-tx"><span class="tf-dig-ct">Latest Evo scan · ${esc(N.shortDate(L.date))}</span><span class="tf-dig-cs">${parts.map((x,j)=>`<span class="tf-sp">${j?' · ':''}${x.h}</span>`).join('')}</span></span><i class="tf-chv" aria-hidden="true">›</i>
-          </button>`;
+    const cells=cell('bodyFat','Fat %','%','var(--st-fat)','Fat')+cell('fatMass','Fat mass','kg','var(--st-fat)',null)+cell('muscleMass','Muscle','kg','var(--st-lean)','Muscle')+cell('weight','Weight','kg','var(--st-weight)','Weight');
+    const fatMassRead=(()=>{if(read.some(r=>r.k==='bodyFat'))return null;const v=N.finite(L.fatMass),pv=P?N.finite(P.fatMass):null;if(v===null||pv===null)return null;const d=v-pv;return Math.abs(d)<0.05?'Fat mass unchanged':`Fat mass ${d<0?'down':'up'} ${Math.abs(d).toFixed(1)} kg`;})();
+    const parts=read.map(r=>r.t);if(fatMassRead)parts.unshift(fatMassRead);
+    const line=P?(parts.length?parts.join(' · '):'Nothing to compare on this scan yet'):'First scan on record · nothing to compare yet';
+    const vs=P?` · vs ${N.shortDate(P.date)}`:'';
+    return `<section class="tf-scan" aria-label="Latest Evo scan"><button type="button" class="tf-sc" style="--c:var(--st-fat)" onclick="NXT.setView('body');switchTab('weight')" aria-label="${esc(`Latest Evo scan, ${N.shortDate(L.date)}${vs}: ${aria.join('; ')}. Open Body.`)}">
+          <span class="tf-sc-h"><span class="tf-sc-t">Latest Evo scan<span class="tf-sc-m"> · ${esc(N.shortDate(L.date))}${esc(vs)}</span></span><span class="tf-sc-go" aria-hidden="true">Body <i>›</i></span></span>
+          <span class="tf-sc-r">${esc(line)}</span>
+          <span class="tf-sc-g">${cells}</span>
+        </button></section>`;
   }
   /* More insights · N (everything pickToday did not carry or lead, in engine order), then Recent evidence. */
   function digestHTML(m){
@@ -753,7 +763,7 @@ const NXP = (() => {
             <div class="tf-dig-x">${p.body?`<p class="tf-dig-b">${esc(tfMinus(p.body))}</p>`:''}${p.dl}<div class="tf-dig-tools">${p.tools}</div></div></details></li>`;
     }).join('')}</ul>`:'';
     const lifts=m.liftsRow?`<button type="button" class="tf-dig-row tf-ev" style="--c:var(--co-strength)" onclick="NXT.ui.view='strength';switchTab('weight')" aria-label="${esc(m.liftsRow.label)}"><span class="tf-gd" aria-hidden="true">${coIcon('strength')}</span><span class="tf-dig-tx"><span class="tf-dig-ct">Lifts</span><span class="tf-dig-cs">${m.liftsRow.sub.split(' · ').map((t,j)=>`<span class="tf-sp">${j?' · ':''}${esc(t)}</span>`).join('')}</span></span><i class="tf-chv" aria-hidden="true">›</i></button>`:'';
-    const scan=scanRowHTML(),ev=lifts+scan;
+    const ev=lifts;
     if(!head&&!ev)return '';
     return `<section class="tf-dig${open?' is-open':''}" aria-labelledby="tf-dig-h"><h2 class="st-sr" id="tf-dig-h">More insights</h2>
         <div class="tf-dig-tile">${head}${list}${ev?`<p class="tf-dig-sub">Recent evidence</p>${ev}`:''}</div>
