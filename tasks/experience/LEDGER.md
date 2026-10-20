@@ -25,4 +25,6 @@ main or deploy. RELEASE 163. Phone first (320–430 px); desktop layouts withdra
 | Checkpoint: fixtures, phone shots, preview 8766, simulator | coordinator | in progress | fixtures `ad0756f`…`961defc`; capture → cache `experience/checkpoint/` | capture running; simulator notes `checkpoint/webkit-notes.md` | report after the review |
 | Cross-review | reviewer / Sonnet 5.5 high (running) | in progress | HEAD 46f3878 | — | builders fix, re-review changed areas |
 | Stage 7 proposals (EWMA, rate range, arrival) | owner decision; nxtfrm-analysis-specialist / Opus only for a bounded question | pending owner | ANALYTICS-STUDY.md, cache patches | reviewed by skeptics | ask the owner; implement with Sonnet |
+| Today: Latest Evo scan tile restored (D147, owner request) | builder / Sonnet 5.5 medium | done | `040d9c4` | 28 suites 0 FAIL; 390/375/320 checked | pill colours vs D42 (less fat = mint) to confirm in the fix round |
+| Weight plate declutter (D148, owner feedback) | builder / Sonnet 5.5 medium (running) | in progress | — | — | before/after to the owner |
 | Stage 6 remaining pages | builders / Sonnet | queued | — | — | after the checkpoint is reviewable |
