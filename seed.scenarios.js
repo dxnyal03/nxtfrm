@@ -333,8 +333,19 @@
       const first = templateNames(state.dayType, state.gym)[0];
       state.exercise = first ? first.name : '';
     },
-    'today-active'() {
-      /* The default seed already holds the live session (Full Body A, 6 of 15, started ~22 min ago). */
+    'today-active'(cut, day) {
+      /* The seed holds a live session for its own lifting day; opened on a day the plan makes a walk or
+         rest, the day is overridden to a lifting day and the first six working sets are logged unfinished. */
+      noteUndo(cut, day, settings.dayOverrides && settings.dayOverrides[day]);
+      const type = ensureLiftingToday(day), gym = state.gym || 'Gym A';
+      const today = (Array.isArray(state.logs) ? state.logs : []).filter(r => r && r.date === day && (r.gym || 'Gym A') === gym && r.setType !== 'warmup');
+      if (!today.length) {
+        clearToday(cut, day);
+        const logs = finishedSession(type, gym, day).slice(0, 6);
+        state.logs = state.logs.concat(logs);
+        state.exercise = logs.length ? logs[logs.length - 1].exercise : '';
+      }
+      delete cut.sessions[keyFor(type, day, gym)];
     },
     'today-finished'(cut, day) {
       noteUndo(cut, day, settings.dayOverrides && settings.dayOverrides[day]);
@@ -436,6 +447,13 @@
     `-webkit-backdrop-filter:blur(12px) saturate(1.2);backdrop-filter:blur(12px) saturate(1.2)}`;
   let badgeObserver = null;
 
+  /* The badge sits under the status bar, or under the local-only banner while that is on screen. */
+  function placeBadge(el) {
+    const banner = document.getElementById('cloudLocalBanner');
+    const r = banner && !banner.hidden ? banner.getBoundingClientRect() : null;
+    el.style.top = r && r.height > 0 && r.bottom > 0 ? Math.round(r.bottom + 8) + 'px' : '';
+  }
+
   function mountBadge(name) {
     if (!document.body) return;
     let style = document.getElementById(BADGE_ID + '-style');
@@ -455,6 +473,14 @@
     el.dataset.scenario = name;
     el.textContent = 'Synthetic data · ' + name;
     if (el.parentNode !== document.body) document.body.appendChild(el);
+    placeBadge(el);
+    if (!el.dataset.placed) {
+      el.dataset.placed = '1';
+      let raf = 0;
+      const re = function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; placeBadge(el); }); };
+      window.addEventListener('scroll', re, { passive: true });
+      window.addEventListener('resize', re);
+    }
     /* Should anything replace body's children wholesale, put the badge back. */
     if (!badgeObserver && typeof MutationObserver === 'function') {
       badgeObserver = new MutationObserver(function () {
