@@ -24,7 +24,7 @@
     settings: 'apm_settings'
   };
 
-  const SEED_VERSION = 1;
+  const SEED_VERSION = 2;
   let forceSeed = false;
 
   function uid() {
@@ -128,29 +128,35 @@
     ]
   };
 
+  /* Mirrors the app's base programme (cut-support.js) so the demo history matches the plan on screen. */
+  const START = {};
+  Object.keys(TEMPLATES_SEED).forEach(k => TEMPLATES_SEED[k].forEach(e => { START[e.name] = e; }));
+  START['Leg Extension'] = { name: 'Leg Extension', start: 40, inc: 2.5, reps: [10, 15] };
+  const PROGRAMME = {
+    FullA: [['Incline Dumbbell Press', 3], ['Chest Supported T-Bar Row', 3], ['Leg Press', 3], ['Hamstring Curl', 2], ['Cable Lateral Raise', 2], ['Ab Crunch', 2]],
+    FullB: [['Romanian Deadlift', 3], ['Lat Pulldown', 3], ['Smith Machine Bench Press', 3], ['Leg Extension', 2], ['Reverse Fly', 2], ['DB Preacher Curl', 2]],
+    FullC: [['Leg Press', 2], ['Machine Shoulder Press', 2], ['Unilateral Seated Row', 3], ['Hamstring Curl', 2], ['Tricep Pushdown', 2], ['Ab Crunch', 2]]
+  };
+  const LIFT_DAY = { 1: 'FullA', 3: 'FullB', 5: 'FullC' };
+
   function buildLogs() {
     const seenByExercise = {};
     const logs = [];
-    const rotation = ['Push', 'Pull', 'Pump', 'Legs'];
     let sessionIndex = 0;
-    let liftOpportunity = 0;
-    for (let day = -89; day <= -1 && sessionIndex < 10; day++) {
+    for (let day = -89; day <= -1; day++) {
       const date = dateFromToday(day);
       const d = new Date(date + 'T12:00:00');
-      const dow = d.getDay();
-      const liftDay = dow === 1 || dow === 2 || dow === 4 || dow === 6;
-      if (!liftDay) continue;
-      liftOpportunity++;
-      if (liftOpportunity % 5 === 0) continue;
-      const dayType = rotation[sessionIndex % 4];
-      const exercises = TEMPLATES_SEED[dayType];
+      const dayType = LIFT_DAY[d.getDay()];
+      if (!dayType) continue;
+      if (rnd() < 0.08 && day < -21) continue; // the odd missed session, never in the last three weeks
+      const exercises = PROGRAMME[dayType].map(([name, sets]) => Object.assign({ sets }, START[name]));
       const sessionTs = Date.parse(date + 'T18:00:00') + sessionIndex * 1000;
       exercises.forEach((ex, exIdx) => {
         const n = (seenByExercise[ex.name] = (seenByExercise[ex.name] || 0) + 1);
-        const bump = ex.inc ? Math.floor((n - 1) / 2) * ex.inc : 0;
+        const bump = ex.inc ? Math.min(5, Math.floor((n - 1) / 3)) * ex.inc : 0;
         const weight = round05(ex.start + bump);
-        for (let setNum = 1; setNum <= 3; setNum++) {
-          const reps = Math.round(ex.reps[0] + (ex.reps[1] - ex.reps[0]) * (setNum - 1) / 2 + (rnd() > 0.7 ? 1 : 0));
+        for (let setNum = 1; setNum <= ex.sets; setNum++) {
+          const reps = Math.max(ex.reps[0], Math.round(ex.reps[1] - (ex.reps[1] - ex.reps[0]) * (setNum - 1) / 3 + (rnd() > 0.7 ? 1 : 0) - (rnd() > 0.85 ? 1 : 0)));
           const entry = {
             id: uid(),
             date,
@@ -210,7 +216,7 @@
     for (let day = -89; day <= 0; day++) {
       const date = dateFromToday(day);
       const d = new Date(date + 'T12:00:00');
-      if (d.getDay() === 0 && rnd() < 0.35) continue;
+      if (d.getDay() === 0 && day !== 0 && rnd() < 0.35) continue;
       const t = (day + 89) / 89;
       const trend = 87 - 5 * t;
       const noise = (rnd() - 0.5) * 0.7;
@@ -239,8 +245,8 @@
   }
 
   function buildCardio() {
-    const types = ['Incline Walk', 'Zone 2', 'Treadmill', 'Bike'];
-    const dates = pickDates(15, (dow, i) => dow === 0 || dow === 3 || (dow === 5 && i % 2 === 0));
+    const types = ['Incline Walk', 'Zone 2', 'Incline Walk', 'Bike'];
+    const dates = pickDates(60, (dow, i, day) => (dow === 2 || dow === 6 || (dow === 4 && Math.abs(day) % 14 >= 7)) && (Math.abs(day) * 7 + 3) % 9 !== 0);
     return dates.map((date, i) => ({
       id: uid(),
       date,
@@ -257,7 +263,7 @@
   }
 
   function buildFloorball() {
-    const dates = pickDates(8, dow => dow === 3 || dow === 5);
+    const dates = pickDates(14, (dow, i, day) => dow === 4 && Math.abs(day) % 14 < 7);
     const notes = ['League match', 'Training + small games', 'Tournament block', 'Club session'];
     return dates.map((date, i) => ({
       id: uid(),
@@ -272,7 +278,8 @@
 
   function buildRecovery() {
     const recovery = {};
-    const offsets = [0, -3, -8, -14, -21, -29, -38, -47, -61, -76];
+    const offsets = [];
+    for (let o = 0; o >= -89; o--) if (o === 0 || rnd() < 0.8) offsets.push(o);
     offsets.forEach((offset, i) => {
       const date = dateFromToday(offset);
       const row = {
@@ -344,6 +351,7 @@
       } else {
         settings.cutSupport.recovery = Object.assign({}, settings.cutSupport.recovery, cut.recovery);
         settings.cutSupport.adherence = Object.assign({}, settings.cutSupport.adherence, cut.adherence);
+        if (Array.isArray(cut.waist) && !(Array.isArray(settings.cutSupport.waist) && settings.cutSupport.waist.length)) settings.cutSupport.waist = cut.waist;
       }
       if (cut.calories != null) settings.cutSupport.calories = cut.calories;
       if (cut.targetConfirmed != null && settings.cutSupport.targetConfirmed == null) settings.cutSupport.targetConfirmed = cut.targetConfirmed;
@@ -357,10 +365,26 @@
 
   /* Five Evo scans a few days apart, same shape the scan form saves. */
   function buildScans() {
-    const rows = [[-20, 87.8, 27.6, 35.2, 24.2, 1743, 2684], [-16, 87.2, 27.9, 34.7, 24.3, 1728, 2661], [-9, 86.6, 26.9, 35.0, 23.3, 1737, 2674], [-5, 86.0, 26.7, 34.8, 23.0, 1730, 2664], [-2, 84.7, 26.2, 34.6, 22.2, 1720, 2648]];
-    return rows.map(function (r) {
-      return { id: uid(), date: dateFromToday(r[0]), image: '', weight: r[1], bodyFat: r[2], muscleMass: r[3], fatMass: r[4], bmr: r[5], tdee: r[6], notes: '', context: 'EVOSCAN', _seed: true };
-    });
+    const out = [];
+    const rs = mulberry32(2024);
+    for (let day = -84; day <= -2; day += 9) {
+      const t = (day + 89) / 89;
+      const weight = round1(87 - 5 * t + (rs() - 0.5) * 0.8);
+      const bodyFat = round1(27.4 - 3.6 * t + (rs() - 0.5) * 0.6);
+      const muscleMass = round1(35.0 - 0.5 * t + (rs() - 0.5) * 0.4);
+      const bmr = Math.round(1745 - 40 * t + (rs() - 0.5) * 10);
+      out.push({ id: uid(), date: dateFromToday(day), image: '', weight, bodyFat, muscleMass, fatMass: round1(weight * bodyFat / 100), bmr, tdee: Math.round(bmr * 1.54), notes: '', context: 'EVOSCAN', _seed: true });
+    }
+    return out;
+  }
+
+  function buildWaist() {
+    const out = [];
+    for (let day = -84; day <= -1; day += 14) {
+      const t = (day + 89) / 89;
+      out.push({ id: uid(), date: dateFromToday(day), cm: round1(92 - 5 * t + (rnd() - 0.5) * 0.6), ts: Date.parse(dateFromToday(day) + 'T07:40:00'), _seed: true });
+    }
+    return out;
   }
 
   function seed() {
@@ -396,7 +420,7 @@
         targetConfirmed: existingCut.targetConfirmed != null ? existingCut.targetConfirmed : true,
         calories: existingCut.calories != null && existingCut.calories !== '' ? existingCut.calories : 2100,
         seedVersion: SEED_VERSION,
-        waist: forced ? dropSeeded(existingCut.waist) : existingCut.waist,
+        waist: forced ? dropSeeded(existingCut.waist).concat(buildWaist()) : (Array.isArray(existingCut.waist) && existingCut.waist.length ? existingCut.waist : buildWaist()),
         tdeeHistory: forced ? dropSeeded(existingCut.tdeeHistory) : existingCut.tdeeHistory,
         activeScenario: forced ? null : existingCut.activeScenario
       })
