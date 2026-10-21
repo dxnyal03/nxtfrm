@@ -2301,6 +2301,7 @@ button,[role=button],summary,a,.st-tile,label{touch-action:manipulation}
 #homePage .tf-zl i{position:absolute;top:6px;right:9px;font-style:normal;font-size:13px;line-height:13px}
 #homePage .tf-zf{font:560 calc(13px*var(--tf-s))/16px var(--st-font-d);color:var(--st-ink-2);white-space:nowrap;font-variant-numeric:tabular-nums}
 #homePage .tf-zf b{font-weight:600;color:var(--st-ink)}
+#homePage .tf-zf .st-odo,#homePage .tf-zf .st-od,#homePage .tf-zf .st-od-s i{font:inherit;font-weight:600;color:var(--st-ink);font-feature-settings:"tnum" 1}/* the rolling end value wears the line's own face, not the thin headline numeral (owner, 2026-10-21) */
 #homePage .tf-zp{display:block;width:100%;color:var(--c)}
 #homePage .tf-spark{display:block;overflow:visible}
 #homePage .tf-sp-raw{fill:var(--st-ink-3);opacity:.4}
