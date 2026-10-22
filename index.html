@@ -4961,12 +4961,27 @@ function evoBit(scan,key){
 function evoBackHTML(){
   return `<button type="button" class="vn-evo-back" onclick="apx96SetMoreView('hub')"><i aria-hidden="true">‹</i>Settings</button>`;
 }
+/* ▲ ▼ ■ carry the direction (I6); the engine's delta string is shown as-is.
+   No good/bad hue: whether a rise is welcome depends on the phase. */
+function evoDeltaHTML(delta){
+  const d=String(delta||"");
+  const dir=d.charAt(0)==="+"?"up":d.charAt(0)==="−"?"down":"flat";
+  const glyph=dir==="up"?"▲":dir==="down"?"▼":"■";
+  /* "percentage points" is said in full to assistive tech; the cell shows "pts", as the Today scan tile does. */
+  const shown=d.replace(/ percentage points$/,' pts');
+  return `<em class="is-${dir}"${shown!==d?` aria-label="${esc(d)}"`:''}><i aria-hidden="true">${glyph}</i>${esc(shown)}</em>`;
+}
+/* Measured vs estimated is said once here, not per row. */
+function evoCaptionHTML(){
+  return `<p class="vn-evo-kicker vn-evo-caption">Body fat, muscle, fat mass, BMR and TDEE are EvoScan estimates</p>`;
+}
 function evoMetricRows(scan,previous){
+  const rows=previous?evoChangeRows(scan,previous):[];
   return ["bodyFat","muscleMass","fatMass","bmr","tdee"].map(key=>{
     const n=evoFinite(scan[key]);
     const spec=EVO_SPEC[key];
-    const delta=previous?evoChangeRows(scan,previous).find(r=>r.key===key):null;
-    return `<div class="vn-evo-row"><div class="vn-evo-row-l"><span>${esc(spec.label)}</span>${evoKindHTML(spec.measured)}</div><div class="vn-evo-row-v">${n===null?`<b class="is-missing">Not in this scan</b>`:`<b>${esc(evoFmt(key,n))}<small>${esc(spec.unit)}</small></b>`}${delta?`<em>${esc(delta.delta)}</em>`:""}</div></div>`;
+    const delta=rows.find(r=>r.key===key);
+    return `<div class="vn-evo-cell${key==="tdee"?" is-wide":""}"><span class="vn-evo-cell-l">${esc(spec.label)}</span>${n===null?`<b class="is-missing">Not in this scan</b>`:`<b>${esc(evoFmt(key,n))}<small>${esc(spec.unit)}</small></b>`}${delta?evoDeltaHTML(delta.delta):""}</div>`;
   }).join("");
 }
 function evoCompHTML(scan){
@@ -5013,7 +5028,7 @@ function evoChangedHTML(current,previous){
   if(!previous)return `<section class="vn-evo-sec"><h2>What changed</h2><p class="vn-evo-note">No earlier scan to compare.</p></section>`;
   const rows=evoChangeRows(current,previous);
   if(!rows.length)return `<section class="vn-evo-sec"><h2>What changed</h2><p class="vn-evo-note">Since ${esc(evoShort(previous.date))}, the two scans share no metric.</p></section>`;
-  return `<section class="vn-evo-sec"><h2>What changed</h2><p class="vn-evo-kicker">Since ${esc(evoShort(previous.date))}</p><div class="vn-evo-chg">${rows.map(r=>`<div class="vn-evo-chg-row"><span>${esc(r.label)}</span><b>${esc(r.from)} → ${esc(r.to)} ${esc(r.unit)}</b><em>${esc(r.delta)}</em></div>`).join("")}</div></section>`;
+  return `<section class="vn-evo-sec"><h2>What changed</h2><p class="vn-evo-kicker">Since ${esc(evoShort(previous.date))}</p><div class="vn-evo-tbl" role="table" aria-label="Change since ${esc(evoShort(previous.date))}">${rows.map(r=>`<div class="vn-evo-tr" role="row"><span role="cell">${esc(r.label)}</span><b role="cell">${esc(r.from)} → ${esc(r.to)} ${esc(r.unit)}</b><span role="cell">${evoDeltaHTML(r.delta)}</span></div>`).join("")}</div></section>`;
 }
 function evoHistoryHTML(ordered){
   if(!ordered.length)return `<section class="vn-evo-sec"><h2>Scan history</h2><p class="vn-evo-note">No scans saved yet.</p></section>`;
@@ -5083,7 +5098,8 @@ function evoDetailHTML(scan,ordered){
     ${src?`<img class="vn-evo-preview is-detail" alt="Original scan from ${esc(evoShort(scan.date))}" src="${esc(src)}"><button type="button" class="vn-evo-quiet" onclick="this.previousElementSibling.classList.toggle('is-open')">Enlarge scan</button>`:""}
     <p class="vn-evo-k">Weight ${evoKindHTML(true)}</p>
     <p class="vn-evo-num">${w===null?`<span class="is-missing">Not in this scan</span>`:`${esc(evoFmt("weight",w))}<small>kg</small>`}</p>
-    <div class="vn-evo-rows">${evoMetricRows(scan,previous)}</div>
+    ${evoCaptionHTML()}
+    <div class="vn-evo-grid">${evoMetricRows(scan,previous)}</div>
     ${evoCompHTML(scan)}
     ${evoChangedHTML(scan,previous)}
     ${scan.notes?`<section class="vn-evo-sec"><h2>Notes</h2><p class="vn-evo-note">${esc(scan.notes)}</p></section>`:""}
@@ -5101,7 +5117,8 @@ function evoAnalysisHTML(ordered){
   const w=evoFinite(latest.weight);
   const weightDelta=previous?evoChangeRows(latest,previous).find(r=>r.key==="weight"):null;
   return `<section class="vn-evo-hero"><p class="vn-evo-k">Weight ${evoKindHTML(true)}</p><p class="vn-evo-num">${w===null?`<span class="is-missing">Not in this scan</span>`:`${esc(evoFmt("weight",w))}<small>kg</small>`}</p>${weightDelta?`<p class="vn-evo-delta">${esc(weightDelta.delta)} vs previous scan</p>`:""}<p class="vn-evo-ctx">EvoScan · post-workout context. Not your morning weigh-in, and not part of the body-weight trend.</p></section>
-    <div class="vn-evo-rows">${evoMetricRows(latest,previous)}</div>
+    ${evoCaptionHTML()}
+    <div class="vn-evo-grid">${evoMetricRows(latest,previous)}</div>
     ${evoCompHTML(latest)}
     ${evoTrendHTML(ordered)}
     ${evoChangedHTML(latest,previous)}
@@ -5114,7 +5131,7 @@ function evoBoardHTML(ordered){
   }
   return `<header class="vn-evo-head">${evoBackHTML()}<p class="vn-evo-eye">EvoScan</p><h1>Body composition</h1><p class="vn-evo-kicker">Latest scan · ${esc(evoShort(latest.date)||"Undated")}</p></header>
     ${evoAnalysisHTML(ordered)}
-    <div class="vn-evo-actions"><button type="button" class="vn-evo-act" onclick="evoOpenForm()">New scan</button><button type="button" class="vn-evo-quiet" onclick="evoOpenForm()">Enter numbers manually</button><button type="button" class="vn-evo-quiet" onclick="useLatestScanTDEE()">Use latest TDEE as maintenance</button></div>`;
+    <div class="vn-evo-actions"><button type="button" class="vn-evo-act" onclick="evoOpenForm()">New scan</button><div class="vn-evo-links"><button type="button" class="vn-evo-link" onclick="evoOpenForm()">Enter numbers manually</button><button type="button" class="vn-evo-link" onclick="useLatestScanTDEE()">Use latest TDEE as maintenance</button></div></div>`;
 }
 function renderEvoScanPage(){
   const ui=evoUi();
