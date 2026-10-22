@@ -793,6 +793,22 @@ html.st-sheet-open main{transform:scale(.94) translateY(10px);filter:brightness(
   .n99-modal .sheet{animation:none !important}
 }
 :root[data-nxp-motion="reduced"].st-sheet-open main{transform:none}
+/* D164 · Sheet detents. strata.js measures each `.modal .sheet` once; a sheet taller than 62vh opens at the half detent (a translateY of
+   its own height minus 62vh, so only transform moves) and can be taken to full by the grabber or a drag up. At half the clipped part
+   does not scroll and the whole sheet is the drag surface; at full the inner scroll is as before and the page recedes one step further.
+   The grabber is a real 44 pt target: the 40 x 5 bar is the visual, the hit area extends above and to the sides. */
+#modalRoot .modal .sheet.st-has-grab::before{display:none}
+.st-grab{position:relative;z-index:1;display:block;height:44px;width:140px;margin:-10px auto -23px;touch-action:none;cursor:grab}/* a 44 pt handle, narrow so the Close button beside the title stays tappable */
+.st-grab::after{content:"";position:absolute;left:50%;top:12px;width:40px;height:5px;margin-left:-20px;border-radius:999px;background:rgba(var(--st-hl),.25)}
+#modalRoot .modal .sheet .st-grab{touch-action:none}/* outranks the legacy [role=button]{touch-action:manipulation}, which would hand the drag back to the browser */
+.st-grab[aria-hidden="true"]{cursor:default}/* still a drag handle on a one-detent sheet; only focus and the label go */
+.st-grab:focus-visible{outline:none}
+.st-grab:focus-visible::after{background:var(--st-accent-lift);box-shadow:0 0 0 3px rgba(139,92,246,.32)}
+#modalRoot .modal .sheet.st-at-top{touch-action:none}/* a sheet that needs no native scroll (fits, or half detent): WebKit lacks pan-up, so this is the only way a downward touch stays ours; tall sheets at full keep pan-y and drag from the grabber: a downward drag is ours, an upward one scrolls */
+#modalRoot .modal .sheet.st-detent-half{overflow-y:hidden !important;touch-action:none}/* answers the legacy `.sheet{overflow-y:auto !important}`: at half the clipped part does not scroll */
+html.st-sheet-open.st-sheet-full main{transform:scale(.92) translateY(14px);filter:brightness(.55)}
+@media (prefers-reduced-motion:reduce){html.st-sheet-open.st-sheet-full main{transform:none;filter:brightness(.7)}}
+:root[data-nxp-motion="reduced"].st-sheet-open.st-sheet-full main{transform:none;filter:brightness(.7)}
 
 /* ---- SETTINGS › TRAINING + ROUTINE EDITOR (D22) --------------------------- */
 .st-settings .st-set-sec{margin-top:22px}
@@ -3484,7 +3500,17 @@ html::after{content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;opa
 .st-live-ring{position:relative;width:40px;height:40px;flex:none}
 .st-live-ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
 .st-live-tr{fill:none;stroke:rgba(255,255,255,.12);stroke-width:3}
-.st-live-arc{fill:none;stroke:var(--st-accent-lift);stroke-width:3;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:calc(1 - var(--live,0));transition:stroke-dashoffset .6s cubic-bezier(.32,.72,0,1);filter:drop-shadow(0 0 4px rgba(167,139,250,.8))}
+.st-live-arc{fill:none;stroke:var(--st-accent-lift);stroke-width:3;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:calc(1 - var(--live,0));transition:stroke-dashoffset 1s cubic-bezier(.32,.72,0,1),stroke var(--st-t-state,200ms);filter:drop-shadow(0 0 4px rgba(167,139,250,.8))}
+/* D165 · The rest counts down in the ring: the arc is the share of rest left (--live-rest, written one second ahead by
+   updateLive), and a linear 1 s transition moves it between the 1 Hz ticks. Rest ending: a 200 ms state pulse (the individual
+   `scale` property, so the floating capsule's translate and the docked one's none are untouched) with the ring flashing to ink,
+   then the arc eases back to the sets share. Reduced motion: no transition, the arc steps; no pulse. */
+.st-live.is-resting .st-live-arc{stroke-dashoffset:calc(1 - var(--live-rest,0));transition:stroke-dashoffset 1s linear,stroke var(--st-t-state,200ms)}
+.st-live.is-rest-done .st-live-arc{stroke:var(--st-ink);stroke-dashoffset:0;transition:stroke-dashoffset var(--st-t-state,200ms),stroke var(--st-t-state,200ms)}
+@media (prefers-reduced-motion:no-preference){:root:not([data-nxp-motion="reduced"]) .st-live.is-rest-done{animation:st-live-done var(--st-t-state,200ms) var(--st-glide) both}}
+@keyframes st-live-done{from{scale:1.03}to{scale:1}}
+@media (prefers-reduced-motion:reduce){.st-live-arc,.st-live.is-resting .st-live-arc,.st-live.is-rest-done .st-live-arc{transition:none}}
+:root[data-nxp-motion="reduced"] :is(.st-live-arc,.st-live.is-resting .st-live-arc,.st-live.is-rest-done .st-live-arc){transition:none}
 .st-live-dot{position:absolute;inset:13px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#b49aff 55%,#7c4dff);box-shadow:0 0 12px rgba(167,139,250,.9)}
 .st-live-t{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}
 .st-live-n{font:600 15px/1.15 var(--st-font);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
@@ -3681,7 +3707,7 @@ html.st-sheet-open main{transform-origin:50% calc(var(--st-sy,0) * 1px + 50vh)}
    confirm button stays pinned at the bottom of the sheet. */
 @media (max-width:767px){#modalRoot .modal{padding-bottom:0 !important}}
 html.st-kb-open #modalRoot .modal{align-items:flex-end !important;padding-bottom:0 !important}
-html.st-kb-open #modalRoot .modal .sheet{margin-bottom:var(--st-kb,0px) !important;max-height:calc(var(--st-vvh,100dvh) - 10px) !important;padding-bottom:12px !important;transition:margin-bottom .25s cubic-bezier(.32,.72,0,1)}
+html.st-kb-open #modalRoot .modal .sheet{margin-bottom:var(--st-kb,0px) !important;max-height:calc(var(--st-vvh,100dvh) - 10px) !important;padding-bottom:12px !important;transition:transform .35s var(--st-glide),margin-bottom .25s cubic-bezier(.32,.72,0,1)}
 html.st-kb-open #modalRoot .modal .sheet form>button[type="submit"]:last-child,html.st-kb-open #modalRoot .modal .sheet>.n99-button:last-child{position:sticky;bottom:0;z-index:3;
   box-shadow:0 -14px 24px -8px rgba(21,20,29,.95),inset 0 1px 0 rgba(255,255,255,.3) !important}
 /* Long weigh-in values step down so they never run under "kg" (same idea as Train's fitNum). */
