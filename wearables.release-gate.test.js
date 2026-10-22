@@ -243,7 +243,7 @@ test("navigation uses one icon family, not glyphs", function () {
     assert.strictEqual(nav.indexOf(glyph), -1, "legacy nav glyph still present");
   }
   assert.strictEqual((nav.match(/class="tab-icon"/g) || []).length, 5);
-  assert.strictEqual((nav.match(/stroke-width="1\.75"/g) || []).length, 5, "one stroke weight");
+  assert.strictEqual((nav.match(/stroke-width="1\.9"/g) || []).length, 5, "one stroke weight"); /* D168: the dock joins the app-wide 1.9 px icon stroke; the intent (one weight across all five) is unchanged */
   assert.strictEqual((nav.match(/viewBox="0 0 24 24"/g) || []).length, 5, "one icon geometry");
   // The dock must not change size with the selection.
   assert.ok(css.indexOf("--nxt-nav-height:") !== -1);
