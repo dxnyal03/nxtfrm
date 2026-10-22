@@ -437,17 +437,20 @@ const STRATA = (() => {
   /* D170 · The dock pill glides. A tab change holds the pill where it is until its View Transition starts
      drawing (dockHold, released from navigate()): the new page renders inside the transition's update
      callback, and anything that started moving before then would be frozen and reappear part-way — the
-     jump that read as a stutter on the phone. The glide's length grows a little with the distance. */
+     jump that read as a stutter on the phone. The glide's length grows a little with the distance
+     (owner, round 2: "feels very sudden" — 460 ms base on a spring that starts from rest). */
   let dockI = -1, dockT = 0, dockHold = false;
   function syncDock() {
     const inner = document.querySelector(".tabs .tabs-inner"); if (!inner) return;
     const tabs = [...inner.querySelectorAll(".tab")], i = tabs.findIndex(t => t.classList.contains("active"));
     if (dockHold) return;
-    const ms = Math.min(460, 320 + 40 * Math.max(0, Math.abs(i - dockI) - 1));
+    const ms = Math.min(560, 460 + 30 * Math.max(0, Math.abs(i - dockI) - 1));
     inner.style.setProperty("--dock-d", ms + "ms");
-    if (dockI !== -1 && i !== dockI && !reduced()) { inner.classList.remove("is-moving"); void inner.offsetWidth; inner.classList.add("is-moving"); clearTimeout(dockT); dockT = setTimeout(() => inner.classList.remove("is-moving"), ms + 40); }
+    /* The stretch restarts on the next frame rather than through a forced layout at the moment the glide begins. */
+    if (dockI !== -1 && i !== dockI && !reduced()) { inner.classList.remove("is-moving"); requestAnimationFrame(() => inner.classList.add("is-moving")); clearTimeout(dockT); dockT = setTimeout(() => inner.classList.remove("is-moving"), ms + 60); }
     dockI = i;
     inner.style.setProperty("--tab-i", String(Math.max(0, i)));
+    tabs.forEach((t, k) => t.classList.toggle("is-lit", k === i)); /* the label lights with the pill, not with the page swap */
     inner.style.setProperty("--tab-n", String(tabs.length || 5));
     inner.classList.add("st-dock");
   }
