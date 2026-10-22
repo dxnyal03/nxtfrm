@@ -1447,8 +1447,7 @@ body:has(.tabs.vn-recede) .toast{
 :is(#morePage, #weightPage) .vn-evo-num small{
   margin-left:6px;font-size:17px;font-weight:500;letter-spacing:0;color:var(--vn-ink-3);
 }
-:is(#morePage, #weightPage) .vn-evo-num .is-missing,
-:is(#morePage, #weightPage) .vn-evo-row-v .is-missing{
+:is(#morePage, #weightPage) .vn-evo-num .is-missing{
   font-size:16px;font-weight:500;letter-spacing:0;color:var(--vn-ink-3);
 }
 :is(#morePage, #weightPage) .vn-evo-delta{
@@ -1465,25 +1464,33 @@ body:has(.tabs.vn-recede) .toast{
   width:6px;height:6px;background:transparent;border:1.5px solid var(--vn-review-lift);
   border-radius:1px;transform:rotate(45deg);
 }
-:is(#morePage, #weightPage) .vn-evo-rows{margin-top:var(--vn-s5)}
-:is(#morePage, #weightPage) .vn-evo-row{
-  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+:is(#morePage, #weightPage) .vn-evo-caption{margin-top:var(--vn-s4)}
+/* Metrics: two columns, estimates said once in the caption above. TDEE is the
+   odd fifth, so it spans both columns rather than sitting orphaned. */
+:is(#morePage, #weightPage) .vn-evo-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 var(--vn-s4);
+  margin-top:var(--vn-s3);
+}
+:is(#morePage, #weightPage) .vn-evo-cell{
+  display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;
   padding:14px 0;border-top:1px solid var(--vn-line);
 }
-:is(#morePage, #weightPage) .vn-evo-row-l{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
-:is(#morePage, #weightPage) .vn-evo-row-l > span{font-size:15px;font-weight:600;color:var(--vn-ink)}
-:is(#morePage, #weightPage) .vn-evo-row-v{text-align:right;min-width:0}
-:is(#morePage, #weightPage) .vn-evo-row-v b{
+:is(#morePage, #weightPage) .vn-evo-cell.is-wide{grid-column:1 / -1}
+:is(#morePage, #weightPage) .vn-evo-cell-l{font-size:12px;font-weight:500;color:var(--vn-ink-3)}
+:is(#morePage, #weightPage) .vn-evo-cell b{
   display:block;font-size:20px;font-weight:300;font-family:var(--st-font-d);letter-spacing:-.02em;
   font-variant-numeric:tabular-nums;color:var(--vn-ink);
 }
-:is(#morePage, #weightPage) .vn-evo-row-v b small{
-  margin-left:4px;font-size:12px;font-weight:500;color:var(--vn-ink-3);
+:is(#morePage, #weightPage) .vn-evo-cell b small{
+  margin-left:4px;font-size:12px;font-weight:500;letter-spacing:0;font-family:var(--st-font);color:var(--vn-ink-3);
 }
-:is(#morePage, #weightPage) .vn-evo-row-v em{
-  display:block;margin-top:3px;font-style:normal;font-size:12px;font-weight:500;
-  font-variant-numeric:tabular-nums;color:var(--vn-ink-3);
+:is(#morePage, #weightPage) .vn-evo-cell b.is-missing{font-size:12px;font-weight:500;font-family:var(--st-font);letter-spacing:0;color:var(--vn-ink-3)}
+:is(#morePage, #weightPage) :is(.vn-evo-cell, .vn-evo-tr) em{
+  display:inline-flex;align-items:baseline;gap:5px;font-style:normal;font-size:12px;font-weight:500;
+  font-variant-numeric:tabular-nums;color:var(--vn-ink-2);
 }
+:is(#morePage, #weightPage) :is(.vn-evo-cell, .vn-evo-tr) em i{font-style:normal;font-size:12px;color:var(--vn-ink-3)}
+:is(#morePage, #weightPage) :is(.vn-evo-cell, .vn-evo-tr) em.is-flat{color:var(--vn-ink-3)}
 :is(#morePage, #weightPage) .vn-evo-sec{margin-top:var(--vn-s6);padding-top:var(--vn-s5);border-top:1px solid var(--vn-line)}
 :is(#morePage, #weightPage) .vn-evo-sec h2{
   margin:0;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--vn-ink-3);
@@ -1520,14 +1527,17 @@ body:has(.tabs.vn-recede) .toast{
 :is(#morePage, #weightPage) .vn-evo-chart circle:last-of-type{fill:var(--vn-violet-lift)}
 :is(#morePage, #weightPage) .vn-evo-chart text{fill:var(--vn-ink-3);font-size:12px;font-variant-numeric:tabular-nums}
 :is(#morePage, #weightPage) .vn-evo-sum{margin:8px 0 0;font-size:13px;line-height:1.4;color:var(--vn-ink-2)}
-:is(#morePage, #weightPage) .vn-evo-chg{margin-top:8px}
-:is(#morePage, #weightPage) .vn-evo-chg-row{
-  display:grid;grid-template-columns:minmax(0,1fr);gap:2px;
+:is(#morePage, #weightPage) .vn-evo-tbl{margin-top:8px}
+/* metric · previous → latest · Δ. The middle column takes the slack; at 320 the
+   delta wraps under its glyph rather than squeezing the figures. */
+:is(#morePage, #weightPage) .vn-evo-tr{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) minmax(0,.9fr);gap:8px;align-items:baseline;
   padding:12px 0;border-top:1px solid var(--vn-line);
 }
-:is(#morePage, #weightPage) .vn-evo-chg-row span{font-size:13px;color:var(--vn-ink-3)}
-:is(#morePage, #weightPage) .vn-evo-chg-row b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--vn-ink);overflow-wrap:anywhere}
-:is(#morePage, #weightPage) .vn-evo-chg-row em{font-style:normal;font-size:13px;color:var(--vn-ink-2);font-variant-numeric:tabular-nums}
+:is(#morePage, #weightPage) .vn-evo-tr > span:first-child{font-size:13px;font-weight:500;color:var(--vn-ink-3)}
+:is(#morePage, #weightPage) .vn-evo-tr b{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--vn-ink);overflow-wrap:anywhere}
+:is(#morePage, #weightPage) .vn-evo-tr > span:last-child{text-align:right}
+:is(#morePage, #weightPage) .vn-evo-tr em{text-align:left}
 :is(#morePage, #weightPage) .vn-evo-hist{
   display:flex;align-items:stretch;gap:8px;
   border-top:1px solid var(--vn-line);
@@ -1568,6 +1578,12 @@ body:has(.tabs.vn-recede) .toast{
 :is(#morePage, #weightPage) .vn-evo-quiet.is-danger{color:var(--vn-concern)}
 :is(#morePage, #weightPage) .vn-evo-quiet:active{opacity:.72}
 :is(#morePage, #weightPage) .vn-evo-actions{margin-top:var(--vn-s5)}
+:is(#morePage, #weightPage) .vn-evo-links{display:flex;flex-wrap:wrap;justify-content:center;gap:0 var(--vn-s5);margin-top:var(--vn-s2)}
+:is(#morePage, #weightPage) .vn-evo-link{
+  border:0;background:none;padding:0 4px;min-height:44px;color:var(--vn-ink-2);
+  font:inherit;font-size:13px;font-weight:500;cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+:is(#morePage, #weightPage) .vn-evo-link:active{opacity:.6}
 :is(#morePage, #weightPage) .vn-evo-file{
   position:relative;
   display:flex;align-items:center;justify-content:center;
@@ -1631,8 +1647,7 @@ body:has(.tabs.vn-recede) .toast{
   :is(#morePage, #weightPage) .vn-evo{padding-inline:16px}
   :is(#morePage, #weightPage) .vn-evo h1{font-size:28px}
   :is(#morePage, #weightPage) .vn-evo-num{font-size:44px}
-  :is(#morePage, #weightPage) .vn-evo-row{flex-wrap:wrap}
-  :is(#morePage, #weightPage) .vn-evo-row-v{text-align:left}
+  :is(#morePage, #weightPage) .vn-evo-tr{grid-template-columns:minmax(0,.9fr) minmax(0,1.4fr) minmax(0,.8fr);gap:6px}
 }
 @media (prefers-reduced-motion:reduce){
   :is(#morePage, #weightPage) .vn-evo-act:active,
@@ -1688,35 +1703,6 @@ body:has(.tabs.vn-recede) .toast{
 }
 #weightPage .vn-perf-read{
   margin:2px 0 0;font-size:12px;font-weight:400;line-height:1.35;color:var(--vn-ink-3);
-}
-/* Word, then colour, then shape. Six shapes so greyscale still separates them. */
-#weightPage .vn-perf-flag{
-  display:inline-flex;align-items:center;gap:7px;
-  font-size:13px;font-weight:600;line-height:1.3;color:var(--vn-ink-2);
-}
-#weightPage .vn-perf-flag i{
-  width:8px;height:8px;flex:none;display:block;
-}
-#weightPage .vn-perf-flag.is-improving{color:var(--vn-violet-lift)}
-#weightPage .vn-perf-flag.is-improving i{background:var(--vn-violet);border-radius:50%}
-#weightPage .vn-perf-flag.is-holding{color:var(--vn-violet-lift)}
-#weightPage .vn-perf-flag.is-holding i{background:var(--vn-violet);border-radius:1px}
-#weightPage .vn-perf-flag.is-review{color:var(--vn-review-lift)}
-#weightPage .vn-perf-flag.is-review i{
-  background:var(--vn-review);border-radius:1px;transform:rotate(45deg);
-}
-#weightPage .vn-perf-flag.is-watch{color:var(--vn-ink-2)}
-#weightPage .vn-perf-flag.is-watch i{
-  background:transparent;border-radius:1px;transform:rotate(45deg);
-  box-shadow:inset 0 0 0 1.5px var(--vn-ink-2);
-}
-#weightPage .vn-perf-flag.is-older{color:var(--vn-ink-2)}
-#weightPage .vn-perf-flag.is-older i{
-  width:10px;height:2px;border-radius:1px;background:var(--vn-ink-3);align-self:center;
-}
-#weightPage .vn-perf-flag.is-building{color:var(--vn-ink-2)}
-#weightPage .vn-perf-flag.is-building i{
-  background:transparent;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--vn-ink-2);
 }
 #weightPage .vn-perf-plot{position:relative;width:96px;min-width:0;margin-top:2px}
 #weightPage .vn-perf-spark{
