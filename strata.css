@@ -3693,8 +3693,6 @@ body.st-live-on main::after{content:"";display:block;height:70px}
 .tabs .tabs-inner.st-dock::after{content:"";position:absolute;z-index:2;pointer-events:none;top:-7px;height:12px;left:0;width:calc(100% / var(--tab-n,5));
   transform:translateX(calc(var(--tab-i,0) * 100%));transition:transform .55s cubic-bezier(.34,1.3,.64,1);
   background:radial-gradient(42% 50% at 50% 50%,rgba(255,255,255,.55),rgba(214,200,255,.18) 45%,transparent 72%);filter:blur(.5px)}
-@media (prefers-reduced-motion:no-preference){.tabs .tabs-inner.st-dock.is-moving::before{animation:st-dock-stretch .52s cubic-bezier(.32,.72,0,1)}}
-@keyframes st-dock-stretch{0%{scale:1 1}38%{scale:1.3 .9}72%{scale:.97 1.03}100%{scale:1 1}}
 :root[data-nxp-motion="reduced"] .tabs .tabs-inner.st-dock::after{transition:none !important}
 @media (min-width:1024px){.tabs .tabs-inner.st-dock::after{display:none}}
 
@@ -5047,3 +5045,33 @@ small,em{font-family:var(--st-font)}
 }
 @keyframes st-twinkle{from{opacity:0}to{opacity:1}}
 :root[data-nxp-motion="reduced"] .st-empty-sky .es-star{animation:none}
+
+/* =============================================================================
+   D170 · The dock pill glides (owner, 2026-10-22: "make the animation that transitions between the tab
+   below smoother", then "it can be smoother … feels very sudden").
+   - The curve is a critically damped spring that starts from rest (--dock-ease): it eases out of the hold,
+     reaches half the travel at 31 % of the time and settles with no bounce. The house curve (I8) starts at
+     full speed — right for a sheet released with momentum, abrupt for a pill that has been standing still,
+     so the dock is the documented exception.
+   - 460 ms, +30 ms per extra tab travelled (set by syncDock); the glow and the label colour share it.
+   - The dock is drawn outside the page crossfade (its own View Transition name, shown live and solid), so
+     the pill never slides semi-transparent over a fading copy of itself.
+   - One label weight (Geist 560, D156); a gentle 8 % stretch along the travel.
+   ========================================================================== */
+.tabs .tabs-inner{--dock-ease:linear(0,0.0158,0.056,0.1118,0.1769,0.2464,0.317,0.3864,0.4529,0.5155,0.5736,0.6269,0.6754,0.7193,0.7586,0.7936,0.8248,0.8523,0.8765,0.8978,0.9164,0.9327,0.9469,0.9592,0.9699,0.9791,0.9871,0.9941,1)}
+.tabs .tabs-inner.st-dock::before,.tabs .tabs-inner.st-dock::after{transition:transform var(--dock-d,460ms) var(--dock-ease);will-change:transform}
+@media (prefers-reduced-motion:no-preference){.tabs .tabs-inner.st-dock.is-moving::before{animation:st-dock-glide var(--dock-d,460ms) var(--dock-ease)}}
+@keyframes st-dock-glide{0%{scale:1 1}35%{scale:1.08 .96}100%{scale:1 1}}
+.tabs .tab .tab-label,.tabs .tab.active .tab-label{font-weight:560 !important}/* answers the 500/600 pair at ~1012: one weight, no jump */
+/* The tab being left dims at once; the tab being reached lights as the pill arrives (half the travel is done at 31 %). */
+.tabs .tab,.tabs .tab .tab-icon svg{transition:color calc(var(--dock-d,460ms) * .45) var(--st-out),filter calc(var(--dock-d,460ms) * .45) var(--st-out)}
+.tabs .tab.active,.tabs .tab.active .tab-icon svg{transition-delay:calc(var(--dock-d,460ms) * .28)}
+/* Until syncDock releases the pill, the newly active tab stays unlit (it becomes .is-lit on release). */
+.tabs .tabs-inner.st-dock .tab.active:not(.is-lit){color:var(--st-ink-3) !important}
+.tabs .tabs-inner.st-dock .tab.active:not(.is-lit) .tab-icon svg{filter:none}
+.tabs{view-transition-name:st-dock}
+::view-transition-group(st-dock){animation:none;z-index:10}
+::view-transition-old(st-dock){display:none}
+::view-transition-new(st-dock){animation:none}
+@media (prefers-reduced-motion:reduce){.tabs .tabs-inner.st-dock::after,.tabs .tab,.tabs .tab .tab-icon svg{transition:none !important}}
+:root[data-nxp-motion="reduced"] .tabs .tabs-inner.st-dock::before,:root[data-nxp-motion="reduced"] .tabs .tab,:root[data-nxp-motion="reduced"] .tabs .tab .tab-icon svg{transition:none !important}
