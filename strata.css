@@ -5,6 +5,8 @@
    ========================================================================== */
 
 :root{
+  /* D168 · one line-icon stroke: 1.9 px round caps and joins (the iconify() standard). Chart marks keep their own. */
+  --st-ico-w:1.9px;
   --st-bg:#08080D;
   --st-bg-2:#0D0D14;
   --st-ink:#F4F2FA;
@@ -514,7 +516,7 @@ button.st-tile:active{transform:scale(.985)}
   background:rgba(var(--st-hl),.08);color:var(--st-ink);transition:transform .15s var(--st-out),background .2s;
 }
 .st-icon:active{transform:scale(.92);background:rgba(var(--st-hl),.14)}
-.st-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.st-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:var(--st-ico-w);stroke-linecap:round;stroke-linejoin:round}
 .st-icon svg circle{fill:currentColor;stroke:none}
 .st-tbar-mid{flex:1;min-width:0;padding-left:4px}
 .st-tbar-t{margin:0;font:600 17px/1.2 var(--st-font);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -664,7 +666,7 @@ button.st-refc:active{transform:scale(.97)}
 /* Exercise nav */
 .st-exnav{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:8px;margin-top:12px}
 .st-exnav>button:not(.st-exnav-mid){display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;cursor:pointer;background:rgba(var(--st-hl),.08);color:var(--st-ink)}
-.st-exnav svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.st-exnav svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:var(--st-ico-w);stroke-linecap:round;stroke-linejoin:round}
 .st-exnav>button:disabled{opacity:.3;cursor:default}
 .st-exnav-mid{height:44px;border:0;background:none;cursor:pointer;color:var(--st-ink-3);font:500 15px var(--st-font);font-variant-numeric:tabular-nums}
 
@@ -681,7 +683,7 @@ button.st-refc:active{transform:scale(.97)}
 .st-mrow:last-child{border-bottom:0}
 .st-mrow:active{background:rgba(var(--st-hl),.06)}
 .st-mrow-i{display:grid;place-items:center;width:32px;height:32px;flex:none;border-radius:10px;background:rgba(139,92,246,.2)}
-.st-mrow-i svg{width:18px;height:18px;fill:none;stroke:#CBB8FF;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.st-mrow-i svg{width:18px;height:18px;fill:none;stroke:#CBB8FF;stroke-width:var(--st-ico-w);stroke-linecap:round;stroke-linejoin:round}
 .st-mrow-l{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .st-mrow-l b{font:600 16px var(--st-font)}
 .st-mrow-l small{font:400 12px var(--st-font);color:var(--st-ink-3)}
@@ -858,7 +860,7 @@ html.st-sheet-open.st-sheet-full main{transform:scale(.92) translateY(14px);filt
 .st-rx-mv button{display:grid;place-items:center;width:40px;height:44px;padding:0;border:0;border-radius:12px;background:none;cursor:pointer;color:var(--st-ink-2)}
 .st-rx-mv button:active{background:rgba(var(--st-hl),.08)}
 .st-rx-mv button:disabled{opacity:.2;cursor:default}
-.st-rx-mv svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.st-rx-mv svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:var(--st-ico-w);stroke-linecap:round;stroke-linejoin:round}
 .st-rx-add{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;padding:0 16px;border:0;background:none;cursor:pointer;color:var(--st-accent-lift);font:600 16px var(--st-font)}
 .st-rx-add span{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:rgba(139,92,246,.2);font-size:17px}
 .st-both{display:flex !important;flex-direction:row !important;text-align:left !important;align-items:center;gap:14px;margin-top:14px;padding:14px 16px;border-radius:18px;background:rgba(var(--st-hl),.05);cursor:pointer}
@@ -1391,11 +1393,11 @@ html,body{font-family:var(--st-font)}button,input,select,textarea{font-family:in
 .tab-label{font-size:var(--fs-micro) !important}
 
 /* One icon set: 1.9px round-cap strokes, drawn on currentColor. */
-.st-ico{display:inline-block;width:1.15em;height:1.15em;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.2em;pointer-events:none}
-.nxp-step .st-ico{width:22px;height:22px;stroke-width:1.7}
+.st-ico{display:inline-block;width:1.15em;height:1.15em;flex:none;fill:none;stroke:currentColor;stroke-width:var(--st-ico-w);stroke-linecap:round;stroke-linejoin:round;vertical-align:-.2em;pointer-events:none}
+.nxp-step .st-ico{width:22px;height:22px;stroke-width:var(--st-ico-w)}
 .nxp-setting-value .st-ico,.vn-chev .st-ico,.st-link .st-ico{width:17px;height:17px;opacity:.7;vertical-align:middle}
 .nxp-cal-nav .st-ico{width:18px;height:18px;vertical-align:middle}
-.nxp-cta-check .st-ico{width:14px;height:14px;stroke-width:2.6}
+.nxp-cta-check .st-ico{width:14px;height:14px;stroke-width:var(--st-ico-w)}
 /* The Body-tab accordion chevron uses the same stroke. */
 #weightPage .vn-evo-sec>h2[data-st-fold]::after{content:"" !important;width:18px;height:18px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 5l7 7-7 7'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 5l7 7-7 7'/%3E%3C/svg%3E") center/contain no-repeat;opacity:.7}
 
@@ -1724,7 +1726,7 @@ body::before{translate:0 calc(var(--st-sy,0) * -.012px)}
 #trainPage .nxp-seg-type .nxp-seg button{min-height:44px}
 #trainPage #nxp-set-form{padding-bottom:84px}
 #trainPage .st-train .st-refc b{font-weight:400 !important;letter-spacing:-.02em}
-#trainPage .st-chip2 .st-ico{width:12px;height:12px;stroke-width:2.2}
+#trainPage .st-chip2 .st-ico{width:12px;height:12px;stroke-width:var(--st-ico-w)}
 @media (max-width:359px){#trainPage .st-tbar-t{font-size:15px !important}#trainPage .st-tbar-s{font-size:13px !important}#trainPage .st-tbar-t,#trainPage .st-tbar-s{white-space:nowrap !important}#trainPage .st-card-head{flex-wrap:wrap;row-gap:8px}#trainPage .st-refc small,#trainPage .st-refc .st-refc-k,#trainPage .st-refc>span:first-child{font-size:12px !important;white-space:nowrap}#trainPage .st-refs{gap:8px !important}}
 /* History */
 #historyPage .nxp-history-selected-head h2 em{font-style:normal;color:var(--st-ink-3);font-weight:400}
@@ -2839,7 +2841,7 @@ button.st-ref.is-aim small::after{content:" · tap to fill";color:var(--st-ink-3
 .st-lrow b{flex:1;min-width:0;font:300 22px/1 var(--st-font-d);letter-spacing:-.02em;white-space:nowrap}
 .st-lrow b i{font-style:normal;font-size:15px;color:var(--st-ink-4);margin:0 1px}
 .st-lrow small{display:inline-flex;align-items:center;gap:5px;flex:none;font:500 12px var(--st-font);color:var(--st-ink-3);white-space:nowrap}
-.st-lrow small svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.st-lrow small svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:var(--st-ico-w);stroke-linecap:round;stroke-linejoin:round}
 .st-lrow.is-done .st-ln{background:rgba(203,184,255,.2);color:var(--st-accent-tint)}
 .st-lrow.is-up small{color:var(--st-accent-tint)}
 .st-lrow.is-warm{opacity:.72}
@@ -2994,7 +2996,7 @@ html.nx-reveal .tabs{animation:nx-dock-in .42s cubic-bezier(.32,.72,0,1) .06s ba
 .n99-modal .exh-r-d{font:500 13px/1.3 var(--st-font);color:var(--st-ink-2);white-space:nowrap}
 .n99-modal .exh-read .exh-r-c{grid-area:c}
 .n99-modal .exh-r-c{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px 0 9px;border-radius:999px;font:600 12px/1 var(--st-font);color:var(--st-ink);white-space:nowrap;background:color-mix(in srgb,var(--c) 13%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 34%,transparent)}
-.n99-modal .exh-r-c svg{width:12px;height:12px;flex:none;fill:none;stroke:var(--c);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.n99-modal .exh-r-c svg{width:12px;height:12px;flex:none;fill:none;stroke:var(--c);stroke-width:var(--st-ico-w);stroke-linecap:round;stroke-linejoin:round}
 .n99-modal .exh-r-c.is-up{--c:var(--st-lean)}
 .n99-modal .exh-r-c.is-eq{--c:var(--st-accent-lift)}
 .n99-modal .exh-r-c.is-down{--c:var(--st-fat)}
@@ -3036,9 +3038,7 @@ html.nx-reveal .tabs{animation:nx-dock-in .42s cubic-bezier(.32,.72,0,1) .06s ba
 .n99-modal .exh-how p{margin:0 0 8px;font:400 13px/1.5 var(--st-font);color:var(--st-ink-3)}
 
 /* Zero sessions and one session: text, never a blank panel. */
-.n99-modal .exh-empty{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:18px;background:rgba(var(--st-hl),.035);box-shadow:inset 0 0 0 1px rgba(var(--st-hl),.07)}
-.n99-modal .exh-empty b{font:600 15px/1.3 var(--st-font);color:var(--st-ink)}
-.n99-modal .exh-empty span{font:400 13px/1.45 var(--st-font);color:var(--st-ink-3)}
+.n99-modal .exh-empty{display:block}/* D169: the shared .st-empty carries its own spacing; no box inside a box */
 .n99-modal .exh-one{display:grid;gap:3px}
 .n99-modal .exh-one span{font:400 13px/1.4 var(--st-font);color:var(--st-ink-3)}
 .n99-modal .exh-hint{margin:6px 0 0;font:400 12px/1.4 var(--st-font);color:var(--st-ink-3)}
@@ -3088,7 +3088,7 @@ html.nx-reveal .tabs{animation:nx-dock-in .42s cubic-bezier(.32,.72,0,1) .06s ba
 #weightPage .vn-perf-gt{display:flex;align-items:baseline;gap:8px;margin:0}
 #weightPage .vn-perf-gn{font:500 13px/1 var(--st-font);color:var(--st-ink-3);font-variant-numeric:tabular-nums}
 #weightPage .vn-perf-gb{position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;width:100%;padding:0 4px;border:0;border-radius:14px;background:none;color:var(--st-ink-3);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-#weightPage .vn-perf-gb svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#weightPage .vn-perf-gb svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:var(--st-ico-w);stroke-linecap:round;stroke-linejoin:round}
 #weightPage .vn-perf-gb[aria-expanded="true"] svg{transform:rotate(90deg)}
 #weightPage .vn-perf-gb:focus-visible{outline:2px solid #CDBBFF;outline-offset:-2px}
 #weightPage .vn-perf-g .vn-perf-rows{margin-top:4px !important}
@@ -3516,7 +3516,7 @@ html::after{content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;opa
 .st-live-n{font:600 15px/1.15 var(--st-font);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .st-live-t small{font:500 13px/1.2 var(--st-font);color:var(--st-ink-3);white-space:nowrap;font-variant-numeric:tabular-nums}
 .st-live.is-resting .st-live-r{color:var(--st-accent-tint)}
-.st-live-up{width:20px;height:20px;flex:none;margin-left:2px;fill:none;stroke:var(--st-ink-2);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.st-live-up{width:20px;height:20px;flex:none;margin-left:2px;fill:none;stroke:var(--st-ink-2);stroke-width:var(--st-ico-w);stroke-linecap:round;stroke-linejoin:round}
 @media (prefers-reduced-motion:no-preference){
   .st-live:not([hidden]){animation:st-live-in .5s cubic-bezier(.32,.72,0,1) both}
   .st-live-dot{animation:st-live-breathe 2.4s ease-in-out infinite}
@@ -3789,7 +3789,7 @@ body .toast.st-island.is-quiet{position:fixed !important;width:1px !important;he
 .vn-journey .vn-sect-head .vn-tiny{margin-right:auto}
 .st-share-b{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 13px 0 11px;border:0;border-radius:999px;cursor:pointer;font:560 13px/1 var(--st-font-d);color:var(--st-ink);
   background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)}
-.st-share-b svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.st-share-b svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:var(--st-ico-w);stroke-linecap:round;stroke-linejoin:round}
 .st-share-b::after{content:"";position:absolute;inset:-4px}
 .st-share-b{position:relative}
 .st-shr{display:grid;gap:16px}
@@ -4272,7 +4272,7 @@ body.st-live-on main::after{height:76px}
 .st-sy-row{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
 .st-sy-n{font:560 13px/1 var(--st-font-d);color:rgba(255,255,255,.85)}
 .st-sy-x{width:44px;height:44px;margin-right:-10px;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--st-ink);background:transparent}
-.st-sy-x svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.st-sy-x svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:var(--st-ico-w);stroke-linecap:round}
 .st-sy-stage{flex:1;display:flex;align-items:center;min-height:0;cursor:pointer;touch-action:pan-y;user-select:none;-webkit-user-select:none}
 .st-sy-ch{width:100%;max-width:520px;margin:0 auto}
 .st-sy-eye{margin:0;font:560 13px/1.2 var(--st-font-d);letter-spacing:.16em;text-transform:uppercase;color:var(--st-accent-tint)}
@@ -5009,3 +5009,41 @@ body.st-live-on main::after{height:76px}
 #weightPage .st-jr-back,#weightPage .st-since-more,#weightPage .wk-more,#weightPage .wk-go,#weightPage .wx-cmp-done,#weightPage .wx-sim-reset,#homePage .tf-tx,#homePage .tf-plan-tg,.st-ask-acts button,.st-fin-acts button,.st-goal-done,.st-obs-open{font-family:var(--st-font-d) !important;font-weight:560 !important}
 /* A unit or qualifier inside a figure ("kg", "%", "/ 60 min") is text, not a numeral: the text face, like .wx-v em. */
 small,em{font-family:var(--st-font)}
+
+/* D168 · the dock's line icons follow the one stroke; the active fill and the dot in Today stay filled by design */
+.tabs .tab .tab-icon svg{stroke-width:var(--st-ico-w)}
+
+/* D166 · Analysis evidence glyphs: a picture of the row's own summary, decorative, monochrome plus one accent. */
+/* D166: the glyph sits on the title line (titles are short), so the summary keeps the full width and its
+   wrapping never changes. Right: row padding 2 + chevron 20 + gap 12. Top: centred on the 20 px title line. */
+#weightPage .wx-row-b:has(.wx-an-ev){position:relative}
+#weightPage .wx-an-ev{position:absolute;right:34px;top:calc(8px + (20px * var(--wx-s,1) - 16px) / 2);width:44px;height:16px;opacity:.9;pointer-events:none}
+#weightPage .wx-row-b:has(.wx-an-ev) .wx-row-t{display:block;padding-right:52px}
+#weightPage .wx-an-ev .e-trk{fill:var(--st-tile-line)}
+#weightPage .wx-an-ev .e-ink{fill:var(--st-ink-2)}
+#weightPage .wx-an-ev .e-acc{fill:var(--st-accent-lift)}
+#weightPage .wx-an-ev .e-band{fill-opacity:.6}
+
+/* D167 · History: the legend is one line of text, the chips open in place as the key; ribbons breathe */
+#historyPage .st-cal-sum{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:16px 0 0}
+#historyPage .st-cal-sum p,#historyPage .st-cal-sum .st-cal-sum-t{margin:0;flex:1;min-width:0;font:500 13px/1.4 var(--st-font);color:var(--st-ink-3)}
+#historyPage .st-cal-sum b{font-weight:500;color:var(--st-ink-2);font-variant-numeric:tabular-nums}
+#historyPage .st-cal-sum .vn-text{flex:none;min-height:44px;min-width:44px;padding:0 4px;font:500 13px/1 var(--st-font)}
+#historyPage .st-cal-sum+.st-cal-stats{margin-top:0 !important}
+#historyPage .st-cal-stats[hidden]{display:none}
+/* 40% taller: 340 x 118 becomes 340 x 165. The svg is drawn with preserveAspectRatio="slice", so the markup
+   is drawn at that height: the day card passes o.h 165, so the viewBox matches and nothing crops. */
+#historyPage .st-print.is-day svg{aspect-ratio:340/165}
+
+/* D169 · Empty states drawn with the sky: a soft violet glow and three stars, one line of next step */
+.st-empty{display:grid;justify-items:center;gap:6px;padding:28px 16px 24px;text-align:center}
+.st-empty-sky{width:64px;height:64px}
+.st-empty-sky svg{display:block;width:100%;height:100%;overflow:visible}
+.st-empty-sky .es-star{fill:var(--st-accent-lift)}
+.st-empty-t{margin:0;font:600 16px/1.3 var(--st-font);color:var(--st-ink)}
+.st-empty-l{margin:0;font:400 13px/1.45 var(--st-font);color:var(--st-ink-3);max-width:28ch}
+@media (prefers-reduced-motion:no-preference){
+  :root:not([data-nxp-motion="reduced"]) .st-empty-sky .es-star{animation:st-twinkle 280ms var(--st-out,ease-out) both;animation-delay:calc(var(--k,0) * 60ms)}
+}
+@keyframes st-twinkle{from{opacity:0}to{opacity:1}}
+:root[data-nxp-motion="reduced"] .st-empty-sky .es-star{animation:none}
