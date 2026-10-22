@@ -631,9 +631,12 @@ const STRATA = (() => {
      the independent `scale` property, so it never fights an element's own transform
      or transitions). Large surfaces dip less than buttons. Off under reduced motion. */
   const PRESS = "button:not(:disabled), [role=button], summary, a[href], .st-tile[onclick], label:has(>input[type=checkbox])";
+  /* D163 · A transparent overlay button (Performance row / group header) hands the dip to the surface it covers, and list rows dip a touch deeper than cards. */
+  const PRESS_HOST = [[".st-perf-open", ".vn-perf-row"], [".vn-perf-gb", ".vn-perf-group"]];
+  const PRESS_ROW = ".vn-perf-row, .vn-perf-group, .vn-set-row, .wx-row-b, .vn-evo-hist-main";
   const SPRING_BACK = "linear(0.0027,0.0851,0.2168,0.4029,0.5926,0.7408,0.885,0.9931,1.057,1.1015,1.1196,1.1192,1.1064,1.0893,1.0663,1.0438,1.0266,1.0102,0.9982,0.9914,0.9869,0.9854,0.9859,0.9877,0.9903,0.9927,0.9954,0.9976,0.9992,1.0005,1.0013,1.0017,1.0018,1.0017,1.0014,1.0011,1.0008,1.0005,1.0002,1.0001,1)";
   let pressed = null;
-  function pressDepth(el) { const r = el.getBoundingClientRect(), big = r.height > 96 || el.classList.contains("st-tile"); return big ? 0.985 : r.width > 200 ? 0.97 : r.width > 100 ? 0.96 : 0.92; }
+  function pressDepth(el) { if (el.matches(PRESS_ROW)) return 0.98; const r = el.getBoundingClientRect(), big = r.height > 96 || el.classList.contains("st-tile"); return big ? 0.985 : r.width > 200 ? 0.97 : r.width > 100 ? 0.96 : 0.92; }
   function release() {
     const el = pressed; pressed = null; if (!el || !el.animate) return;
     const from = el.__stScale || 0.96; el.__stPress && el.__stPress.cancel();
@@ -643,7 +646,8 @@ const STRATA = (() => {
     if (!Element.prototype.animate) return;
     document.addEventListener("pointerdown", e => {
       if (reduced() || e.button > 0) return;
-      const el = e.target.closest && e.target.closest(PRESS);
+      let el = e.target.closest && e.target.closest(PRESS);
+      if (el) for (const [b, h] of PRESS_HOST) if (el.matches(b)) { el = el.closest(h) || el; break; }
       if (!el || el.closest(".nxp-stepper-row input, #vn-chart-wrap, .st-qw-field")) return;
       pressed = el; const d = el.__stScale = pressDepth(el);
       el.__stPress && el.__stPress.cancel();
@@ -839,7 +843,9 @@ const STRATA = (() => {
     const workout = tab === "train" && !!document.querySelector("#trainPage .st-train-active");
     const bar = el.querySelector(".st-top-bar"), mast = document.querySelector(MAST[tab]);
     const line = bar.getBoundingClientRect().bottom || 60;
-    const past = mast && mast.offsetParent !== null ? mast.getBoundingClientRect().bottom < line : y > 140;
+    /* D161: the title folds away over the first 120 px of scroll, so the capsule lands as the fold completes
+       rather than waiting for the title's (already faded) box to pass the capsule line. */
+    const past = y >= 100 || (mast && mast.offsetParent !== null ? mast.getBoundingClientRect().bottom < line : y > 140);
     el.classList.toggle("is-scrolled", y > 4 && !workout);
     el.classList.toggle("is-compact", !!past && y > 4 && !workout);
     const t = el.querySelector(".st-top-t");
@@ -1820,6 +1826,7 @@ const STRATA = (() => {
     page.querySelectorAll("[data-st-odo]").forEach(o => odoSet(o, o.dataset.stOdo, entering));
     page.querySelectorAll("[data-st-cmap]").forEach(h => drawCompMap(h, entering));
     if (entering) page.querySelectorAll("[data-st-count]").forEach(countUp);
+    if (entering) rollFigures(page);
     dressProgress(page);
     dressWeeks(page, entering);
     foldPerf(page);
@@ -2075,6 +2082,39 @@ const STRATA = (() => {
       if (k < 1) requestAnimationFrame(step);
     };
     el.textContent = sign + (0).toFixed(dp);
+    requestAnimationFrame(step);
+  }
+  /* D162 · Figures roll once when their tab is entered (never on the repaint after logging): the Body grid values,
+     Performance best sets, the Weight range summary and History's count line. They have markup of their own, so
+     they are found by selector and only the leading number of the first text node is tweened (units stay put).
+     Off screen or hidden ones are left alone; a figure the app rewrites mid-roll is not fought over. */
+  const ROLL = ".vn-evo-cell > b:not(.is-missing), .st-perf-best b, .wx-sum-c b, #vn-hist-summary";
+  function rollFigures(page) {
+    if (reduced()) return;
+    const fold = window.innerHeight || 800, jobs = [];
+    /* Read pass: layout is touched here only, before any write. */
+    page.querySelectorAll(ROLL).forEach(el => {
+      if (el.offsetParent === null || el.getBoundingClientRect().top > fold) return;
+      const node = [...el.childNodes].find(n => n.nodeType === 3 && n.nodeValue.trim());
+      const m = node && /^(\s*[+\u2212-]?)(\d+(?:\.(\d+))?)([\s\S]*)$/.exec(node.nodeValue);
+      if (!m || /^,\d/.test(m[4])) return;
+      jobs.push({ node, pre: m[1], txt: m[2], suf: m[4], target: parseFloat(m[2]), dp: (m[3] || "").length, last: node.nodeValue });
+    });
+    if (!jobs.length) return;
+    /* Write pass: one shared frame loop for every figure. */
+    const t0 = performance.now(), dur = 700;
+    const step = now => {
+      const k = Math.min(1, (now - t0) / dur);
+      let live = false;
+      for (const q of jobs) {
+        if (q.done || !q.node.isConnected || q.node.nodeValue !== q.last) { q.done = true; continue; }
+        q.last = q.pre + (k < 1 ? (q.target * (1 - Math.pow(1 - k, 4))).toFixed(q.dp) : q.txt) + q.suf;
+        q.node.nodeValue = q.last;
+        if (k < 1) live = true; else q.done = true;
+      }
+      if (live) requestAnimationFrame(step);
+    };
+    step(t0);
     requestAnimationFrame(step);
   }
   function revealNums(el) { if (el && el.querySelectorAll) el.querySelectorAll("[data-st-num]").forEach(countNum); }

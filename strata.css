@@ -390,16 +390,33 @@ button.st-tile:active{transform:scale(.985)}
 /* Calmer (owner, 2026-10-19): a short 6-point fade-up with a tight stagger, so arriving on a tab settles
    rather than moves. */
 .st-enter .st-bento>*,.st-enter .st-tile,.st-enter .st-plan-row,.st-enter .st-quick{
-  animation:st-enter-rise .4s cubic-bezier(.25,.8,.25,1) both;
+  animation:st-enter-rise var(--st-t-move) var(--st-out) both;
 }
-.st-enter .st-bento>*:nth-child(2){animation-delay:.03s}
-.st-enter .st-bento>*:nth-child(3){animation-delay:.06s}
-.st-enter .st-bento>*:nth-child(4){animation-delay:.08s}
-.st-enter .st-bento>*:nth-child(5){animation-delay:.1s}
-.st-enter .st-bento>*:nth-child(6){animation-delay:.12s}
-.st-enter .st-bento>*:nth-child(n+7){animation-delay:.14s}
+.st-enter .st-bento>*:nth-child(2){animation-delay:36ms}
+.st-enter .st-bento>*:nth-child(3){animation-delay:72ms}
+.st-enter .st-bento>*:nth-child(4){animation-delay:108ms}
+.st-enter .st-bento>*:nth-child(5){animation-delay:144ms}
+.st-enter .st-bento>*:nth-child(n+6){animation-delay:180ms}
 .st-enter .st-plan-row{animation-delay:calc(var(--i,0) * 25ms + .06s)}
 @keyframes st-enter-rise{from{opacity:0;transform:translateY(6px)}}
+
+/* D162 · Entrance choreography on every tab: Today's stagger, carried to Progress, History and Settings. On a tab
+   change only (.st-enter is never set on the repaint after logging). One 280 ms move per card, 36 ms apart, capped
+   at five steps so the last card starts by 180 ms and the page never feels slow. Opacity + a 6 px rise only. */
+#weightPage.st-enter .n99-progress-tabs,#weightPage.st-enter .wx-plate,#weightPage.st-enter .wx-after>*,
+#weightPage.st-enter .vn-perf-lead,#weightPage.st-enter .st-since,#weightPage.st-enter .vn-perf-g,
+#weightPage.st-enter .nxp-progress-training>:not(header):not(.n99-progress-tabs),#weightPage.st-enter .vn-evo>*,
+#historyPage.st-enter .vn-hist-calendar,#historyPage.st-enter .vn-hist-day,#historyPage.st-enter .vn-hist-filters,
+#morePage.st-enter .vn-set-account,#morePage.st-enter .vn-set-group{
+  animation:st-enter-rise var(--st-t-move) var(--st-out) calc(min(var(--en,0),5) * 36ms) both}
+#weightPage.st-enter .wx-plate{--en:1}
+#weightPage.st-enter .wx-after>:nth-child(1){--en:2}#weightPage.st-enter .wx-after>:nth-child(2){--en:3}#weightPage.st-enter .wx-after>:nth-child(3){--en:4}#weightPage.st-enter .wx-after>:nth-child(n+4){--en:5}
+#weightPage.st-enter .st-since{--en:1}
+#weightPage.st-enter .vn-perf-g:nth-child(1){--en:2}#weightPage.st-enter .vn-perf-g:nth-child(2){--en:3}#weightPage.st-enter .vn-perf-g:nth-child(3){--en:4}#weightPage.st-enter .vn-perf-g:nth-child(n+4){--en:5}
+#weightPage.st-enter .nxp-progress-training>:nth-child(3){--en:1}#weightPage.st-enter .nxp-progress-training>:nth-child(4){--en:2}#weightPage.st-enter .nxp-progress-training>:nth-child(5){--en:3}#weightPage.st-enter .nxp-progress-training>:nth-child(6){--en:4}#weightPage.st-enter .nxp-progress-training>:nth-child(n+7){--en:5}
+#weightPage.st-enter .vn-evo>:nth-child(2){--en:1}#weightPage.st-enter .vn-evo>:nth-child(3){--en:2}#weightPage.st-enter .vn-evo>:nth-child(4){--en:3}#weightPage.st-enter .vn-evo>:nth-child(5){--en:4}#weightPage.st-enter .vn-evo>:nth-child(n+6){--en:5}
+#historyPage.st-enter .vn-hist-calendar{--en:1}#historyPage.st-enter .vn-hist-day{--en:2}
+#morePage.st-enter .vn-set-group:nth-child(3){--en:1}#morePage.st-enter .vn-set-group:nth-child(4){--en:2}#morePage.st-enter .vn-set-group:nth-child(5){--en:3}#morePage.st-enter .vn-set-group:nth-child(6){--en:4}#morePage.st-enter .vn-set-group:nth-child(n+7){--en:5}
 /* ---- DOCK --------------------------------------------------------------------
    A floating glass capsule with a sliding highlight. Focused Train still
    recedes it (D6 unchanged). */
@@ -3377,6 +3394,32 @@ html::after{content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;opa
 #stTop .st-top-bar::after{content:"";position:absolute;inset:-6px -4px}/* 46 pt effective target for the 34 pt capsule */
 @media (prefers-reduced-motion:reduce){#stTop .st-top-bar{transition:none}}
 :root[data-nxp-motion="reduced"] #stTop .st-top-bar{transition:none}
+
+/* D161 · Masthead collapse: as the page scrolls the title and its eyebrow shrink and fade upward into the D72
+   capsule, and unfold again on the way back. A scroll timeline on the root (as D153's sky), so nothing runs on the
+   main thread; transform + opacity only. The eyebrow goes first (0-60 px), the title by 120 px. The capsule keeps
+   its own JS classes (is-compact follows the title's real position) and the two overlap by design: the title is
+   gone by 120 px whether or not the capsule has arrived. Not on the active workout (D6: it has its own header).
+   Reduced motion: opacity only. Without scroll timelines nothing animates and the capsule still works. */
+@supports (animation-timeline:scroll()){
+  #homePage .st-head .st-h1,#trainPage:not(:has(.st-train-active)) .nxp-train-chrome h1,#weightPage .nxp-progress-chrome h1,#historyPage .vn-hist-chrome h1,#morePage .vn-set-title{
+    transform-origin:0 0;animation:st-mast-out linear both;animation-timeline:scroll(root);animation-range:0 120px}
+  #homePage .st-head .st-eyebrow,#trainPage:not(:has(.st-train-active)) .nxp-train-chrome .st-eyebrow,#weightPage .nxp-progress-chrome p,#historyPage .vn-hist-chrome p{
+    animation:st-mast-eye linear both;animation-timeline:scroll(root);animation-range:0 60px}
+  /* The subtitle under the title (Today's context line, Train's chrome line) folds a little later than the eyebrow, so nothing is left under the capsule when it lands at 100 px. */
+  #homePage .st-head .tf-ctx{animation:st-mast-eye linear both;animation-timeline:scroll(root);animation-range:20px 110px}
+  @media (prefers-reduced-motion:reduce){
+    #homePage .st-head .st-h1,#trainPage:not(:has(.st-train-active)) .nxp-train-chrome h1,#weightPage .nxp-progress-chrome h1,#historyPage .vn-hist-chrome h1,#morePage .vn-set-title{animation-name:st-mast-fade}
+  }
+  :root[data-nxp-motion="reduced"] #homePage .st-head .st-h1,:root[data-nxp-motion="reduced"] #trainPage .nxp-train-chrome h1,:root[data-nxp-motion="reduced"] #weightPage .nxp-progress-chrome h1,:root[data-nxp-motion="reduced"] #historyPage .vn-hist-chrome h1,:root[data-nxp-motion="reduced"] #morePage .vn-set-title{animation-name:st-mast-fade}
+}
+@keyframes st-mast-out{to{opacity:0;transform:translateY(-8px) scale(.72)}}
+@keyframes st-mast-eye{to{opacity:0}}
+@keyframes st-mast-fade{to{opacity:0}}
+
+/* D163 · Press on every tappable surface: strata.js bindPress also scales list rows and the Performance row/group
+   (the overlay button hands the dip to its row). The system tap flash is off on them so the dip is the only cue. */
+.vn-set-row,.vn-evo-hist-main,.nxp-cal-day,.vn-week-c,#weightPage .wx-row-b,#weightPage .vn-perf-row,#weightPage .vn-perf-group{-webkit-tap-highlight-color:transparent}
 /* ---- D74 · Breathing rest orb and set ignition ---------------------------------------------------------
    The rest strip becomes an instrument: a ring that sweeps down with the engine's own countdown (--pct,
    painted every second), a core that breathes on an 8-second cycle (a calm 4-in, 4-out), a pulse in the
