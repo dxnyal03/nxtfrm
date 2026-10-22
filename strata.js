@@ -434,11 +434,18 @@ const STRATA = (() => {
   }
 
   /* ---- Dock indicator and spotlight --------------------------------------- */
-  let dockI = -1, dockT = 0;
+  /* D170 · The dock pill glides. A tab change holds the pill where it is until its View Transition starts
+     drawing (dockHold, released from navigate()): the new page renders inside the transition's update
+     callback, and anything that started moving before then would be frozen and reappear part-way — the
+     jump that read as a stutter on the phone. The glide's length grows a little with the distance. */
+  let dockI = -1, dockT = 0, dockHold = false;
   function syncDock() {
     const inner = document.querySelector(".tabs .tabs-inner"); if (!inner) return;
     const tabs = [...inner.querySelectorAll(".tab")], i = tabs.findIndex(t => t.classList.contains("active"));
-    if (dockI !== -1 && i !== dockI && !reduced()) { inner.classList.remove("is-moving"); void inner.offsetWidth; inner.classList.add("is-moving"); clearTimeout(dockT); dockT = setTimeout(() => inner.classList.remove("is-moving"), 560); }
+    if (dockHold) return;
+    const ms = Math.min(460, 320 + 40 * Math.max(0, Math.abs(i - dockI) - 1));
+    inner.style.setProperty("--dock-d", ms + "ms");
+    if (dockI !== -1 && i !== dockI && !reduced()) { inner.classList.remove("is-moving"); void inner.offsetWidth; inner.classList.add("is-moving"); clearTimeout(dockT); dockT = setTimeout(() => inner.classList.remove("is-moving"), ms + 40); }
     dockI = i;
     inner.style.setProperty("--tab-i", String(Math.max(0, i)));
     inner.style.setProperty("--tab-n", String(tabs.length || 5));
@@ -857,6 +864,8 @@ const STRATA = (() => {
     const untag = () => { named.splice(0).forEach(el => { el.style.viewTransitionName = ""; }); };
     let out;
     navPending++; navUntil = performance.now() + 1500;
+    dockHold = true;
+    const dockGo = () => { if (!dockHold) return; dockHold = false; syncDock(); };
     try {
       const t = document.startViewTransition(() => {
         untag();
@@ -867,12 +876,13 @@ const STRATA = (() => {
       /* The direction attribute stays until the last overlapping transition is done. */
       const done = () => { untag(); navPending = Math.max(0, navPending - 1); if (!navPending) de.removeAttribute("data-st-nav"); };
       t.finished.then(done, done);
+      t.ready.then(dockGo, dockGo); t.finished.then(dockGo, dockGo); /* D170: the pill moves once the transition is drawing (or, at the latest, when it ends) */
       /* Tapping another tab before this one settles skips it, and `ready` rejects with an AbortError.
          Nothing failed, but the page's unhandledrejection handler would toast "App error", so it is
          absorbed here (found on the iPhone simulator, 2026-10-19). */
       if (t.ready && t.ready.catch) t.ready.catch(() => {});
       if (t.updateCallbackDone && t.updateCallbackDone.catch) t.updateCallbackDone.catch(() => {});
-    } catch (e) { untag(); navPending = Math.max(0, navPending - 1); if (!navPending) de.removeAttribute("data-st-nav"); return swap(); }
+    } catch (e) { untag(); navPending = Math.max(0, navPending - 1); if (!navPending) de.removeAttribute("data-st-nav"); const o = swap(); dockGo(); return o; }
     return out;
   }
 

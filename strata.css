@@ -3693,8 +3693,6 @@ body.st-live-on main::after{content:"";display:block;height:70px}
 .tabs .tabs-inner.st-dock::after{content:"";position:absolute;z-index:2;pointer-events:none;top:-7px;height:12px;left:0;width:calc(100% / var(--tab-n,5));
   transform:translateX(calc(var(--tab-i,0) * 100%));transition:transform .55s cubic-bezier(.34,1.3,.64,1);
   background:radial-gradient(42% 50% at 50% 50%,rgba(255,255,255,.55),rgba(214,200,255,.18) 45%,transparent 72%);filter:blur(.5px)}
-@media (prefers-reduced-motion:no-preference){.tabs .tabs-inner.st-dock.is-moving::before{animation:st-dock-stretch .52s cubic-bezier(.32,.72,0,1)}}
-@keyframes st-dock-stretch{0%{scale:1 1}38%{scale:1.3 .9}72%{scale:.97 1.03}100%{scale:1 1}}
 :root[data-nxp-motion="reduced"] .tabs .tabs-inner.st-dock::after{transition:none !important}
 @media (min-width:1024px){.tabs .tabs-inner.st-dock::after{display:none}}
 
@@ -5047,3 +5045,19 @@ small,em{font-family:var(--st-font)}
 }
 @keyframes st-twinkle{from{opacity:0}to{opacity:1}}
 :root[data-nxp-motion="reduced"] .st-empty-sky .es-star{animation:none}
+
+/* =============================================================================
+   D170 · The dock pill glides (owner, 2026-10-22: "make the animation that transitions between the tab
+   below smoother"). One curve for the pill and its glow — the house easing, no overshoot — over --dock-d
+   (320 ms, +40 ms per extra tab travelled, set by syncDock). The stretch is a gentle 10 % along the travel.
+   The label keeps one weight (Geist 560, D156) and only its colour changes, over the same glide, so the
+   text never jumps.
+   ========================================================================== */
+.tabs .tabs-inner.st-dock::before,.tabs .tabs-inner.st-dock::after{transition:transform var(--dock-d,320ms) cubic-bezier(.32,.72,0,1)}
+@media (prefers-reduced-motion:no-preference){.tabs .tabs-inner.st-dock.is-moving::before{animation:st-dock-glide var(--dock-d,320ms) cubic-bezier(.32,.72,0,1)}}
+@keyframes st-dock-glide{0%{scale:1 1}40%{scale:1.1 .95}100%{scale:1 1}}
+.tabs .tab .tab-label,.tabs .tab.active .tab-label{font-weight:560 !important}/* answers the 500/600 pair at ~1012: one weight, no jump */
+.tabs .tab{transition:color var(--dock-d,320ms) cubic-bezier(.32,.72,0,1)}
+.tabs .tab .tab-icon svg{transition:filter var(--dock-d,320ms) cubic-bezier(.32,.72,0,1)}
+@media (prefers-reduced-motion:reduce){.tabs .tabs-inner.st-dock::after,.tabs .tab,.tabs .tab .tab-icon svg{transition:none !important}}
+:root[data-nxp-motion="reduced"] .tabs .tabs-inner.st-dock::before,:root[data-nxp-motion="reduced"] .tabs .tab,:root[data-nxp-motion="reduced"] .tabs .tab .tab-icon svg{transition:none !important}
