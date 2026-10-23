@@ -5,6 +5,7 @@
 (function () {
   const PREVIEW = /^deploy-preview-\d+--[a-z0-9-]+\.netlify\.app$/i.test(location.hostname);
   if (location.hostname !== 'localhost' && !PREVIEW) return;
+  if (location.protocol === 'capacitor:') return; /* never in the native app, whose hostname is also "localhost" */
   if (PREVIEW) {
     const off = function () { if (typeof toast === 'function') toast('Cloud sync is off on this preview link — it uses test data.'); return false; };
     ['cloudLogin', 'cloudSignup', 'saveCloudNow', 'loadCloudNow', 'scheduleCloudSave', 'openCloudLoginFromBanner'].forEach(function (name) {

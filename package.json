@@ -1,0 +1,17 @@
+{
+  "name": "nxtfrm",
+  "private": true,
+  "description": "NXTFRM — the web app, wrapped as a personal iOS app with Capacitor. The web files stay the source; this only packages them.",
+  "scripts": {
+    "build:www": "node scripts/build-www.mjs",
+    "ios:sync": "node scripts/build-www.mjs && cap sync ios",
+    "ios:open": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.5.3",
+    "@capacitor/ios": "8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}

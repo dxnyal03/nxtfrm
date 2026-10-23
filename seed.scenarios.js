@@ -21,6 +21,7 @@
    is applied, so fixture data is never uploaded. */
 (function () {
   if (location.hostname !== 'localhost') return;
+  if (location.protocol === 'capacitor:') return; /* never in the native app, whose hostname is also "localhost" */
 
   const DIAGNOSIS = ['plateau_metabolic', 'plateau_drift', 'water_masking', 'recovery'];
   const CHECKPOINT = ['today-unstarted', 'today-active', 'today-finished', 'today-rest', 'weight-sparse', 'weight-stale'];

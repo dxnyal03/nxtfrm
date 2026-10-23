@@ -1,0 +1,11 @@
+{
+  "appId": "com.dxnyal03.nxtfrm",
+  "appName": "NXTFRM",
+  "webDir": "www",
+  "backgroundColor": "#07060B",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#07060B",
+    "scheme": "NXTFRM"
+  }
+}
