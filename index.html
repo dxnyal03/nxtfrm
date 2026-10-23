@@ -2715,7 +2715,7 @@ textarea:disabled {
   if(sessionStorage.getItem('nxSplash')){if(window.__nxVeilOff)window.__nxVeilOff();return;}
   sessionStorage.setItem('nxSplash','1');
   var st={};try{st=JSON.parse(localStorage.getItem('apm_settings')||'{}')||{};}catch(e){}
-  var n=st.name===undefined?(/^deploy-preview-\d+--/.test(location.hostname)?'Jan':'Dan'):String(st.name||'').trim(),hr=new Date().getHours();
+  var n=st.name===undefined?(/^deploy-preview-\d+--/.test(location.hostname)?'Dan':'Dan'):String(st.name||'').trim(),hr=new Date().getHours();
   var part=hr<5?'Late night':hr<12?'Morning':hr<18?'Afternoon':'Evening';
   var ap=(st.cutSupport&&st.cutSupport.appearance)||{};
   var reduce=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches)||ap.motion==='reduced';

@@ -55,7 +55,7 @@ const NXP = (() => {
   }
   /* Greeting. The name is a plain display string in settings (default "Dan");
      it never feeds a calculation. Time of day comes from the device clock. */
-  function userName(){const n=typeof settings.name==='string'?settings.name.trim():'';return settings.name===undefined?(/^deploy-preview-\d+--/.test(location.hostname)?'Jan':'Dan'):n;} /* trial links greet the demo profile, Jan */
+  function userName(){const n=typeof settings.name==='string'?settings.name.trim():'';return settings.name===undefined?(/^deploy-preview-\d+--/.test(location.hostname)?'Dan':'Dan'):n;} /* trial links greet the demo profile, Dan */
   function greeting(){
     const h=new Date().getHours(),part=h<5?'Late night':h<12?'Morning':h<18?'Afternoon':'Evening',n=userName();
     return n?`${part}, ${n}`:part;
@@ -3771,7 +3771,7 @@ const NXP = (() => {
       if(cm&&cm.k){cls.push('has-cs');if(!outside){cc[cm.k]++;if(cm.k==='plan'&&!ccLetters.includes(cm.letter)&&ccLetters.length<3)ccLetters.push(cm.letter);}}
       const cv=!outside&&vMap.has(key)?vMap.get(key):null;if(cv!==null)cls.push('has-v');
       const label=new Date(`${key}T12:00:00`).toLocaleDateString('en-SG',{day:'numeric',month:'long'})+(kinds.length?`, ${kinds.join(', ')}`:', no records')+(cv!==null?vAria(cv):'')+(cm?`, ${cm.aria}`:'');
-      cells.push(`<button type="button" class="${cls.join(' ')}" data-date="${key}" data-k="${kind}"${second?` data-k2="${second}"`:''}${cm&&cm.k?` data-cs="${cm.k}"`:''} style="--i:${i}" tabindex="${key===selected?'0':'-1'}" aria-label="${esc(label)}" aria-pressed="${key===selected?'true':'false'}"${key===today?' aria-current="date"':''} onclick="NXP.historySelect('${key}')"><b${d===1?' class="is-m1"':''}>${d===1?d+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]:d}</b><span class="nxp-cal-marks" aria-hidden="true">${historyMarkHTML(marks)}${coCalMarkHTML(cm)}</span>${cv!==null?`<span class="nxp-cal-v" aria-hidden="true">${esc(vText(cv))}</span>`:''}</button>`);
+      cells.push(`<button type="button" class="${cls.join(' ')}" data-date="${key}" data-k="${kind}"${second?` data-k2="${second}"`:''}${cm&&cm.k?` data-cs="${cm.k}"`:''} style="--i:${i}" tabindex="${key===selected?'0':'-1'}" aria-label="${esc(label)}" aria-pressed="${key===selected?'true':'false'}"${key===today?' aria-current="date"':''} onclick="NXP.historySelect('${key}')"><b${d===1?' class="is-m1"':''}>${d===1?d+' '+['Dan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]:d}</b><span class="nxp-cal-marks" aria-hidden="true">${historyMarkHTML(marks)}${coCalMarkHTML(cm)}</span>${cv!==null?`<span class="nxp-cal-v" aria-hidden="true">${esc(vText(cv))}</span>`:''}</button>`);
     }
     /* Ascension — legend entries for the status marks, only for those this month actually has. */
     const coLg=[['plan','Planned'],['progress','In progress'],['partial','Partly logged'],['missed','Not logged'],['excused','Excused'],['moved','Moved']].filter(([k])=>cc[k]).map(([k,w])=>`<span class="co-lg is-${k}">${k==='plan'?`<em aria-hidden="true">${esc(ccLetters.slice().sort().join(' '))}</em>`:coMark(k,'co-cm')}${w}<b>${cc[k]}</b></span>`).join('');

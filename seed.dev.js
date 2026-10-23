@@ -481,10 +481,10 @@
 
   seed();
 
-  /* Trial link only: the demo profile is "Jan" unless a name was set on this device (owner, 2026-10-23). */
+  /* Trial link only: the demo profile is "Dan" unless a name was set on this device (owner, 2026-10-23). */
   if (PREVIEW && typeof settings === 'object' && settings && settings.name === undefined) {
-    settings.name = 'Jan';
-    try { const st = JSON.parse(localStorage.getItem(KEYS.settings) || '{}'); st.name = 'Jan'; localStorage.setItem(KEYS.settings, JSON.stringify(st)); } catch (e) {}
+    settings.name = 'Dan';
+    try { const st = JSON.parse(localStorage.getItem(KEYS.settings) || '{}'); st.name = 'Dan'; localStorage.setItem(KEYS.settings, JSON.stringify(st)); } catch (e) {}
     if (typeof render === 'function') render();
   }
 
