@@ -5088,3 +5088,13 @@ small,em{font-family:var(--st-font)}
 @media (prefers-reduced-motion:no-preference){
   :root:not([data-nxp-motion="reduced"]) .st-live:not([hidden]){animation:st-live-in var(--st-t-state,200ms) cubic-bezier(.32,.72,0,1) both}
 }
+
+/* D171b (owner, 2026-10-23: "the screen flickers for a bit"). A tab change must never show a blank frame: the page's
+   vn-route-enter and the cards' st-enter-rise both started at opacity 0, so for ~0.1-0.2 s the sky showed through.
+   Both keyframes are redefined here (strata.css loads last, so these win) as a small rise with no fade — the
+   page and every card are fully drawn from the first frame, as on a native tab bar. */
+@keyframes vn-route-enter{from{transform:translateY(6px)}to{transform:none}}
+@keyframes st-enter-rise{from{transform:translateY(6px)}}
+@media (prefers-reduced-motion:reduce){.content,.content:not(.hide){animation:none}}
+:root[data-nxp-motion="reduced"] .content{animation:none}
+
