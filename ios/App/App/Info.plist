@@ -26,6 +26,12 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>NXTFRM does not read anything from Apple Health.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>NXTFRM writes the morning weigh-ins you log as Body Mass, and the body fat from your Evo scans as Body Fat Percentage. Edits and deletions in NXTFRM are mirrored there.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

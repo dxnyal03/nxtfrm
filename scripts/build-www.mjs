@@ -15,12 +15,15 @@ const NEVER = new Set(["seed.dev.js", "seed.scenarios.js", "wearables.fixtures.j
 let html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 const before = html.length;
 html = html.replace(/<script src="seed\.(dev|scenarios)\.js(\?[^"]*)?"><\/script>\s*/g, "");
+// Native-only bridge: loaded after strata.js, never by the repo's own index.html.
+html = html.replace(/(<script src="strata\.js(?:\?[^"]*)?"><\/script>)/, '$1\n<script src="native.js"></script>');
+if (!html.includes('<script src="native.js"></script>')) throw new Error("native.js tag was not injected (strata.js script tag not found)");
 if (/seed\.(dev|scenarios)\.js/.test(html.replace(/<!--[\s\S]*?-->/g, ""))) throw new Error("a seed reference is still in index.html");
 
 const refs = new Set();
 for (const m of html.matchAll(/(?:src|href)="([^"#:${}]+)"/g)) refs.add(m[1].split("?")[0]);
 const files = [...refs].filter(f => !f.startsWith("splash/") && !NEVER.has(f) && fs.existsSync(path.join(ROOT, f)));
-for (const extra of ["icon-512.png", "fonts/GEIST-OFL.txt"]) if (fs.existsSync(path.join(ROOT, extra))) files.push(extra);
+for (const extra of ["native.js", "icon-512.png", "fonts/GEIST-OFL.txt"]) if (fs.existsSync(path.join(ROOT, extra))) files.push(extra);
 
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });

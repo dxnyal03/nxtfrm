@@ -16,7 +16,38 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
+		10A3C2C05882A55492E6BE7C /* NxtBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 983F0D74094C5DEC228B2D0A /* NxtBridgeViewController.swift */; };
+		1C7351814B943B4EB4FFD88D /* NxtNativePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACE249C944310B26A1A789F1 /* NxtNativePlugin.swift */; };
+		D707B1BC7DB857525F505BE3 /* RestAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24EE483B59D0DC853B28FB00 /* RestAttributes.swift */; };
+		599B3FB2B444B57A112E99FA /* RestAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24EE483B59D0DC853B28FB00 /* RestAttributes.swift */; };
+		8FD001AD58B554D29B057D85 /* RestActivityBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E60CD11C0B22D34C4372F7D /* RestActivityBundle.swift */; };
+		5A215E5D33AF1CD46B748BF6 /* RestActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6D27717F3F0B9A97A40EDC /* RestActivityWidget.swift */; };
+		B263ECA56F8CF1F9D650A002 /* RestActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9503D0D61173B2E7C926C687 /* RestActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		824126CC0F49E77468A09E8A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 25236F2FD4C476DAF91775CB;
+			remoteInfo = RestActivity;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		577F7327483E8B6DBDFD4C62 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B263ECA56F8CF1F9D650A002 /* RestActivity.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
@@ -30,6 +61,14 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		983F0D74094C5DEC228B2D0A /* NxtBridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NxtBridgeViewController.swift; sourceTree = "<group>"; };
+		ACE249C944310B26A1A789F1 /* NxtNativePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NxtNativePlugin.swift; sourceTree = "<group>"; };
+		24EE483B59D0DC853B28FB00 /* RestAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestAttributes.swift; sourceTree = "<group>"; };
+		BE8B08C4A96F2F821773ACA1 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		9E60CD11C0B22D34C4372F7D /* RestActivityBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestActivityBundle.swift; sourceTree = "<group>"; };
+		4A6D27717F3F0B9A97A40EDC /* RestActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestActivityWidget.swift; sourceTree = "<group>"; };
+		0B378E885CADC50AD63FD431 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		9503D0D61173B2E7C926C687 /* RestActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RestActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -41,6 +80,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9E9905718D541930DD889D20 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -49,6 +95,7 @@
 			children = (
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
+				F23E6571CDAF49453E8D3951 /* RestActivity */,
 				504EC3051FED79650016851F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -57,6 +104,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				9503D0D61173B2E7C926C687 /* RestActivity.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -65,6 +113,10 @@
 			isa = PBXGroup;
 			children = (
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
+				983F0D74094C5DEC228B2D0A /* NxtBridgeViewController.swift */,
+				ACE249C944310B26A1A789F1 /* NxtNativePlugin.swift */,
+				24EE483B59D0DC853B28FB00 /* RestAttributes.swift */,
+				BE8B08C4A96F2F821773ACA1 /* App.entitlements */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -77,6 +129,16 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		F23E6571CDAF49453E8D3951 /* RestActivity */ = {
+			isa = PBXGroup;
+			children = (
+				9E60CD11C0B22D34C4372F7D /* RestActivityBundle.swift */,
+				4A6D27717F3F0B9A97A40EDC /* RestActivityWidget.swift */,
+				0B378E885CADC50AD63FD431 /* Info.plist */,
+			);
+			path = RestActivity;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -87,10 +149,12 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
+				577F7327483E8B6DBDFD4C62 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				F0AE509D8DCBBDA18A076C5F /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -99,6 +163,23 @@
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		25236F2FD4C476DAF91775CB /* RestActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 42CCE60F0148FBD9710C7C67 /* Build configuration list for PBXNativeTarget "RestActivity" */;
+			buildPhases = (
+				22205608E61E589C53FD96E2 /* Sources */,
+				9E9905718D541930DD889D20 /* Frameworks */,
+				CEE4D3231B1A9B54BDAFAAC8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RestActivity;
+			productName = RestActivity;
+			productReference = 9503D0D61173B2E7C926C687 /* RestActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -109,6 +190,9 @@
 				LastSwiftUpdateCheck = 0920;
 				LastUpgradeCheck = 0920;
 				TargetAttributes = {
+					25236F2FD4C476DAF91775CB = {
+						CreatedOnToolsVersion = 16.0;
+					};
 					504EC3031FED79650016851F = {
 						CreatedOnToolsVersion = 9.2;
 						LastSwiftMigration = 1100;
@@ -133,6 +217,7 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				25236F2FD4C476DAF91775CB /* RestActivity */,
 			);
 		};
 /* End PBXProject section */
@@ -151,6 +236,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CEE4D3231B1A9B54BDAFAAC8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -160,6 +252,19 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
+				10A3C2C05882A55492E6BE7C /* NxtBridgeViewController.swift in Sources */,
+				1C7351814B943B4EB4FFD88D /* NxtNativePlugin.swift in Sources */,
+				D707B1BC7DB857525F505BE3 /* RestAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		22205608E61E589C53FD96E2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8FD001AD58B554D29B057D85 /* RestActivityBundle.swift in Sources */,
+				5A215E5D33AF1CD46B748BF6 /* RestActivityWidget.swift in Sources */,
+				599B3FB2B444B57A112E99FA /* RestAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -183,6 +288,14 @@
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */
+
+/* Begin PBXTargetDependency section */
+		F0AE509D8DCBBDA18A076C5F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 25236F2FD4C476DAF91775CB /* RestActivity */;
+			targetProxy = 824126CC0F49E77468A09E8A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		504EC3141FED79650016851F /* Debug */ = {
@@ -302,6 +415,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = P2YVV7T6FJ;
 				CURRENT_PROJECT_VERSION = 1;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -325,6 +439,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = P2YVV7T6FJ;
 				CURRENT_PROJECT_VERSION = 1;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -337,6 +452,55 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		B849BE80B1398FE9CB086A64 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P2YVV7T6FJ;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RestActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dxnyal03.nxtfrm.RestActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		551AD67B86C9E38876EE5AB4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P2YVV7T6FJ;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RestActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dxnyal03.nxtfrm.RestActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -357,6 +521,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		42CCE60F0148FBD9710C7C67 /* Build configuration list for PBXNativeTarget "RestActivity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B849BE80B1398FE9CB086A64 /* Debug */,
+				551AD67B86C9E38876EE5AB4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
