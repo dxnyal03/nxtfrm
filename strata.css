@@ -5082,3 +5082,9 @@ small,em{font-family:var(--st-font)}
    and the card keeps its look. The dock keeps its blur: text really scrolls beneath it. */
 #homePage .st-tile.tf-card{-webkit-backdrop-filter:none;backdrop-filter:none}
 
+/* D171 · A tab change is a plain swap (see navigate()); the page's own vn-route-enter fade plays. The live capsule
+   fades in rather than popping (translate, so its translateX(-50%) centring is untouched). */
+@keyframes st-live-in{from{opacity:0;translate:0 8px}}
+@media (prefers-reduced-motion:no-preference){
+  :root:not([data-nxp-motion="reduced"]) .st-live:not([hidden]){animation:st-live-in var(--st-t-state,200ms) cubic-bezier(.32,.72,0,1) both}
+}
