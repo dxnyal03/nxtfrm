@@ -55,7 +55,7 @@ const NXP = (() => {
   }
   /* Greeting. The name is a plain display string in settings (default "Dan");
      it never feeds a calculation. Time of day comes from the device clock. */
-  function userName(){const n=typeof settings.name==='string'?settings.name.trim():'';return settings.name===undefined?'Dan':n;}
+  function userName(){const n=typeof settings.name==='string'?settings.name.trim():'';return settings.name===undefined?(/^deploy-preview-\d+--/.test(location.hostname)?'Jan':'Dan'):n;} /* trial links greet the demo profile, Jan */
   function greeting(){
     const h=new Date().getHours(),part=h<5?'Late night':h<12?'Morning':h<18?'Afternoon':'Evening',n=userName();
     return n?`${part}, ${n}`:part;
