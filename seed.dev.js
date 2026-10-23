@@ -480,6 +480,13 @@
 
   seed();
 
+  /* Trial link only: the demo profile is "Jan" unless a name was set on this device (owner, 2026-10-23). */
+  if (PREVIEW && typeof settings === 'object' && settings && settings.name === undefined) {
+    settings.name = 'Jan';
+    try { const st = JSON.parse(localStorage.getItem(KEYS.settings) || '{}'); st.name = 'Jan'; localStorage.setItem(KEYS.settings, JSON.stringify(st)); } catch (e) {}
+    if (typeof render === 'function') render();
+  }
+
   /* ?demo=goal (localhost and previews only): shows the goal-reached moment (D99) on test data. The goal range
      is set in memory just long enough for the latest reading to be the first that brings "Now" (D97) inside it,
      the moment is drawn, and the range goes straight back. Nothing is written. */
