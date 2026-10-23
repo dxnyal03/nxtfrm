@@ -66,8 +66,9 @@ struct RestActivityWidget: Widget {
         if stale || end <= Date() {
             Text("Done")
         } else {
-            /* Counts down to a fixed end time; nothing is captured at render time, so every redraw agrees. */
-            Text(end, style: .timer)
+            /* A live m:ss countdown; iOS shows it as "2:--" while the lock screen is dimmed (always-on), which is the
+               system's own treatment. (Text(_, style: .timer) was tried and renders as "1 minute" on the lock screen.) */
+            Text(timerInterval: Date()...end, countsDown: true)
                 .monospacedDigit()
                 .multilineTextAlignment(.trailing)
         }
