@@ -1,3 +1,6 @@
 # Generated tool cache — not source
 .playwright-mcp/
 node_modules/
+
+# Native iOS shell (Capacitor): generated web bundle
+www/

@@ -852,8 +852,16 @@ const STRATA = (() => {
       return o;
     };
     const de = document.documentElement;
-    if (typeof document.startViewTransition !== "function" || reduced() || document.hidden || de.classList.contains("st-sheet-open")) return swap();
     const portal = to === "train" && lastPress && performance.now() - lastPress.t < 1500;
+    /* D171 (owner, 2026-10-23: "the transitions between the pages cause a slight glitch"). Recorded at 60 fps in
+       WebKit (the iPhone's engine), a View Transition for a plain tab change either cut in one frame or faded into
+       a snapshot taken while the incoming cards were still invisible (their entrance had not started), so the page
+       showed its title over an empty canvas for ~0.1 s and then every card popped in at once. A tab change is now
+       a plain swap: the page's own vn-route-enter fade-up (vnext.css, 280 ms) plays with its cards' stagger on top,
+       and with no snapshot nothing can flash. The Start-workout portal keeps its View Transition. */
+    if (!portal || typeof document.startViewTransition !== "function" || reduced() || document.hidden || de.classList.contains("st-sheet-open")) {
+      return swap();
+    }
     if (portal) { de.style.setProperty("--st-px", Math.round(lastPress.x) + "px"); de.style.setProperty("--st-py", Math.round(lastPress.y) + "px"); lastPress = null; }
     de.setAttribute("data-st-nav", portal ? "portal" : TABS.indexOf(to) > TABS.indexOf(shown) ? "fwd" : "back");
     const named = [];

@@ -8242,6 +8242,7 @@ document.addEventListener("focusout",function(e){
 <script>
 (function loadWearableFixturesDevOnly(){
   var host=String(location.hostname||"");
+  if(location.protocol==="capacitor:")return; /* never in the native app, whose hostname is also "localhost" */
   if(!(host==="localhost"||host==="127.0.0.1"||host==="[::1]"||host==="::1"||location.protocol==="file:"))return;
   /* The fixtures only feed NXT.wearables; with the modules off the page there is nothing to feed. */
   if(!(typeof NXT==="object"&&NXT&&NXT.wearables))return;
