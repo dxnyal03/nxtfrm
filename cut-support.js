@@ -1729,6 +1729,51 @@ Object.assign(NXT, (()=>{
       </div>
     </section>`;
   }
+  /* D166 · Analysis evidence glyphs: a 44 x 16 picture of the row's own summary line, drawn from values the
+     row's page already prints (no new numbers). Decorative (aria-hidden): monochrome plus one accent, no axis,
+     label or tooltip. Defined before chartHTML on purpose (release gate: no builder function after it). */
+  function evGlyph(kind,model,plateau) {
+    const W=44,H=16,mid=H/2,f=v=>(Math.round(v*10)/10).toString();
+    let g='';
+    if(kind==='weeks'){
+      /* The seven weeks behind weeksSummary(): each Mon-Sun average against the week before, same window rule. */
+      const rows=N.weights(),prev=N.dateAdd(N.weekStart(state.date),-7),ch=[];
+      const cut=typeof settings==='object'&&settings&&N.finite(N.dateMs(settings.cutStart))!==null?settings.cutStart:null;
+      for(let k=6;k>=0;k--){
+        const ws=N.dateAdd(prev,-7*k);
+        if(cut&&N.dateAdd(ws,6)<cut){ch.push(null);continue;} /* no weeks from before the cut */
+        const a=N.windowStats(rows,N.dateAdd(ws,6),7),b=N.windowStats(rows,N.dateAdd(ws,-1),7);
+        ch.push(a.n>=3&&b.n>=3?a.avg-b.avg:null);
+      }
+      const mx=Math.max(...ch.map(c=>c===null?0:Math.abs(c)));
+      if(!mx||ch.filter(c=>c!==null).length<2)return '';
+      g=`<rect class="e-trk" x="0" y="${mid-.5}" width="${W}" height="1"/>`+ch.map((c,i)=>{
+        if(c===null)return '';
+        const h=Math.max(3,Math.abs(c)/mx*(mid-1)),x=f(1.5+i*6.5);
+        return `<rect class="${i===6?'e-acc':'e-ink'}" x="${x}" y="${f(c>0?mid-h:mid)}" width="2" height="${f(h)}" rx="1"/>`;
+      }).join('');
+    }
+    else if(kind==='rate'){
+      /* The Rate page's own numbers: plateau.weeklyRate and its Likely-between range (lower, upper). */
+      const rate=N.finite(plateau&&plateau.weeklyRate),lo=N.finite(plateau&&plateau.lower),hi=N.finite(plateau&&plateau.upper);
+      if(rate===null||!(plateau&&plateau.ok))return '';
+      const band=lo!==null&&hi!==null&&lo!==hi,vals=band?[lo,hi,rate,0]:[rate,0];
+      const a=Math.min(...vals),b=Math.max(...vals),pad=Math.max(.05,(b-a)*.12),d0=a-pad,sc=W/((b+pad)-d0),X=v=>Math.max(0,Math.min(W,(v-d0)*sc));
+      g=`<rect class="e-trk" x="0" y="${mid-1}" width="${W}" height="2" rx="1"/>`+(band?`<rect class="e-acc e-band" x="${f(X(lo))}" y="${mid-2}" width="${f(Math.max(2,X(hi)-X(lo)))}" height="4" rx="2"/>`:'')+`<rect class="e-acc" x="${f(Math.min(W-2,Math.max(0,X(rate)-1)))}" y="${mid-5}" width="2" height="10" rx="1"/>`;
+    }
+    else if(kind==='dev'){
+      /* The mornings behind "Each day vs its trend": weight minus that morning's trend value, last 14. */
+      const dv=(model.points||[]).filter(q=>q.avg!==null&&q.avg!==undefined).map(q=>Number(q.weight)-Number(q.avg)).slice(-14);
+      if(dv.length<4)return '';
+      const mx=Math.max(.1,...dv.map(Math.abs)),pitch=W/14;
+      g=`<rect class="e-trk" x="0" y="${mid-.5}" width="${W}" height="1"/>`+dv.map((d,i)=>{
+        const m=Math.max(1.5,Math.abs(d)/mx*6),cx=W-(dv.length-i)*pitch+pitch/2;
+        const cy=Math.abs(d)<.05?mid:d>0?mid-m:mid+m; /* within 0.05 kg is "on the trend", as devSummary counts it */
+        return `<circle class="${i===dv.length-1?'e-acc':'e-ink'}" cx="${f(cx)}" cy="${f(cy)}" r="1"/>`;
+      }).join('');
+    }
+    return g?`<svg class="wx-an-ev" viewBox="0 0 ${W} ${H}" aria-hidden="true" focusable="false">${g}</svg>`:'';
+  }
   function chartHTML() {
     /* Compare (spec §11): the x-window widens over both compared windows; the model carries the view for the
        plot's bands and the slot's table. The builders live after chartHTML. */
@@ -2176,8 +2221,8 @@ Object.assign(NXT, (()=>{
     return `<section class="wx-plate n99-chart is-empty" id="vn-weight" aria-labelledby="wx-h">
       <div class="wx-int"><div class="wx-int-t"><h2 class="wx-h2" id="wx-h">${N.weights().length?'Building your baseline':'Your first morning reading starts this chart'}</h2></div></div>
       <div class="wx-rr"><div class="vn-seg n99-segments wx-seg" role="group" aria-label="Chart date range">${ranges.map(([r,l])=>{const a=N.ui.range===r||(r==='cut'&&!N.ui.range);return `<button type="button" aria-pressed="${a}" class="${a?'active':''}" onclick="NXT.setRange(${typeof r==='string'?`'${r}'`:r})">${l}</button>`;}).join('')}</div></div>
-      <div class="vn-chart-empty n99-chart-empty wx-empty"><div class="n99-empty-number">—<small> kg</small></div>
-        <h3>${emptyTitle}</h3><p>${emptyBody}</p>${N.button('+ Log morning weight','apx95OpenQuickWeight()')}</div>
+      ${N.weights().length&&typeof NXP==='object'&&NXP.emptyHTML?`<div class="vn-chart-empty n99-chart-empty wx-empty">${NXP.emptyHTML({title:emptyTitle,line:emptyBody,action:'Log weigh-in',fn:'apx95OpenQuickWeight()'})}</div>`:`<div class="vn-chart-empty n99-chart-empty wx-empty"><div class="n99-empty-number">—<small> kg</small></div>
+        <h3>${emptyTitle}</h3><p>${emptyBody}</p>${N.button('+ Log morning weight','apx95OpenQuickWeight()')}</div>`}
     </section>`;
   }
   /* Analysis (spec §14): quiet disclosure rows, each summary a real fact. Open state is memory only. */
@@ -2185,7 +2230,7 @@ Object.assign(NXT, (()=>{
     N.ui.wxOpen=N.ui.wxOpen||{};
     const open=!!N.ui.wxOpen[key];
     if(o.action)return `<div class="wx-row" data-wx-row="${key}"><button type="button" class="wx-row-b" onclick="${o.action}"><span class="wx-row-l"><span class="wx-row-t">${esc(title)}</span><span class="wx-row-s">${esc(summary)}</span></span><i class="wx-chev" aria-hidden="true">›</i></button></div>`;
-    return `<div class="wx-row${open?' is-open':''}${o.cls?' '+o.cls:''}" data-wx-row="${key}"><button type="button" class="wx-row-b" aria-expanded="${open}" aria-controls="wx-p-${key}" onclick="NXT.wxRow('${key}')"><span class="wx-row-l"><span class="wx-row-t">${esc(title)}</span><span class="wx-row-s" id="wx-s-${key}">${esc(summary)}</span></span><i class="wx-chev" aria-hidden="true">›</i></button><div class="wx-row-p" id="wx-p-${key}"${open?'':' hidden'}>${body}</div></div>`;
+    return `<div class="wx-row${open?' is-open':''}${o.cls?' '+o.cls:''}" data-wx-row="${key}"><button type="button" class="wx-row-b" aria-expanded="${open}" aria-controls="wx-p-${key}" onclick="NXT.wxRow('${key}')"><span class="wx-row-l"><span class="wx-row-t">${esc(title)}</span><span class="wx-row-s" id="wx-s-${key}">${esc(summary)}</span></span>${o.ev||''}<i class="wx-chev" aria-hidden="true">›</i></button><div class="wx-row-p" id="wx-p-${key}"${open?'':' hidden'}>${body}</div></div>`;
   }
   function weeksSummary() {
     const rows=N.weights(),ws=N.weekStart(state.date),prev=N.dateAdd(ws,-7);
@@ -2212,10 +2257,10 @@ Object.assign(NXT, (()=>{
     const weighSum=latest?`Latest ${latest.weight.toFixed(1)} kg · ${N.shortDate(latest.date)}${other?` · ${other} other-time`:''}`:`0 morning readings${other?` · ${other} other-time`:''}`;
     const out=[];
     if(has){
-      out.push(analysisRow('weeks','Week by week',weeksSummary(),'<div class="wx-weeks" id="wx-weeks"></div>'));
-      out.push(analysisRow('rate','Rate',ev.summary,ev.html,{cls:'is-rate'}));
+      out.push(analysisRow('weeks','Week by week',weeksSummary(),'<div class="wx-weeks" id="wx-weeks"></div>',{ev:evGlyph('weeks',model,plateau)}));
+      out.push(analysisRow('rate','Rate',ev.summary,ev.html,{cls:'is-rate',ev:evGlyph('rate',model,plateau)}));
       if(ev.rax)out.push(analysisRow('rax','Rate across your cut',ev.raxNote,ev.rax));
-      out.push(analysisRow('dev','Each day vs its trend',devSummary(model),`<div class="wx-dev" id="wx-dev"></div><p class="vn-tiny">Each bar is one morning against its own smoothed trend value. While you are cutting most mornings land below it, because the trend averages the days before; several days above it in a row mean the drop is slowing.</p>`));
+      out.push(analysisRow('dev','Each day vs its trend',devSummary(model),`<div class="wx-dev" id="wx-dev"></div><p class="vn-tiny">Each bar is one morning against its own smoothed trend value. While you are cutting most mornings land below it, because the trend averages the days before; several days above it in a row mean the drop is slowing.</p>`,{ev:evGlyph('dev',model,plateau)}));
     }
     out.push(analysisRow('how','How these numbers are made','Trend, rate, spread and projection explained',how));
     out.push(analysisRow('all',`All weigh-ins · ${rows.length}`,weighSum,'',{action:'NXT.openWeightHistory()'}));

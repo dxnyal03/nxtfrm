@@ -434,13 +434,23 @@ const STRATA = (() => {
   }
 
   /* ---- Dock indicator and spotlight --------------------------------------- */
-  let dockI = -1, dockT = 0;
+  /* D170 · The dock pill glides. A tab change holds the pill where it is until its View Transition starts
+     drawing (dockHold, released from navigate()): the new page renders inside the transition's update
+     callback, and anything that started moving before then would be frozen and reappear part-way — the
+     jump that read as a stutter on the phone. The glide's length grows a little with the distance
+     (owner, round 2: "feels very sudden" — 460 ms base on a spring that starts from rest). */
+  let dockI = -1, dockT = 0, dockHold = false;
   function syncDock() {
     const inner = document.querySelector(".tabs .tabs-inner"); if (!inner) return;
     const tabs = [...inner.querySelectorAll(".tab")], i = tabs.findIndex(t => t.classList.contains("active"));
-    if (dockI !== -1 && i !== dockI && !reduced()) { inner.classList.remove("is-moving"); void inner.offsetWidth; inner.classList.add("is-moving"); clearTimeout(dockT); dockT = setTimeout(() => inner.classList.remove("is-moving"), 560); }
+    if (dockHold) return;
+    const ms = Math.min(560, 460 + 30 * Math.max(0, Math.abs(i - dockI) - 1));
+    inner.style.setProperty("--dock-d", ms + "ms");
+    /* The stretch restarts on the next frame rather than through a forced layout at the moment the glide begins. */
+    if (dockI !== -1 && i !== dockI && !reduced()) { inner.classList.remove("is-moving"); requestAnimationFrame(() => inner.classList.add("is-moving")); clearTimeout(dockT); dockT = setTimeout(() => inner.classList.remove("is-moving"), ms + 60); }
     dockI = i;
     inner.style.setProperty("--tab-i", String(Math.max(0, i)));
+    tabs.forEach((t, k) => t.classList.toggle("is-lit", k === i)); /* the label lights with the pill, not with the page swap */
     inner.style.setProperty("--tab-n", String(tabs.length || 5));
     inner.classList.add("st-dock");
   }
@@ -510,39 +520,95 @@ const STRATA = (() => {
     }, true);
   }
 
-  /* ---- Sheets: the page behind recedes; drag the sheet down to close ------ */
+  /* ---- Sheets: the page behind recedes; drag the sheet to its detents or close (D151, D164) -----------
+     Every `.modal .sheet` (both families) is measured once when it opens. Content that fits within 62vh is one
+     detent: content-sized, a drag down closes it. Taller content opens at the half detent (62vh): the sheet keeps
+     its natural height and is translated down so only the top 62vh shows (transform, not height, so nothing
+     reflows), the clipped part does not scroll (`st-detent-half`), and the grabber, a drag up or a flick up
+     brings it to full, where the inner scroll works as before. From full a drag down at scrollTop 0 returns to
+     half, and a further drag (past half + 120 px, or a fast flick) closes. Above the top the drag rubber-bands
+     (x .25). Focusing a field releases half to full, so the sheet still clears the iOS keyboard. A ResizeObserver
+     re-measures when the content grows or shrinks (More details), so a sheet that becomes tall goes to full, not
+     half. Reduced motion: the transitions are off, detents jump. The only per-frame work is the pointer drag. */
   function bindSheets() {
     const root = document.getElementById("modalRoot");
     if (!root) return;
+    const html = document.documentElement;
     const sync = () => {
-      const sheet = root.querySelector(".n99-modal .sheet");
-      document.documentElement.classList.toggle("st-sheet-open", !!sheet); if (sheet) document.documentElement.style.setProperty("--st-sy", String(Math.round(window.scrollY || 0)));
+      const sheet = root.querySelector(".modal .sheet");
+      html.classList.toggle("st-sheet-open", !!sheet); if (sheet) html.style.setProperty("--st-sy", String(Math.round(window.scrollY || 0)));
+      if (!sheet) html.classList.remove("st-sheet-full");
       if (!sheet || sheet.__stDrag) return;
       sheet.__stDrag = true;
-      let y0 = null, dy = 0, t0 = 0;
+      let two = false, cur = "full", off = 0, y0 = null, raw = 0, t0 = 0, base = 0, onGrip = false, moved = false;
+      const grab = document.createElement("div");
+      grab.className = "st-grab"; grab.setAttribute("role", "button"); grab.tabIndex = -1; grab.setAttribute("aria-hidden", "true");
+      sheet.insertBefore(grab, sheet.firstChild); sheet.classList.add("st-has-grab");
+      const glide = () => { sheet.style.transition = reduced() ? "none" : ""; };
+      /* WebKit has no touch-action:pan-up, so "a downward touch is ours" can only be declared on a sheet that
+         needs no native scrolling at all (it fits, or sits at the half detent). A tall sheet at full keeps
+         pan-y and is dragged from the grabber, which is always touch-action:none. */
+      const edge = () => sheet.classList.toggle("st-at-top", sheet.scrollHeight <= sheet.clientHeight + 1 || (two && cur === "half"));
+      const apply = () => {
+        const half = two && cur === "half";
+        sheet.classList.toggle("st-detent-half", half);
+        if (half) sheet.scrollTop = 0;
+        glide(); sheet.style.transform = half ? `translateY(${off}px)` : "";
+        html.classList.toggle("st-sheet-full", two && cur === "full");
+        edge();
+        if (two) { grab.tabIndex = 0; grab.removeAttribute("aria-hidden"); grab.setAttribute("aria-label", half ? "Expand" : "Collapse"); grab.setAttribute("aria-expanded", String(!half)); }
+        else { grab.tabIndex = -1; grab.setAttribute("aria-hidden", "true"); grab.removeAttribute("aria-label"); grab.removeAttribute("aria-expanded"); }
+      };
+      const measure = first => {
+        const H = sheet.offsetHeight; if (!H) { if (first) requestAnimationFrame(() => { if (sheet.isConnected) measure(true); }); return; }
+        const halfH = Math.round((window.innerHeight || 0) * .62), was = two, o = off, c = cur;
+        off = H - halfH; two = sheet.scrollHeight > halfH && off >= 40;
+        if (!two) cur = "full"; else if (first) cur = (document.activeElement && sheet.contains(document.activeElement) && document.activeElement.matches("input,textarea,select")) ? "full" : "half"; /* the quick-weight sheet focuses its field before this handler exists */ else if (!was) cur = "full";
+        if (first || two !== was || cur !== c || (two && cur === "half" && off !== o)) apply();
+      };
+      const go = to => { if (!two || cur === to) return; cur = to; apply(); };
+      const toggle = () => go(cur === "half" ? "full" : "half");
+      measure(true);
+      if (typeof ResizeObserver === "function") new ResizeObserver(() => measure(false)).observe(sheet);
+      grab.addEventListener("click", () => { if (!moved) toggle(); });
+      grab.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+      sheet.addEventListener("focusin", e => { if (two && cur === "half" && e.target !== grab) go("full"); }); /* any focus, not only fields: tabbing into the clipped part would scroll an overflow:hidden sheet */
+      /* D164 · At full and scrollTop 0 the sheet is touch-action:pan-up, so a downward touch drag is ours and an upward one scrolls. */
+      sheet.addEventListener("scroll", edge, { passive: true });
       sheet.addEventListener("pointerdown", e => {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
         const r = sheet.getBoundingClientRect();
-        const onGrip = e.clientY - r.top < 56;
-        if (!onGrip && sheet.scrollTop > 0) return;
+        onGrip = e.clientY - r.top < 56;
+        if (!onGrip && cur === "full" && sheet.scrollTop > 0) return;
         if (!onGrip && e.target.closest("input,textarea,select,button,a,label,[role=slider]")) return;
-        y0 = e.clientY; dy = 0; t0 = performance.now();
+        y0 = e.clientY; raw = 0; t0 = performance.now(); moved = false; base = two && cur === "half" ? off : 0;
+        /* A touch drag must stay ours: without capture and touch-action:none, iOS claims the vertical pan for
+           scrolling part-way through and the pointer stream ends with the sheet left where the finger was. */
+        if (onGrip || sheet.scrollTop === 0) { try { sheet.setPointerCapture(e.pointerId); } catch (x) {} sheet.style.touchAction = "none"; }
       });
       sheet.addEventListener("pointermove", e => {
         if (y0 === null) return;
-        dy = Math.max(0, e.clientY - y0);
-        if (dy > 4) { sheet.style.transition = "none"; sheet.style.transform = `translateY(${dy}px)`; }
+        raw = e.clientY - y0;
+        if (Math.abs(raw) > 6) moved = true;
+        if (cur === "full" && raw < 0 && !onGrip) { y0 = null; glide(); sheet.style.transform = ""; return; } /* an upward drag in the body scrolls */
+        let p = base + raw;
+        if (p < 0) p = two ? p * .25 : 0;
+        if (Math.abs(raw) > 4) { sheet.style.transition = "none"; sheet.style.transform = `translateY(${p}px)`; }
       });
       const end = () => {
         if (y0 === null) return;
-        const v = dy / Math.max(1, performance.now() - t0);
-        y0 = null; sheet.style.transition = "";
-        if (dy > 120 || (dy > 40 && v > .6)) {
-          sheet.style.transform = "translateY(110%)";
-          setTimeout(() => { if (typeof closeModal === "function") closeModal(); }, 200);
-        } else sheet.style.transform = "";
+        const v = raw / Math.max(1, performance.now() - t0), p = base + raw;
+        y0 = null; glide(); sheet.style.touchAction = "";
+        const dismiss = () => { sheet.style.transform = "translateY(110%)"; setTimeout(() => { if (typeof closeModal === "function") closeModal(); }, 200); };
+        if (!two) { if (p > 120 || (raw > 40 && v > .6)) dismiss(); else apply(); return; }
+        if (raw > 40 && v > .6) { if (cur === "full") go("half"); else dismiss(); return; }
+        if (raw < -40 && v < -.6) { cur = "full"; apply(); return; }
+        if (p > off + 120) { dismiss(); return; }
+        cur = p > off / 2 ? "half" : "full"; apply();
       };
       sheet.addEventListener("pointerup", end);
-      sheet.addEventListener("pointercancel", end);
+      /* The browser taking the gesture is not a release: the sheet returns to its detent, never dismisses. */
+      sheet.addEventListener("pointercancel", () => { if (y0 === null) return; y0 = null; glide(); sheet.style.touchAction = ""; apply(); });
     };
     new MutationObserver(sync).observe(root, { childList: true });
     sync();
@@ -631,9 +697,12 @@ const STRATA = (() => {
      the independent `scale` property, so it never fights an element's own transform
      or transitions). Large surfaces dip less than buttons. Off under reduced motion. */
   const PRESS = "button:not(:disabled), [role=button], summary, a[href], .st-tile[onclick], label:has(>input[type=checkbox])";
+  /* D163 · A transparent overlay button (Performance row / group header) hands the dip to the surface it covers, and list rows dip a touch deeper than cards. */
+  const PRESS_HOST = [[".st-perf-open", ".vn-perf-row"], [".vn-perf-gb", ".vn-perf-group"]];
+  const PRESS_ROW = ".vn-perf-row, .vn-perf-group, .vn-set-row, .wx-row-b, .vn-evo-hist-main";
   const SPRING_BACK = "linear(0.0027,0.0851,0.2168,0.4029,0.5926,0.7408,0.885,0.9931,1.057,1.1015,1.1196,1.1192,1.1064,1.0893,1.0663,1.0438,1.0266,1.0102,0.9982,0.9914,0.9869,0.9854,0.9859,0.9877,0.9903,0.9927,0.9954,0.9976,0.9992,1.0005,1.0013,1.0017,1.0018,1.0017,1.0014,1.0011,1.0008,1.0005,1.0002,1.0001,1)";
   let pressed = null;
-  function pressDepth(el) { const r = el.getBoundingClientRect(), big = r.height > 96 || el.classList.contains("st-tile"); return big ? 0.985 : r.width > 200 ? 0.97 : r.width > 100 ? 0.96 : 0.92; }
+  function pressDepth(el) { if (el.matches(PRESS_ROW)) return 0.98; const r = el.getBoundingClientRect(), big = r.height > 96 || el.classList.contains("st-tile"); return big ? 0.985 : r.width > 200 ? 0.97 : r.width > 100 ? 0.96 : 0.92; }
   function release() {
     const el = pressed; pressed = null; if (!el || !el.animate) return;
     const from = el.__stScale || 0.96; el.__stPress && el.__stPress.cancel();
@@ -643,7 +712,8 @@ const STRATA = (() => {
     if (!Element.prototype.animate) return;
     document.addEventListener("pointerdown", e => {
       if (reduced() || e.button > 0) return;
-      const el = e.target.closest && e.target.closest(PRESS);
+      let el = e.target.closest && e.target.closest(PRESS);
+      if (el) for (const [b, h] of PRESS_HOST) if (el.matches(b)) { el = el.closest(h) || el; break; }
       if (!el || el.closest(".nxp-stepper-row input, #vn-chart-wrap, .st-qw-field")) return;
       pressed = el; const d = el.__stScale = pressDepth(el);
       el.__stPress && el.__stPress.cancel();
@@ -782,8 +852,16 @@ const STRATA = (() => {
       return o;
     };
     const de = document.documentElement;
-    if (typeof document.startViewTransition !== "function" || reduced() || document.hidden || de.classList.contains("st-sheet-open")) return swap();
     const portal = to === "train" && lastPress && performance.now() - lastPress.t < 1500;
+    /* D171 (owner, 2026-10-23: "the transitions between the pages cause a slight glitch"). Recorded at 60 fps in
+       WebKit (the iPhone's engine), a View Transition for a plain tab change either cut in one frame or faded into
+       a snapshot taken while the incoming cards were still invisible (their entrance had not started), so the page
+       showed its title over an empty canvas for ~0.1 s and then every card popped in at once. A tab change is now
+       a plain swap: the page's own vn-route-enter fade-up (vnext.css, 280 ms) plays with its cards' stagger on top,
+       and with no snapshot nothing can flash. The Start-workout portal keeps its View Transition. */
+    if (!portal || typeof document.startViewTransition !== "function" || reduced() || document.hidden || de.classList.contains("st-sheet-open")) {
+      return swap();
+    }
     if (portal) { de.style.setProperty("--st-px", Math.round(lastPress.x) + "px"); de.style.setProperty("--st-py", Math.round(lastPress.y) + "px"); lastPress = null; }
     de.setAttribute("data-st-nav", portal ? "portal" : TABS.indexOf(to) > TABS.indexOf(shown) ? "fwd" : "back");
     const named = [];
@@ -797,6 +875,8 @@ const STRATA = (() => {
     const untag = () => { named.splice(0).forEach(el => { el.style.viewTransitionName = ""; }); };
     let out;
     navPending++; navUntil = performance.now() + 1500;
+    dockHold = true;
+    const dockGo = () => { if (!dockHold) return; dockHold = false; syncDock(); };
     try {
       const t = document.startViewTransition(() => {
         untag();
@@ -807,12 +887,13 @@ const STRATA = (() => {
       /* The direction attribute stays until the last overlapping transition is done. */
       const done = () => { untag(); navPending = Math.max(0, navPending - 1); if (!navPending) de.removeAttribute("data-st-nav"); };
       t.finished.then(done, done);
+      t.ready.then(dockGo, dockGo); t.finished.then(dockGo, dockGo); /* D170: the pill moves once the transition is drawing (or, at the latest, when it ends) */
       /* Tapping another tab before this one settles skips it, and `ready` rejects with an AbortError.
          Nothing failed, but the page's unhandledrejection handler would toast "App error", so it is
          absorbed here (found on the iPhone simulator, 2026-10-19). */
       if (t.ready && t.ready.catch) t.ready.catch(() => {});
       if (t.updateCallbackDone && t.updateCallbackDone.catch) t.updateCallbackDone.catch(() => {});
-    } catch (e) { untag(); navPending = Math.max(0, navPending - 1); if (!navPending) de.removeAttribute("data-st-nav"); return swap(); }
+    } catch (e) { untag(); navPending = Math.max(0, navPending - 1); if (!navPending) de.removeAttribute("data-st-nav"); const o = swap(); dockGo(); return o; }
     return out;
   }
 
@@ -839,7 +920,9 @@ const STRATA = (() => {
     const workout = tab === "train" && !!document.querySelector("#trainPage .st-train-active");
     const bar = el.querySelector(".st-top-bar"), mast = document.querySelector(MAST[tab]);
     const line = bar.getBoundingClientRect().bottom || 60;
-    const past = mast && mast.offsetParent !== null ? mast.getBoundingClientRect().bottom < line : y > 140;
+    /* D161: the title folds away over the first 120 px of scroll, so the capsule lands as the fold completes
+       rather than waiting for the title's (already faded) box to pass the capsule line. */
+    const past = y >= 100 || (mast && mast.offsetParent !== null ? mast.getBoundingClientRect().bottom < line : y > 140);
     el.classList.toggle("is-scrolled", y > 4 && !workout);
     el.classList.toggle("is-compact", !!past && y > 4 && !workout);
     const t = el.querySelector(".st-top-t");
@@ -906,6 +989,7 @@ const STRATA = (() => {
      fully inside; hidden means fewer than 24 px of the button remain — the band between holds the last
      state, so nothing flickers at the edge. The same 1 s tick writes the card's rest ring and countdown
      (`[data-tf-rest]`, `--tf-rest-pct`); it never re-renders Today. */
+  let liveRested = 0, restDoneT = 0;
   let ctaIO = null, ctaBtn = null, ctaVisible = false, ctaInset = -1, restSaid = 0;
   function wideRail() { return !!(window.matchMedia && matchMedia("(min-width:1024px)").matches); }
   function dockInset() {
@@ -976,11 +1060,24 @@ const STRATA = (() => {
       el.querySelector(".st-live-n").textContent = s.name;
       el.querySelector(".st-live-c").textContent = s.count + "/" + s.total + " sets";
       el.querySelector(".st-live-r").textContent = s.rest ? " · Rest " + fmt(s.rest) : "";
+      /* D165 · While resting the ring counts the rest down. Each 1 Hz tick writes where the arc will be one
+         second on, and the CSS linear 1 s transition carries it there, so it moves between ticks with no
+         frame loop (reduced motion: no transition, it steps and shows the true remaining share). When the rest
+         ends with the capsule on screen, `is-rest-done` holds a 600 ms pulse, then the ring eases back to sets. */
+      const rTot = Math.max((typeof NXP === "object" && NXP.ui && NXP.ui.restTotal) || 90, s.rest || 0); /* +30 s extends past the stored total */
+      if (s.rest > 0) el.style.setProperty("--live-rest", String(Math.max(0, Math.min(1, (reduced() ? s.rest : s.rest - 1) / rTot)).toFixed(3)));
+      if (liveRested > 0 && !(s.rest > 0) && !el.hidden) {
+        clearTimeout(restDoneT); el.classList.add("is-rest-done");
+        restDoneT = setTimeout(() => el.classList.remove("is-rest-done"), 600);
+      }
+      if (s.rest > 0) { clearTimeout(restDoneT); el.classList.remove("is-rest-done"); }
+      liveRested = s.rest > 0 ? s.rest : 0;
       el.classList.toggle("is-resting", s.rest > 0);
       el.setAttribute("aria-label", "Return to workout: " + s.name + ", " + s.word + ", " + s.count + " of " + s.total + " sets" + (s.rest ? ", resting " + fmt(s.rest) : ""));
       const dock = document.querySelector(".tabs");
       if (dock && !el.classList.contains("is-docked")) { const r = dock.getBoundingClientRect(); if (r.height) el.style.setProperty("--st-live-bottom", Math.max(12, Math.round((window.innerHeight || 0) - r.top + 10)) + "px"); }
     }
+    if (!s) { liveRested = 0; clearTimeout(restDoneT); el.classList.remove("is-rest-done"); }
     clearTimeout(liveTick);
     if ((s && (show || s.rest)) || glShown) liveTick = setTimeout(updateLive, 1000);
     const workoutOn = inTrain && !!document.querySelector("#trainPage .st-train-active");
@@ -1820,6 +1917,7 @@ const STRATA = (() => {
     page.querySelectorAll("[data-st-odo]").forEach(o => odoSet(o, o.dataset.stOdo, entering));
     page.querySelectorAll("[data-st-cmap]").forEach(h => drawCompMap(h, entering));
     if (entering) page.querySelectorAll("[data-st-count]").forEach(countUp);
+    if (entering) rollFigures(page);
     dressProgress(page);
     dressWeeks(page, entering);
     foldPerf(page);
@@ -2075,6 +2173,39 @@ const STRATA = (() => {
       if (k < 1) requestAnimationFrame(step);
     };
     el.textContent = sign + (0).toFixed(dp);
+    requestAnimationFrame(step);
+  }
+  /* D162 · Figures roll once when their tab is entered (never on the repaint after logging): the Body grid values,
+     Performance best sets, the Weight range summary and History's count line. They have markup of their own, so
+     they are found by selector and only the leading number of the first text node is tweened (units stay put).
+     Off screen or hidden ones are left alone; a figure the app rewrites mid-roll is not fought over. */
+  const ROLL = ".vn-evo-cell > b:not(.is-missing), .st-perf-best b, .wx-sum-c b, #vn-hist-summary";
+  function rollFigures(page) {
+    if (reduced()) return;
+    const fold = window.innerHeight || 800, jobs = [];
+    /* Read pass: layout is touched here only, before any write. */
+    page.querySelectorAll(ROLL).forEach(el => {
+      if (el.offsetParent === null || el.getBoundingClientRect().top > fold) return;
+      const node = [...el.childNodes].find(n => n.nodeType === 3 && n.nodeValue.trim());
+      const m = node && /^(\s*[+\u2212-]?)(\d+(?:\.(\d+))?)([\s\S]*)$/.exec(node.nodeValue);
+      if (!m || /^,\d/.test(m[4])) return;
+      jobs.push({ node, pre: m[1], txt: m[2], suf: m[4], target: parseFloat(m[2]), dp: (m[3] || "").length, last: node.nodeValue });
+    });
+    if (!jobs.length) return;
+    /* Write pass: one shared frame loop for every figure. */
+    const t0 = performance.now(), dur = 700;
+    const step = now => {
+      const k = Math.min(1, (now - t0) / dur);
+      let live = false;
+      for (const q of jobs) {
+        if (q.done || !q.node.isConnected || q.node.nodeValue !== q.last) { q.done = true; continue; }
+        q.last = q.pre + (k < 1 ? (q.target * (1 - Math.pow(1 - k, 4))).toFixed(q.dp) : q.txt) + q.suf;
+        q.node.nodeValue = q.last;
+        if (k < 1) live = true; else q.done = true;
+      }
+      if (live) requestAnimationFrame(step);
+    };
+    step(t0);
     requestAnimationFrame(step);
   }
   function revealNums(el) { if (el && el.querySelectorAll) el.querySelectorAll("[data-st-num]").forEach(countNum); }

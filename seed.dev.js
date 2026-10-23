@@ -5,6 +5,7 @@
 (function () {
   const PREVIEW = /^deploy-preview-\d+--[a-z0-9-]+\.netlify\.app$/i.test(location.hostname);
   if (location.hostname !== 'localhost' && !PREVIEW) return;
+  if (location.protocol === 'capacitor:') return; /* never in the native app, whose hostname is also "localhost" */
   if (PREVIEW) {
     const off = function () { if (typeof toast === 'function') toast('Cloud sync is off on this preview link — it uses test data.'); return false; };
     ['cloudLogin', 'cloudSignup', 'saveCloudNow', 'loadCloudNow', 'scheduleCloudSave', 'openCloudLoginFromBanner'].forEach(function (name) {
@@ -479,6 +480,13 @@
   };
 
   seed();
+
+  /* Trial link only: the demo profile is "Dan" unless a name was set on this device (owner, 2026-10-23). */
+  if (PREVIEW && typeof settings === 'object' && settings && settings.name === undefined) {
+    settings.name = 'Dan';
+    try { const st = JSON.parse(localStorage.getItem(KEYS.settings) || '{}'); st.name = 'Dan'; localStorage.setItem(KEYS.settings, JSON.stringify(st)); } catch (e) {}
+    if (typeof render === 'function') render();
+  }
 
   /* ?demo=goal (localhost and previews only): shows the goal-reached moment (D99) on test data. The goal range
      is set in memory just long enough for the latest reading to be the first that brings "Now" (D97) inside it,
